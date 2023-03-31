@@ -31,8 +31,8 @@ $ curl -H "Content-Type: application/json" -d '{"name":"test"}' -u username:pass
 {"id":1,"name":"test","sha1":"9fcb1158165773dd010fca5f0cf7174316c3e37d","token_last_eight":"16c3e37d"}
 ```
 
-The ``sha1`` (the token) is only returned once and is not stored in
-plain-text.  It will not be displayed when listing tokens with a `GET`
+The `sha1` (the token) is only returned once and is not stored in
+plain-text. It will not be displayed when listing tokens with a `GET`
 request; e.g.
 
 ```sh

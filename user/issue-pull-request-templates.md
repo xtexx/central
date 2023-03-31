@@ -79,16 +79,13 @@ Inside the directory can be multiple markdown (`.md`) or yaml (`.yaml`/`.yml`) i
 
 ```md
 ---
-
-name: "Template Name"
-about: "This template is for testing!"
-title: "[TEST] "
-ref: "main"
+name: 'Template Name'
+about: 'This template is for testing!'
+title: '[TEST] '
+ref: 'main'
 labels:
-
-- bug
-- "help needed"
-
+  - bug
+  - 'help needed'
 ---
 
 This is the template!
@@ -106,7 +103,7 @@ This example YAML configuration file defines an issue form using several inputs 
 ```yaml
 name: Bug Report
 about: File a bug report
-title: "[Bug]: "
+title: '[Bug]: '
 body:
   - type: markdown
     attributes:
@@ -126,7 +123,7 @@ body:
       label: What happened?
       description: Also tell us, what did you expect to happen?
       placeholder: Tell us what you see!
-      value: "A bug happened!"
+      value: 'A bug happened!'
     validations:
       required: true
   - type: dropdown
@@ -172,7 +169,7 @@ You can use a `markdown` element to display Markdown in your form that provides 
 Attributes:
 
 | Key   | Description                                                  | Required | Type   | Default | Valid values |
-|-------|--------------------------------------------------------------|----------|--------|---------|--------------|
+| ----- | ------------------------------------------------------------ | -------- | ------ | ------- | ------------ |
 | value | The text that is rendered. Markdown formatting is supported. | Required | String | -       | -            |
 
 ### Textarea
@@ -181,18 +178,18 @@ You can use a `textarea` element to add a multi-line text field to your form. Co
 
 Attributes:
 
-| Key         | Description                                                                                                                                                                   | Required | Type   | Default      | Valid values              |
-|-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|--------|--------------|---------------------------|
-| label       | A brief description of the expected user input, which is also displayed in the form.                                                                                          | Required | String | -            | -                         |
-| description | A description of the text area to provide context or guidance, which is displayed in the form.                                                                                | Optional | String | Empty String | -                         |
-| placeholder | A semi-opaque placeholder that renders in the text area when empty.                                                                                                           | Optional | String | Empty String | -                         |
-| value       | Text that is pre-filled in the text area.                                                                                                                                     | Optional | String | -            | -                         |
+| Key         | Description                                                                                                                                                                   | Required | Type   | Default      | Valid values                |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------ | ------------ | --------------------------- |
+| label       | A brief description of the expected user input, which is also displayed in the form.                                                                                          | Required | String | -            | -                           |
+| description | A description of the text area to provide context or guidance, which is displayed in the form.                                                                                | Optional | String | Empty String | -                           |
+| placeholder | A semi-opaque placeholder that renders in the text area when empty.                                                                                                           | Optional | String | Empty String | -                           |
+| value       | Text that is pre-filled in the text area.                                                                                                                                     | Optional | String | -            | -                           |
 | render      | If a value is provided, submitted text will be formatted into a codeblock. When this key is provided, the text area will not expand for file attachments or Markdown editing. | Optional | String | -            | Languages known to Forgejo. |
 
 Validations:
 
 | Key      | Description                                          | Required | Type    | Default | Valid values |
-|----------|------------------------------------------------------|----------|---------|---------|--------------|
+| -------- | ---------------------------------------------------- | -------- | ------- | ------- | ------------ |
 | required | Prevents form submission until element is completed. | Optional | Boolean | false   | -            |
 
 ### Input
@@ -202,7 +199,7 @@ You can use an `input` element to add a single-line text field to your form.
 Attributes:
 
 | Key         | Description                                                                                | Required | Type   | Default      | Valid values |
-|-------------|--------------------------------------------------------------------------------------------|----------|--------|--------------|--------------|
+| ----------- | ------------------------------------------------------------------------------------------ | -------- | ------ | ------------ | ------------ |
 | label       | A brief description of the expected user input, which is also displayed in the form.       | Required | String | -            | -            |
 | description | A description of the field to provide context or guidance, which is displayed in the form. | Optional | String | Empty String | -            |
 | placeholder | A semi-transparent placeholder that renders in the field when empty.                       | Optional | String | Empty String | -            |
@@ -211,7 +208,7 @@ Attributes:
 Validations:
 
 | Key       | Description                                                                                      | Required | Type    | Default | Valid values                                                             |
-|-----------|--------------------------------------------------------------------------------------------------|----------|---------|---------|--------------------------------------------------------------------------|
+| --------- | ------------------------------------------------------------------------------------------------ | -------- | ------- | ------- | ------------------------------------------------------------------------ |
 | required  | Prevents form submission until element is completed.                                             | Optional | Boolean | false   | -                                                                        |
 | is_number | Prevents form submission until element is filled with a number.                                  | Optional | Boolean | false   | -                                                                        |
 | regex     | Prevents form submission until element is filled with a value that match the regular expression. | Optional | String  | -       | a [regular expression](https://en.wikipedia.org/wiki/Regular_expression) |
@@ -223,7 +220,7 @@ You can use a `dropdown` element to add a dropdown menu in your form.
 Attributes:
 
 | Key         | Description                                                                                         | Required | Type         | Default      | Valid values |
-|-------------|-----------------------------------------------------------------------------------------------------|----------|--------------|--------------|--------------|
+| ----------- | --------------------------------------------------------------------------------------------------- | -------- | ------------ | ------------ | ------------ |
 | label       | A brief description of the expected user input, which is displayed in the form.                     | Required | String       | -            | -            |
 | description | A description of the dropdown to provide extra context or guidance, which is displayed in the form. | Optional | String       | Empty String | -            |
 | multiple    | Determines if the user can select more than one option.                                             | Optional | Boolean      | false        | -            |
@@ -232,7 +229,7 @@ Attributes:
 Validations:
 
 | Key      | Description                                          | Required | Type    | Default | Valid values |
-|----------|------------------------------------------------------|----------|---------|---------|--------------|
+| -------- | ---------------------------------------------------- | -------- | ------- | ------- | ------------ |
 | required | Prevents form submission until element is completed. | Optional | Boolean | false   | -            |
 
 ### Checkboxes
@@ -242,7 +239,7 @@ You can use the `checkboxes` element to add a set of checkboxes to your form.
 Attributes:
 
 | Key         | Description                                                                                           | Required | Type   | Default      | Valid values |
-|-------------|-------------------------------------------------------------------------------------------------------|----------|--------|--------------|--------------|
+| ----------- | ----------------------------------------------------------------------------------------------------- | -------- | ------ | ------------ | ------------ |
 | label       | A brief description of the expected user input, which is displayed in the form.                       | Required | String | -            | -            |
 | description | A description of the set of checkboxes, which is displayed in the form. Supports Markdown formatting. | Optional | String | Empty String | -            |
 | options     | An array of checkboxes that the user can select. For syntax, see below.                               | Required | Array  | -            | -            |
@@ -250,6 +247,6 @@ Attributes:
 For each value in the options array, you can set the following keys.
 
 | Key      | Description                                                                                                                              | Required | Type    | Default | Options |
-|----------|------------------------------------------------------------------------------------------------------------------------------------------|----------|---------|---------|---------|
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------- | ------- | ------- |
 | label    | The identifier for the option, which is displayed in the form. Markdown is supported for bold or italic text formatting, and hyperlinks. | Required | String  | -       | -       |
 | required | Prevents form submission until element is completed.                                                                                     | Optional | Boolean | false   | -       |

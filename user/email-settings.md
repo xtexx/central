@@ -15,11 +15,11 @@ You can access it by clicking on the menu button “Profile and Settings...” i
 
 In the section “Manage Email Addresses”, you can select one of the following options from the drop-down menu for each email address that you have registered with Forgejo:
 
-| Option                      | Effect                                                                                                         |
-|:----------------------------|:---------------------------------------------------------------------------------------------------------------|
-| Enable Email Notifications  | Enables all notifications (default setting)                                                                    |
-| Only Email on Mention       | Forgejo will only send an email to this address if your username is mentioned in an issue or a comment        |
-| Disable Email Notifications | Forgejo will not send any emails to this address                                                              |
+| Option                      | Effect                                                                                                 |
+| :-------------------------- | :----------------------------------------------------------------------------------------------------- |
+| Enable Email Notifications  | Enables all notifications (default setting)                                                            |
+| Only Email on Mention       | Forgejo will only send an email to this address if your username is mentioned in an issue or a comment |
+| Disable Email Notifications | Forgejo will not send any emails to this address                                                       |
 
 When you're finished, press the button “Set Email Preference” to confirm your selection.
 
@@ -28,12 +28,12 @@ When you're finished, press the button “Set Email Preference” to confirm you
 
 ## Issue notifications
 
-As soon as you make a comment on an issue, you automatically subscribe to it. Unless you disabled email notifications for all your email addresses, you will get an email for every change and comment on that issue. 
+As soon as you make a comment on an issue, you automatically subscribe to it. Unless you disabled email notifications for all your email addresses, you will get an email for every change and comment on that issue.
 
 You can check and modify your issue subscription status under the “Notifications” section on the menu on the right side of the issue screen.
 
 ## Watching repositories
 
-When you watch a repository (by clicking on the “Watch” button in a repository), you will receive emails for every change (creation of issues, pull requests, comments, etc.) done in this repository. 
+When you watch a repository (by clicking on the “Watch” button in a repository), you will receive emails for every change (creation of issues, pull requests, comments, etc.) done in this repository.
 
 To stop watching a repository, simply click on “Unwatch” in a repository.

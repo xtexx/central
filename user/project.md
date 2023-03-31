@@ -4,7 +4,7 @@ title: 'Projects'
 license: 'CC-BY-SA-4.0'
 ---
 
-A project is a [kanban board](https://en.wikipedia.org/wiki/Kanban_(development)) to organize issues.
+A project is a [kanban board](<https://en.wikipedia.org/wiki/Kanban_(development)>) to organize issues.
 
 ![screenshot of the project page](../../../../images/v1.19/user/project/project.png)
 

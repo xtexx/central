@@ -10,7 +10,8 @@ license: 'CC-BY-SA-4.0'
 - Minor is increased for backwards-compatible new features.
 - Major is increased for breaking changes.
 
-*something* could be :
+_something_ could be :
+
 - a command, an option or an argument, for a CLI ;
 - a route path, a query parameter or a body property, for a REST API ;
 - a text node, a button or a field, for a GUI.
@@ -21,13 +22,13 @@ Since Forgejo has all of the above, changes to all of those components should be
 
 As of Forgejo v1.19, there are two version numbering schemes:
 
-* [Following the Gitea version](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/CONTRIBUTING/RELEASE.md#release-numbering) which is not a semantic version
-  * Used to name release files
-  * Used for tagging releases
-  * Displayed in the web interface
-  * Returned by the `/api/v1/version` API endpoint
-* Forgejo semantic version
-  * Returned by the `/api/forgejo/v1/version` API endpoint
+- [Following the Gitea version](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/CONTRIBUTING/RELEASE.md#release-numbering) which is not a semantic version
+  - Used to name release files
+  - Used for tagging releases
+  - Displayed in the web interface
+  - Returned by the `/api/v1/version` API endpoint
+- Forgejo semantic version
+  - Returned by the `/api/forgejo/v1/version` API endpoint
 
 For instance, the semantic version for https://code.forgejo.org can be obtained with:
 
@@ -40,6 +41,6 @@ $ curl https://code.forgejo.org/api/forgejo/v1/version
 
 The structure of the version number is `<major>.<minor>.<patch>+<build>-gitea-<gitea version>` where:
 
-* `<major>.<minor>.<patch>` is conformant to [Semantic Versioning 2.0.0](https://semver.org/#semantic-versioning-200)
-* `<build>` is the release build number of an otherwise identical source
-* `gitea-<gitea version>` is the Gitea version this Forgejo release depends on
+- `<major>.<minor>.<patch>` is conformant to [Semantic Versioning 2.0.0](https://semver.org/#semantic-versioning-200)
+- `<build>` is the release build number of an otherwise identical source
+- `gitea-<gitea version>` is the Gitea version this Forgejo release depends on

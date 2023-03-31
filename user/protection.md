@@ -17,7 +17,7 @@ To protect a branch, you need to go to the repository’s **Settings** >
 ![Add a new rule](../../../../images/v1.19/user/protection/branch-protect.png)
 
 The name of the branch can be a glob where / is the separator and **
-spans accross separators. For instance `main`, `release/**` or `precious*`.
+spans accross separators. For instance `main`, `release/**`or`precious\*`.
 
 If two rules apply to the same branch, the one that has no glob takes
 precedence.

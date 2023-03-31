@@ -7,23 +7,23 @@ title: 'Package Registry'
 
 The following package managers are currently supported:
 
-| Name | Language | Package client |
-| ---- | -------- | -------------- |
-| [Cargo](cargo) | Rust | `cargo` |
-| [Chef](chef) | - | `knife` |
-| [Composer](composer) | PHP | `composer` |
-| [Conan](conan) | C++ | `conan` |
-| [Conda](conda) | - | `conda` |
-| [Container](container) | - | any OCI compliant client |
-| [Generic](generic) | - | any HTTP client |
-| [Helm](helm) | - | any HTTP client, `cm-push` |
-| [Maven](maven) | Java | `mvn`, `gradle` |
-| [npm](npm) | JavaScript | `npm`, `yarn`, `pnpm` |
-| [NuGet](nuget) | .NET | `nuget` |
-| [Pub](pub) | Dart | `dart`, `flutter` |
-| [PyPI](pypi) | Python | `pip`, `twine` |
-| [RubyGems](rubygems) | Ruby | `gem`, `Bundler` |
-| [Vagrant](vagrant) | - | `vagrant` |
+| Name                   | Language   | Package client             |
+| ---------------------- | ---------- | -------------------------- |
+| [Cargo](cargo)         | Rust       | `cargo`                    |
+| [Chef](chef)           | -          | `knife`                    |
+| [Composer](composer)   | PHP        | `composer`                 |
+| [Conan](conan)         | C++        | `conan`                    |
+| [Conda](conda)         | -          | `conda`                    |
+| [Container](container) | -          | any OCI compliant client   |
+| [Generic](generic)     | -          | any HTTP client            |
+| [Helm](helm)           | -          | any HTTP client, `cm-push` |
+| [Maven](maven)         | Java       | `mvn`, `gradle`            |
+| [npm](npm)             | JavaScript | `npm`, `yarn`, `pnpm`      |
+| [NuGet](nuget)         | .NET       | `nuget`                    |
+| [Pub](pub)             | Dart       | `dart`, `flutter`          |
+| [PyPI](pypi)           | Python     | `pip`, `twine`             |
+| [RubyGems](rubygems)   | Ruby       | `gem`, `Bundler`           |
+| [Vagrant](vagrant)     | -          | `vagrant`                  |
 
 **The following paragraphs only apply if Packages are not globally disabled!**
 
@@ -39,10 +39,10 @@ and shows a link to the repository on the package site (as well as a link to the
 
 ## Access Restrictions
 
-| Package owner type | User | Organization |
-|--------------------|------|--------------|
+| Package owner type | User                                                        | Organization                                             |
+| ------------------ | ----------------------------------------------------------- | -------------------------------------------------------- |
 | **read** access    | public, if user is public too; otherwise for this user only | public, if org is public, otherwise for org members only |
-| **write** access   | owner only | org members with admin or write access to the org |
+| **write** access   | owner only                                                  | org members with admin or write access to the org        |
 
 N.B.: These access restrictions are subject to change, where more finegrained control will be added via a dedicated organization team permission.
 

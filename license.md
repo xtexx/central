@@ -1,6 +1,6 @@
 ---
 layout: '~/layouts/Markdown.astro'
-title: "License"
+title: 'License'
 ---
 
 This documentation is licensed under [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.en).
