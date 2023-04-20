@@ -365,7 +365,7 @@ This command is idempotent.
 
 ### convert
 
-Converts an existing MySQL database from utf8 to utf8mb4.
+Converts an existing MySQL/MariaDB database from utf8 to utf8mb4.
 
 ### doctor
 

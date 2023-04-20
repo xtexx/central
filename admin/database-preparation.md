@@ -5,15 +5,15 @@ license: 'Apache-2.0'
 origin_url: 'https://github.com/go-gitea/gitea/blob/699f20234b9f7cdbbeeee3be004470c598fa1147/docs/content/doc/installation/database-preparation.en-us.md'
 ---
 
-You need a database to use Forgejo. Forgejo supports PostgreSQL (>=10), MySQL (>=5.7), SQLite, and MSSQL (>=2008R2 SP3). This page will guide into preparing database. Only PostgreSQL and MySQL will be covered here since those database engines are widely-used in production.
+You need a database to use Forgejo. Forgejo supports PostgreSQL (>=10), MySQL (>=5.7) or MariaDB (>=10.0), SQLite, and MSSQL (>=2008R2 SP3). This page will guide into preparing database. Only PostgreSQL and MySQL/MariaDB will be covered here since those database engines are widely-used in production.
 
 Database instance can be on same machine as Forgejo (local database setup), or on different machine (remote database).
 
-Note: All steps below requires that the database engine of your choice is installed on your system. For remote database setup, install the server application on database instance and client program on your Forgejo server. The client program is used to test connection to the database from Forgejo server, while Forgejo itself use database driver provided by Go to accomplish the same thing. In addition, make sure you use same engine version for both server and client for some engine features to work. For security reason, protect `root` (MySQL) or `postgres` (PostgreSQL) database superuser with secure password. The steps assumes that you run Linux for both database and Forgejo servers.
+Note: All steps below requires that the database engine of your choice is installed on your system. For remote database setup, install the server application on database instance and client program on your Forgejo server. The client program is used to test connection to the database from Forgejo server, while Forgejo itself use database driver provided by Go to accomplish the same thing. In addition, make sure you use same engine version for both server and client for some engine features to work. For security reason, protect `root` (MySQL/MariaDB) or `postgres` (PostgreSQL) database superuser with secure password. The steps assumes that you run Linux for both database and Forgejo servers.
 
-## MySQL
+## MySQL/MariaDB
 
-1. For remote database setup, you will need to make MySQL listen to your IP address. Edit `bind-address` option on `/etc/mysql/my.cnf` on database instance to:
+1. For remote database setup, you will need to make MySQL/MariaDB listen to your IP address. Edit `bind-address` option on `/etc/mysql/my.cnf` on database instance to:
 
    ```ini
    bind-address = 203.0.113.3
@@ -238,9 +238,9 @@ The PostgreSQL driver used by Forgejo supports two-way TLS. In two-way TLS, both
 
    You should be prompted to enter password for the database user, and then be connected to the database.
 
-### MySQL
+### MySQL/MariaDB
 
-While the MySQL driver used by Forgejo also supports two-way TLS, Forgejo currently supports only one-way TLS. See the "Add TLS File Path Options for MySQL Database Connection](https://github.com/go-gitea/gitea/issues/10828)" issue for details.
+While the MySQL/MariaDB driver used by Forgejo also supports two-way TLS, Forgejo currently supports only one-way TLS. See the "Add TLS File Path Options for MySQL/MariaDB Database Connection](https://github.com/go-gitea/gitea/issues/10828)" issue for details.
 
 In one-way TLS, the database client verifies the certificate sent from server during the connection handshake, and the server assumes that the connected client is legitimate, since client certificate verification doesn't take place.
 
@@ -267,7 +267,7 @@ In one-way TLS, the database client verifies the certificate sent from server du
    chmod 0600 /path/to/ca.crt /path/to/mysql.crt /path/to/mysql.key
    ```
 
-4. Restart MySQL to apply the setting.
+4. Restart MySQL/MariaDB to apply the setting.
 
 5. The database user for Forgejo may have been created earlier, but it would authenticate only against the IP addresses of the server running Forgejo. To authenticate against its domain name, recreate the user, and this time also set it to require TLS for connecting to the database:
 

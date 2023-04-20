@@ -414,8 +414,8 @@ The following configuration set `Content-Type: application/vnd.android.package-a
 - `SCHEMA`: **\<empty\>**: For PostgreSQL only, schema to use if different from "public". The schema must exist beforehand,
   the user must have creation privileges on it, and the user search path must be set to the look into the schema first
   (e.g. `ALTER USER user SET SEARCH_PATH = schema_name,"$user",public;`).
-- `SSL_MODE`: **disable**: SSL/TLS encryption mode for connecting to the database. This option is only applied for PostgreSQL and MySQL.
-  - Valid values for MySQL:
+- `SSL_MODE`: **disable**: SSL/TLS encryption mode for connecting to the database. This option is only applied for PostgreSQL and MySQL/MariaDB.
+  - Valid values for MySQL/MariaDB:
     - `true`: Enable TLS with verification of the database server certificate against its root certificate. When selecting this option make sure that the root certificate required to validate the database server certificate (e.g. the CA certificate) is on the system certificate store of both the database and Forgejo servers. See your system documentation for instructions on how to add a CA certificate to the certificate store.
     - `false`: Disable TLS.
     - `disable`: Alias for `false`, for compatibility with PostgreSQL.
@@ -429,14 +429,14 @@ The following configuration set `Content-Type: application/vnd.android.package-a
 - `SQLITE_TIMEOUT`: **500**: Query timeout for SQLite3 only.
 - `SQLITE_JOURNAL_MODE`: **""**: Change journal mode for SQlite3. Can be used to enable [WAL mode](https://www.sqlite.org/wal.html) when high load causes write congestion. See [SQlite3 docs](https://www.sqlite.org/pragma.html#pragma_journal_mode) for possible values. Defaults to the default for the database file, often DELETE.
 - `ITERATE_BUFFER_SIZE`: **50**: Internal buffer size for iterating.
-- `CHARSET`: **utf8mb4**: For MySQL only, either "utf8" or "utf8mb4". NOTICE: for "utf8mb4" you must use MySQL InnoDB > 5.6. Forgejo is unable to check this.
+- `CHARSET`: **utf8mb4**: For MySQL/MariaDB only, either "utf8" or "utf8mb4". NOTICE: for "utf8mb4" you must use MySQL/MariaDB InnoDB > 5.6. Forgejo is unable to check this.
 - `PATH`: **data/forgejo.db**: For SQLite3 only, the database file path.
 - `LOG_SQL`: **true**: Log the executed SQL.
 - `DB_RETRIES`: **10**: How many ORM init / DB connect attempts allowed.
 - `DB_RETRY_BACKOFF`: **3s**: time.Duration to wait before trying another ORM init / DB connect attempt, if failure occurred.
 - `MAX_OPEN_CONNS` **0**: Database maximum open connections - default is 0, meaning there is no limit.
 - `MAX_IDLE_CONNS` **2**: Max idle database connections on connection pool, default is 2 - this will be capped to `MAX_OPEN_CONNS`.
-- `CONN_MAX_LIFETIME` **0 or 3s**: Sets the maximum amount of time a DB connection may be reused - default is 0, meaning there is no limit (except on MySQL where it is 3s - see #6804 & #7071).
+- `CONN_MAX_LIFETIME` **0 or 3s**: Sets the maximum amount of time a DB connection may be reused - default is 0, meaning there is no limit (except on MySQL/MariaDB where it is 3s - see #6804 & #7071).
 - `AUTO_MIGRATION` **true**: Whether execute database models migrations automatically.
 
 Please see #8540 & #8273 for further discussion of the appropriate values for `MAX_OPEN_CONNS`, `MAX_IDLE_CONNS` & `CONN_MAX_LIFETIME` and their
