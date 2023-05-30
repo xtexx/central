@@ -1344,7 +1344,7 @@ on:
       - releases/*
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: docker
     steps:
       - uses: actions/checkout@v3
 ```
