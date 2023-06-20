@@ -134,4 +134,4 @@ There are also two units which can be toggled:
 - External Wiki: access to external wiki.
 - External Issues: access to the external issue tracker.
 
-A team can be given the permission to create new repositories. When a member of such team creates a new repository, he/she will get administrator access to the repository.
+A team can be given the permission to create new repositories. When a member of such team creates a new repository, they will get administrator access to the repository.
