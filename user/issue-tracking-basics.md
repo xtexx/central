@@ -41,7 +41,7 @@ process of review, discussion and closure, which can be more or less strictly de
 based on the project you're contributing to.
 
 The first thing that might happen is that your issue is categorized using labels.
-Your issue may be reviewed by the project's maintainer(s) and evaluated whether it, i.e., might be a duplicate or an invalid bug report.
+Your issue may be reviewed by the project's maintainer(s) and evaluated whether it, i.e., is a bug report or feature request.
 
 Then, depending on what type of issue it is, there might be additional questions
 or a discussion and, if applicable, the implementation of a solution (or the rejection of
