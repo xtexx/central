@@ -37,7 +37,7 @@ request; e.g.
 
 ```sh
 $ curl --url https://yourusername:password@forgejo.your.host/api/v1/users/<username>/tokens
-[{"name":"test","sha1":"","token_last_eight:"........":},{"name":"dev","sha1":"","token_last_eight":"........"}]
+[{"name":"test","sha1":"","token_last_eight":"........"},{"name":"dev","sha1":"","token_last_eight":"........"}]
 ```
 
 To use the API with basic authentication with two factor authentication
