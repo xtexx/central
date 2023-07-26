@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: 'Configuration Cheat Sheet'
 license: 'Apache-2.0'
 origin_url: 'https://github.com/go-gitea/gitea/blob/69c9ab387f2db4eab29749480ca21206de75e77a/docs/content/doc/advanced/config-cheat-sheet.en-us.md'

@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: 'Labels'
 license: 'Apache-2.0'
 origin_url: 'https://github.com/go-gitea/gitea/blob/a8e13e64da7f9dc6176365e6b9295981af5d81ea/docs/content/doc/usage/labels.en-us.md'

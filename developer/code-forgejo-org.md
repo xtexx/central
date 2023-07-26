@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: code.forgejo.org
 license: 'CC-BY-SA-4.0'
 ---

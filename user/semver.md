@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: Semantic version
 license: 'CC-BY-SA-4.0'
 ---

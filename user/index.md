@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: 'Forgejo v1.19 user guide'
 ---
 
@@ -7,40 +6,40 @@ These documents are targeted to people who are using Forgejo but are not
 involved in running it on their machines.
 
 - Getting started
-  - [Your First Repository](first-repository)
-  - [The Basics of Issue Tracking](issue-tracking-basics)
-  - [Integrated Wiki](wiki)
-  - [Email Settings](email-settings)
+  - [Your First Repository](./first-repository/)
+  - [The Basics of Issue Tracking](./issue-tracking-basics/)
+  - [Integrated Wiki](./wiki/)
+  - [Email Settings](./email-settings/)
 - Collaborating with Others
-  - [Projects / Kanban boards](project)
+  - [Projects / Kanban boards](./project/)
   - [Pull requests and Git flow](https://docs.codeberg.org/collaborating/pull-requests-and-git-flow/)
   - [Invite Collaborators](https://docs.codeberg.org/collaborating/invite-collaborators/)
   - [Create and Manage an Organization](https://docs.codeberg.org/collaborating/create-organization/)
-  - [Repository Permissions](repo-permissions)
+  - [Repository Permissions](./repo-permissions/)
   - [Resolve Conflicts](https://docs.codeberg.org/collaborating/resolve-conflicts/)
   - [Citable Code](https://docs.codeberg.org/collaborating/citable-code/)
-  - [Labels](labels)
-  - [Automatically Linked References](linked-references)
+  - [Labels](./labels/)
+  - [Automatically Linked References](./linked-references/)
 - Working with Git Repositories
   - [Clone & Commit via Web](https://docs.codeberg.org/git/clone-commit-via-web/)
   - [Tags and Releases](https://docs.codeberg.org/git/using-tags/)
-  - [Branch and tag protection](protection)
+  - [Branch and tag protection](./protection/)
 - Advanced Usage
-  - [Issue and Pull Request Templates](issue-pull-request-templates)
-  - [Merge Message templates](merge-message-templates)
+  - [Issue and Pull Request Templates](./issue-pull-request-templates/)
+  - [Merge Message templates](./merge-message-templates/)
   - [Generating an Access Token](https://docs.codeberg.org/advanced/access-token/)
-  - [Webhooks](webhooks)
+  - [Webhooks](./webhooks/)
   - Authentication
-    - [LDAP, PAM, FreeIPA](authentication)
-    - [OAuth2, Scoped Tokens, Client Types](oauth2-provider)
-  - [Semantic version](semver)
-  - [API Usage](api-usage)
+    - [LDAP, PAM, FreeIPA](./authentication/)
+    - [OAuth2, Scoped Tokens, Client Types](./oauth2-provider/)
+  - [Semantic version](./semver/)
+  - [API Usage](./api-usage/)
   - [API Reference](https://codeberg.org/api/swagger)
   - [Migrating Repositories](https://docs.codeberg.org/advanced/migrating-repos/)
-  - [Push Options](push-options)
-  - [Push to create](push-to-create)
-  - [Agit setup](agit-support)
-  - [Packages](packages)
+  - [Push Options](./push-options/)
+  - [Push to create](./push-to-create/)
+  - [Agit setup](./agit-support/)
+  - [Packages](./packages/)
 - See also
   - [Codeberg guide on Git](https://docs.codeberg.org/git/)
   - [Codeberg guide on Markdown](https://docs.codeberg.org/markdown/)

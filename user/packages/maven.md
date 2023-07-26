@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: 'Maven Packages Repository'
 license: 'Apache-2.0'
 origin_url: 'https://github.com/go-gitea/gitea/blob/92d3e2a6f899347cfa47221d5b25cdcaf2cce486/docs/content/doc/packages/maven.en-us.md'

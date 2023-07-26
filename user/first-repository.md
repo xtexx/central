@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: Your First Repository
 license: 'CC-BY-SA-4.0'
 origin_url: 'https://codeberg.org/Codeberg/Documentation/src/commit/ceec82002bbdc62cf27974e84df51369a4bfe0f9/content/getting-started/first-repository.md'
@@ -25,20 +24,20 @@ Here's an explanation of the form's fields:
 
 - **Owner** Here, you can specify whether you want this to be your own personal project or whether you want it to be part of an organization that you're a part of
 - **Repository name** A name for your repository (which will also be part of its path, in this case `https://codeberg.org/knut/foobar`)
-- **Visibility** Repositories are either _public_ or _private_, where public means that everyone will be able to access your repository, while your private repositories can only be accessed by you and your collaborators (see [Invite Collaborators](/collaborating/invite-collaborators))
+- **Visibility** Repositories are either _public_ or _private_, where public means that everyone will be able to access your repository, while your private repositories can only be accessed by you and your collaborators (see [Invite Collaborators](/collaborating/invite-collaborators/))
 - **Description** A short description that appears next to your repository's name where appropriate
 - **Template** Occasionally you may want to generate your repository from an existing template. In that case, you can specify that template here. Otherwise, simply leave this field empty.
 - **Issue Labels** If you want to initialize your project's issue tracker with a set of labels that you can use to categorize issues, you can choose one here. You don't have to choose this right away though, as you can choose and modify issue labels at a later time as well.
 - **.gitignore** A [.gitignore](https://git-scm.com/docs/gitignore) file defines which files Git should not keep track of. This is useful, for example to prevent configuration files or binaries to be tracked in version control. You can choose to add a pre-defined file matching the programming language you use now, or add one manually later.
-- **License** Here, you can choose from a list of FSF/OSI approved licenses. A `LICENSE` file will then be added to the repository. For some help on choosing the correct license, have a look at our [licensing article](/getting-started/licensing).
-- **README** is the first file one should read when accessing a repository. It's also the first file displayed when accessing a repository, a bit like the "homepage" of your repository. On Forgejo, this is interpreted as a [Markdown](/markdown) file.
+- **License** Here, you can choose from a list of FSF/OSI approved licenses. A `LICENSE` file will then be added to the repository. For some help on choosing the correct license, have a look at our [licensing article](/getting-started/licensing/).
+- **README** is the first file one should read when accessing a repository. It's also the first file displayed when accessing a repository, a bit like the "homepage" of your repository. On Forgejo, this is interpreted as a [Markdown](/markdown/) file.
 - **Initialize repository** In order to add the `LICENSE`, `README` and `.gitignore` files mentioned above to your new repository, make sure you tick this box.
 - **Default branch** Using this field, you can choose how to name the default branch of your Git repository. We recommend you use the predefined default.
 
 It's okay to only specify owner and repository name, if you want to get started quickly.
 After filling out the fields, click the green "Create Repository" button on the bottom of the page.
 
-You should now see a screen similar to the one below. If you haven't chosen to generate `LICENSE`, `README` and `.gitignore` the screen might show instructions instead, which will vanish after [your first commit](#making-your-first-commit).
+You should now see a screen similar to the one below. If you haven't chosen to generate `LICENSE`, `README` and `.gitignore` the screen might show instructions instead, which will vanish after [your first commit](#making-your-first-commit/).
 
 ![screenshot showing a freshly baken repository](../../../../images/v1.19/user/first-repository/create-repo-3.png)
 
@@ -49,7 +48,7 @@ Here's what the most important buttons do:
 - **The Repository Tabs (3)** contain links to every important feature within this repository:
   - **Code** lets you browse through all versions of this repository's code.
   - **Issues** is a very important communication tool between the author, their users and their contributors. Think of it as part bug-tracker, part forum.
-    For more information on this, have a look at [The Basics of Issue Tracking](/getting-started/issue-tracking-basics)
+    For more information on this, have a look at [The Basics of Issue Tracking](/getting-started/issue-tracking-basics/)
   - **Pull Requests** is where other users can ask the author to "pull" in code, from a fork into the author's program.
   - **Releases** is a space where the author can upload finished versions of their program, e.g. binaries
   - **Wiki** is a basic wiki feature built into Forgejo.
@@ -63,7 +62,7 @@ After creating a new repository, as laid out in the previous section, you can no
 In this guide, we'll focus on connecting to Forgejo via HTTP using Git on the command line, but note that there are multiple other ways to connect to Forgejo, as laid out in more detail in the articles:
 
 - [Clone & Commit via CLI](/git/clone-commit-via-cli/) and
-- [Clone & Commit via Web](/git/clone-commit-via-web)
+- [Clone & Commit via Web](/git/clone-commit-via-web/)
 
 > Although we use HTTP in this Getting Started guide, it is a good idea to setup SSH-based authentication once you feel confident to do so
 

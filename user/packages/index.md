@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: 'Package Registry'
 ---
 
@@ -7,23 +6,23 @@ title: 'Package Registry'
 
 The following package managers are currently supported:
 
-| Name                   | Language   | Package client             |
-| ---------------------- | ---------- | -------------------------- |
-| [Cargo](cargo)         | Rust       | `cargo`                    |
-| [Chef](chef)           | -          | `knife`                    |
-| [Composer](composer)   | PHP        | `composer`                 |
-| [Conan](conan)         | C++        | `conan`                    |
-| [Conda](conda)         | -          | `conda`                    |
-| [Container](container) | -          | any OCI compliant client   |
-| [Generic](generic)     | -          | any HTTP client            |
-| [Helm](helm)           | -          | any HTTP client, `cm-push` |
-| [Maven](maven)         | Java       | `mvn`, `gradle`            |
-| [npm](npm)             | JavaScript | `npm`, `yarn`, `pnpm`      |
-| [NuGet](nuget)         | .NET       | `nuget`                    |
-| [Pub](pub)             | Dart       | `dart`, `flutter`          |
-| [PyPI](pypi)           | Python     | `pip`, `twine`             |
-| [RubyGems](rubygems)   | Ruby       | `gem`, `Bundler`           |
-| [Vagrant](vagrant)     | -          | `vagrant`                  |
+| Name                      | Language   | Package client             |
+| ------------------------- | ---------- | -------------------------- |
+| [Cargo](./cargo/)         | Rust       | `cargo`                    |
+| [Chef](./chef/)           | -          | `knife`                    |
+| [Composer](./composer/)   | PHP        | `composer`                 |
+| [Conan](./conan/)         | C++        | `conan`                    |
+| [Conda](./conda/)         | -          | `conda`                    |
+| [Container](./container/) | -          | any OCI compliant client   |
+| [Generic](./generic/)     | -          | any HTTP client            |
+| [Helm](./helm/)           | -          | any HTTP client, `cm-push` |
+| [Maven](./maven/)         | Java       | `mvn`, `gradle`            |
+| [npm](./npm/)             | JavaScript | `npm`, `yarn`, `pnpm`      |
+| [NuGet](./nuget/)         | .NET       | `nuget`                    |
+| [Pub](./pub/)             | Dart       | `dart`, `flutter`          |
+| [PyPI](./pypi/)           | Python     | `pip`, `twine`             |
+| [RubyGems](./rubygems/)   | Ruby       | `gem`, `Bundler`           |
+| [Vagrant](./vagrant/)     | -          | `vagrant`                  |
 
 **The following paragraphs only apply if Packages are not globally disabled!**
 

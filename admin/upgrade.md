@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: 'Upgrade guide'
 license: 'CC-BY-SA-4.0'
 origin_url: 'https://forgejo.gna.org/Hostea/admin-guide/src/branch/master/README.md'

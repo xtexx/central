@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: 'Database Preparation'
 license: 'Apache-2.0'
 origin_url: 'https://github.com/go-gitea/gitea/blob/699f20234b9f7cdbbeeee3be004470c598fa1147/docs/content/doc/installation/database-preparation.en-us.md'

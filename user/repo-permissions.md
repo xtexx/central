@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: 'Repository Permissions'
 license: 'CC-BY-SA-4.0'
 origin_url: 'https://codeberg.org/Codeberg/Documentation/src/commit/ceec82002bbdc62cf27974e84df51369a4bfe0f9/content/collaborating/repo-permissions.md'

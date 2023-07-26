@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: 'Projects'
 license: 'CC-BY-SA-4.0'
 ---

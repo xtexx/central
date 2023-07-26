@@ -1,5 +1,4 @@
 ---
-layout: '~/layouts/Markdown.astro'
 title: 'OAuth2 provider'
 license: 'Apache-2.0'
 origin_url: 'https://github.com/go-gitea/gitea/blob/699f20234b9f7cdbbeeee3be004470c598fa1147/docs/content/doc/developers/oauth2-provider.en-us.md'
@@ -121,4 +120,4 @@ For public clients, a redirect URI of a loopback IP address such as `http://127.
 
    The `REDIRECT_URI` in the `access_token` request must match the `REDIRECT_URI` in the `authorize` request.
 
-3. Use the `access_token` to make [API requests](../api-usage) to access the user's resources.
+3. Use the `access_token` to make [API requests](../api-usage/) to access the user's resources.
