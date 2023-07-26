@@ -24,7 +24,7 @@ In the simplest case where everything is on a single file system and if the inst
 
 ### Verify Forgejo works
 
-It is **critical** to verify that Forgejo works very carefully. Restoring the backup done before the upgrade is easy and does not loose any information. But if a problem is discovered days or weeks after the upgrade, it will not be an option and fixing it on a live Forgejo instance will be much more challenging.
+It is **critical** to verify that Forgejo works very carefully. Restoring the backup done before the upgrade is easy and does not lose any information. But if a problem is discovered days or weeks after the upgrade, it will not be an option and fixing it on a live Forgejo instance will be much more challenging.
 
 - Run `forgejo doctor --all --log-file /tmp/doctor.log` and make sure it does not report any problem.
 - Manually verify via the web interface. Making a checklist of a typical use case is a good way to not miss anything.
