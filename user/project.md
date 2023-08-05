@@ -7,7 +7,7 @@ A project is a [kanban board](<https://en.wikipedia.org/wiki/Kanban_(development
 
 ![screenshot of the project page](../../../../images/v1.19/user/project/project.png)
 
-# Card previews images
+## Card previews images
 
 If the card preview in the project is set to **Images and Text**, the card preview displays images found in the corresponding issue. The most recent is displayed first, up to five images.
 

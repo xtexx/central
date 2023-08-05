@@ -4,7 +4,7 @@ license: 'Apache-2.0'
 origin_url: 'https://github.com/go-gitea/gitea/blob/699f20234b9f7cdbbeeee3be004470c598fa1147/docs/content/doc/advanced/protected-tags.en-us.md'
 ---
 
-# Protected branches
+## Protected branches
 
 Protected branches enforce restrictions such as force pushing or
 merging unless a given number of approval are obtained on a pull
@@ -21,11 +21,11 @@ spans accross separators. For instance `main`, `release/**`or`precious\*`.
 If two rules apply to the same branch, the one that has no glob takes
 precedence.
 
-# Protected tags
+## Protected tags
 
 Protected tags allow control over who has permission to create or update Git tags. Each rule allows you to match either an individual tag name, or use an appropriate pattern to control multiple tags at once.
 
-## Setting up protected tags
+### Setting up protected tags
 
 To protect a tag, you need to follow these steps:
 
@@ -34,7 +34,7 @@ To protect a tag, you need to follow these steps:
 1. Choose the allowed users and/or teams. If you leave these fields empty no one is allowed to create or modify this tag.
 1. Select **Save** to save the configuration.
 
-## Pattern protected tags
+### Pattern protected tags
 
 The pattern uses [glob](https://pkg.go.dev/github.com/gobwas/glob#Compile) or regular expressions to match a tag name. For regular expressions you need to enclose the pattern in slashes.
 
