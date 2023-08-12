@@ -14,7 +14,7 @@ Directly use SMTP server as relay. This option is useful if you don't want to se
 [mailer]
 ENABLED        = true
 FROM           = forgejo@example.com
-MAILER_TYPE    = smtp
+PROTOCOL       = smtp
 SMTP_ADDR      = mail.example.com
 SMTP_PORT      = 587
 IS_TLS_ENABLED = true
@@ -47,7 +47,7 @@ Note: For Internet-facing sites consult documentation of your MTA for instructio
 [mailer]
 ENABLED       = true
 FROM          = forgejo@example.com
-MAILER_TYPE   = sendmail
+PROTOCOL      = sendmail
 SENDMAIL_PATH = /usr/sbin/sendmail
 SENDMAIL_ARGS = "--" ; most "sendmail" programs take options, "--" will prevent an email address being interpreted as an option.
 ```
