@@ -35,6 +35,23 @@ Such a feature branch can then be merged into multiple versions of the docs if a
 In this case, the feature branch should usually be taken from the last common ancestor of all of the
 version branches into which it will potentially be merged.
 
+If you have commit access to this repository, you should work on a temporary branch within this repository
+with the `pr/` prefix and submit your pull request from there. Use the following commands to do it.
+
+```sh
+git clone git@codeberg.org:forgejo/docs ; cd docs
+git checkout <target-branch>
+git checkout -b pr/<short-pr-desc>
+# Make the changes you want to submit
+git add . ; git commit
+git push -u origin pr/<short-pr-desc>
+# Proceed to open your pull request
+```
+
+This is currently necessary due to technical limitations with Forgejo Actions. If you do not have commit
+access, you may fork this repository and send a pull request the usual way, but a live preview of the
+website will not be available.
+
 ### Links
 
 All internal links within the documentation content should be relative to each page's path
