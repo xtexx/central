@@ -10,6 +10,12 @@ jobs:
       image: node:20
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v3
+      - name: lint
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm run lint:remark
+          pnpm run lint:prettier
       - name: get forgejo.org and move the docs
         run: |
           git clone --recursive --depth 1 https://codeberg.org/forgejo/website/ /tmp/website
@@ -20,12 +26,6 @@ jobs:
           cd /tmp/website
           corepack enable
           pnpm install --frozen-lockfile
-      - name: lint:eslint
-        run: |
-          cd /tmp/website
-          corepack enable
-          pnpm run format-ci
-          pnpm run lint:eslint
       - name: preview
         if: ${{ secrets.WEBSITETOKEN != '' }}
         run: |
