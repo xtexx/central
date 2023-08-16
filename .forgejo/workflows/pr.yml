@@ -1,0 +1,47 @@
+name: pr
+
+on:
+  pull_request:
+
+jobs:
+  preview:
+    runs-on: docker
+    container:
+      image: node:20
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v3
+      - name: get forgejo.org and move the docs
+        run: |
+          git clone --recursive --depth 1 https://codeberg.org/forgejo/website/ /tmp/website
+          rm -fr /tmp/website/forgejo-docs/${{ env.GITHUB_BASE_REF }}
+          mkdir -p /tmp/website/forgejo-docs/${{ env.GITHUB_BASE_REF }}
+          cp -a * /tmp/website/forgejo-docs/${{ env.GITHUB_BASE_REF }}
+      - name: install
+        run: |
+          cd /tmp/website
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: lint:eslint
+        run: |
+          cd /tmp/website
+          corepack enable
+          pnpm run format-ci
+          pnpm run lint:eslint
+      - name: preview
+        if: ${{ secrets.WEBSITETOKEN != '' }}
+        run: |
+          cd /tmp/website
+          colon=':'
+          branch=docs_pull_${{ env.GITHUB_REF_NAME }}
+          sed -i.orig -e "s|origin$colon '.*|origin$colon 'https$colon//forgejo.codeberg.page',|" -e "s|basePathname$colon '/'|basePathname$colon '/@$branch//'|" src/config.mjs
+          cat src/config.mjs
+          corepack enable
+          pnpm run build
+          git clone https://forgejo-website:${{ secrets.WEBSITETOKEN }}@codeberg.org/forgejo/pages /tmp/pages
+          git -C /tmp/pages switch -C $branch
+          mv /tmp/pages/.git dist
+          cd dist
+          git config user.email "ci@forgejo.org" ; git config user.name "forgejo-website"
+          git add .
+          git diff-index --quiet HEAD || git commit -m 'publish' -a
+          git push --force origin $branch
