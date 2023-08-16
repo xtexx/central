@@ -11,12 +11,12 @@ Each time a new major version of Forgejo is released,
 a new branch will be created in this repo to document the stable release.
 
 Current release branches are as follows:
+
 - [`next`](https://codeberg.org/forgejo/docs/src/branch/next)
 - [`v1.20`](https://codeberg.org/forgejo/docs/src/branch/v1.20)
 - [`v1.19`](https://codeberg.org/forgejo/docs/src/branch/v1.19)
 
 Documentation content lives in the `docs` subfolder, and images in the `images` subfolder.
-
 
 ## Contributing
 
@@ -25,8 +25,8 @@ Documentation content lives in the `docs` subfolder, and images in the `images` 
 PRs should usually be sent against the [`next`](https://codeberg.org/forgejo/docs/src/branch/next) branch.
 Sometimes it will be appropriate to send a PR against a specific release branch if the changes only affect that release.
 
-Most changes should either be sent as a *single commit per PR*, or should be squashed before merging.
-*Fast-forwarding is the preferred merge strategy.*
+Most changes should either be sent as a _single commit per PR_, or should be squashed before merging.
+_Fast-forwarding is the preferred merge strategy._
 Changes can then be backported (or if appropriate frontported) by cherry-picking.
 
 Rarely, it will make sense to create a feature branch containting a series of commits that will
@@ -46,14 +46,12 @@ Look at existing links for examples.
 
 Images should use relative URLs to the image files, which will be published at `https://forgejo.org/images/{{version}}/`.
 
-
 ## Code of Conduct
 
 All contributors are required to abide by the [Forgejo Code of Conduct](https://codeberg.org/forgejo/code-of-conduct).
 
 Feel free to reach out to the [moderation team](https://codeberg.org/forgejo/governance/src/branch/main/TEAMS.md#moderation)
 in case of any conflicts.
-
 
 ## License
 

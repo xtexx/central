@@ -1,0 +1,28 @@
+name: push
+
+on:
+  push:
+    branches:
+      - 'next'
+      - 'v1.21'
+      - 'v1.20'
+      - 'v1.19'
+
+jobs:
+  publish:
+    runs-on: docker
+    steps:
+      - name: update the website submodules
+        if: ${{ secrets.WEBSITETOKEN != '' }}
+        run: |
+          git clone --recursive https://forgejo-website:${{ secrets.WEBSITETOKEN }}@codeberg.org/forgejo/website
+          cd website
+          git submodule update --remote
+          git config user.email "ci@forgejo.org" ; git config user.name "forgejo-website"
+          git add .
+          if git diff-index --quiet HEAD ; then
+            echo Nothing changed, not pushing
+          else
+            git commit -m 'publish' -a
+            git push
+          fi

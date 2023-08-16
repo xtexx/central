@@ -13,9 +13,8 @@ jobs:
       - name: get forgejo.org and move the docs
         run: |
           git clone --recursive --depth 1 https://codeberg.org/forgejo/website/ /tmp/website
-          rm -fr /tmp/website/forgejo-docs/${{ env.GITHUB_BASE_REF }}
-          mkdir -p /tmp/website/forgejo-docs/${{ env.GITHUB_BASE_REF }}
-          cp -a * /tmp/website/forgejo-docs/${{ env.GITHUB_BASE_REF }}
+          apt-get update -qq && apt-get install -qq -y rsync
+          rsync -av --delete ./ /tmp/website/forgejo-docs/${{ env.GITHUB_BASE_REF }}/
       - name: install
         run: |
           cd /tmp/website
