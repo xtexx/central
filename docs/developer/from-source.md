@@ -23,8 +23,7 @@ on the executable path. If you don't add the go bin directory to the
 executable path, you will have to manage this yourself.
 
 **Note 2**: Go version 1.20 or higher is required. However, it is recommended to
-obtain the same version as our continuous integration, see the advice given in
-[Hacking on Forgejo]({{< relref "doc/development/hacking-on-forgejo.en-us.md" >}})
+obtain the same version as the [continuous integration](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/.forgejo/workflows/testing.yml).
 
 ### Download
 
