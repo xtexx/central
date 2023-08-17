@@ -16,7 +16,8 @@ In the section “Manage Email Addresses”, you can select one of the following
 
 | Option                      | Effect                                                                                                 |
 | :-------------------------- | :----------------------------------------------------------------------------------------------------- |
-| Enable Email Notifications  | Enables all notifications (default setting)                                                            |
+| Enable Email Notifications  | Enables all notifications, except about your own actions (default setting)                             |
+| And Your Own Notifications  | Enables all notifications, _including notifications about your own actions_                            |
 | Only Email on Mention       | Forgejo will only send an email to this address if your username is mentioned in an issue or a comment |
 | Disable Email Notifications | Forgejo will not send any emails to this address                                                       |
 
