@@ -43,4 +43,18 @@ jobs:
           git config user.email "ci@forgejo.org" ; git config user.name "forgejo-website"
           git add .
           git diff-index --quiet HEAD || git commit -m 'publish' -a
+          remote_branch_present=$(git show-branch refs/remotes/origin/$branch 2>/dev/null || true)
           git push --force origin $branch
+
+          # Add PR comment with preview links on PR which were not already deployed
+          if [ ! "$remote_branch_present" ]; then
+            echo -n '{"body": "Preview ready: https://forgejo.codeberg.page/@'"$branch"'/' > comment.json
+
+            # Add link to 5 first pages with more than 100 changes
+            # awk is actually mawk, which does not support regex interval {n,m}
+            git diff --stat origin/main | awk '/\.html *\| *[0-9][0-9][0-9]+ [+-]*$/ { print $3, $1 }' | sort -rn | head -n5 | cut -d" " -f2 | sed 's/index\.html//' | sed 's#^#\\\\nhttps://forgejo.codeberg.page/@'"$branch"'/#' | tr -d '\n' >> comment.json
+            echo '"}' >> comment.json
+
+            # Post PR comment
+            curl -d @comment.json -H "Content-Type: application/json" -X POST "https://forgejo-website:${{ secrets.WEBSITETOKEN }}@codeberg.org/api/v1/repos/forgejo/docs/issues/${{ env.GITHUB_REF_NAME }}/comments"
+          fi
