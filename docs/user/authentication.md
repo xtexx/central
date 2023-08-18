@@ -15,7 +15,7 @@ Both the LDAP via BindDN and the simple auth LDAP share the following fields:
 - Host **(required)**
 
   - The address where the LDAP server can be reached.
-  - Example: `mydomain.com`
+  - Example: `example.com`
 
 - Port **(required)**
 
@@ -70,7 +70,7 @@ Adds the following fields:
 
   - The DN to bind to the LDAP server with when searching for the user. This
     may be left blank to perform an anonymous search.
-  - Example: `cn=Search,dc=mydomain,dc=com`
+  - Example: `cn=Search,dc=example,dc=com`
 
 - Bind Password (optional)
 
@@ -81,7 +81,7 @@ Adds the following fields:
 - User Search Base **(required)**
 
   - The LDAP base at which user accounts will be searched for.
-  - Example: `ou=Users,dc=mydomain,dc=com`
+  - Example: `ou=Users,dc=example,dc=com`
 
 - User Filter **(required)**
   - An LDAP filter declaring how to find the user record that is attempting to
@@ -113,13 +113,13 @@ Adds the following fields:
 
   - A template to use as the user's DN. The `%s` matching parameter will be
     substituted with login name given on sign-in form.
-  - Example: `cn=%s,ou=Users,dc=mydomain,dc=com`
-  - Example: `uid=%s,ou=Users,dc=mydomain,dc=com`
+  - Example: `cn=%s,ou=Users,dc=example,dc=com`
+  - Example: `uid=%s,ou=Users,dc=example,dc=com`
 
 - User Search Base (optional)
 
   - The LDAP base at which user accounts will be searched for.
-  - Example: `ou=Users,dc=mydomain,dc=com`
+  - Example: `ou=Users,dc=example,dc=com`
 
 - User Filter **(required)**
   - An LDAP filter declaring when a user should be allowed to log in. The `%s`
@@ -135,7 +135,7 @@ Uses the following fields:
 - Group Search Base (optional)
 
   - The LDAP DN used for groups.
-  - Example: `ou=group,dc=mydomain,dc=com`
+  - Example: `ou=group,dc=example,dc=com`
 
 - Group Name Filter (optional)
 
