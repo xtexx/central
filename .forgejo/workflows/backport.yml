@@ -24,6 +24,7 @@ jobs:
       )
     steps:
       - name: send backport if the label "backport {branch}" is present
+        if: secrets.WEBSITETOKEN != ''
         uses: https://github.com/tibdex/backport@v2
         with:
           github_token: ${{ secrets.WEBSITETOKEN }}
