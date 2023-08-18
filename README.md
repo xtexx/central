@@ -52,6 +52,11 @@ This is currently necessary due to technical limitations with Forgejo Actions. I
 access, you may fork this repository and send a pull request the usual way, but a live preview of the
 website will not be available.
 
+### Backports
+
+If a commit is meant to be backported to a stable branch, it must be
+labelled with `backport v1.20`, `backport v1.19` etc.
+
 ### Links
 
 All internal links within the documentation content should be relative to each page's path
