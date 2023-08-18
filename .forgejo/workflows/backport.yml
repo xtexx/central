@@ -26,4 +26,4 @@ jobs:
       - name: send backport if the label "backport {branch}" is present
         uses: https://github.com/tibdex/backport@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.WEBSITETOKEN }}
