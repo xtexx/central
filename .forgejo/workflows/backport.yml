@@ -28,3 +28,5 @@ jobs:
         uses: https://github.com/tibdex/backport@v2
         with:
           github_token: ${{ secrets.WEBSITETOKEN }}
+          head_template: 'backport/<%= base %>/pr-<%= number %>'
+          label_pattern: '^backport/(?<base>([^ ]+))$'

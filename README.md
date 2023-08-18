@@ -55,7 +55,7 @@ website will not be available.
 ### Backports
 
 If a commit is meant to be backported to a stable branch, it must be
-labelled with `backport v1.20`, `backport v1.19` etc.
+labelled with `backport/v1.20`, `backport/v1.19`, etc.
 
 ### Links
 
