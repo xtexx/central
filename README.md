@@ -57,6 +57,13 @@ website will not be available.
 If a commit is meant to be backported to a stable branch, it must be
 labelled with `backport/v1.20`, `backport/v1.19`, etc.
 
+### Previewing changes
+
+Run `pnpm run preview` to clone the [website repo](https://codeberg.org/forgejo/forgejo)
+and launch a local development server. The current docs branch will be opened in the browser.
+
+Modifications can be made to the docs while the dev server is running, and the preview will live-reload.
+
 ### Links
 
 All internal links within the documentation content should be relative to each page's path
