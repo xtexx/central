@@ -57,9 +57,9 @@ Add the credentials section to the credentials file located in the current users
 token = "Bearer {token}"
 ```
 
-| Parameter | Description                                                                                     |
-| --------- | ----------------------------------------------------------------------------------------------- |
-| `token`   | Your [personal access token]({{< relref "doc/developers/api-usage.en-us.md#authentication" >}}) |
+| Parameter | Description                                                   |
+| --------- | ------------------------------------------------------------- |
+| `token`   | Your [personal access token](../../api-usage/#authentication) |
 
 ## Publish a package
 

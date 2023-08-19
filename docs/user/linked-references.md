@@ -81,7 +81,7 @@ Sometimes a commit or pull request may fix or bring back a problem documented
 in a particular issue. Forgejo supports closing and reopening the referenced
 issues by preceding the reference with a particular _keyword_. Common keywords
 include "closes", "fixes", "reopens", etc. This list can be
-[customized]({{< ref "/doc/advanced/config-cheat-sheet.en-us.md" >}}) by the
+[customized](../../admin/config-cheat-sheet/) by the
 site administrator.
 
 Example:

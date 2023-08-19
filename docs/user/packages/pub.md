@@ -24,7 +24,7 @@ dart pub token add https://forgejo.example.com/api/packages/{owner}/pub
 | ----------- | ------------------------- |
 | `owner`     | The owner of the package. |
 
-You need to provide your [personal access token]({{< relref "doc/developers/api-usage.en-us.md#authentication" >}}).
+You need to provide your [personal access token](../../api-usage/#authentication).
 
 ## Publish a package
 

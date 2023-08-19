@@ -19,10 +19,10 @@ To register the package registry edit the `~/.gem/credentials` file and add:
 https://forgejo.example.com/api/packages/{owner}/rubygems: Bearer {token}
 ```
 
-| Parameter | Description                                                                                      |
-| --------- | ------------------------------------------------------------------------------------------------ |
-| `owner`   | The owner of the package.                                                                        |
-| `token`   | Your [personal access token]({{< relref "doc/developers/api-usage.en-us.md#authentication" >}}). |
+| Parameter | Description                                                    |
+| --------- | -------------------------------------------------------------- |
+| `owner`   | The owner of the package.                                      |
+| `token`   | Your [personal access token](../../api-usage/#authentication). |
 
 For example:
 

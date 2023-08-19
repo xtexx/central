@@ -25,13 +25,13 @@ helm repo add  --username {username} --password {password} {repo} https://forgej
 helm cm-push ./{chart_file}.tgz {repo}
 ```
 
-| Parameter    | Description                                                                                                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `username`   | Your Forgejo username.                                                                                                                                                         |
-| `password`   | Your Forgejo password. If you are using 2FA or OAuth use a [personal access token]({{< relref "doc/developers/api-usage.en-us.md#authentication" >}}) instead of the password. |
-| `repo`       | The name for the repository.                                                                                                                                                   |
-| `chart_file` | The Helm Chart archive.                                                                                                                                                        |
-| `owner`      | The owner of the package.                                                                                                                                                      |
+| Parameter    | Description                                                                                                                                  |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `username`   | Your Forgejo username.                                                                                                                       |
+| `password`   | Your Forgejo password. If you are using 2FA or OAuth use a [personal access token](../../api-usage/#authentication) instead of the password. |
+| `repo`       | The name for the repository.                                                                                                                 |
+| `chart_file` | The Helm Chart archive.                                                                                                                      |
+| `owner`      | The owner of the package.                                                                                                                    |
 
 ## Install a package
 
