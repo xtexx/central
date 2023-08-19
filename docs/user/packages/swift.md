@@ -20,11 +20,11 @@ To register the package registry and provide credentials, execute:
 swift package-registry set https://forgejo.example.com/api/packages/{owner}/swift -login {username} -password {password}
 ```
 
-| Placeholder | Description                                                                                                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `owner`     | The owner of the package.                                                                                                                                                       |
-| `username`  | Your Forgejo username.                                                                                                                                                          |
-| `password`  | Your Forgejo password. If you are using 2FA or OAuth use a [personal access token]({{< relref "doc/development/api-usage.en-us.md#authentication" >}}) instead of the password. |
+| Placeholder | Description                                                                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `owner`     | The owner of the package.                                                                                                                    |
+| `username`  | Your Forgejo username.                                                                                                                       |
+| `password`  | Your Forgejo password. If you are using 2FA or OAuth use a [personal access token](../../api-usage/#authentication) instead of the password. |
 
 The login is optional and only needed if the package registry is private.
 
@@ -46,15 +46,15 @@ curl -X PUT --user {username}:{password} \
 	 https://forgejo.example.com/api/packages/{owner}/swift/{scope}/{name}/{version}
 ```
 
-| Placeholder | Description                                                                                                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `username`  | Your Forgejo username.                                                                                                                                                          |
-| `password`  | Your Forgejo password. If you are using 2FA or OAuth use a [personal access token]({{< relref "doc/development/api-usage.en-us.md#authentication" >}}) instead of the password. |
-| `owner`     | The owner of the package.                                                                                                                                                       |
-| `scope`     | The package scope.                                                                                                                                                              |
-| `name`      | The package name.                                                                                                                                                               |
-| `version`   | The package version.                                                                                                                                                            |
-| `metadata`  | (Optional) The metadata of the package. JSON encoded subset of https://schema.org/SoftwareSourceCode                                                                            |
+| Placeholder | Description                                                                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `username`  | Your Forgejo username.                                                                                                                       |
+| `password`  | Your Forgejo password. If you are using 2FA or OAuth use a [personal access token](../../api-usage/#authentication) instead of the password. |
+| `owner`     | The owner of the package.                                                                                                                    |
+| `scope`     | The package scope.                                                                                                                           |
+| `name`      | The package name.                                                                                                                            |
+| `version`   | The package version.                                                                                                                         |
+| `metadata`  | (Optional) The metadata of the package. JSON encoded subset of https://schema.org/SoftwareSourceCode                                         |
 
 You cannot publish a package if a package of the same name and version already exists. You must delete the existing package first.
 

@@ -54,10 +54,10 @@ Afterwards add the following sections to your project `pom.xml` file:
 </distributionManagement>
 ```
 
-| Parameter      | Description                                                                                      |
-| -------------- | ------------------------------------------------------------------------------------------------ |
-| `access_token` | Your [personal access token]({{< relref "doc/developers/api-usage.en-us.md#authentication" >}}). |
-| `owner`        | The owner of the package.                                                                        |
+| Parameter      | Description                                                    |
+| -------------- | -------------------------------------------------------------- |
+| `access_token` | Your [personal access token](../../api-usage/#authentication). |
+| `owner`        | The owner of the package.                                      |
 
 ### Gradle variant
 

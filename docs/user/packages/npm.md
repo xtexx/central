@@ -23,11 +23,11 @@ npm config set {scope}:registry https://forgejo.example.com/api/packages/{owner}
 npm config set -- '//forgejo.example.com/api/packages/{owner}/npm/:_authToken' "{token}"
 ```
 
-| Parameter | Description                                                                                      |
-| --------- | ------------------------------------------------------------------------------------------------ |
-| `scope`   | The scope of the packages.                                                                       |
-| `owner`   | The owner of the package.                                                                        |
-| `token`   | Your [personal access token]({{< relref "doc/developers/api-usage.en-us.md#authentication" >}}). |
+| Parameter | Description                                                    |
+| --------- | -------------------------------------------------------------- |
+| `scope`   | The scope of the packages.                                     |
+| `owner`   | The owner of the package.                                      |
+| `token`   | Your [personal access token](../../api-usage/#authentication). |
 
 For example:
 

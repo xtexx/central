@@ -26,7 +26,7 @@ echo "deb https://forgejo.example.com/api/packages/{owner}/debian {distribution}
 | `distribution` | The distribution to use.  |
 | `component`    | The component to use.     |
 
-If the registry is private, provide credentials in the url. You can use a password or a [personal access token]({{< relref "doc/development/api-usage.en-us.md#authentication" >}}):
+If the registry is private, provide credentials in the url. You can use a password or a [personal access token](../../api-usage/#authentication):
 
 ```shell
 echo "deb https://{username}:{your_password_or_token}@forgejo.example.com/api/packages/{owner}/debian {distribution} {component}" | sudo tee -a /etc/apt/sources.list.d/forgejo.list
@@ -66,7 +66,7 @@ curl --user your_username:your_password_or_token \
      https://forgejo.example.com/api/packages/testuser/debian/pool/bionic/main/upload
 ```
 
-If you are using 2FA or OAuth use a [personal access token]({{< relref "doc/development/api-usage.en-us.md#authentication" >}}) instead of the password.
+If you are using 2FA or OAuth use a [personal access token](../../api-usage/#authentication) instead of the password.
 You cannot publish a file with the same name twice to a package. You must delete the existing package version first.
 
 The server responds with the following HTTP Status codes.

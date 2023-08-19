@@ -26,7 +26,7 @@ https://forgejo.example.com/api/packages/{owner}/alpine/<branch>/<repository>
 | `branch`     | The branch to use.         |
 | `repository` | The repository to use.     |
 
-If the registry is private, provide credentials in the url. You can use a password or a [personal access token]({{< relref "doc/development/api-usage.en-us.md#authentication" >}}):
+If the registry is private, provide credentials in the url. You can use a password or a [personal access token](../../api-usage/#authentication):
 
 ```
 https://{username}:{your_password_or_token}@forgejo.example.com/api/packages/{owner}/alpine/<branch>/<repository>
@@ -66,7 +66,7 @@ curl --user your_username:your_password_or_token \
      https://forgejo.example.com/api/packages/testuser/alpine/v3.17/main
 ```
 
-If you are using 2FA or OAuth use a [personal access token]({{< relref "doc/development/api-usage.en-us.md#authentication" >}}) instead of the password.
+If you are using 2FA or OAuth use a [personal access token](../../api-usage/#authentication) instead of the password.
 You cannot publish a file with the same name twice to a package. You must delete the existing package file first.
 
 The server responds with the following HTTP Status codes.

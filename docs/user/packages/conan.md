@@ -19,12 +19,12 @@ conan remote add {remote} https://forgejo.example.com/api/packages/{owner}/conan
 conan user --remote {remote} --password {password} {username}
 ```
 
-| Parameter  | Description                                                                                                                                                                    |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `remote`   | The remote name.                                                                                                                                                               |
-| `username` | Your Forgejo username.                                                                                                                                                         |
-| `password` | Your Forgejo password. If you are using 2FA or OAuth use a [personal access token]({{< relref "doc/developers/api-usage.en-us.md#authentication" >}}) instead of the password. |
-| `owner`    | The owner of the package.                                                                                                                                                      |
+| Parameter  | Description                                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `remote`   | The remote name.                                                                                                                             |
+| `username` | Your Forgejo username.                                                                                                                       |
+| `password` | Your Forgejo password. If you are using 2FA or OAuth use a [personal access token](../../api-usage/#authentication) instead of the password. |
+| `owner`    | The owner of the package.                                                                                                                    |
 
 For example:
 

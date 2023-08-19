@@ -55,7 +55,7 @@ vagrant box add "https://forgejo.example.com/api/packages/testuser/vagrant/test_
 ```
 
 This will install the latest version of the package. To add a specific version, use the `--box-version` parameter.
-If the registry is private you can pass your [personal access token]({{< relref "doc/developers/api-usage.en-us.md#authentication" >}}) in the `VAGRANT_CLOUD_TOKEN` environment variable.
+If the registry is private you can pass your [personal access token](../../api-usage/#authentication) in the `VAGRANT_CLOUD_TOKEN` environment variable.
 
 ## Supported commands
 
