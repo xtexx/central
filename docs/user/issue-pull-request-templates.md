@@ -217,11 +217,11 @@ Attributes:
 
 Validations:
 
-| Key       | Description                                                                                      | Required | Type    | Default | Valid values                                                             |
-| --------- | ------------------------------------------------------------------------------------------------ | -------- | ------- | ------- | ------------------------------------------------------------------------ |
-| required  | Prevents form submission until element is completed.                                             | Optional | Boolean | false   | -                                                                        |
-| is_number | Prevents form submission until element is filled with a number.                                  | Optional | Boolean | false   | -                                                                        |
-| regex     | Prevents form submission until element is filled with a value that match the regular expression. | Optional | String  | -       | a [regular expression](https://en.wikipedia.org/wiki/Regular_expression) |
+| Key       | Description                                                                               | Required | Type    | Default | Valid values                                                                                                         |
+| --------- | ----------------------------------------------------------------------------------------- | -------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
+| required  | Prevents form submission if the input is empty.                                           | Optional | Boolean | false   | -                                                                                                                    |
+| is_number | Prevents form submission if the value of the input is not a number.                       | Optional | Boolean | false   | -                                                                                                                    |
+| regex     | Prevents form submission if the value of the input does not match the regular expression. | Optional | String  | -       | a [JavaScript regular expression](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions) |
 
 ### Dropdown
 
