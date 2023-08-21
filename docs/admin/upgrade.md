@@ -75,8 +75,8 @@ The database version is stored in the database and can be retrieved with **selec
 
 | Forgejo version                                                                               | Date          | Database |
 | --------------------------------------------------------------------------------------------- | ------------- | -------- |
-| [1.20.1-0](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/RELEASE-NOTES.md#1-20-1-0) | July 2023     | v259     |
-| [1.19.4-0](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/RELEASE-NOTES.md#1-19-4-0) | July 2023     | v243     |
+| [1.20.3-0](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/RELEASE-NOTES.md#1-20-3-0) | August 2023   | v260     |
+| [1.19.4-0](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/RELEASE-NOTES.md#1-19-4-0) | July 2023     | v244     |
 | [1.18.5-0](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/RELEASE-NOTES.md#1-18-5-0) | February 2023 | v231     |
 
 | Gitea version                                                      | Date           | Database                                                                                                                                                                                                  |
@@ -93,6 +93,8 @@ The database version is stored in the database and can be retrieved with **selec
 
 #### When upgrading from a specific version...
 
+- Any version before Forgejo v1.20.3-0
+  - verify the `app.ini` file does not problematic `[storage*]` sections [as explained in the v1.20.3-0 blog post](https://forgejo.org/2023-08-release-v1-20-3-0/)
 - Any version before [Gitea 1.17](https://github.com/go-gitea/gitea/releases/tag/v1.17.4)
   - preserve a custom gitconfig: [episode 1](https://gna.org/blog/1-17-breaking-episode-1/), [episode 2](https://gna.org/blog/1-17-breaking-episode-2/)
 - [Gitea 1.13.0](https://blog.gitea.io/2020/12/gitea-1.13.0-is-released/)
@@ -102,7 +104,7 @@ The database version is stored in the database and can be retrieved with **selec
 
 ### Only when upgrading to a specific version
 
-- [1.20.1-0](https://forgejo.org/2023-07-release-v1/)
+- From [v1.19] to a version greater or equal to than [1.20](https://forgejo.org/2023-07-release-v1/)
 
 - The [tokens](https://forgejo.org/docs/v1.20/user/oauth2-provider/#scoped-tokens) were refactored in a way that does not guarantee their scope will be preserved. They may be larger or narrower and the only way to be sure that the intended scope is preserved is to re-create the token.
 
@@ -121,7 +123,7 @@ The database version is stored in the database and can be retrieved with **selec
 
 ### Versions with known issues
 
-Gogs from before September 2015 migrated to Forgejo v1.18 may have a [dangling `pull_repo` table](https://forum.gna.org/t/73) and the corresponding pull requests will be removed by `gitea doctor --fix --all`.
+- Gogs from before September 2015 migrated to Forgejo v1.18 may have a [dangling `pull_repo` table](https://forum.gna.org/t/73) and the corresponding pull requests will be removed by `gitea doctor --fix --all`.
 
 [From the 1.11.3 release notes](https://blog.gitea.io/2020/03/gitea-1.11.3-and-1.10.6-released/):
 
