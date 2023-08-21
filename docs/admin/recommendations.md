@@ -75,3 +75,7 @@ If you have configured to allow Git over SSH (enabled by default), and decided n
 ```
 AcceptEnv GIT_PROTOCOL
 ```
+
+### Database performance
+
+When trying to undertand poor database performance in conjunction with Forgejo, it is useful to set `[database].SLOW_QUERY_TRESHOLD` to a value lower than the default (5 seconds). This ensures that SQL queries that are slow, but not too slow to meet the default value, are logged and can provide insight into what kind of SQL queries are slow, moreover, this is useful information for Forgejo contributors to find the code where this SQL query is executed and understand the context.
