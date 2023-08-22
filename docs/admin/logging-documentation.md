@@ -1,7 +1,7 @@
 ---
 title: 'Logging Configuration'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/faa28b5a44912f1c63afddab9396bae9e6fe061c/docs/content/doc/administration/logging-config.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/54c28fddd8a407c3ddea81923bb2978c33ef020d/docs/content/administration/logging-config.en-us.md'
 ---
 
 The logging configuration of Forgejo mainly consists of 3 types of components:
@@ -85,8 +85,11 @@ MODE = file, file-error
 
 ; by default, the "file" mode will record logs to %(log.ROOT_PATH)/forgejo.log, so we don't need to set it
 ; [log.file]
+; by default, the MODE (actually it's the output writer of this logger) is taken from the section name, so we don't need to set it either
+; MODE = file
 
 [log.file-error]
+MODE = file
 LEVEL = Error
 FILE_NAME = file-error.log
 ```
