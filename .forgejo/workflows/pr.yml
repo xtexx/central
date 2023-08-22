@@ -32,8 +32,8 @@ jobs:
           cd /tmp/website
           colon=':'
           branch=docs_pull_${{ env.GITHUB_REF_NAME }}
-          sed -i.orig -e "s|origin$colon '.*|origin$colon 'https$colon//forgejo.codeberg.page',|" -e "s|basePathname$colon '/'|basePathname$colon '/@$branch//'|" src/config.mjs
-          cat src/config.mjs
+          sed -i.orig -e "s|origin$colon '.*|origin$colon 'https$colon//forgejo.codeberg.page',|" -e "s|basePathname$colon '/'|basePathname$colon '/@$branch//'|" src/config.ts
+          cat src/config.ts
           corepack enable
           pnpm run build
           git clone https://forgejo-website:${{ secrets.WEBSITETOKEN }}@codeberg.org/forgejo/pages /tmp/pages
