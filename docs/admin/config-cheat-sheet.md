@@ -986,8 +986,8 @@ Additional settings can be included in this section to specify where the data is
 - `RUN_AT_START`: **false**: Run tasks at start up time (if ENABLED).
 - `ENABLE_SUCCESS_NOTICE`: **true**: Set to false to switch off success notices.
 - `SCHEDULE`: **@every 168h**: Cron syntax for scheduling a work, e.g. `@every 168h`.
-- `HTTP_ENDPOINT`: **https://dl.gitea.com/gitea/version.json**: the endpoint that Forgejo will check for newer versions
-- `DOMAIN_ENDPOINT`: **release.forgejo.org**: the domain that, if specified, Forgejo will check for newer versions. This is preferred over `HTTP_ENDPOINT`.
+- `HTTP_ENDPOINT`: **https://dl.gitea.com/gitea/version.json**: [DEPRECATED] The endpoint that Forgejo will check for newer versions. Not in use by the project. Might be dropped in a future version.
+- `DOMAIN_ENDPOINT`: **release.forgejo.org**: The domain with a [TXT record](https://en.wikipedia.org/wiki/TXT_record) that, if specified, Forgejo will query for newer versions. This is preferred over `HTTP_ENDPOINT`.
 
 #### Cron - Delete all old system notices from database (`cron.delete_old_system_notices`)
 
