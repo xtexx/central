@@ -263,7 +263,7 @@ For each value in the options array, you can set the following keys.
 
 ## Syntax for issue config
 
-This is a example for a issue config file
+This is an example for an issue config file
 
 ```yaml
 blank_issues_enabled: true
@@ -277,13 +277,13 @@ contact_links:
 
 | Key                  | Description                                           | Type               | Default     |
 | -------------------- | ----------------------------------------------------- | ------------------ | ----------- |
-| blank_issues_enabled | If set to false, the User is forced to use a Template | Boolean            | true        |
-| contact_links        | Custom Links to show in the Choose Box                | Contact Link Array | Empty Array |
+| blank_issues_enabled | If set to false, the user is forced to use a template | Boolean            | true        |
+| contact_links        | Custom links to show in the choose box                | Contact Link Array | Empty Array |
 
 ### Contact Link
 
 | Key   | Description                      | Type   | Required |
 | ----- | -------------------------------- | ------ | -------- |
 | name  | the name of your link            | String | true     |
-| url   | The URL of your Link             | String | true     |
-| about | A short description of your Link | String | true     |
+| url   | The URL of your link             | String | true     |
+| about | A short description of your link | String | true     |
