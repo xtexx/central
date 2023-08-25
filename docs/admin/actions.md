@@ -46,9 +46,9 @@ even if it provides something different than what is expected.
 Download the latest [binary release](https://code.forgejo.org/forgejo/runner/releases) and verify their signature:
 
 ```shell
-$ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v2.3.0/forgejo-runner-amd64
+$ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v2.5.0/forgejo-runner-amd64
 $ chmod +x forgejo-runner
-$ wget -O forgejo-runner.asc https://code.forgejo.org/forgejo/runner/releases/download/v2.3.0/forgejo-runner-amd64.asc
+$ wget -O forgejo-runner.asc https://code.forgejo.org/forgejo/runner/releases/download/v2.5.0/forgejo-runner-amd64.asc
 $ gpg --keyserver keys.openpgp.org --recv EB114F5E6C0DC2BCDD183550A4B61A2DC5923710
 $ gpg --verify forgejo-runner.asc forgejo-runner
 Good signature from "Forgejo <contact@forgejo.org>"
@@ -357,3 +357,7 @@ virtualisation.docker = {
   };
 };
 ```
+
+## Other runners
+
+It is possible to use [other runners](https://codeberg.org/forgejo-contrib/delightful-forgejo#user-content-forgejo-actions-runners) instead of `Forgejo runner`. As long as they can connect to a `Forgejo` instance using the [same protocol](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/routers/api/actions), they will be given tasks to run.
