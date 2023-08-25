@@ -268,9 +268,9 @@ This is an example for an issue config file
 ```yaml
 blank_issues_enabled: true
 contact_links:
-  - name: Gitea
-    url: https://gitea.io
-    about: Visit the Gitea Website
+  - name: Forgejo
+    url: https://forgejo.org/
+    about: Visit the Forgejo Website
 ```
 
 ### Possible Options
@@ -285,5 +285,6 @@ contact_links:
 | Key   | Description                      | Type   | Required |
 | ----- | -------------------------------- | ------ | -------- |
 | name  | the name of your link            | String | true     |
+| name  | The name of your link            | String | true     |
 | url   | The URL of your link             | String | true     |
 | about | A short description of your link | String | true     |
