@@ -41,7 +41,7 @@ The TL;DR: to publish a vX.Y.Z-N release is to:
 
 ### Cherry pick the latest commits from Gitea
 
-The vX.Y/forgejo branch is populated as part of the [rebase on top of Gitea](./workflow/). The release happens in between rebase and it is worth checking if the matching Gitea branch, release/vX.Y contains commits that should be included in the release.
+The vX.Y/forgejo branch is populated as part of the [rebase on top of Gitea](../workflow/). The release happens in between rebase and it is worth checking if the matching Gitea branch, release/vX.Y contains commits that should be included in the release.
 
 - `cherry-pick -x` the commits
 - push the vX.Y/forgejo branch including the commits
@@ -114,7 +114,7 @@ providing the secrets from the command line.
 
 ### Securing the release token and cryptographic keys
 
-For both the Forgejo runner and Forgejo itself, copying and signing the release artifacts (container images and binaries) happen on a Forgejo isntance running [behind a VPN](./infrastructure#octopuce/) to safeguard the token that has write access to the Forgejo repository as well as the cryptographic key used to sign the releases.
+For both the Forgejo runner and Forgejo itself, copying and signing the release artifacts (container images and binaries) happen on a Forgejo isntance running [behind a VPN](../infrastructure/#octopuce) to safeguard the token that has write access to the Forgejo repository as well as the cryptographic key used to sign the releases.
 
 ### Website update
 

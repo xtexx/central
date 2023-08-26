@@ -4,7 +4,7 @@ license: 'CC-BY-SA-4.0'
 origin_url: 'https://forgejo.gna.org/Hostea/admin-guide/src/branch/master/README.md'
 ---
 
-This guide helps Forgejo admins perform upgrades safely and provides guidance to troubleshoot problems. It covers upgrades from Gitea back to version 1.2.0.
+This guide helps Forgejo admins perform upgrades safely and provides guidance to troubleshoot problems. It also covers upgrades from Gitea back to version 1.2.0.
 
 ### Backup
 
@@ -45,7 +45,7 @@ Note: Forgejo requires [docker >= 20.10.6](https://wiki.alpinelinux.org/wiki/Rel
   - Upgrade to 1.4.3 and manually verify it runs
   - Upgrade to 1.5.3 and manually verify it runs
   - Upgrade to 1.6.4 and manually verify it runs
-- If the upgrade is from a Gitea version greater or equal to 1.6.4 that is not mentioned to be problematic below, upgrade directly to the latest stable Forgejo version, there is no need to upgrade to intermediate versions.
+- If the upgrade is from a Gitea version greater or equal to 1.6.4 that is not mentioned to be problematic [below](#when-upgrading-from-a-specific-version), upgrade directly to the latest stable Forgejo version; there is no need to upgrade to intermediate versions.
 - Verify Forgejo works
 
 ### Troubleshooting
@@ -59,7 +59,7 @@ Note: Forgejo requires [docker >= 20.10.6](https://wiki.alpinelinux.org/wiki/Rel
    ROUTER=console,file
    XORM=console,file
    ENABLE_XORM_LOG=true
-   FILE_NAME=gitea.log
+   FILE_NAME=forgejo.log
    [log.file.router]
    FILE_NAME=router.log
    [log.file.xorm]

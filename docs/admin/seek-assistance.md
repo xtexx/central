@@ -26,7 +26,7 @@ origin_url: 'https://github.com/go-gitea/gitea/blob/faa28b5a44912f1c63afddab9396
    ROUTER=console,file
    XORM=console,file
    ENABLE_XORM_LOG=true
-   FILE_NAME=gitea.log
+   FILE_NAME=forgejo.log
    [log.file.router]
    FILE_NAME=router.log
    [log.file.xorm]

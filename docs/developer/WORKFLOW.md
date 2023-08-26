@@ -9,15 +9,15 @@ Forgejo is a set of commits applied to the Gitea development branch and the stab
 
 ### Development
 
-- Gitea: main
-- Forgejo: forgejo
-- Feature branches: forgejo-feature-name
+- Gitea: `main`
+- Forgejo: `forgejo`
+- Feature branches: `forgejo-feature-name`
 
 ### Stable
 
-- Gitea: release/vX.Y
-- Forgejo: vX.Y/forgejo
-- Feature branches: vX.Y/forgejo-feature-name
+- Gitea: `release/vX.Y`
+- Forgejo: `vX.Y/forgejo`
+- Feature branches: `vX.Y/forgejo-feature-name`
 
 ### Branches history
 
