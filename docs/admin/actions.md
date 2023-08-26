@@ -3,18 +3,26 @@ title: 'Forgejo Actions administrator guide'
 license: 'CC-BY-SA-4.0'
 ---
 
-`Forgejo Actions` provides continuous integration driven from the files in the `.forgejo/workflows` directory of a repository. It is still in beta and disabled by default. It can be activated by adding the following to `app.ini`:
+`Forgejo Actions` provides continuous integration driven from the files found in the `.forgejo/workflows` directory of a repository.
+
+## Forgejo settings
+
+### Enabling
+
+`Forgejo Actions` is still in alpha and disabled by default. It can be activated by adding the following to `app.ini`:
 
 ```yaml
 [actions]
 ENABLED = true
 ```
 
-`Forgejo` itself does not run the jobs, it relies on the [Forgejo runner](https://code.forgejo.org/forgejo/runner) to do so.
+Note that `Forgejo` does not run the jobs, it relies on the [`Forgejo
+runner`](https://code.forgejo.org/forgejo/runner) to do so. It needs
+to be installed separately.
 
-## Default Actions URL
+### Default Actions URL
 
-When `uses:` does not specify an absolution URL for the `Action`, the
+In a [workflow](../../user/actions/#glossary), when `uses:` does not specify an absolute URL, the
 value of `DEFAULT_ACTIONS_URL` is prepended to it.
 
 ```yaml
@@ -23,7 +31,7 @@ ENABLED = true
 DEFAULT_ACTIONS_URL = https://code.forgejo.org
 ```
 
-The actions found at https://code.forgejo.org are:
+The actions published at https://code.forgejo.org are:
 
 - known to work with Forgejo Actions
 - published under a Free Software license
@@ -41,131 +49,177 @@ even if it provides something different than what is expected.
 
 ## Forgejo runner
 
+The `Forgejo runner` is a daemon that fetches workflows to run from a
+Forgejo instance, executes them, sends back with the logs and
+ultimately reports its success or failure.
+
 ### Installation
 
-Download the latest [binary release](https://code.forgejo.org/forgejo/runner/releases) and verify their signature:
+Each `Forgejo runner` release is published for all supported architectures as:
+
+- [binaries](https://code.forgejo.org/forgejo/runner/releases)
+- [OCI images](https://code.forgejo.org/forgejo/-/packages/container/runner/versions)
+
+#### Installation of the binary
+
+Download the latest [binary release](https://code.forgejo.org/forgejo/runner/releases) and verify its signature:
 
 ```shell
-$ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v2.5.0/forgejo-runner-amd64
+$ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.0.0/forgejo-runner-amd64
 $ chmod +x forgejo-runner
-$ wget -O forgejo-runner.asc https://code.forgejo.org/forgejo/runner/releases/download/v2.5.0/forgejo-runner-amd64.asc
+$ wget -O forgejo-runner.asc https://code.forgejo.org/forgejo/runner/releases/download/v3.0.0/forgejo-runner-amd64.asc
 $ gpg --keyserver keys.openpgp.org --recv EB114F5E6C0DC2BCDD183550A4B61A2DC5923710
 $ gpg --verify forgejo-runner.asc forgejo-runner
 Good signature from "Forgejo <contact@forgejo.org>"
-                aka "Forgejo Releases <release@forgejo.org>"
+		aka "Forgejo Releases <release@forgejo.org>"
 ```
 
-#### Docker
+#### Installation of the OCI image
 
-For jobs to run in containers, the `Forgejo runner` needs access to [Docker](https://docs.docker.com/engine/install/).
-
-#### Podman
-
-While Podman is generally compatible to Docker,
-it does not run socket for managing containers by default
-(because it doesn't usually need one).
-
-If the Forgejo runner complains about "daemon Docker Engine socket not found", or "cannot ping the docker daemon",
-you can use podman to provide a Docker compatible socket from an unprivileged user
-and pass that socket on to the runner,
-e.g. by executing:
+The [OCI
+images](https://code.forgejo.org/forgejo/-/packages/container/runner/versions)
+are built from the Dockerfile which is [found in the source
+directory](https://code.forgejo.org/forgejo/runner/src/branch/main/Dockerfile). It contains the `forgejo-runner` binary.
 
 ```shell
-$ podman system service -t 0 &
-$ DOCKER_HOST=unix://${XDG_RUNTIME_DIR}/podman/podman.sock ./forgejo-runner daemon
+$ docker run --rm code.forgejo.org/forgejo/runner:3.0.0 forgejo-runner --version
+forgejo-runner version v3.0.0
 ```
 
-#### LXC
-
-For jobs to run in LXC containers, the `Forgejo runner` needs passwordless sudo access for all `lxc-*` commands on a Debian GNU/Linux `bookworm` system where [LXC](https://linuxcontainers.org/lxc/) is installed. The [LXC helpers](https://code.forgejo.org/forgejo/lxc-helpers/) can be used as follows to create a suitable container:
+It does not run as root:
 
 ```shell
-$ git clone https://code.forgejo.org/forgejo/lxc-helpers
-$ sudo cp -a lxc-helpers/lxc-helpers{,-lib}.sh /usr/local/bin
-$ lxc-helpers.sh lxc_container_create myrunner
-$ lxc-helpers.sh lxc_container_start myrunner
-$ lxc-helpers.sh lxc_container_user_install forgejo-runners 1000 debian
+$ docker run --rm code.forgejo.org/forgejo/runner:3.0.0 id
+uid=1000 gid=1000 groups=1000
 ```
 
-> **NOTE:** Multiarch [Go](https://go.dev/) builds and [binfmt](https://github.com/tonistiigi/binfmt) need `bookworm` to produce and test binaries on a single machine for people who do not have access to dedicated hardware. If this is not needed, installing the `Forgejo runner` on `bullseye` will also work.
+A [docker-compose](https://docs.docker.com/compose/) example [is
+provided](https://codeberg.org/forgejo/runner/src/branch/main/examples/docker-compose)
+to demonstrate how to install that OCI image to successfully run a workflow.
 
-The `Forgejo runner` can then be installed and run within the `myrunner` container.
+### Execution of the workflows
 
-```shell
-$ lxc-helpers.sh lxc_container_run forgejo-runners -- sudo --user debian bash
-$ sudo apt-get install docker.io wget gnupg2
-$ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v2.3.0/forgejo-runner-amd64
-...
-```
+The `Forgejo runner` relies on application containers (Docker, Podman,
+etc) or system containers (LXC) to execute a workflow in an isolated
+environment. They need to be installed and configured independently.
 
-> **Warning:** LXC containers do not provide a level of security that makes them safe for potentially malicious users to run jobs. They provide an excellent isolation for jobs that may accidentally damage the system they run on.
+- **Docker:**
+  See [the Docker installation](https://docs.docker.com/engine/install/) documentation for more information.
+
+  IPv6 support is not enabled by default in docker. The following snippet enables this.
+
+  ```nix
+  virtualisation.docker = {
+    daemon.settings = {
+      fixed-cidr-v6 = "fd00::/80";
+      ipv6 = true;
+    };
+  };
+  ```
+
+- **Podman:**
+  While Podman is generally compatible with Docker,
+  it does not create a socket for managing containers by default
+  (because it doesn't usually need one).
+
+  If the Forgejo runner complains about "daemon Docker Engine socket not found", or "cannot ping the docker daemon",
+  you can use podman to provide a Docker compatible socket from an unprivileged user
+  and pass that socket on to the runner,
+  e.g. by executing:
+
+  ```shell
+  $ podman system service -t 0 &
+  $ DOCKER_HOST=unix://${XDG_RUNTIME_DIR}/podman/podman.sock ./forgejo-runner daemon
+  ```
+
+- **LXC:**
+  For jobs to run in LXC containers, the `Forgejo runner` needs passwordless sudo access for all `lxc-*` commands on a Debian GNU/Linux `bookworm` system where [LXC](https://linuxcontainers.org/lxc/) is installed. The [LXC helpers](https://code.forgejo.org/forgejo/lxc-helpers/) can be used as follows to create a suitable container:
+
+  ```shell
+  $ git clone https://code.forgejo.org/forgejo/lxc-helpers
+  $ sudo cp -a lxc-helpers/lxc-helpers{,-lib}.sh /usr/local/bin
+  $ lxc-helpers.sh lxc_container_create myrunner
+  $ lxc-helpers.sh lxc_container_start myrunner
+  $ lxc-helpers.sh lxc_container_user_install forgejo-runners 1000 debian
+  ```
+
+  > **NOTE:** Multiarch [Go](https://go.dev/) builds and [binfmt](https://github.com/tonistiigi/binfmt) need `bookworm` to produce and test binaries on a single machine for people who do not have access to dedicated hardware. If this is not needed, installing the `Forgejo runner` on `bullseye` will also work.
+
+  The `Forgejo runner` can then be installed and run within the `myrunner` container.
+
+  ```shell
+  $ lxc-helpers.sh lxc_container_run forgejo-runners -- sudo --user debian bash
+  $ sudo apt-get install docker.io wget gnupg2
+  $ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.0.0/forgejo-runner-amd64
+  ...
+  ```
+
+  > **Warning:** LXC containers do not provide a level of security that makes them safe for potentially malicious users to run jobs. They provide an excellent isolation for jobs that may accidentally damage the system they run on.
 
 ### Registration
 
 The `Forgejo runner` needs to connect to a `Forgejo` instance and must be registered before doing so. It will give it permission to read the repositories and send back information to `Forgejo` such as the logs or its status.
 
-#### Online registration
+- Online registration
+  A special kind of token is needed and can be obtained from the `Create new runner` button:
 
-A special kind of token is needed and can be obtained from the `Create new runner` button:
+  - in `/admin/runners` to accept workflows from all repositories.
+  - in `/org/{org}/settings/actions/runners` to accept workflows from all repositories within the organization.
+  - in `/user/settings/actions/runners` to accept workflows from all repositories of the logged in user
+  - in `/{owner}/{repository}/settings/actions/runners` to accept workflows from a single repository.
 
-- in `/admin/runners` to gain access to all repositories.
-- in `/org/{org}/settings/actions/runners` to gain access to all repositories within the organization.
-- in `/user/settings/actions/runners` to gain access to all repositories of the logged in user
-- in `/{owner}/{repository}/settings/actions/runners` to gain access to a single repository.
+  ![add a runner](../../../../images/v1.20/user/actions/runners-add.png)
 
-![add a runner](../../../../images/v1.20/user/actions/runners-add.png)
+  For instance, using a token obtained for a test repository from `next.forgejo.org`:
 
-For instance, using a token obtained for a test repository from `next.forgejo.org`:
+  ```shell
+  forgejo-runner register --no-interactive --token {TOKEN} --name runner --instance https://next.forgejo.org --labels docker:docker://node:16-bullseye,self-hosted
+  INFO Registering runner, arch=amd64, os=linux, version=3.0.0.
+  INFO Runner registered successfully.
+  ```
 
-```shell
-forgejo-runner register --no-interactive --token {TOKEN} --name runner --instance https://next.forgejo.org --labels docker:docker://node:16-bullseye,self-hosted
-INFO Registering runner, arch=amd64, os=linux, version=2.3.0.
-INFO Runner registered successfully.
-```
+  It will create a `.runner` file that looks like:
 
-It will create a `.runner` file that looks like:
+  ```json
+  {
+    "WARNING": "This file is automatically generated. Do not edit.",
+    "id": 6,
+    "uuid": "fcd0095a-291c-420c-9de7-965e2ebaa3e8",
+    "name": "runner",
+    "token": "{TOKEN}",
+    "address": "https://next.forgejo.org",
+    "labels": ["docker:docker://node:16-bullseye", "self-hosted"]
+  }
+  ```
 
-```json
-{
-  "WARNING": "This file is automatically generated. Do not edit.",
-  "id": 6,
-  "uuid": "fcd0095a-291c-420c-9de7-965e2ebaa3e8",
-  "name": "runner",
-  "token": "{TOKEN}",
-  "address": "https://next.forgejo.org",
-  "labels": ["docker:docker://node:16-bullseye", "self-hosted"]
-}
-```
+- Offline registration
+  When Infrastructure as Code (Ansible, kubernetes, etc.) is used to
+  deploy and configure both Forgejo and the Forgejo runner, it may be
+  more convenient for it to generate a secret and share it with both.
 
-#### Offline registration
+  The `forgejo forgejo-cli actions register --secret <secret>` subcommand can be
+  used to register the runner with the Forgejo instance and the
+  `forgejo-runner create-runner-file --secret <secret>` subcommand can
+  be used to configure the Forgejo runner with the credentials that will
+  allow it to start picking up tasks from the Forgejo instances as soon
+  as it comes online.
 
-When Infrastructure as Code (Ansible, kubernetes, etc.) is used to
-deploy and configure both Forgejo and the Forgejo runner, it may be
-more convenient for it to generate a secret and share it with both.
+  For instance, on the machine running Forgejo:
 
-The `forgejo forgejo-cli actions register --secret <secret>` subcommand can be
-used to register the runner with the Forgejo instance and the
-`forgejo-runner create-runner-file --secret <secret>` subcommand can
-be used to configure the Forgejo runner with the credentials that will
-allow it to start picking up tasks from the Forgejo instances as soon
-as it comes online.
+  ```sh
+  $ forgejo forgejo-cli actions register --name runner-name --scope myorganization \
+  	  --labels docker \
+  	  --secret 7c31591e8b67225a116d4a4519ea8e507e08f71f
+  ```
 
-For instance, on the machine running Forgejo:
+  and on the machine on which the Forgejo runner is installed:
 
-```sh
-$ forgejo forgejo-cli actions register --name runner-name --scope myorganization \
-          --labels docker \
-          --secret 7c31591e8b67225a116d4a4519ea8e507e08f71f
-```
+  ```sh
+  $ forgejo-runner create-runner-file --instance https://example.conf \
+  		 --secret 7c31591e8b67225a116d4a4519ea8e507e08f71f
+  ```
 
-and on the machine on which the Forgejo runner is installed:
-
-```sh
-$ forgejo-runner create-runner-file --instance https://example.conf \
-                 --secret 7c31591e8b67225a116d4a4519ea8e507e08f71f
-```
-
-> **NOTE:** the labels known to the runner are defined in the `config.yml` and **MUST** match the labels provided to the `forgejo-cli actions register` command above. In this example, `labels: ['docker:docker://node:16-bullseye']` will tell the Forgejo runner that when a **job** specifies `runs-on: docker`, it will run in a container created from the `node:16-bullseye` image by default.
+  > **NOTE:** the labels known to the runner are defined in the `config.yml` and **MUST** match the labels provided to the `forgejo-cli actions register` command above. In this example, `labels: ['docker:docker://node:16-bullseye']` will tell the Forgejo runner that when a **job** specifies `runs-on: docker`, it will run in a container created from the `node:16-bullseye` image by default.
 
 ### Configuration
 
@@ -319,7 +373,7 @@ If no `Forgejo runner` is available, `Forgejo` will wait for one to connect and 
 
 ### Labels and `runs-on`
 
-The workflows / tasks defined in the files found in `.forgejo/workflows` must specify the environment they need to run with `runs-on`. Each `Forgejo runner` declares with **labels** which one they support so `Forgejo` knows sends them tasks accordingly. For instance if a job within a workflow has:
+The workflows / tasks defined in the files found in `.forgejo/workflows` must specify the environment they need to run with `runs-on`. Each `Forgejo runner` declares with **labels** which one they support so `Forgejo` sends them tasks accordingly. For instance if a job within a workflow has:
 
 ```yaml
 runs-on: docker
@@ -327,36 +381,18 @@ runs-on: docker
 
 it will be submitted to a runner that registered with a `docker` label (for instance with `--labels docker:docker://node:16-bullseye`).
 
-#### Docker
+- **Docker or Podman:**
+  If `runs-on` is matched to a label that contains `docker://`, the rest of it is interpreted as the default container image to use if no other is specified. The runner will execute all the steps, as root, within a container created from that image.
+- **LXC:**
+  If `runs-on` is `self-hosted`, the runner will execute all the steps, as root, within a Debian GNU/Linux `bullseye` LXC container.
 
-If `runs-on` is matched to a label that contains `docker://`, the rest of it is interpreted as the default container image to use if no other is specified. The runner will execute all the steps, as root, within a container created from that image.
+## Packaging
 
-#### LXC
+### NixOS
 
-If `runs-on` is `self-hosted`, the runner will execute all the steps, as root, within a Debian GNU/Linux `bullseye` LXC container.
+The [`forgejo-actions-runner`](https://github.com/NixOS/nixpkgs/blob/ac6977498b1246f21af08f3cf25ea7b602d94b99/pkgs/development/tools/continuous-integration/forgejo-actions-runner/default.nix) recipe is released in NixOS.
 
-### Host environment
-
-Certain hosts may require specific configurations for runners to work smoothly. Anything specific to these host environments can be found below.
-
-#### NixOS
-
-The `gitea-actions-runner` recipe was released in NixOS 23.05. It can be configured via `services.gitea-actions-runner`.
-
-Please note that the `services.gitea-actions-runner.instances.<name>.labels` key may be set to `[]` (an empty list) to use the packaged Forgejo instance list. One of `virtualisation.docker.enable` or `virtualisation.podman.enable` will need to be set. The default Forgejo image list is populated with docker images.
-
-##### IPv6 on docker
-
-IPv6 support is not enabled by default in docker. The following snippet enables this.
-
-```nix
-virtualisation.docker = {
-  daemon.settings = {
-    fixed-cidr-v6 = "fd00::/80";
-    ipv6 = true;
-  };
-};
-```
+Please note that the `services.forgejo-actions-runner.instances.<name>.labels` key may be set to `[]` (an empty list) to use the packaged Forgejo instance list. One of `virtualisation.docker.enable` or `virtualisation.podman.enable` will need to be set. The default Forgejo image list is populated with docker images.
 
 ## Other runners
 
