@@ -350,7 +350,7 @@ You can test sending a mail by clicking the user button on the upper right of th
 ### General hints for using Forgejo
 
 Sometimes you may want/need to use the Forgejo
-[command line interface](./command-line/).
+[command line interface](../command-line/).
 Keep in mind that:
 
 - You need to **run it as `git` user**, for example with `$ sudo -u git forgejo command --argument`
