@@ -12,6 +12,7 @@ their needs.
   - [Sustainability and funding](https://codeberg.org/forgejo/sustainability/src/branch/master/README)
 - For contributors
   - [Compiling from source](./from-source/)
+  - [Architecture overview](./architecture/)
   - [Developer Certificate of Origin (DCO)](./dco/)
   - [Development workflow](./workflow/)
   - [code.forgejo.org](./code-forgejo-org/)
