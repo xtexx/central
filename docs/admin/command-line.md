@@ -1,621 +1,2294 @@
 ---
-title: 'Command Line'
-license: 'Apache-2.0'
-origin_url: https://github.com/go-gitea/gitea/blob/307ee2c044abe62c7e61787a6283e670fb3031ab/docs/content/administration/command-line.en-us.md
+title: Forgejo CLI
+license: 'CC-BY-SA-4.0'
 ---
 
-## Usage
+<!--
+This page should not be edited manually.
+To update this page, run the following command from the root of the docs repo:
+```
+forgejo docs | perl ./scripts/cli-docs.pl > ./docs/admin/command-line.md
+```
+-->
 
-```shell
-forgejo [global options] command [command or global options] [arguments...]
+_**Note**: this documentation is generated from the output of the Forgejo CLI command `forgejo docs`._
+
+## NAME
+
+Forgejo - Beyond coding. We forge.
+
+## SYNOPSIS
+
+Forgejo
+
+```
+[--config|-c]=[value]
+[--custom-path|-C]=[value]
+[--help|-h]
+[--version|-v]
+[--work-path|-w]=[value]
 ```
 
-## Global options
+## DESCRIPTION
 
-All global options can be used at the command level.
+By default, forgejo will start serving using the web-server with no argument, which can alternatively be run by running the subcommand "web".
 
-- `--help`, `-h`: Show help text and exit.
-- `--version`, `-v`: Show version and exit. \
-  (example: `Forgejo version 1.20.3+0 built with GNU Make 4.4.1, go1.20.7 : bindata, timetzdata, sqlite, sqlite_unlock_notify`)
-- `--work-path path`, `-w path`: Forgejo's work path. \
-  _(default: the binary's path or `$GITEA_WORK_DIR`)_
-- `--custom-path path`, `-C path`: Forgejo's custom folder path. \
-  _(default: `WorkPath`/custom or `$GITEA_CUSTOM`)_
-- `--config path`, `-c path`: Forgejo configuration file path. \
-  _(default: `CustomPath`/conf/app.ini)_
+**Usage**:
 
-**Note:** The default values for `custom-path`, `config` and `work-path` can also be changed at build time.
-
-## Commands
-
-### `web`
-
-Starts the server.
-
-- **Options**
-  - `--port number`, `-p number`: Port number _(default: `3000`)_. Overrides configuration file.
-  - `--install-port number`: Port number to run the install page on _(default: `3000`)_. Overrides configuration file.
-  - `--pid path`, `-P path`: Pidfile path.
-  - `--quiet`, `-q`: Only emit Fatal logs on the console for logs emitted before logging set up.
-  - `--verbose`: Emit tracing logs on the console for logs emitted before logging is set up.
-- **Examples**
-  - `forgejo web`
-  - `forgejo web --port 80`
-  - `forgejo web --config /etc/forgejo.ini --pid /some/custom/forgejo.pid`
-- **Notes**
-  - **Forgejo should not be run as root.** To bind to a port below `1024`, you can use `setcap` on Linux:
-    `sudo setcap 'cap_net_bind_service=+ep' /path/to/forgejo`.
-    This will need to be redone every time you update Forgejo.
-
-### `admin`
-
-Admin operations.
-
-- **Commands**
-
-  - `user`
-
-    - `list`: Lists all users that exist.
-
-      - **Options**
-        - `--admin`: List only admin users.
-      - **Examples**
-        - `forgejo admin user list`
-
-    - `delete`
-
-      - **Options**
-        - `--email`: Email of the user to be deleted.
-        - `--username`: Username of user to be deleted.
-        - `--id`: ID of user to be deleted.
-        - _One of `--id`, `--username` or `--email` is required. If more than one is provided then all have to match._
-      - **Examples**
-        - `forgejo admin user delete --id 1`
-
-    - `create`
-
-      - **Options**
-        - `--username value`: Username. _(required)_
-        - `--password value`: Password. _(required)_
-        - `--email value`: Email. _(required)_
-        - `--admin`: If provided, this makes the user an admin.
-        - `--access-token`: If provided, an access token will be created for the use. _(default: `false`)_
-        - `--must-change-password`: If provided, the created user will be required to choose a newer password after the initial logi. _(default: `true`)_
-        - `--random-password`: If provided, a randomly generated password will be used as the password of the created user. The value of `--password` will be discarded.
-        - `--random-password-length`: If provided, it will be used to configure the length of the randomly generated passwor. _(default: `12`)_
-      - **Examples**
-        - `forgejo admin user create --username myname --password asecurepassword --email me@example.com`
-
-    - `change-password`
-
-      - **Options**
-        - `--username value`, `-u value`: Username. _(required)_
-        - `--password value`, `-p value`: New password. _(required)_
-      - **Examples**
-        - `forgejo admin user change-password --username myname --password asecurepassword`
-
-    - `must-change-password`
-
-      - **Args**
-        - `[username...]`: Users that must change their passwords.
-      - **Options**
-        - `--all`, `-A`: Force a password change for all users.
-        - `--exclude username`, `-e username`: Exclude the given user. Can be set multiple times.
-        - `--unset`: Revoke forced password change for the given users.
-
-    - `generate-access-token`
-      - **Options**
-        - `--username value`, `-u value`: Username. _(required)_
-        - `--token-name value`, `-t value`: Token name. _(required)_
-        - `--scopes value`: Comma-separated list of scopes. \
-          Scopes follow the format `[read|write]:<block>` or `all`, where `<block>` is one of the available visual groups you can see when opening the API page showing the available routes (for example `repo`).
-      - **Examples**
-        - `forgejo admin user generate-access-token --username myname --token-name mytoken`
-        - `forgejo admin user generate-access-token --help`
-
-  - `regenerate`
-
-    - **Options**
-      - `hooks`: Regenerate Git Hooks for all repositories.
-      - `keys`: Regenerate `authorized_keys` file.
-    - **Examples**
-      - `forgejo admin regenerate hooks`
-      - `forgejo admin regenerate keys`
-
-  - `auth`
-
-    - `list`: Lists all external authentication sources that exist.
-
-      - **Examples**
-        - `forgejo admin auth list`
-
-    - `delete`
-
-      - **Options**
-        - `--id`: ID of source to be deleted. _(required)_
-      - **Examples**
-        - `forgejo admin auth delete --id 1`
-
-    - `add-oauth`
-
-      - **Options**
-        - `--name`: Application Name. _(required)_
-        - `--provider`: OAuth2 Provider. _(required)_
-        - `--key`: Client ID (Key). _(required)_
-        - `--secret`: Client Secret. _(required)_
-        - `--auto-discover-url`: OpenID Connect Auto Discovery URL _(only required when using OpenID Connect as provider)_.
-        - `--use-custom-urls`: Use custom URLs for GitLab/GitHub OAuth endpoints.
-        - `--custom-tenant-id`: Use custom Tenant ID for OAuth endpoints.
-        - `--custom-auth-url`: Use a custom Authorization URL _(option for GitLab/GitHub)_.
-        - `--custom-token-url`: Use a custom Token URL _(option for GitLab/GitHub)_.
-        - `--custom-profile-url`: Use a custom Profile URL _(option for GitLab/GitHub)_.
-        - `--custom-email-url`: Use a custom Email URL _(option for GitHub)_.
-        - `--icon-url`: Custom icon URL for OAuth2 login source.
-        - `--skip-local-2fa`: Allow source to override local 2FA. _(optional)_
-        - `--scopes`: Additional scopes to request for this OAuth2 source. _(optional)_
-        - `--required-claim-name`: Claim name that has to be set to allow users to login with this source. _(optional)_
-        - `--required-claim-value`: Claim value that has to be set to allow users to login with this source. _(optional)_
-        - `--group-claim-name`: Claim name providing group names for this source. _(optional)_
-        - `--admin-group`: Group Claim value for administrator users. _(optional)_
-        - `--restricted-group`: Group Claim value for restricted users. _(optional)_
-        - `--group-team-map`: JSON mapping between groups and org teams. _(optional)_
-        - `--group-team-map-removal`: Activate automatic team membership removal depending on groups. _(optional)_
-      - **Examples**
-        - `forgejo admin auth add-oauth --name external-github --provider github --key OBTAIN_FROM_SOURCE --secret OBTAIN_FROM_SOURCE`
-
-    - `update-oauth`
-
-      - **Options**
-        - `--id`: ID of source to be updated. _(required)_
-        - `--name`: Application Name.
-        - `--provider`: OAuth2 Provider.
-        - `--key`: Client ID (Key).
-        - `--secret`: Client Secret.
-        - `--auto-discover-url`: OpenID Connect Auto Discovery URL _(only required when using OpenID Connect as provider)_.
-        - `--use-custom-urls`: Use custom URLs for GitLab/GitHub OAuth endpoints.
-        - `--custom-tenant-id`: Use custom Tenant ID for OAuth endpoints.
-        - `--custom-auth-url`: Use a custom Authorization URL _(option for GitLab/GitHub)_.
-        - `--custom-token-url`: Use a custom Token URL _(option for GitLab/GitHub)_.
-        - `--custom-profile-url`: Use a custom Profile URL _(option for GitLab/GitHub)_.
-        - `--custom-email-url`: Use a custom Email URL _(option for GitHub)_.
-        - `--icon-url`: Custom icon URL for OAuth2 login source.
-        - `--skip-local-2fa`: Allow source to override local 2FA. _(optional)_
-        - `--scopes`: Additional scopes to request for this OAuth2 source.
-        - `--required-claim-name`: Claim name that has to be set to allow users to login with this source. _(optional)_
-        - `--required-claim-value`: Claim value that has to be set to allow users to login with this source. _(optional)_
-        - `--group-claim-name`: Claim name providing group names for this source. _(optional)_
-        - `--admin-group`: Group Claim value for administrator users. _(optional)_
-        - `--restricted-group`: Group Claim value for restricted users. _(optional)_
-      - **Examples**
-        - `forgejo admin auth update-oauth --id 1 --name external-github-updated`
-
-    - `add-smtp`
-
-      - **Options**
-        - `--name`: Application Name. _(required)_
-        - `--auth-type`: SMTP Authentication Type (`PLAIN`/`LOGIN`/`CRAM-MD5`). Default to `PLAIN`.
-        - `--host`: SMTP host. _(required)_
-        - `--port`: SMTP port. _(required)_
-        - `--force-smtps`: SMTPS is always used on port `465`. Set this to force SMTPS on other ports.
-        - `--skip-verify`: Skip TLS verify.
-        - `--helo-hostname`: Hostname sent with `HELO`. Leave blank to send current hostname.
-        - `--disable-helo`: Disable SMTP `HELO`.
-        - `--allowed-domains`: Leave empty to allow all domains. Separate multiple domains with a comma (`,`).
-        - `--skip-local-2fa`: Skip 2FA to log on.
-        - `--active`: This Authentication Source is Activated.
-      - **Remarks** \
-        `--force-smtps`, `--skip-verify`, `--disable-helo`, `--skip-loca-2fs` and `--active` options can be used in form:
-        - `--option`, `--option=true` to enable
-        - `--option=false` to disable
-          If those options are not specified, the value is not changed in `update-smtp` or uses the default `false` value in `add-smtp`.
-      - **Examples**
-        - `forgejo admin auth add-smtp --name ldap --host smtp.mydomain.org --port 587 --skip-verify --active`
-
-    - `update-smtp`
-
-      - **Options**
-        - `--id`: ID of source to be updated. _(required)_
-        - other options are shared with `add-smtp`
-      - **Examples**
-        - `forgejo admin auth update-smtp --id 1 --host smtp.mydomain.org --port 587 --skip-verify=false`
-        - `forgejo admin auth update-smtp --id 1 --active=false`
-
-    - `add-ldap`: Add new LDAP (via Bind DN) authentication source.
-
-      - **Options**
-        - `--name value`: Authentication name. _(required)_
-        - `--not-active`: Deactivate the authentication source.
-        - `--security-protocol value`: Security protocol name. _(required)_
-        - `--skip-tls-verify`: Disable TLS verification.
-        - `--host value`: The address where the LDAP server can be reached. _(required)_
-        - `--port value`: The port to use when connecting to the LDAP server. _(required)_
-        - `--user-search-base value`: The LDAP base at which user accounts will be searched for. _(required)_
-        - `--user-filter value`: An LDAP filter declaring how to find the user record that is attempting to authenticate. _(required)_
-        - `--admin-filter value`: An LDAP filter specifying if a user should be given administrator privileges.
-        - `--restricted-filter value`: An LDAP filter specifying if a user should be given restricted status.
-        - `--username-attribute value`: The attribute of the user’s LDAP record containing the user name.
-        - `--firstname-attribute value`: The attribute of the user’s LDAP record containing the user’s first name.
-        - `--surname-attribute value`: The attribute of the user’s LDAP record containing the user’s surname.
-        - `--email-attribute value`: The attribute of the user’s LDAP record containing the user’s email address. _(required)_
-        - `--public-ssh-key-attribute value`: The attribute of the user’s LDAP record containing the user’s public ssh key.
-        - `--avatar-attribute value`: The attribute of the user’s LDAP record containing the user’s avatar.
-        - `--bind-dn value`: The DN to bind to the LDAP server with when searching for the user.
-        - `--bind-password value`: The password for the Bind DN, if any.
-        - `--attributes-in-bind`: Fetch attributes in bind DN context.
-        - `--synchronize-users`: Enable user synchronization.
-        - `--page-size value`: Search page size.
-      - **Examples**
-        - `forgejo admin auth add-ldap --name ldap --security-protocol unencrypted --host mydomain.org --port 389 --user-search-base "ou=Users,dc=mydomain,dc=org" --user-filter "(&(objectClass=posixAccount)(|(uid=%[1]s)(mail=%[1]s)))" --email-attribute mail`
-
-    - `update-ldap`: Update existing LDAP (via Bind DN) authentication source.
-
-      - **Options**
-        - `--id value`: ID of authentication source. _(required)_
-        - `--name value`: Authentication name.
-        - `--not-active`: Deactivate the authentication source.
-        - `--security-protocol value`: Security protocol name.
-        - `--skip-tls-verify`: Disable TLS verification.
-        - `--host value`: The address where the LDAP server can be reached.
-        - `--port value`: The port to use when connecting to the LDAP server.
-        - `--user-search-base value`: The LDAP base at which user accounts will be searched for.
-        - `--user-filter value`: An LDAP filter declaring how to find the user record that is attempting to authenticate.
-        - `--admin-filter value`: An LDAP filter specifying if a user should be given administrator privileges.
-        - `--restricted-filter value`: An LDAP filter specifying if a user should be given restricted status.
-        - `--username-attribute value`: The attribute of the user’s LDAP record containing the user name.
-        - `--firstname-attribute value`: The attribute of the user’s LDAP record containing the user’s first name.
-        - `--surname-attribute value`: The attribute of the user’s LDAP record containing the user’s surname.
-        - `--email-attribute value`: The attribute of the user’s LDAP record containing the user’s email address.
-        - `--public-ssh-key-attribute value`: The attribute of the user’s LDAP record containing the user’s public ssh key.
-        - `--avatar-attribute value`: The attribute of the user’s LDAP record containing the user’s avatar.
-        - `--bind-dn value`: The DN to bind to the LDAP server with when searching for the user.
-        - `--bind-password value`: The password for the Bind DN, if any.
-        - `--attributes-in-bind`: Fetch attributes in bind DN context.
-        - `--synchronize-users`: Enable user synchronization.
-        - `--page-size value`: Search page size.
-      - **Examples**
-        - `forgejo admin auth update-ldap --id 1 --name "my ldap auth source"`
-        - `forgejo admin auth update-ldap --id 1 --username-attribute uid --firstname-attribute givenName --surname-attribute sn`
-
-    - `add-ldap-simple`: Add new LDAP (simple auth) authentication source.
-
-      - **Options**
-        - `--name value`: Authentication name. _(required)_
-        - `--not-active`: Deactivate the authentication source.
-        - `--security-protocol value`: Security protocol name. _(required)_
-        - `--skip-tls-verify`: Disable TLS verification.
-        - `--host value`: The address where the LDAP server can be reached. _(required)_
-        - `--port value`: The port to use when connecting to the LDAP server. _(required)_
-        - `--user-search-base value`: The LDAP base at which user accounts will be searched for.
-        - `--user-filter value`: An LDAP filter declaring how to find the user record that is attempting to authenticate. _(required)_
-        - `--admin-filter value`: An LDAP filter specifying if a user should be given administrator privileges.
-        - `--restricted-filter value`: An LDAP filter specifying if a user should be given restricted status.
-        - `--username-attribute value`: The attribute of the user’s LDAP record containing the user name.
-        - `--firstname-attribute value`: The attribute of the user’s LDAP record containing the user’s first name.
-        - `--surname-attribute value`: The attribute of the user’s LDAP record containing the user’s surname.
-        - `--email-attribute value`: The attribute of the user’s LDAP record containing the user’s email address. _(required)_
-        - `--public-ssh-key-attribute value`: The attribute of the user’s LDAP record containing the user’s public ssh key.
-        - `--avatar-attribute value`: The attribute of the user’s LDAP record containing the user’s avatar.
-        - `--user-dn value`: The user’s DN. _(required)_
-      - **Examples**
-        - `forgejo admin auth add-ldap-simple --name ldap --security-protocol unencrypted --host mydomain.org --port 389 --user-dn "cn=%s,ou=Users,dc=mydomain,dc=org" --user-filter "(&(objectClass=posixAccount)(cn=%s))" --email-attribute mail`
-
-    - `update-ldap-simple`: Update existing LDAP (simple auth) authentication source.
-      - **Options**
-        - `--id value`: ID of authentication source. _(required)_
-        - `--name value`: Authentication name.
-        - `--not-active`: Deactivate the authentication source.
-        - `--security-protocol value`: Security protocol name.
-        - `--skip-tls-verify`: Disable TLS verification.
-        - `--host value`: The address where the LDAP server can be reached.
-        - `--port value`: The port to use when connecting to the LDAP server.
-        - `--user-search-base value`: The LDAP base at which user accounts will be searched for.
-        - `--user-filter value`: An LDAP filter declaring how to find the user record that is attempting to authenticate.
-        - `--admin-filter value`: An LDAP filter specifying if a user should be given administrator privileges.
-        - `--restricted-filter value`: An LDAP filter specifying if a user should be given restricted status.
-        - `--username-attribute value`: The attribute of the user’s LDAP record containing the user name.
-        - `--firstname-attribute value`: The attribute of the user’s LDAP record containing the user’s first name.
-        - `--surname-attribute value`: The attribute of the user’s LDAP record containing the user’s surname.
-        - `--email-attribute value`: The attribute of the user’s LDAP record containing the user’s email address.
-        - `--public-ssh-key-attribute value`: The attribute of the user’s LDAP record containing the user’s public ssh key.
-        - `--avatar-attribute value`: The attribute of the user’s LDAP record containing the user’s avatar.
-        - `--user-dn value`: The user’s DN.
-      - **Examples**
-        - `forgejo admin auth update-ldap-simple --id 1 --name "my ldap auth source"`
-        - `forgejo admin auth update-ldap-simple --id 1 --username-attribute uid --firstname-attribute givenName --surname-attribute sn`
-
-### `cert`
-
-Generates a self-signed SSL certificate. Outputs to `cert.pem` and `key.pem` in the current
-directory and will overwrite any existing files.
-
-- **Options**
-  - `--host value`: Comma separated hostnames and ips which this certificate is valid for.
-    Wildcards are supported. _(required)_
-  - `--ecdsa-curve value`: ECDSA curve to use to generate a key. Valid options
-    are P224, P256, P384, P521.
-  - `--rsa-bits value`: Size of RSA key to generate. Ignored if --ecdsa-curve is
-    set. _(default: `2048`)_
-  - `--start-date value`: Creation date. _(format: `Jan 1 15:04:05 2011`)_
-  - `--duration value`: Duration which the certificate is valid for. _(default: `8760h0m0s`)_
-  - `--ca`: If provided, this cert generates it's own certificate authority.
-- **Examples**
-  - `forgejo cert --host git.example.com,example.com,www.example.com --ca`
-
-### `dump`
-
-Dumps all files and databases into a zip file. Outputs into a file like `forgejo-dump-1482906742.zip`
-in the current directory.
-
-- **Options**
-  - `--file name`, `-f name`: Name of the dump file with will be created. _(default: `forgejo-dump-[timestamp].zip`)_
-  - `--tempdir path`, `-t path`: Path to the temporary directory used. _(default: `/tmp`)_
-  - `--skip-repository`, `-R`: Skip the repository dumping.
-  - `--skip-custom-dir`: Skip dumping of the custom dir.
-  - `--skip-lfs-data`: Skip dumping of LFS data.
-  - `--skip-attachment-data`: Skip dumping of attachment data.
-  - `--skip-package-data`: Skip dumping of package data.
-  - `--skip-log`: Skip dumping of log data.
-  - `--database`, `-d`: Specify the database SQL syntax.
-  - `--verbose`, `-V`: If provided, shows additional details.
-  - `--type`: Set the dump output format. _(default: `zip`)_
-- **Examples**
-  - `forgejo dump`
-  - `forgejo dump --verbose`
-
-### `generate`
-
-Generates random values and tokens for usage in configuration file. Useful for generating values
-for automatic deployments.
-
-- **Commands**
-  - `secret`
-    - **Options**
-      - `INTERNAL_TOKEN`: Token used for an internal API call authentication.
-      - `JWT_SECRET`: LFS & OAUTH2 JWT authentication secret (LFS_JWT_SECRET is aliased to this option for backwards compatibility).
-      - `SECRET_KEY`: Global secret key.
-    - **Examples**
-      - `forgejo generate secret INTERNAL_TOKEN`
-      - `forgejo generate secret JWT_SECRET`
-      - `forgejo generate secret SECRET_KEY`
-
-### `keys`
-
-Provides an SSHD AuthorizedKeysCommand. Needs to be configured in the sshd config file.
-
-```ini
-...
-# The value of -e and the AuthorizedKeysCommandUser should match the
-# username running Forgejo
-AuthorizedKeysCommandUser git
-AuthorizedKeysCommand /path/to/forgejo keys -e git -u %u -t %t -k %k
+```
+Forgejo [GLOBAL OPTIONS] command [COMMAND OPTIONS] [ARGUMENTS...]
 ```
 
-The command will return the appropriate `authorized_keys` line for the
-provided key. You should also set the value
-`SSH_CREATE_AUTHORIZED_KEYS_FILE=false` in the `[server]` section of
-`app.ini`.
+## GLOBAL OPTIONS
 
-NB: opensshd requires the Forgejo program to be owned by root and not
-writable by group or others. The program must be specified by an absolute
-path.
-NB: Forgejo must be running for this command to succeed.
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
 
-### `migrate`
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
 
-Migrates the database. This command can be used to run other commands before starting the server for the first time.
-This command is idempotent.
+`--help, -h`: show help
 
-### `convert`
+`--version, -v`: print the version
 
-Converts an existing MySQL database from utf8 to utf8mb4.
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
 
-### `doctor`
+## COMMANDS
 
-Diagnose the problems of current Forgejo instance according the given configuration.
+### web
 
-Currently performs the following checks:
+Start Forgejo web server
 
-- **Check if OpenSSH `authorized_keys` file is correct.** \
-  If your Forgejo instance supports OpenSSH, your Forgejo instance binary path will be written to `authorized_keys` when any public key is added or changed on your Forgejo instance. \
-  Sometimes if you have moved or renamed your Forgejo binary when upgrading and you haven't run the "`Update the '.ssh/authorized_keys' file with Forgejo SSH keys`" command on your Admin Panel, all pull/push operations via SSH will fail.
-  This check will help you to verify that the configuration is correct.
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
 
-For contributors, if you want to add more checks, you can write a new function like `func(ctx *cli.Context) ([]string, error)` and
-append it to `doctor.go`.
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
 
-```go
-var checklist = []check{
-	{
-		title: "Check if OpenSSH authorized_keys file id correct",
-		f:     runDoctorLocationMoved,
-    },
-    // more checks please append here
-}
-```
+`--help, -h`: show help
 
-This function will receive a command line context and return a list of details about the problems or error.
+`--install-port`: Temporary port number to run the install page on to prevent conflict _(default: `3000`)_
 
-#### `doctor recreate-table`
+`--pid, -P`: Custom pid file path _(default: `/run/gitea.pid`)_
 
-Sometimes when there are migrations the old columns and default values may be left
-unchanged in the database schema. This may lead to warnings such as:
+`--port, -p`: Temporary port number to prevent conflict _(default: `3000`)_
 
-```log
-2020/08/02 11:32:29 ...rm/session_schema.go:360:Sync2() [W] Table user Column keep_activity_private db default is , struct default is 0
-```
+`--quiet, -q`: Only display Fatal logging errors until logging is set-up
 
-You can cause Forgejo to recreate these tables and copy the old data into the new table
-with the defaults set appropriately by using:
+`--verbose`: Set initial logging to TRACE level until logging is properly set-up
 
-```shell
-forgejo doctor recreate-table user
-```
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
 
-You can ask Forgejo to recreate multiple tables using:
+#### help, h
 
-```shell
-forgejo doctor recreate-table table1 table2 ...
-```
+Shows a list of commands or help for one command
 
-And if you would like Forgejo to recreate all tables simply call:
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
 
-```shell
-forgejo doctor recreate-table
-```
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
 
-It is highly recommended to back-up your database before running these commands.
+`--help, -h`: show help
 
-### `manager`
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
 
-Manage running server operations.
+### serv
 
-- **Commands**
+This command should only be called by SSH shell
 
-  - `shutdown`: Gracefully shutdown the running process.
-  - `restart`: Gracefully restart the running process (not implemented for windows servers).
-  - `flush-queues`: Flush queues in the running process.
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
 
-    - **Options**
-      - `--timeout value`: Timeout for the flushing proces. _(default: `1m0s`)_
-      - `--non-blocking`: Set to true to not wait for flush to complete before returning.
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
 
-  - `logging`: Adjust logging commands.
+`--debug`:
 
-    - **Commands**
+`--enable-pprof`:
 
-      - `pause`: Pause logging.
-        - **Notes**
-          - The logging level will be raised to INFO temporarily if it is below this level.
-          - Forgejo will buffer logs up to a certain point and will drop them after that point.
-      - `resume`: Resume logging.
-      - `release-and-reopen`: Cause Forgejo to release and re-open files and connections used for logging (Equivalent to sending SIGUSR1 to Forgejo.)
-      - `remove name`: Remove the named logger.
+`--help, -h`: show help
 
-        - **Options**
-          - `--group group`, `-g group`: Set the group to remove the sublogger from. _(default: `default`)_
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
 
-      - `add`: Add a logger.
+#### help, h
 
-        - **Commands**
+Shows a list of commands or help for one command
 
-          - `console`: Add a console logger.
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
 
-            - **Options**
-              - `--group value`, `-g value`: Group to add logger to. _(default: `default`)_
-              - `--name value`, `-n value`: Name of the new logger. _(default: `mode`)_
-              - `--level value`, `-l value`: Logging level for the new logger.
-              - `--stacktrace-level value`, `-L value`: Stacktrace logging level.
-              - `--flags value`, `-F value`: Flags for the logger.
-              - `--expression value`, `-e value`: Matching expression for the logger.
-              - `--prefix value`, `-p value`: Prefix for the logger.
-              - `--color`: Use color in the logs.
-              - `--stderr`: Output console logs to stderr - only relevant for console.
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
 
-          - `file`: Add a file logger.
+`--help, -h`: show help
 
-            - **Options**
-              - `--group value`, `-g value`: Group to add logger to. _(default: `default`)_
-              - `--name value`, `-n value`: Name of the new logger. _(default: `mode`)_
-              - `--level value`, `-l value`: Logging level for the new logger.
-              - `--stacktrace-level value`, `-L value`: Stacktrace logging level.
-              - `--flags value`, `-F value`: Flags for the logger.
-              - `--expression value`, `-e value`: Matching expression for the logger.
-              - `--prefix value`, `-p value`: Prefix for the logger.
-              - `--color`: Use color in the logs.
-              - `--filename value`, `-f value`: Filename for the logger.
-              - `--rotate`, `-r`: Rotate logs.
-              - `--max-size value`, `-s value`: Maximum size in bytes before rotation.
-              - `--daily`, `-d`: Rotate logs daily.
-              - `--max-days value`, `-D value`: Maximum number of daily logs to keep.
-              - `--compress`, `-z`: Compress rotated logs.
-              - `--compression-level value`, `-Z value`: Compression level to use.
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
 
-          - `conn`: Add a network connection logger.
+### hook
 
-            - **Options**
-              - `--group value`, `-g value`: Group to add logger to. _(default: `default`)_
-              - `--name value`, `-n value`: Name of the new logger. _(default: `mode`)_
-              - `--level value`, `-l value`: Logging level for the new logger.
-              - `--stacktrace-level value`, `-L value`: Stacktrace logging level.
-              - `--flags value`, `-F value`: Flags for the logger.
-              - `--expression value`, `-e value`: Matching expression for the logger.
-              - `--prefix value`, `-p value`: Prefix for the logger.
-              - `--color`: Use color in the logs.
-              - `--reconnect-on-message`, `-R`: Reconnect to host for every message.
-              - `--reconnect`, `-r`: Reconnect to host when connection is dropped.
-              - `--protocol value`, `-P value`: Set protocol to use: tcp, unix, or udp _(defaults: `tcp`)_
-              - `--address value`, `-a value`: Host address and port to connect to _(default: `7020`)_
+Delegate commands to corresponding Git hooks
 
-          - `smtp`: Add an SMTP logger.
-            - **Options**
-              - `--group value`, `-g value`: Group to add logger to. _(default: `default`)_
-              - `--name value`, `-n value`: Name of the new logger. _(default: `mode`)_
-              - `--level value`, `-l value`: Logging level for the new logger.
-              - `--stacktrace-level value`, `-L value`: Stacktrace logging level.
-              - `--flags value`, `-F value`: Flags for the logger.
-              - `--expression value`, `-e value`: Matching expression for the logger.
-              - `--prefix value`, `-p value`: Prefix for the logger.
-              - `--color`: Use color in the logs.
-              - `--username value`, `-u value`: Mail server username.
-              - `--password value`, `-P value`: Mail server password.
-              - `--host value`, `-H value`: Mail server host _(default: `127.0.0.1:25`)_
-              - `--send-to value`, `-s value`: Email address(es) to send to.
-              - `--subject value`, `-S value`: Subject header of sent emails.
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
 
-  - `processes`: Display Forgejo processes and goroutine information.
-    - **Options**
-      - `--flat`: Show processes as flat table rather than as tree.
-      - `--no-system`: Do not show system processes.
-      - `--stacktraces`: Show stacktraces for goroutines associated with processes.
-      - `--json`: Output as JSON.
-      - `--cancel PID`: Send cancel to process with PID. (Only for non-system processes.)
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
 
-### `dump-repo`
+`--help, -h`: show help
 
-Dumps repository data from a Git/Forgejo/Gitea/GitHub/GitLab repo.
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
 
-- **Options**
-  - `--git_service <service>` : Git service (`git`/`github`/`gitea`/`gitlab`). If `clone_addr` is recognized, this is ignored.
-  - `--repo_dir <dir>`, `-r <dir>`: Repository dir path to store the data.
-  - `--clone_addr <addr>`: Repo URL to be cloned. Can currently be a git/forgejo/gitea/github/gitlab HTTP/HTTPS URL.
-  - `--auth_username <name>`: The username to use for authentication with the `clone_addr`.
-  - `--auth_password <password>`: The password to use for authentication with the `clone_addr`.
-  - `--auth_token <token>`: The personal token to use for authentication with the `clone_addr`.
-  - `--owner_name <name>`: The data will be stored in a directory with owner name if not empty.
-  - `--repo_name <name>`: The data will be stored in a directory with repository name if not empty.
-  - `--units <units>`: Which items will be migrated, one or more units separated by commas. `wiki`, `issues`, `labels`, `releases`, `release_assets`, `milestones`, `pull_requests`, `comments` are allowed. Empty means all units.
+#### pre-receive
 
-### `restore-repo`
+Delegate pre-receive Git hook
 
-Restore-repo restore repository data from disk dir.
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
 
-- **Options**
-  - `--repo_dir <dir>`, `-r <dir>`: Repository dir path to restore from.
-  - `--owner_name <name>`: Restore destination owner name.
-  - `--repo_name <name>`: Restore destination repository name.
-  - `--units <units>`: Which items will be restored, one or more units separated by commas. `wiki`, `issues`, `labels`, `releases`, `release_assets`, `milestones`, `pull_requests`, `comments` are allowed. Empty means all units.
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
 
-### `actions generate-runner-token`
+`--debug`:
 
-Generate a new token for a runner to use to register with the server.
+`--help, -h`: show help
 
-- **Options**
-  - `--scope {owner}[/{repo}]`, `-s {owner}[/{repo}]`: Limits the scope of the runner. No scope means the runner can be used for all repos, but you can also limit it to a specific repo or owner.
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
 
-To register a global runner:
+##### help, h
 
-```shell
-forgejo actions generate-runner-token
-```
+Shows a list of commands or help for one command
 
-To register a runner for a specific organization, in this case `org`
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
 
-```shell
-forgejo actions generate-runner-token -s org
-```
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
 
-To register a runner for a specific repo, in this case `username/test-repo`
+`--help, -h`: show help
 
-```shell
-forgejo actions generate-runner-token -s username/test-repo
-```
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### update
+
+Delegate update Git hook
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### post-receive
+
+Delegate post-receive Git hook
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### proc-receive
+
+Delegate proc-receive Git hook
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### dump
+
+Dump Forgejo files and database
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--database, -d`: Specify the database SQL syntax
+
+`--file, -f`: Name of the dump file which will be created. Supply '-' for stdout. See type for available types. _(default: `forgejo-dump-1693311145.zip`)_
+
+`--help, -h`: show help
+
+`--quiet, -q`: Only display warnings and errors
+
+`--skip-attachment-data`: Skip attachment data
+
+`--skip-custom-dir`: Skip custom directory
+
+`--skip-index`: Skip bleve index data
+
+`--skip-lfs-data`: Skip LFS data
+
+`--skip-log, -L`: Skip the log dumping
+
+`--skip-package-data`: Skip package data
+
+`--skip-repository, -R`: Skip the repository dumping
+
+`--tempdir, -t`: Temporary dir path _(default: `/var/folders/xj/1byxn7qs2tbgspdl9m2839tm0000gn/T/`)_
+
+`--type`: Dump output format: zip, tar, tar.sz, tar.gz, tar.xz, tar.bz2, tar.br, tar.lz4, tar.zst _(default: `zip`)_
+
+`--verbose, -V`: Show process details
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### admin
+
+Command line interface to perform common administrative operations
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### user
+
+Modify users
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### create
+
+Create a new user in database
+
+`--access-token`: Generate access token for the user
+
+`--admin`: User is an admin
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--email`: User email address
+
+`--help, -h`: show help
+
+`--must-change-password`: Set this option to false to prevent forcing the user to change their password after initial login, (Default: true)
+
+`--name`: Username. DEPRECATED: use username instead
+
+`--password`: User password
+
+`--random-password`: Generate a random password for the user
+
+`--random-password-length`: Length of the random password to be generated _(default: `0`)_
+
+`--restricted`: Make a restricted user account
+
+`--username`: Username
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### list
+
+List users
+
+`--admin`: List only admin users
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### change-password
+
+Change a user's password
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--password, -p`: New password to set for user
+
+`--username, -u`: The user to change password for
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### delete
+
+Delete specific user by id, name or email
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--email, -e`: Email of the user to delete
+
+`--help, -h`: show help
+
+`--id`: ID of user of the user to delete _(default: `0`)_
+
+`--purge`: Purge user, all their repositories, organizations and comments
+
+`--username, -u`: Username of the user to delete
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### generate-access-token
+
+Generate an access token for a specific user
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--raw`: Display only the token value
+
+`--scopes`: Comma separated list of scopes to apply to access token
+
+`--token-name, -t`: Token name _(default: `gitea-admin`)_
+
+`--username, -u`: Username
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### must-change-password
+
+Set the must change password flag for the provided users or all users
+
+`--all, -A`: All users must change password, except those explicitly excluded with --exclude
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--exclude, -e`: Do not change the must-change-password flag for these users
+
+`--help, -h`: show help
+
+`--unset`: Instead of setting the must-change-password flag, unset it
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### repo-sync-releases
+
+Synchronize repository releases with tags
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### regenerate
+
+Regenerate specific files
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### hooks
+
+Regenerate git-hooks
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### keys
+
+Regenerate authorized_keys file
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### auth
+
+Modify external auth providers
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### add-oauth
+
+Add new Oauth authentication source
+
+`--admin-group`: Group Claim value for administrator users
+
+`--auto-discover-url`: OpenID Connect Auto Discovery URL (only required when using OpenID Connect as provider)
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-auth-url`: Use a custom Authorization URL (option for GitLab/GitHub)
+
+`--custom-email-url`: Use a custom Email URL (option for GitHub)
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--custom-profile-url`: Use a custom Profile URL (option for GitLab/GitHub)
+
+`--custom-tenant-id`: Use custom Tenant ID for OAuth endpoints
+
+`--custom-token-url`: Use a custom Token URL (option for GitLab/GitHub)
+
+`--group-claim-name`: Claim name providing group names for this source
+
+`--group-team-map`: JSON mapping between groups and org teams
+
+`--group-team-map-removal`: Activate automatic team membership removal depending on groups
+
+`--help, -h`: show help
+
+`--icon-url`: Custom icon URL for OAuth2 login source
+
+`--key`: Client ID (Key)
+
+`--name`: Application Name
+
+`--provider`: OAuth2 Provider
+
+`--required-claim-name`: Claim name that has to be set to allow users to login with this source
+
+`--required-claim-value`: Claim value that has to be set to allow users to login with this source
+
+`--restricted-group`: Group Claim value for restricted users
+
+`--scopes`: Scopes to request when to authenticate against this OAuth2 source
+
+`--secret`: Client Secret
+
+`--skip-local-2fa`: Set to true to skip local 2fa for users authenticated by this source
+
+`--use-custom-urls`: Use custom URLs for GitLab/GitHub OAuth endpoints _(default: `false`)_
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### update-oauth
+
+Update existing Oauth authentication source
+
+`--admin-group`: Group Claim value for administrator users
+
+`--auto-discover-url`: OpenID Connect Auto Discovery URL (only required when using OpenID Connect as provider)
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-auth-url`: Use a custom Authorization URL (option for GitLab/GitHub)
+
+`--custom-email-url`: Use a custom Email URL (option for GitHub)
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--custom-profile-url`: Use a custom Profile URL (option for GitLab/GitHub)
+
+`--custom-tenant-id`: Use custom Tenant ID for OAuth endpoints
+
+`--custom-token-url`: Use a custom Token URL (option for GitLab/GitHub)
+
+`--group-claim-name`: Claim name providing group names for this source
+
+`--group-team-map`: JSON mapping between groups and org teams
+
+`--group-team-map-removal`: Activate automatic team membership removal depending on groups
+
+`--help, -h`: show help
+
+`--icon-url`: Custom icon URL for OAuth2 login source
+
+`--id`: ID of authentication source _(default: `0`)_
+
+`--key`: Client ID (Key)
+
+`--name`: Application Name
+
+`--provider`: OAuth2 Provider
+
+`--required-claim-name`: Claim name that has to be set to allow users to login with this source
+
+`--required-claim-value`: Claim value that has to be set to allow users to login with this source
+
+`--restricted-group`: Group Claim value for restricted users
+
+`--scopes`: Scopes to request when to authenticate against this OAuth2 source
+
+`--secret`: Client Secret
+
+`--skip-local-2fa`: Set to true to skip local 2fa for users authenticated by this source
+
+`--use-custom-urls`: Use custom URLs for GitLab/GitHub OAuth endpoints _(default: `false`)_
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### add-ldap
+
+Add new LDAP (via Bind DN) authentication source
+
+`--active`: Activate the authentication source.
+
+`--admin-filter`: An LDAP filter specifying if a user should be given administrator privileges.
+
+`--allow-deactivate-all`: Allow empty search results to deactivate all users.
+
+`--attributes-in-bind`: Fetch attributes in bind DN context.
+
+`--avatar-attribute`: The attribute of the user’s LDAP record containing the user’s avatar.
+
+`--bind-dn`: The DN to bind to the LDAP server with when searching for the user.
+
+`--bind-password`: The password for the Bind DN, if any.
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--disable-synchronize-users`: Disable user synchronization.
+
+`--email-attribute`: The attribute of the user’s LDAP record containing the user’s email address.
+
+`--firstname-attribute`: The attribute of the user’s LDAP record containing the user’s first name.
+
+`--help, -h`: show help
+
+`--host`: The address where the LDAP server can be reached.
+
+`--name`: Authentication name.
+
+`--not-active`: Deactivate the authentication source.
+
+`--page-size`: Search page size. _(default: `0`)_
+
+`--port`: The port to use when connecting to the LDAP server. _(default: `0`)_
+
+`--public-ssh-key-attribute`: The attribute of the user’s LDAP record containing the user’s public ssh key.
+
+`--restricted-filter`: An LDAP filter specifying if a user should be given restricted status.
+
+`--security-protocol`: Security protocol name.
+
+`--skip-local-2fa`: Set to true to skip local 2fa for users authenticated by this source
+
+`--skip-tls-verify`: Disable TLS verification.
+
+`--surname-attribute`: The attribute of the user’s LDAP record containing the user’s surname.
+
+`--synchronize-users`: Enable user synchronization.
+
+`--user-filter`: An LDAP filter declaring how to find the user record that is attempting to authenticate.
+
+`--user-search-base`: The LDAP base at which user accounts will be searched for.
+
+`--username-attribute`: The attribute of the user’s LDAP record containing the user name.
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### update-ldap
+
+Update existing LDAP (via Bind DN) authentication source
+
+`--active`: Activate the authentication source.
+
+`--admin-filter`: An LDAP filter specifying if a user should be given administrator privileges.
+
+`--allow-deactivate-all`: Allow empty search results to deactivate all users.
+
+`--attributes-in-bind`: Fetch attributes in bind DN context.
+
+`--avatar-attribute`: The attribute of the user’s LDAP record containing the user’s avatar.
+
+`--bind-dn`: The DN to bind to the LDAP server with when searching for the user.
+
+`--bind-password`: The password for the Bind DN, if any.
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--disable-synchronize-users`: Disable user synchronization.
+
+`--email-attribute`: The attribute of the user’s LDAP record containing the user’s email address.
+
+`--firstname-attribute`: The attribute of the user’s LDAP record containing the user’s first name.
+
+`--help, -h`: show help
+
+`--host`: The address where the LDAP server can be reached.
+
+`--id`: ID of authentication source _(default: `0`)_
+
+`--name`: Authentication name.
+
+`--not-active`: Deactivate the authentication source.
+
+`--page-size`: Search page size. _(default: `0`)_
+
+`--port`: The port to use when connecting to the LDAP server. _(default: `0`)_
+
+`--public-ssh-key-attribute`: The attribute of the user’s LDAP record containing the user’s public ssh key.
+
+`--restricted-filter`: An LDAP filter specifying if a user should be given restricted status.
+
+`--security-protocol`: Security protocol name.
+
+`--skip-local-2fa`: Set to true to skip local 2fa for users authenticated by this source
+
+`--skip-tls-verify`: Disable TLS verification.
+
+`--surname-attribute`: The attribute of the user’s LDAP record containing the user’s surname.
+
+`--synchronize-users`: Enable user synchronization.
+
+`--user-filter`: An LDAP filter declaring how to find the user record that is attempting to authenticate.
+
+`--user-search-base`: The LDAP base at which user accounts will be searched for.
+
+`--username-attribute`: The attribute of the user’s LDAP record containing the user name.
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### add-ldap-simple
+
+Add new LDAP (simple auth) authentication source
+
+`--active`: Activate the authentication source.
+
+`--admin-filter`: An LDAP filter specifying if a user should be given administrator privileges.
+
+`--allow-deactivate-all`: Allow empty search results to deactivate all users.
+
+`--avatar-attribute`: The attribute of the user’s LDAP record containing the user’s avatar.
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--email-attribute`: The attribute of the user’s LDAP record containing the user’s email address.
+
+`--firstname-attribute`: The attribute of the user’s LDAP record containing the user’s first name.
+
+`--help, -h`: show help
+
+`--host`: The address where the LDAP server can be reached.
+
+`--name`: Authentication name.
+
+`--not-active`: Deactivate the authentication source.
+
+`--port`: The port to use when connecting to the LDAP server. _(default: `0`)_
+
+`--public-ssh-key-attribute`: The attribute of the user’s LDAP record containing the user’s public ssh key.
+
+`--restricted-filter`: An LDAP filter specifying if a user should be given restricted status.
+
+`--security-protocol`: Security protocol name.
+
+`--skip-local-2fa`: Set to true to skip local 2fa for users authenticated by this source
+
+`--skip-tls-verify`: Disable TLS verification.
+
+`--surname-attribute`: The attribute of the user’s LDAP record containing the user’s surname.
+
+`--user-dn`: The user’s DN.
+
+`--user-filter`: An LDAP filter declaring how to find the user record that is attempting to authenticate.
+
+`--user-search-base`: The LDAP base at which user accounts will be searched for.
+
+`--username-attribute`: The attribute of the user’s LDAP record containing the user name.
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### update-ldap-simple
+
+Update existing LDAP (simple auth) authentication source
+
+`--active`: Activate the authentication source.
+
+`--admin-filter`: An LDAP filter specifying if a user should be given administrator privileges.
+
+`--allow-deactivate-all`: Allow empty search results to deactivate all users.
+
+`--avatar-attribute`: The attribute of the user’s LDAP record containing the user’s avatar.
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--email-attribute`: The attribute of the user’s LDAP record containing the user’s email address.
+
+`--firstname-attribute`: The attribute of the user’s LDAP record containing the user’s first name.
+
+`--help, -h`: show help
+
+`--host`: The address where the LDAP server can be reached.
+
+`--id`: ID of authentication source _(default: `0`)_
+
+`--name`: Authentication name.
+
+`--not-active`: Deactivate the authentication source.
+
+`--port`: The port to use when connecting to the LDAP server. _(default: `0`)_
+
+`--public-ssh-key-attribute`: The attribute of the user’s LDAP record containing the user’s public ssh key.
+
+`--restricted-filter`: An LDAP filter specifying if a user should be given restricted status.
+
+`--security-protocol`: Security protocol name.
+
+`--skip-local-2fa`: Set to true to skip local 2fa for users authenticated by this source
+
+`--skip-tls-verify`: Disable TLS verification.
+
+`--surname-attribute`: The attribute of the user’s LDAP record containing the user’s surname.
+
+`--user-dn`: The user’s DN.
+
+`--user-filter`: An LDAP filter declaring how to find the user record that is attempting to authenticate.
+
+`--user-search-base`: The LDAP base at which user accounts will be searched for.
+
+`--username-attribute`: The attribute of the user’s LDAP record containing the user name.
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### add-smtp
+
+Add new SMTP authentication source
+
+`--active`: This Authentication Source is Activated.
+
+`--allowed-domains`: Leave empty to allow all domains. Separate multiple domains with a comma (',')
+
+`--auth-type`: SMTP Authentication Type (PLAIN/LOGIN/CRAM-MD5) default PLAIN _(default: `PLAIN`)_
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--disable-helo`: Disable SMTP helo.
+
+`--force-smtps`: SMTPS is always used on port 465. Set this to force SMTPS on other ports.
+
+`--helo-hostname`: Hostname sent with HELO. Leave blank to send current hostname
+
+`--help, -h`: show help
+
+`--host`: SMTP Host
+
+`--name`: Application Name
+
+`--port`: SMTP Port _(default: `0`)_
+
+`--skip-local-2fa`: Skip 2FA to log on.
+
+`--skip-verify`: Skip TLS verify.
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### update-smtp
+
+Update existing SMTP authentication source
+
+`--active`: This Authentication Source is Activated.
+
+`--allowed-domains`: Leave empty to allow all domains. Separate multiple domains with a comma (',')
+
+`--auth-type`: SMTP Authentication Type (PLAIN/LOGIN/CRAM-MD5) default PLAIN _(default: `PLAIN`)_
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--disable-helo`: Disable SMTP helo.
+
+`--force-smtps`: SMTPS is always used on port 465. Set this to force SMTPS on other ports.
+
+`--helo-hostname`: Hostname sent with HELO. Leave blank to send current hostname
+
+`--help, -h`: show help
+
+`--host`: SMTP Host
+
+`--id`: ID of authentication source _(default: `0`)_
+
+`--name`: Application Name
+
+`--port`: SMTP Port _(default: `0`)_
+
+`--skip-local-2fa`: Skip 2FA to log on.
+
+`--skip-verify`: Skip TLS verify.
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### list
+
+List auth sources
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--min-width`: Minimal cell width including any padding for the formatted table _(default: `0`)_
+
+`--pad-char`: ASCII char used for padding if padchar == '\\t', the Writer will assume that the width of a '\\t' in the formatted output is tabwidth, and cells are left-aligned independent of align*left (for correct-looking results, tabwidth must correspond to the tab width in the viewer displaying the result) *(default: `	`)\_
+
+`--padding`: padding added to a cell before computing its width _(default: `0`)_
+
+`--tab-width`: width of tab characters in formatted table (equivalent number of spaces) _(default: `0`)_
+
+`--vertical-bars`: Set to true to print vertical bars between columns
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### delete
+
+Delete specific auth source
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--id`: ID of authentication source _(default: `0`)_
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### sendmail
+
+Send a message to all users
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--content`: a content of a message
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--force, -f`: A flag to bypass a confirmation step
+
+`--help, -h`: show help
+
+`--title`: a title of a message
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### migrate
+
+Migrate the database
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### keys
+
+This command queries the Forgejo database to get the authorized command for a given ssh key fingerprint
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--content, -k`: Base64 encoded content of the SSH key provided to the SSH Server (requires type to be provided too)
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--expected, -e`: Expected user for whom provide key commands _(default: `git`)_
+
+`--help, -h`: show help
+
+`--type, -t`: Type of the SSH key provided to the SSH Server (requires content to be provided too)
+
+`--username, -u`: Username trying to log in by SSH
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### doctor
+
+Diagnose and optionally fix problems
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### check
+
+Diagnose and optionally fix problems
+
+`--all`: Run all the available checks
+
+`--color, -H`: Use color for outputted information
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--default`: Run the default checks (if neither --run or --all is set, this is the default behaviour)
+
+`--fix`: Automatically fix what we can
+
+`--help, -h`: show help
+
+`--list`: List the available checks
+
+`--log-file`: Name of the log file (no verbose log output by default). Set to "-" to output to stdout
+
+`--run`: Run the provided checks - (if --default is set, the default checks will also run)
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### recreate-table
+
+Recreate tables from XORM definitions and copy the data.
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`: Print SQL commands sent
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### convert
+
+Convert the database
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### manager
+
+Manage the running gitea process
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### shutdown
+
+Gracefully shutdown the running process
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### restart
+
+Gracefully restart the running process - (not implemented for windows servers)
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### reload-templates
+
+Reload template files in the running process
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### flush-queues
+
+Flush queues in the running process
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--non-blocking`: Set to true to not wait for flush to complete before returning
+
+`--timeout`: Timeout for the flushing process _(default: `0s`)_
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### logging
+
+Adjust logging commands
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### pause
+
+Pause logging (Forgejo will buffer logs up to a certain point and will drop them after that point)
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### resume
+
+Resume logging
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### release-and-reopen
+
+Cause Forgejo to release and re-open files used for logging
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### remove
+
+Remove a logger
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--logger`: Logger name - will default to "default"
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### add
+
+Add a logger
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### file
+
+Add a file logger
+
+`--color`: Use color in the logs
+
+`--compress, -z`: Compress rotated logs
+
+`--compression-level, -Z`: Compression level to use _(default: `0`)_
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--daily, -d`: Rotate logs daily
+
+`--debug`:
+
+`--expression, -e`: Matching expression for the logger
+
+`--filename, -f`: Filename for the logger - this must be set.
+
+`--flags, -F`: Flags for the logger
+
+`--help, -h`: show help
+
+`--level`: Logging level for the new logger
+
+`--logger`: Logger name - will default to "default"
+
+`--max-days, -D`: Maximum number of daily logs to keep _(default: `0`)_
+
+`--max-size, -s`: Maximum size in bytes before rotation _(default: `0`)_
+
+`--prefix, -p`: Prefix for the logger
+
+`--rotate, -r`: Rotate logs
+
+`--stacktrace-level, -L`: Stacktrace logging level
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+`--writer`: Name of the log writer - will default to mode
+
+####### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### conn
+
+Add a net conn logger
+
+`--address, -a`: Host address and port to connect to _(default: `:7020`)_
+
+`--color`: Use color in the logs
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--expression, -e`: Matching expression for the logger
+
+`--flags, -F`: Flags for the logger
+
+`--help, -h`: show help
+
+`--level`: Logging level for the new logger
+
+`--logger`: Logger name - will default to "default"
+
+`--prefix, -p`: Prefix for the logger
+
+`--protocol, -P`: Set protocol to use: tcp, unix, or udp _(default: `tcp`)_
+
+`--reconnect, -r`: Reconnect to host when connection is dropped
+
+`--reconnect-on-message, -R`: Reconnect to host for every message
+
+`--stacktrace-level, -L`: Stacktrace logging level
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+`--writer`: Name of the log writer - will default to mode
+
+####### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### log-sql
+
+Set LogSQL
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--help, -h`: show help
+
+`--off`: Switch off SQL logging
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+###### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### processes
+
+Display running processes within the current process
+
+`--cancel`: Process PID to cancel. (Only available for non-system processes.)
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--debug`:
+
+`--flat`: Show processes as flat table rather than as tree
+
+`--help, -h`: show help
+
+`--json`: Output as json
+
+`--no-system`: Do not show system processes
+
+`--stacktraces`: Show stacktraces
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### embedded
+
+Extract embedded resources
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### list
+
+List files matching the given pattern
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--include-vendored, --vendor`: Include files under public/vendor as well
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### view
+
+View a file matching the given pattern
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--include-vendored, --vendor`: Include files under public/vendor as well
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### extract
+
+Extract resources
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom`: Extract to the 'custom' directory as per app.ini
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--destination, --dest-dir`: Extract to the specified directory
+
+`--help, -h`: show help
+
+`--include-vendored, --vendor`: Include files under public/vendor as well
+
+`--overwrite`: Overwrite files if they already exist
+
+`--rename`: Rename files as {name}.bak if they already exist (overwrites previous .bak)
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### migrate-storage
+
+Migrate the storage
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--minio-access-key-id`: Minio storage accessKeyID
+
+`--minio-base-path`: Minio storage base path on the bucket
+
+`--minio-bucket`: Minio storage bucket
+
+`--minio-checksum-algorithm`: Minio checksum algorithm (default/md5)
+
+`--minio-endpoint`: Minio storage endpoint
+
+`--minio-insecure-skip-verify`: Skip SSL verification
+
+`--minio-location`: Minio storage location to create bucket
+
+`--minio-secret-access-key`: Minio storage secretAccessKey
+
+`--minio-use-ssl`: Enable SSL for minio
+
+`--path, -p`: New storage placement if store is local (leave blank for default)
+
+`--storage, -s`: New storage type: local (default) or minio
+
+`--type, -t`: Type of stored files to copy. Allowed types: 'attachments', 'lfs', 'avatars', 'repo-avatars', 'repo-archivers', 'packages', 'actions-log'
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### dump-repo
+
+Dump the repository from git/github/gitea/gitlab
+
+`--auth_password`: The password to visit the clone_addr
+
+`--auth_token`: The personal token to visit the clone_addr
+
+`--auth_username`: The username to visit the clone_addr
+
+`--clone_addr`: The URL will be clone, currently could be a git/github/gitea/gitlab http/https URL
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--git_service`: Git service, git, github, gitea, gitlab. If clone_addr could be recognized, this could be ignored.
+
+`--help, -h`: show help
+
+`--owner_name`: The data will be stored on a directory with owner name if not empty
+
+`--repo_dir, -r`: Repository dir path to store the data _(default: `./data`)_
+
+`--repo_name`: The data will be stored on a directory with repository name if not empty
+
+`--units`: Which items will be migrated, one or more units should be separated as comma.
+wiki, issues, labels, releases, release_assets, milestones, pull_requests, comments are allowed. Empty means all units.
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### restore-repo
+
+Restore the repository from disk
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--owner_name`: Restore destination owner name
+
+`--repo_dir, -r`: Repository dir path to restore from _(default: `./data`)_
+
+`--repo_name`: Restore destination repository name
+
+`--units`: Which items will be restored, one or more units should be separated as comma.
+wiki, issues, labels, releases, release_assets, milestones, pull_requests, comments are allowed. Empty means all units.
+
+`--validation`: Sanity check the content of the files before trying to load them
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### actions
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### generate-runner-token, grt
+
+Generate a new token for a runner to use to register with the server
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--scope, -s`: {owner}[/{repo}] - leave empty for a global runner
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+##### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+`--config, -c`: Set custom config file _(default: `{WorkPath}/custom/conf/app.ini`)_
+
+`--custom-path, -C`: Set custom path _(default: `{WorkPath}/custom`)_
+
+`--help, -h`: show help
+
+`--work-path, -w`: Set Forgejo's working path (defaults to the Forgejo's binary directory)
+
+### cert
+
+Generate self-signed certificate
+
+`--ca`: whether this cert should be its own Certificate Authority
+
+`--duration`: Duration that certificate is valid for _(default: `0s`)_
+
+`--ecdsa-curve`: ECDSA curve to use to generate a key. Valid values are P224, P256, P384, P521
+
+`--host`: Comma-separated hostnames and IPs to generate a certificate for
+
+`--rsa-bits`: Size of RSA key to generate. Ignored if --ecdsa-curve is set _(default: `0`)_
+
+`--start-date`: Creation date formatted as Jan 1 15:04:05 2011
+
+### generate
+
+Command line interface for running generators
+
+#### secret
+
+Generate a secret token
+
+##### INTERNAL_TOKEN
+
+Generate a new INTERNAL_TOKEN
+
+##### JWT_SECRET, LFS_JWT_SECRET
+
+Generate a new JWT_SECRET
+
+##### SECRET_KEY
+
+Generate a new SECRET_KEY
+
+### docs
+
+Output CLI documentation
+
+`--help, -h`: show help
+
+`--man`: Output man pages instead
+
+`--output, -o`: Path to output to instead of stdout (will overwrite if exists)
+
+#### help, h
+
+Shows a list of commands or help for one command
+
+### forgejo-cli
+
+Forgejo CLI
+
+#### actions
+
+Commands for managing Forgejo Actions
+
+##### generate-runner-token
+
+Generate a new token for a runner to use to register with the server
+
+`--scope, -s`: {owner}[/{repo}] - leave empty for a global runner
+
+##### generate-secret
+
+Generate a secret suitable for input to the register subcommand
+
+##### register
+
+Idempotent registration of a runner using a shared secret
+
+`--labels`: comma separated list of labels supported by the runner (e.g. docker,ubuntu-latest,self-hosted) (not required since v1.21)
+
+`--name`: name of the runner (default runner) _(default: `runner`)_
+
+`--scope, -s`: {owner}[/{repo}] - leave empty for a global runner
+
+`--secret`: the secret the runner will use to connect as a 40 character hexadecimal string
+
+`--secret-file`: path to the file containing the secret the runner will use to connect as a 40 character hexadecimal string
+
+`--secret-stdin`: the secret the runner will use to connect as a 40 character hexadecimal string, read from stdin
+
+`--version`: version of the runner (not required since v1.21)
+
+#### f3
+
+F3
+
+##### mirror
+
+Mirror
+
+`--from`: `URL` or directory of the from forge
+
+`--from-password`: `PASSWORD` of the user
+
+`--from-token`: `TOKEN` of the user
+
+`--from-type`: `TYPE` of the from forge (default: F3, allowed values are F3,GitLab,forgejo)
+
+`--from-user`: `USER` to access the forge API
+
+`--from-validation`: validate the JSON files against F3 JSON schemas
+
+`--repository`: The name of the repository
+
+`--to`: `URL` or directory of the to forge
+
+`--to-password`: `PASSWORD` of the user
+
+`--to-token`: `TOKEN` of the user
+
+`--to-type`: `TYPE` of the to forge (default: F3, allowed values are F3,GitLab,forgejo)
+
+`--to-user`: `USER` to access the forge API
+
+`--to-validation`: validate the JSON files against F3 JSON schemas
+
+`--user`: The name of the user who owns the repository
