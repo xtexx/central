@@ -65,9 +65,9 @@ Each `Forgejo runner` release is published for all supported architectures as:
 Download the latest [binary release](https://code.forgejo.org/forgejo/runner/releases) and verify its signature:
 
 ```shell
-$ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.0.0/forgejo-runner-amd64
+$ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.0.0/forgejo-runner-3.0.0-linux-amd64
 $ chmod +x forgejo-runner
-$ wget -O forgejo-runner.asc https://code.forgejo.org/forgejo/runner/releases/download/v3.0.0/forgejo-runner-amd64.asc
+$ wget -O forgejo-runner.asc https://code.forgejo.org/forgejo/runner/releases/download/v3.0.0/forgejo-runner-3.0.0-linux-amd64.asc
 $ gpg --keyserver keys.openpgp.org --recv EB114F5E6C0DC2BCDD183550A4B61A2DC5923710
 $ gpg --verify forgejo-runner.asc forgejo-runner
 Good signature from "Forgejo <contact@forgejo.org>"
