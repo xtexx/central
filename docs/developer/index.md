@@ -15,6 +15,7 @@ their needs.
   - [Developer Certificate of Origin (DCO)](./dco/)
   - [Development workflow](./workflow/)
   - [code.forgejo.org](./code-forgejo-org/)
+  - [next.forgejo.org](./next-forgejo-org/)
   - [Forgejo runner implementation notes](https://code.forgejo.org/forgejo/runner/#hacking)
 - For maintainers
   - [Hardware infrastructure](./infrastructure/)

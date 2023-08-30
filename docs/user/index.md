@@ -10,6 +10,7 @@ involved in running it on their machines.
   - [The Basics of Issue Tracking](./issue-tracking-basics/)
   - [Integrated Wiki](./wiki/)
   - [Email Settings](./email-settings/)
+  - [Forgejo Next](./forgejo-next/)
 - Collaborating with Others
   - [Projects / Kanban boards](./project/)
   - [Pull requests and Git flow](https://docs.codeberg.org/collaborating/pull-requests-and-git-flow/)
