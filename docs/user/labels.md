@@ -10,7 +10,7 @@ You can use labels to classify issues and pull requests and to improve your over
 
 For repositories, labels can be created by going to `Issues` and clicking on `Labels`.
 
-![create a label](../../../../images/v1.19/user/labels/label-new.png)
+![create a label](../_images/user/labels/label-new.png)
 
 For organizations, you can define organization-wide labels that are shared with all organization repositories, including both already-existing repositories as well as newly created ones. Organization-wide labels can be created in the organization `Settings`.
 
@@ -18,7 +18,7 @@ Labels have a mandatory name, a mandatory color, an optional description, and mu
 
 When you create a repository, you can ensure certain labels exist by using the `Issue Labels` option. This option lists a number of available label sets that are configured globally on your instance. Its contained labels will all be created as well while creating the repository.
 
-![list of labels](../../../../images/v1.19/user/labels/label-apply.png)
+![list of labels](../_images/user/labels/label-apply.png)
 
 When you create a repository, you can ensure certain labels exist by using the `Issue Labels` option. This option lists a number of available label sets that are configured globally on your instance. Its contained labels will all be created as well while creating the repository.
 
@@ -26,7 +26,7 @@ When you create a repository, you can ensure certain labels exist by using the `
 
 Scoped labels are used to ensure at most a single label with the same scope is assigned to an issue or pull request. For example, if labels `kind/bug` and `kind/enhancement` have the Exclusive option set, an issue can only be classified as a bug or an enhancement.
 
-![list of labels](../../../../images/v1.19/user/labels/label-list.png)
+![list of labels](../_images/user/labels/label-list.png)
 
 A scoped label must contain `/` in its name (not at either end of the name). The scope of a label is determined based on the **last** `/`, so for example the scope of label `scope/subscope/item` is `scope/subscope`.
 

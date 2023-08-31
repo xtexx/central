@@ -32,7 +32,7 @@ After you have enabled the wiki you are prompted to create the initial page `Hom
 
 The web UI in your browser is currently limited to adding, updating, and deleting pages; you can't manage assets like images this way.
 
-![Wiki home page with edit buttons](../../../../images/v1.19/user/wiki/wiki_pageview.png)
+![Wiki home page with edit buttons](../_images/user/wiki/wiki_pageview.png)
 
 ## Adding content via a local Git client
 

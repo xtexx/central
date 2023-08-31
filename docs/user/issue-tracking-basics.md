@@ -11,7 +11,7 @@ direction, ask questions and much more.
 
 ### The Issue Tracker
 
-![Issues list](../../../../images/v1.19/user/issue-tracking-basics/issues-list.png)
+![Issues list](../_images/user/issue-tracking-basics/issues-list.png)
 
 You can access the issue tracker of a project by clicking its "Issues" tab **(1)**.
 
