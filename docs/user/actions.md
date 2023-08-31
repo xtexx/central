@@ -11,7 +11,7 @@ The following guide explains key **concepts** to help understand how `workflows`
 ## Quick start
 
 - Verify that `Enable Repository Actions` is checked in the `Repository` tab of the `/{owner}/{repository}/settings` page. If the checkbox does not show it means the administrator of the Forgejo instance did not activate the feature.
-  ![enable actions](../../../../images/v1.20/user/actions/enable-repository.png)
+  ![enable actions](../_images/user/actions/enable-repository.png)
 - Add the following to the `.forgejo/workflows/demo.yaml` file in the repository.
   ```yaml
   on: [push]
@@ -21,11 +21,11 @@ The following guide explains key **concepts** to help understand how `workflows`
       steps:
         - run: echo All Good
   ```
-  ![demo.yaml file](../../../../images/v1.20/user/actions/demo-yaml.png)
+  ![demo.yaml file](../_images/user/actions/demo-yaml.png)
 - Go to the `Actions` tab of the `/{owner}/{repository}/actions` page of the repository to see the result of the run.
-  ![actions results](../../../../images/v1.20/user/actions/actions-demo.png)
+  ![actions results](../_images/user/actions/actions-demo.png)
 - Click on the workflow link to see the details and the job execution logs.
-  ![actions results](../../../../images/v1.20/user/actions/workflow-demo.png)
+  ![actions results](../_images/user/actions/workflow-demo.png)
 
 ## Concepts
 
@@ -142,33 +142,33 @@ The password to authenticate with the registry where the image is located.
 
 A `Forgejo runner` listens on a `Forgejo` instance, waiting for jobs. To figure out if a runner is available for a given repository, go to `/{owner}/{repository}/settings/actions/runners`. If there are none, you can run one for yourself on your laptop.
 
-![list of runners](../../../../images/v1.20/user/actions/list-of-runners.png)
+![list of runners](../_images/user/actions/list-of-runners.png)
 
 Some runners are **Global** and are available for every repository, others are only available for the repositories within a given user or organization. And there can even be runners dedicated to a single repository. The `Forgejo` administrator is the only one able to launch a **Global** runner. But the user who owns an organization can launch a runner without requiring any special permission. All they need to do is to get a runner registration token and install the runner on their own laptop or on a server of their choosing (see the [Forgejo Actions administrator guide](../../admin/actions/) for more information).
 
 Clicking on the pencil icon next to a runner shows the list of tasks it executed, with the status and a link to display the details of the execution.
 
-![show the runners tasks](../../../../images/v1.20/user/actions/runner-tasks.png)
+![show the runners tasks](../_images/user/actions/runner-tasks.png)
 
 ## The list of tasks in a repository
 
 From the `Actions` tab in a repository, the list of ongoing and past tasks triggered by this repository is displayed with their status.
 
-![the list of actions in a repository](../../../../images/v1.20/user/actions/actions-list.png)
+![the list of actions in a repository](../_images/user/actions/actions-list.png)
 
 Following the link on a task displays the logs and the `Re-run all jobs` button. It is also possible to re-run a specific job by hovering on it and clicking on the arrows.
 
-![the details of an action](../../../../images/v1.20/user/actions/actions-detail.png)
+![the details of an action](../_images/user/actions/actions-detail.png)
 
 ## Pull request actions are moderated
 
 The first time a user proposes a pull request, the task is blocked to reduce the security risks.
 
-![blocked action](../../../../images/v1.20/user/actions/action-blocked.png)
+![blocked action](../_images/user/actions/action-blocked.png)
 
 It can be approved by a maintainer of the project and there will be no need to unblock future pull requests.
 
-![button to approve an action](../../../../images/v1.20/user/actions/action-approve.png)
+![button to approve an action](../_images/user/actions/action-approve.png)
 
 ## Secrets
 
@@ -178,11 +178,11 @@ A repository, a user or an organization can hold secrets, a set of key/value pai
 - in `/user/settings/actions/secrets` to be available in all the repositories that belong to the logged in user
 - in `/{owner}/{repo}/settings/actions/secrets` to be available to the `workflows` of a single repository
 
-![add a secret](../../../../images/v1.20/user/actions/secret-add.png)
+![add a secret](../_images/user/actions/secret-add.png)
 
 Once the secret is added, its value cannot be changed or displayed.
 
-![secrets list](../../../../images/v1.20/user/actions/secret-list.png)
+![secrets list](../_images/user/actions/secret-list.png)
 
 ## Workflow reference guide
 
@@ -259,7 +259,7 @@ The actual machine provided by the runner **entirely depends on how the `Forgejo
 
 The list of available `labels` for a given repository can be seen in the `/{owner}/{repo}/settings/actions/runners` page.
 
-![actions results](../../../../images/v1.20/user/actions/list-of-runners.png)
+![actions results](../_images/user/actions/list-of-runners.png)
 
 ##### container
 

@@ -16,11 +16,11 @@ To create a new repository, you need be logged in to your account.
 
 When you're logged in, you can use one of the two buttons shown in the two following screenshots to create a new repository:
 
-![screenshot of the expanded menu in the upper right corner to create a new repository](../../../../images/v1.19/user/first-repository/create-repo.png)
+![screenshot of the expanded menu in the upper right corner to create a new repository](../_images/user/first-repository/create-repo.png)
 
 This will lead you to this page below.
 
-![screenshot of new repository page](../../../../images/v1.20/user/first-repository/create-repo-2.png)
+![screenshot of new repository page](../_images/user/first-repository/create-repo-2.png)
 
 Here's an explanation of the form's fields:
 
@@ -41,7 +41,7 @@ After filling out the fields, click the green "Create Repository" button on the 
 
 You should now see a screen similar to the one below. If you haven't chosen to generate `LICENSE`, `README` and `.gitignore` the screen might show instructions instead, which will vanish after [your first commit](#making-your-first-commit/).
 
-![screenshot showing a freshly baken repository](../../../../images/v1.20/user/first-repository/create-repo-3.png)
+![screenshot showing a freshly baken repository](../_images/user/first-repository/create-repo-3.png)
 
 Here's what the most important buttons do:
 
@@ -86,7 +86,7 @@ knut@iceberg:~/repositories$
 
 To clone your newly created repository, execute `git clone` with the URL that is shown in your repository:
 
-![screenshot of the two options to receive a clone URL for git](../../../../images/v1.20/user/first-repository/repo-url.png)
+![screenshot of the two options to receive a clone URL for git](../_images/user/first-repository/repo-url.png)
 
 ```bash
 knut@iceberg:~/repositories$ git clone https://codeberg.org/knut/foobar
@@ -249,6 +249,6 @@ When connecting via HTTPS, Git will ask you for your username and password, whic
 
 After refreshing the repository page, you should now see something similar to this:
 
-![screenshot showing the updated README on Codeberg](../../../../images/v1.20/user/first-repository/hello-world.png)
+![screenshot showing the updated README on Codeberg](../_images/user/first-repository/hello-world.png)
 
 Congratulations - you've just made your first source code contribution on Forgejo!

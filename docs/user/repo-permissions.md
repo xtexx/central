@@ -14,7 +14,7 @@ Visibility of your repositories is in general inherited from your profile. So ot
 
 If you want to limit visibility access to your repositories you can set your **user visibility** in the user privacy settings to **Limited**. Even if your repository is public, non-contributors will get a 404-error if they try to access your repository.
 
-![screenshot showing the updated README](../../../../images/v1.20/user/repo-permissions/user-settings-privacy-limited.webp)
+![screenshot showing the updated README](../_images/user/repo-permissions/user-settings-privacy-limited.webp)
 
 ## Collaborators
 

@@ -13,7 +13,7 @@ request.
 To protect a branch, you need to go to the repository’s **Settings** >
 **Branch** page and add a new rule.
 
-![Add a new rule](../../../../images/v1.20/user/protection/branch-protect.png)
+![Add a new rule](../_images/user/protection/branch-protect.png)
 
 The name of the branch can be a glob where / is the separator and **
 spans accross separators. For instance `main`, `release/**`or`precious\*`.

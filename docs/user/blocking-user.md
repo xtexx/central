@@ -9,11 +9,11 @@ Blocking another user is desirable if they are acting maliciously or are spammin
 
 In order to block another user, go to their profile page and click on the "Block" button.
 
-![Profile card where block button is shown](../../../../images/v1.20/user/block/profile.png)
+![Profile card where block button is shown](../_images/user/block/profile.png)
 
 A popup will show; please read carefully what blocking another user implies, and if you accept the implications, click on Yes.
 
-![Popup where implications of the block action is listed](../../../../images/v1.20/user/block/popup.png)
+![Popup where implications of the block action is listed](../_images/user/block/popup.png)
 
 ## How to block someone as an organization
 
@@ -21,19 +21,19 @@ It is possible to block a user from an organization, this has the same implicati
 
 Navigate to your organization's settings and select the Blocked Users page.
 
-![Blocked Users page being selected in the table](../../../../images/v1.20/user/block/org_page.png)
+![Blocked Users page being selected in the table](../_images/user/block/org_page.png)
 
 Find the person you want to block in the search bar, select the user and click block.
 
-![Search results being shown to the search query in the search bar](../../../../images/v1.20/user/block/org_search.png)
+![Search results being shown to the search query in the search bar](../_images/user/block/org_search.png)
 
 You will now see the blocked users in the list, along with the date they were blocked.
 
-![Blocked person being shown in the blocked users list](../../../../images/v1.20/user/block/org_successful.png)
+![Blocked person being shown in the blocked users list](../_images/user/block/org_successful.png)
 
 To unblock that person, you can click the unblock button next to their name.
 
-![Blocked person being shown in the blocked users list](../../../../images/v1.20/user/block/org_unblock.png)
+![Blocked person being shown in the blocked users list](../_images/user/block/org_unblock.png)
 
 ## Implications of blocking a user
 
