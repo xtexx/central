@@ -3,11 +3,13 @@ title: 'Storage settings'
 license: 'CC-BY-SA-4.0'
 ---
 
-The storage for each subsystem is defined in `app.ini`. It can either be on disk
-(`local`) or using a MinIO server (`minio`). The default is `local`
-storage, using the following hierarchy under the `APP_DATA_PATH` directory:
+The storage for each subsystem is defined in `app.ini`. It can either
+be on disk (`local` which is the default) or using a S3 compatible
+server (`minio`). In both cases each subsystem stores all files (or
+objects in the S3 parlance) in a dedicated directory as shown in the
+table below:
 
-| subsystem           | default base path  | app.ini sections      |
+| subsystem           | directory          | app.ini sections      |
 | ------------------- | ------------------ | --------------------- |
 | Attachments         | attachments/       | [attachment]          |
 | LFS                 | lfs/               | [lfs]                 |
@@ -18,55 +20,37 @@ storage, using the following hierarchy under the `APP_DATA_PATH` directory:
 | Actions logs        | actions_log/       | [storage.actions_log] |
 | Actions Artifacts   | actions_artifacts/ | [actions.artifacts]   |
 
-For instance if `APP_DATA_PATH` was `/appdata`, the default directory to
-store attachments will be `/appdata/attachments`.
+For instance:
 
-## Overriding the defaults
+- if the `STORAGE_TYPE` is `local` and `APP_DATA_PATH` is
+  `/appdata`, the default directory to store attachments is
+  `/appdata/attachments`
+- if the `STORAGE_TYPE` is `minio`, the
+  default directory to store attachments within the `MINIO_BUCKET`
+  bucket will be `attachments/`.
 
-These defaults can be modified for all subsystems in the `[storage]`
-section. For instance setting:
+## Changing the storage for all subsystems
+
+The `[storage]` section can be used to modify the storage of all
+subsystems. The default is to use `local` storage under
+`APP_DATA_PATH` and is equivalent to writing the following in `app.ini`:
 
 ```
+[server]
+APP_DATA_PATH = /forgejo/data
+
 [storage]
-PATH = /mystorage
+STORAGE_TYPE = local
+PATH = /forgejo/data
 ```
 
-will change the default for storing attachments to
-`/mystorage/attachments`. It is also possible to change these settings
-for each subsystem in their dedicated section. For instance:
+### Using local
 
-```
-[storage]
-PATH = /mystorage
+For `local` storage, the `[storage]` section can only be used to
+change the path under which all subsystems directories will be
+created, using the `PATH` settings with an absolute pathname.
 
-[attachment]
-PATH = /otherstorage/attachments
-```
-
-will store attachments in `/otherstorage/attachments` while `lfs`
-files will be stored in `/mystorage/lfs`.
-
-## Storage type
-
-The value of `STORAGE_TYPE` can be `local` (the default) or `minio`. For instance:
-
-```
-[storage]
-STORAGE_TYPE = minio
-```
-
-will use `minio` for all subsystems (Attachments, LFS, etc.)
-instead of storing them on disk. Each storage type has its own
-settings, as explained below.
-
-## `local` storage
-
-There is just one setting when the `STORAGE_TYPE` is set to `local`,
-`PATH`. It must be an absolute path and is interpreted as follows.
-
-In the `[storage]` section, `PATH` is the directory under which the default
-base path of each subsystem will be created instead of
-`APP_DATA_PATH`. For instance, if `APP_DATA_PATH` equals `/appdata`:
+For instance:
 
 ```
 [storage]
@@ -74,11 +58,82 @@ STORAGE_TYPE = local
 PATH = /mystorage
 ```
 
-Will create attachments in `/mystorage/attachments` instead of
+will change the default for storing attachments to
+`/mystorage/attachments`, LFS to `/mystorage/lfs` etc.
+
+### Using minio
+
+The `[storage]` section can be used to change the default storage type
+used by all subsystems to `minio`.
+
+For instance:
+
+```
+[storage]
+STORAGE_TYPE = minio
+
+MINIO_ENDPOINT = 127.0.0.1:9000
+MINIO_ACCESS_KEY_ID = [redacted]
+MINIO_SECRET_ACCESS_KEY = [redacted]
+MINIO_BUCKET = forgejo
+MINIO_LOCATION = us-east-1
+```
+
+will change the default for storing attachments to `attachments/` in
+the `forgejo` bucket, LFS to `lfs/` in the `forgejo` bucket etc.
+
+> **NOTE:** `MINIO_BASE_PATH` must not be set in the `[storage]` section.
+
+## Storage settings for a single subsystem
+
+It is possible to configure some subsystems to use S3 storage and others to use local
+storage by adding settings to their respective sections. For instance:
+
+```
+[attachment]
+PATH = /otherstorage/attachments
+
+[lfs]
+STORAGE_TYPE = minio
+MINIO_BASE_PATH = lfs/
+
+MINIO_ENDPOINT = 127.0.0.1:9000
+MINIO_ACCESS_KEY_ID = [redacted]
+MINIO_SECRET_ACCESS_KEY = [redacted]
+MINIO_BUCKET = forgejo
+MINIO_LOCATION = us-east-1
+```
+
+will store attachments in the local directory
+`/otherstorage/attachments` while `lfs` files will be stored in the S3
+server within the `lfs/` directory of the `forgejo` bucket.
+
+## Storage settings
+
+The value of `STORAGE_TYPE` can be `local` (the default) for file
+system directories or `minio` for S3 servers. Each storage type has
+its own settings, as explained below.
+
+### Using local
+
+There is just one setting when the `STORAGE_TYPE` is set to `local`:
+`PATH`. It must be an absolute path and is interpreted as follows.
+
+In the `[storage]` section, `PATH` is the path under which the
+directories of each subsystem will be created instead of
+`APP_DATA_PATH`. For instance, if `APP_DATA_PATH` equals `/appdata`
+
+```
+[storage]
+STORAGE_TYPE = local
+PATH = /mystorage
+```
+
+will create attachments in `/mystorage/attachments` instead of
 `/appdata/attachments`, LFS files in `/mystorage/lfs` instead of
 `/appdata/lfs`, etc.
 
-In the section dedicated to a subsystem (see the table above), `PATH`
+In the section dedicated to a subsystem (see the table in the introduction), `PATH`
 is the base path under which all files will be stored. For instance:
 
 ```
@@ -94,44 +149,73 @@ PATH = /otherstorage/attachments
 will store attachments in `/otherstorage/attachments` while `lfs`
 files will be stored in `/mystorage/lfs`.
 
-## `minio` storage
+### Using minio
 
-When the `STORAGE_TYPE` is set to `minio`, the settings available in
-all sections (`[storage]` and `[XXXX]`) are:
+When the `STORAGE_TYPE` is set to `minio`, the settings are used to to
+connect to a S3 compatible server:
 
 - `SERVE_DIRECT`: **false**: Allows the storage driver to redirect to authenticated URLs to serve files directly. Only supported via signed URLs.
-- `MINIO_ENDPOINT`: **localhost:9000**: Minio endpoint to connect.
-- `MINIO_ACCESS_KEY_ID`: Minio accessKeyID to connect.
-- `MINIO_SECRET_ACCESS_KEY`: Minio secretAccessKey to connect.
-- `MINIO_BUCKET`: **gitea**: Minio bucket to store the data.
-- `MINIO_LOCATION`: **us-east-1**: Minio location to create bucket.
-- `MINIO_USE_SSL`: **false**: Minio enabled ssl.
-- `MINIO_INSECURE_SKIP_VERIFY`: **false**: Minio skip SSL verification.
+- `MINIO_ENDPOINT`: **localhost:9000**: S3 endpoint to connect.
+- `MINIO_ACCESS_KEY_ID`: S3 accessKeyID to connect.
+- `MINIO_SECRET_ACCESS_KEY`: S3 secretAccessKey to connect.
+- `MINIO_BUCKET`: **forgejo**: S3 bucket to store the data.
+- `MINIO_LOCATION`: **us-east-1**: S3 location to create bucket.
+- `MINIO_USE_SSL`: **false**: S3 enabled ssl.
+- `MINIO_INSECURE_SKIP_VERIFY`: **false**: S3 skip SSL verification.
 
-One setting is only available in the `[XXXX]` sections:
-
-- `MINIO_BASE_PATH`: defaults to the `default base path` of the `XXXX`
-  subsystem (see the table above) and is a relative path within the
-  MinIO bucket defined by `MINIO_BUCKET`.
-
-## Sections precedence
-
-The sections in which a setting is found have the following priority:
-
-- [XXXX] has precedence
-- [storage] is the default
-
-For instance:
+When used in the `[storage]` section they apply to all
+subsystems. When used in the section specific to a subsystem (see the table in the introduction), they
+are only used for objects that belong to this subsystem. Here is a example:
 
 ```
 [storage]
-PATH = /default
+STORAGE_TYPE = minio
 
-[attachment]
-PATH = /first
+SERVE_DIRECT = false
+MINIO_ENDPOINT = garage:9000
+MINIO_ACCESS_KEY_ID = [redacted]
+MINIO_SECRET_ACCESS_KEY = [redacted]
+MINIO_BUCKET = forgejo
+MINIO_LOCATION = us-east-1
+MINIO_USE_SSL = false
+MINIO_INSECURE_SKIP_VERIFY = false
+
+[lfs]
+STORAGE_TYPE = minio
+MINIO_BASE_PATH = nonstandardlfs/
+
+SERVE_DIRECT = false
+MINIO_ENDPOINT = minio:9000
+MINIO_ACCESS_KEY_ID = [redacted]
+MINIO_SECRET_ACCESS_KEY = [redacted]
+MINIO_BUCKET = forgejo
+MINIO_LOCATION = us-east-1
+MINIO_USE_SSL = false
+MINIO_INSECURE_SKIP_VERIFY = false
 ```
 
-Will set the value of `PATH` for attachments to `/first`.
+- `MINIO_BASE_PATH`: **only valid in the specific subsystem section (see the table in the introduction)**
+  overrides the default directory in which objects are stored in the `MINIO_BUCKET` bucket.
+
+For all subsystems that use the `minio` storage type found in the
+`[storage]` section, the directory in which the objects are stored is
+determined using the table in the introduction. For instance LFS files will be
+stored in the `lfs/` directory within the `forgejo` bucket.
+
+When the `minio` storage is set in a section specific to a subsystem,
+the `MINIO_BASE_PATH` setting can be used to override the default
+directory. In the example above, `MINIO_BASE_PATH = nonstandardlfs/`
+means LFS objects will be stored in the `nonstandardlfs/` directory
+within the `forgejo` bucket instead of the `lfs/` directory
+
+## S3 servers compatibility
+
+Although the S3 storage type is named `minio` it does not rely on any
+[MinIO](https://min.io/) specific features. The S3 storage type is
+[tested](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/.forgejo/upgrades/test-upgrade.sh) to be compatible with:
+
+- [MinIO](https://min.io/) 2021.3.17 and 2023-08-23
+- [garage](https://garagehq.deuxfleurs.fr/) v0.8.2
 
 ## Undocumented features
 
@@ -140,3 +224,29 @@ such as `[storage.attachments]` as an alternative to `[attachment]`
 for instance (the plural is not a typo, it is a unification problem) -
 because their behavior is not thoroughly tested and may lead to
 unexpected results.
+
+There are no safeguards preventing the use of undocumented features
+because it may not be backward compatible when upgrading from Gitea to
+Forgejo.
+
+## Legacy settings
+
+Some settings are deprecated but still supported in the interest of
+backward compatibility. They should be replaced as follows:
+
+- `[server].LFS_CONTENT_PATH` is replaced with `[lfs].PATH`
+- `[picture].AVATAR_UPLOAD_PATH` is replaced with `[avatar].PATH`
+- `[picture].REPOSITORY_AVATAR_UPLOAD_PATH` is replaced with `[repo-avatar].PATH`
+
+Legacy settings have a lower priority and will be overridden by their
+replacement if both are present. For instance:
+
+```
+[picture]
+AVATAR_UPLOAD_PATH = /legacy_path
+
+[avatar]
+PATH = /avatar_path
+```
+
+will store avatar files in `/avatar_path`.
