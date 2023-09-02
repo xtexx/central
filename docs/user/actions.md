@@ -4,7 +4,7 @@ license: 'CC-BY-SA-4.0'
 similar: 'https://github.com/go-gitea/gitea/blob/main/docs/content/doc/usage/actions/faq.en-us.md https://docs.github.com/en/actions'
 ---
 
-`Forgejo Actions` provides Continuous Integration driven from the files in the `.forgejo/workflows` directory of a repository, with a web interface to show the results. The syntax and semantic of the `workflow` files will be familiar to people used to [GitHub Actions](https://docs.github.com/en/actions) but **they are not and will never be identical**.
+`Forgejo Actions` provides Continuous Integration driven from the files in the `.forgejo/workflows` directory of a repository, with a web interface to show the results. The syntax and semantics of the `workflow` files will be familiar to people used to [GitHub Actions](https://docs.github.com/en/actions) but **they are not and will never be identical**.
 
 The following guide explains key **concepts** to help understand how `workflows` are interpreted, with a set of **examples** that can be copy/pasted and modified to fit particular use cases.
 
@@ -186,9 +186,19 @@ Once the secret is added, its value cannot be changed or displayed.
 
 ## Workflow reference guide
 
-The syntax and semantic of the YAML file describing a `workflow` are partially explained here. When an entry is missing the [GitHub Actions](https://docs.github.com/en/actions) documentation can help because there are similarities. But there also are significant differences that deserve testing.
+The syntax and semantics of the YAML file describing a `workflow` are _partially_ explained here. When an entry is missing the [GitHub Actions](https://docs.github.com/en/actions) documentation may be helpful because there are similarities. But there also are significant differences that require testing.
 
-### on
+The name of each chapter is a pseudo YAML path where user defined
+values are in `<>`. For instance `jobs.<job_id>.runs-on` documents the
+following YAML equivalent where `job-id` is `myjob`:
+
+```yaml
+jobs:
+  myjob:
+    runs-on: docker
+```
+
+### `on`
 
 Workflows will be triggered `on` certain events with the following:
 
@@ -225,7 +235,7 @@ on:
 
 Not everything from https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows is implemented yet. Please refer to the [forgejo/actions package source code](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/modules/actions/workflows.go) and the [list of webhook event names](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/modules/webhook/type.go) to find out about supported triggers.
 
-### env
+### `env`
 
 Set environment variables that are available in the workflow in the `env` `context` and as regular environment variables.
 
@@ -240,9 +250,7 @@ env:
 
 [Checkout the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml).
 
-### jobs
-
-#### runs-on
+### `jobs.<job_id>`
 
 Each `job` in a `workflow` must specify the kind of machine it needs to run its `steps` with `runs-on`. For instance `docker` in the following `workflow`:
 
@@ -261,9 +269,15 @@ The list of available `labels` for a given repository can be seen in the `/{owne
 
 ![actions results](../_images/user/actions/list-of-runners.png)
 
-##### container
+### `jobs.<job_id>.runs-on`
 
 By default the `docker` label will create a container from a [Node.js 16 Debian GNU/Linux bullseye image](https://hub.docker.com/_/node/tags?name=16-bullseye) and will run each `step` as root. Since an application container is used, the jobs will inherit the limitations imposed by the engine (Docker for instance). In particular they will not be able to run or install software that depends on `systemd`.
+
+The `runs-on: self-hosted` label will run the jobs in a [LXC](https://linuxcontainers.org/lxc/) container where software that rely on `systemd` can be installed. Nested containers can also be created recursively (see [the `setup-forgejo` integration tests](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/.forgejo/workflows/integration.yml) for an example).
+
+`Services` are not supported for jobs that run on LXC.
+
+### `jobs.<job_id>.container`
 
 If the default image is unsuitable, a job can specify an alternate container image with `container:`, [as shown in this example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-container/.forgejo/workflows/test.yml). For instance the following will ensure the job is run using [Alpine 3.18](https://hub.docker.com/_/alpine/tags?name=3.18).
 
@@ -273,67 +287,72 @@ container:
   image: alpine:3.18
 ```
 
-##### options
+### `jobs.<job_id>.options`
 
 A string of additional options, as documented [docker run](https://docs.docker.com/engine/reference/commandline/run/). For instance: "--workdir /myworkdir --ulimit nofile=1024:1024".
 
 > **NOTE:** the `--volume` option is restricted to a whitelist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
 
-##### LXC
+### `jobs.<job_id>.steps`
 
-The `runs-on: self-hosted` label will run the jobs in a [LXC](https://linuxcontainers.org/lxc/) container where software that rely on `systemd` can be installed. Nested containers can also be created recursively (see [the setup-forgejo integration tests](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/.forgejo/workflows/integration.yml) for an example).
+An array of steps executed sequentially on the host specified by `runs-on`.
 
-`Services` are not supported for jobs that run on LXC.
+### `jobs.<job_id>.steps.if`
 
-#### steps
+The step is run if the **expression** evaluates to true. The following additional boolean functions are supported:
 
-##### uses
+- `success()`. returns true when none of the previous steps have failed or been canceled.
+- `always()`. causes the step to always execute, and returns true, even when canceled. If you want to run a job or step regardless of its success or failure, use the recommended alternative: **!cancelled()**.
+- `failure()`. returns true when any previous step of a job fails.
+
+Checkout the workflows in [example-if](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-if/) and [example-if-fail](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-if-fail/).
+
+### `jobs.<job_id>.steps.uses`
 
 Specifies the repository from which the `Action` will be cloned or a directory where it can be found.
 
-###### Remote actions
+- Remote actions
+  A relative `Action` such as `uses: actions/checkout@v3` will clone the repository at the URL composed by prepending the default actions URL which is https://code.forgejo.org/. It is the equivalent of providing the fully qualified URL `uses: https://code.forgejo.org/actions/checkout@v3`. In other words the following:
 
-A relative `Action` such as `uses: actions/checkout@v3` will clone the repository at the URL composed by prepending the default actions URL which is https://code.forgejo.org/. It is the equivalent of providing the fully qualified URL `uses: https://code.forgejo.org/actions/checkout@v3`. In other words the following:
+  ```yaml
+  on: [push]
+  jobs:
+    test:
+      runs-on: docker
+      steps:
+        - uses: actions/checkout@v3
+  ```
 
-```yaml
-on: [push]
-jobs:
-  test:
-    runs-on: docker
-    steps:
-      - uses: actions/checkout@v3
-```
+  is the same as:
 
-is the same as:
+  ```yaml
+  on: [push]
+  jobs:
+    test:
+      runs-on: docker
+      steps:
+        - uses: https://code.forgejo.org/actions/checkout@v3
+  ```
 
-```yaml
-on: [push]
-jobs:
-  test:
-    runs-on: docker
-    steps:
-      - uses: https://code.forgejo.org/actions/checkout@v3
-```
+  When possible **it is strongly recommended to choose fully qualified
+  URLs** to avoid ambiguities. During installation, the `Forgejo'
+  instance may use another default URL and a workflow could fail because
+  it gets an outdated version from https://tooold.org/actions/checkout
+  instead. Or even a repository that does not contain the intended
+  action.
 
-When possible **it is strongly recommended to choose fully qualified
-URLs** to avoid ambiguities. During installation, the `Forgejo'
-instance may use another default URL and a workflow could fail because
-it gets an outdated version from https://tooold.org/actions/checkout
-instead. Or even a repository that does not contain the intended
-action.
+- Local actions
 
-###### Local actions
+  An action that begins with a `./` will be loaded from a directory
+  instead of being cloned from a repository. The structure of the
+  directory is otherwise the same as if it was located in a remote
+  repository.
 
-An action that begins with a `./` will be loaded from a directory
-instead of being cloned from a repository. The structure of the
-directory is otherwise the same as if it was located in a remote
-repository.
+  > **NOTE:** the most common mistake when using an action included in the repository under test is to forget to checkout the repository with `uses: actions/checkout@v3`.
 
-> **NOTE:** the most common mistake when using an action included in the repository under test is to forget to checkout the repository with `uses: actions/checkout@v3`.
+  [Checkout the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-local-action/).
 
-[Checkout the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-local-action/).
-
-###### with
+### `jobs.<job_id>.steps.with`
 
 A dictionary mapping the inputs of the action to concrete values. The `action.yml` defines and documents the inputs.
 
