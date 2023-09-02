@@ -26,20 +26,20 @@ Note: All steps below requires that the database engine of your choice is instal
 
    Enter the password as prompted.
 
-3. Create database user which will be used by Forgejo, authenticated by password. This example uses `'forgejo'` as password. Please use a secure password for your instance.
+3. Create database user which will be used by Forgejo, authenticated by password. This example uses `'passw0rd'` as password. _Please use a secure password for your instance._
 
    For local database:
 
    ```sql
    SET old_passwords=0;
-   CREATE USER 'forgejo' IDENTIFIED BY 'forgejo';
+   CREATE USER 'forgejo' IDENTIFIED BY 'passw0rd';
    ```
 
    For remote database:
 
    ```sql
    SET old_passwords=0;
-   CREATE USER 'forgejo'@'192.0.2.10' IDENTIFIED BY 'forgejo';
+   CREATE USER 'forgejo'@'192.0.2.10' IDENTIFIED BY 'passw0rd';
    ```
 
    where `192.0.2.10` is the IP address of your Forgejo instance.
@@ -104,10 +104,10 @@ Note: All steps below requires that the database engine of your choice is instal
    su -c "psql" - postgres
    ```
 
-4. Create database user (role in PostgreSQL terms) with login privilege and password. Please use a secure, strong password instead of `'forgejo'` below:
+4. Create database user (role in PostgreSQL terms) with login privilege and password. _Please use a secure, strong password instead of `'passw0rd'` below:_
 
    ```sql
-   CREATE ROLE forgejo WITH LOGIN PASSWORD 'forgejo';
+   CREATE ROLE forgejo WITH LOGIN PASSWORD 'passw0rd';
    ```
 
    Replace username and password as appropriate.
@@ -274,7 +274,7 @@ In one-way TLS, the database client verifies the certificate sent from server du
 
    ```sql
    DROP USER 'forgejo'@'192.0.2.10';
-   CREATE USER 'forgejo'@'example.forgejo' IDENTIFIED BY 'forgejo' REQUIRE SSL;
+   CREATE USER 'forgejo'@'example.forgejo' IDENTIFIED BY 'passw0rd' REQUIRE SSL;
    GRANT ALL PRIVILEGES ON forgejodb.* TO 'forgejo'@'example.forgejo';
    FLUSH PRIVILEGES;
    ```
