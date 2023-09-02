@@ -8,6 +8,7 @@
   "scripts": {
     "preview": "./scripts/preview.sh",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "pnpm run lint:remark && pnpm run lint:prettier",
     "lint:remark": "remark . --quiet --frail",
     "lint:prettier": "prettier --check .",
     "format:remark": "remark . --quiet --frail --output",
