@@ -9,7 +9,7 @@ their needs.
   - [Code of Conduct](./coc/)
   - [Bugs, features, security and others discussions](./discussions/)
   - [Governance](./governance/)
-  - [Sustainability and funding](https://codeberg.org/forgejo/sustainability/src/branch/master/README)
+  - [Sustainability and funding](https://codeberg.org/forgejo/sustainability)
 - For contributors
   - [Compiling from source](./from-source/)
   - [Architecture overview](./architecture/)
