@@ -29,7 +29,7 @@ mkdir -p $(dirname ./src/content/images/$current_branch)  # in case of branch na
 ln -s $repo_path/images/ ./public/images/$current_branch
 
 # once the dev server is running, open the current docs branch in the browser
-sleep 3 && open http://localhost:3000/docs/$current_branch/ &
+sleep 3 && open http://localhost:4321/docs/$current_branch/ &
 
 # start the dev server
 pnpm run dev
