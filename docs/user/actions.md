@@ -285,6 +285,10 @@ If the default image is unsuitable, a job can specify an alternate container ima
 runs-on: docker
 container:
   image: alpine:3.18
+  ## Optionally provide credentials if the registry requires authentication.
+  #credentials:
+  #  username: "root"
+  #  password: "admin1234"
 ```
 
 ### `jobs.<job_id>.options`
