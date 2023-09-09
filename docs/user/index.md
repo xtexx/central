@@ -22,7 +22,7 @@ involved in running it on their machines.
   - [Labels](./labels/)
   - [Automatically Linked References](./linked-references/)
   - [Blocking users](./blocking-user/)
-  - [Profile costumization](./profile/)
+  - [Profile customization](./profile/)
 - Working with Git Repositories
   - [Clone & Commit via Web](https://docs.codeberg.org/git/clone-commit-via-web/)
   - [Tags and Releases](https://docs.codeberg.org/git/using-tags/)
