@@ -120,3 +120,5 @@ To run and continuously rebuild when the source files change:
 ```bash
 make watch
 ```
+
+> **NOTE:** do not set the `bindata` tag such as in `TAGS="bindata" make watch` or the browser may fail to load pages with an error like `Failed to load asset`
