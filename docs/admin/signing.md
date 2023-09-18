@@ -62,6 +62,15 @@ The `default` option will interrogate `git config` for
 `commit.gpgsign` option - if this is set, then it will use the results
 of the `user.signingkey`, `user.name` and `user.email`.
 
+By default, Forgejo will look for the signing key in `[git].HOME_PATH/.gnupg`.
+
+However, this path differs from where GnuPG stores keys by default (`$HOME/.gnupg`).
+
+There are 2 possible solutions here:
+
+1. Move the `.gnupg` folder after importing/generating keys;
+2. Set the `GNUPGHOME` environment variable to help Forgejo find the correct keychain.
+
 ### `INITIAL_COMMIT`
 
 This option determines whether Forgejo should sign the initial commit
