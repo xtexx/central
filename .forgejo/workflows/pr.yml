@@ -15,7 +15,8 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
           pnpm run lint:remark
-          pnpm run lint:prettier
+          pnpm run format:prettier
+          git diff --exit-code
       - name: get forgejo.org and move the docs
         run: |
           git clone --recursive --depth 1 https://codeberg.org/forgejo/website/ /tmp/website
