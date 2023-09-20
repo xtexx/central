@@ -163,7 +163,7 @@ The `Forgejo runner` needs to connect to a `Forgejo` instance and must be regist
 - Online registration
   A special kind of token is needed and can be obtained from the `Create new runner` button:
 
-  - in `/admin/runners` to accept workflows from all repositories.
+  - in `/admin/actions/runners` to accept workflows from all repositories.
   - in `/org/{org}/settings/actions/runners` to accept workflows from all repositories within the organization.
   - in `/user/settings/actions/runners` to accept workflows from all repositories of the logged in user
   - in `/{owner}/{repository}/settings/actions/runners` to accept workflows from a single repository.
