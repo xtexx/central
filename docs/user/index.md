@@ -27,6 +27,7 @@ involved in running it on their machines.
   - [Clone & Commit via Web](https://docs.codeberg.org/git/clone-commit-via-web/)
   - [Tags and Releases](https://docs.codeberg.org/git/using-tags/)
   - [Branch and tag protection](./protection/)
+  - [Git blame](./blame/)
 - Advanced Usage
   - [Issue and Pull Request Templates](./issue-pull-request-templates/)
   - [Actions](./actions/)
