@@ -19,3 +19,4 @@ These documents are targeted to people who run Forgejo on their machines.
 - [Search Engines and robots.txt](./search-engines-indexation/)
 - [Recommended Settings and Tips](./recommendations/)
 - [GPG Commit Signatures](./signing/)
+- [Moderation tools](./moderation/)

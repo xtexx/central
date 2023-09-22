@@ -499,7 +499,7 @@ And the following unique queues:
 
 - `DEFAULT_EMAIL_NOTIFICATIONS`: **enabled**: Default configuration for email notifications for users (user configurable). Options: enabled, onmention, disabled
 - `DISABLE_REGULAR_ORG_CREATION`: **false**: Disallow regular (non-admin) users from creating organizations.
-- `NOTIFY_NEW_SIGN_UPS`: **false**: enable email notifications to instance admins on new user sign-up.
+- `SEND_NOTIFICATION_EMAIL_ON_NEW_USER`: **false**: enable email notifications to instance admins on new user sign-up.
 
 ## Security (`security`)
 
