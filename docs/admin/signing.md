@@ -1,7 +1,7 @@
 ---
 title: 'GPG Commit Signatures'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/323135b97b219d7fb10557fb9d9156c6bef3ae62/docs/content/administration/signing.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/8d9e2d07f3f84a86265fdbe0ab7fcf63cc34ddbd/docs/content/administration/signing.en-us.md'
 ---
 
 Forgejo will verify GPG commit signatures in the provided tree by

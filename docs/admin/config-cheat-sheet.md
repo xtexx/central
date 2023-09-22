@@ -1,7 +1,7 @@
 ---
 title: 'Configuration Cheat Sheet'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/d0dbe52e76f3038777c3b50066e3636105387ca3/docs/content/doc/administration/config-cheat-sheet.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/8d9e2d07f3f84a86265fdbe0ab7fcf63cc34ddbd/docs/content/administration/config-cheat-sheet.en-us.md'
 ---
 
 This is a cheat sheet for the Forgejo configuration file. It contains most of the settings

@@ -1,7 +1,7 @@
 ---
 title: 'Logging Configuration'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/54c28fddd8a407c3ddea81923bb2978c33ef020d/docs/content/administration/logging-config.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/8d9e2d07f3f84a86265fdbe0ab7fcf63cc34ddbd/docs/content/administration/logging-config.en-us.md'
 ---
 
 The logging configuration of Forgejo mainly consists of 3 types of components:

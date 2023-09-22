@@ -1,7 +1,7 @@
 ---
 title: 'npm Package Registry'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/faa28b5a44912f1c63afddab9396bae9e6fe061c/docs/content/doc/usage/packages/npm.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/8d9e2d07f3f84a86265fdbe0ab7fcf63cc34ddbd/docs/content/usage/packages/npm.en-us.md'
 ---
 
 Publish [npm](https://www.npmjs.com/) packages for your user or organization.
