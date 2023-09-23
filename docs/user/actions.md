@@ -184,6 +184,20 @@ Once the secret is added, its value cannot be changed or displayed.
 
 ![secrets list](../_images/user/actions/secret-list.png)
 
+## Variables
+
+A repository, a user or an organization can hold variables, a set of key/value pairs that are stored in the `Forgejo` database and available to the `workflows` as `${{ vars.KEY }}`. They can be defined from the web interface:
+
+- in `/org/{org}/settings/actions/variables` to be available in all the repositories that belong to the organization
+- in `/user/settings/actions/variables` to be available in all the repositories that belong to the logged in user
+- in `/{owner}/{repo}/settings/actions/variables` to be available to the `workflows` of a single repository
+
+![add a variable](../_images/user/actions/variable-add.png)
+
+Once the variable is added, its value cannot be changed.
+
+![variables list](../_images/user/actions/variable-list.png)
+
 ## Workflow reference guide
 
 The syntax and semantics of the YAML file describing a `workflow` are _partially_ explained here. When an entry is missing the [GitHub Actions](https://docs.github.com/en/actions) documentation may be helpful because there are similarities. But there also are significant differences that require testing.
