@@ -46,7 +46,7 @@ Just as any other program of function, an `Action` has pre-requisites to success
 
 ### Expressions
 
-In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `Forgejo runner` and are called expressions. As a shortcut, `if: ${{ ... }}` is equivalent to `if: ...`, i.e the `${{ }}` surrounding the expression is implicit and can be stripped. [Checkout the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml) that illustrates expressions.
+In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `Forgejo runner` and are called expressions. As a shortcut, `if: ${{ ... }}` is equivalent to `if: ...`, i.e the `${{ }}` surrounding the expression is implicit and can be stripped. [Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml) that illustrates expressions.
 
 #### Literals
 
@@ -249,6 +249,26 @@ on:
 
 Not everything from https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows is implemented yet. Please refer to the [forgejo/actions package source code](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/modules/actions/workflows.go) and the [list of webhook event names](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/modules/webhook/type.go) to find out about supported triggers.
 
+### `on.schedule`
+
+The `schedule` event allows you to trigger a workflow at a scheduled
+time. When a workflow with a `schedule` event is present in the
+default branch, Forgejo will add a task to run it at the
+designated time. The scheduled workflows on other branches or pull
+requests are ignored.
+
+The scheduled time is specified using
+the [POSIX cron syntax](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/crontab.html#tag_20_25_07).
+See also the [crontab(5)](https://linux.die.net/man/5/crontab) manual page for a more information and some examples.
+
+```yaml
+on:
+  schedule:
+    - cron: '30 5,17 * * *'
+```
+
+[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-cron/.forgejo/workflows/test.yml).
+
 ### `env`
 
 Set environment variables that are available in the workflow in the `env` `context` and as regular environment variables.
@@ -262,7 +282,7 @@ env:
 - The expression `${{ env.KEY1 }}` will be evaluated to `value1`
 - The environment variable `KEY1` will be set to `value1`
 
-[Checkout the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml).
+[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml).
 
 ### `jobs.<job_id>`
 
@@ -323,7 +343,7 @@ The step is run if the **expression** evaluates to true. The following additiona
 - `always()`. causes the step to always execute, and returns true, even when canceled. If you want to run a job or step regardless of its success or failure, use the recommended alternative: **!cancelled()**.
 - `failure()`. returns true when any previous step of a job fails.
 
-Checkout the workflows in [example-if](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-if/) and [example-if-fail](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-if-fail/).
+Check out the workflows in [example-if](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-if/) and [example-if-fail](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-if-fail/).
 
 ### `jobs.<job_id>.steps.uses`
 
@@ -368,7 +388,7 @@ Specifies the repository from which the `Action` will be cloned or a directory w
 
   > **NOTE:** the most common mistake when using an action included in the repository under test is to forget to checkout the repository with `uses: actions/checkout@v3`.
 
-  [Checkout the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-local-action/).
+  [Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-local-action/).
 
 ### `jobs.<job_id>.steps.with`
 
@@ -387,11 +407,11 @@ jobs:
           input-two-required: 'two'
 ```
 
-[Checkout the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-local-action/.forgejo/workflows/test.yml)
+[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-local-action/.forgejo/workflows/test.yml)
 
 For remote actions that are implemented with a `Dockerfile` instead of `action.yml`, the `args` key is used as command line arguments when the container is run.
 
-[Checkout the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-docker-action/.forgejo/workflows/test.yml)
+[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-docker-action/.forgejo/workflows/test.yml)
 
 ## Debugging workflows with forgejo-runner exec
 
