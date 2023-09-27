@@ -44,6 +44,30 @@ One of the most commonly used action is [checkout](https://code.forgejo.org/acti
 
 Just as any other program of function, an `Action` has pre-requisites to successfully be installed and run. When looking at re-using an existing `Action`, this is an important consideration. For instance [setup-go](https://code.forgejo.org/actions/setup-go) depends on NodeJS during installation.
 
+### Automatic token
+
+At the start of each `workflow`, a unique authentication token is
+automatically created and destroyed when it completes. It can be used
+to read the repositories associated with the workflow, even when they
+are private. It is available:
+
+- in the environment of each step as `GITHUB_TOKEN`
+- as `github.token`
+- as `env.GITHUB_TOKEN`
+- as `secrets.GITHUB_TOKEN`
+
+This token can only be used for interactions with the repository of
+the project and any attempt to use it on other repositories, even
+for creating an issue, will return a 404 error.
+
+This token also has write permission to the repository and can be used
+to push commits or use API endpoints such as creating a label or merge
+a pull request.
+
+A `workflow` triggered by a `pull_request` event is an exception: in
+that case the token does not have write permissions to the repository.
+The pull request could contain an untested or malicious workflow.
+
 ### Expressions
 
 In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `Forgejo runner` and are called expressions. As a shortcut, `if: ${{ ... }}` is equivalent to `if: ...`, i.e the `${{ }}` surrounding the expression is implicit and can be stripped. [Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml) that illustrates expressions.
@@ -232,22 +256,42 @@ on:
       - main
 ```
 
-| trigger event               | activity types                                                                                                           |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| create                      | not applicable                                                                                                           |
-| delete                      | not applicable                                                                                                           |
-| fork                        | not applicable                                                                                                           |
-| gollum                      | not applicable                                                                                                           |
-| push                        | not applicable                                                                                                           |
-| issues                      | `opened`, `edited`, `closed`, `reopened`, `assigned`, `unassigned`, `milestoned`, `demilestoned`, `labeled`, `unlabeled` |
-| issue_comment               | `created`, `edited`, `deleted`                                                                                           |
-| pull_request                | `opened`, `edited`, `closed`, `reopened`, `assigned`, `unassigned`, `synchronize`, `labeled`, `unlabeled`                |
-| pull_request_review         | `submitted`, `edited`                                                                                                    |
-| pull_request_review_comment | `created`, `edited`                                                                                                      |
-| release                     | `published`, `edited`                                                                                                    |
-| registry_package            | `published`                                                                                                              |
+### `on.pull_request`
 
-Not everything from https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows is implemented yet. Please refer to the [forgejo/actions package source code](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/modules/actions/workflows.go) and the [list of webhook event names](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/modules/webhook/type.go) to find out about supported triggers.
+Trigger the workflow when an event happens on a pull request, as
+specified with the `types` event parameter. It defaults to `[opened,
+synchronize, reopened]` if not specified.
+
+- `opened` the pull request was created.
+- `reopened` the closed pull request was reopened.
+- `closed` the pull request was closed or merged.
+- `labeled` a label was added.
+- `unlabeled` a label was removed.
+- `synchronize` the commits associated with the pull request were modified.
+- `assigned` an assignee was added.
+- `unassigned` an assignee was removed.
+- `edited` the body, title or comments of the pull request were modified.
+
+```yaml
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+```
+
+If the head of a pull request is from a forked repository, the secrets
+are not available and the automatic token only has read permissions.
+
+[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-pull-request/.forgejo/workflows/test.yml).
+
+### `on.pull_request_target`
+
+It is similar to the `on.pull_request` event, with the following exceptions:
+
+- the `workflow` found in the target (base) branch of the pull request
+  is used instead of the one found in the pull request.
+- secrets are available.
+
+[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-pull-request/.forgejo/workflows/test.yml).
 
 ### `on.schedule`
 
@@ -497,3 +541,4 @@ test "KEY2=$KEY2" = "KEY2=value2"
 - **step:** a command the **runner** is required to carry out.
 - **workflow or task:** a file in the `.forgejo/workflows` directory that contains **jobs**.
 - **workspace** is the directory where the files of the **job** are stored and shared between all **step**s
+- **automatic token** is the token created at the begining of each **workflow**
