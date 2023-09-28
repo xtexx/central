@@ -188,15 +188,20 @@ A `workflow` can be disabled (or enabled) by selecting it and using the three do
 
 ![disabling a workflow](../_images/user/actions/actions-disable.png)
 
-## Pull request actions are moderated
+## Pull request workflows are moderated
 
-The first time a user proposes a pull request, the task is blocked to reduce the security risks.
+The first time a user proposes a pull request, the `on.pull_request`
+workflows are blocked.
 
 ![blocked action](../_images/user/actions/action-blocked.png)
 
-It can be approved by a maintainer of the project and there will be no need to unblock future pull requests.
+They can be approved by a maintainer of the project and there will be
+no need to unblock future pull requests.
 
 ![button to approve an action](../_images/user/actions/action-approve.png)
+
+The `on.pull_request_target` workflows are not subject to the same
+restriction and will always run.
 
 ## Secrets
 
