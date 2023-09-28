@@ -102,17 +102,6 @@ environment. They need to be installed and configured independently.
 - **Docker:**
   See [the Docker installation](https://docs.docker.com/engine/install/) documentation for more information.
 
-  IPv6 support is not enabled by default in docker. The following snippet enables this.
-
-  ```nix
-  virtualisation.docker = {
-    daemon.settings = {
-      fixed-cidr-v6 = "fd00::/80";
-      ipv6 = true;
-    };
-  };
-  ```
-
 - **Podman:**
   While Podman is generally compatible with Docker,
   it does not create a socket for managing containers by default
@@ -389,6 +378,17 @@ it will be submitted to a runner that registered with a `docker` label (for inst
 The [`forgejo-actions-runner`](https://github.com/NixOS/nixpkgs/blob/ac6977498b1246f21af08f3cf25ea7b602d94b99/pkgs/development/tools/continuous-integration/forgejo-actions-runner/default.nix) recipe is released in NixOS.
 
 Please note that the `services.forgejo-actions-runner.instances.<name>.labels` key may be set to `[]` (an empty list) to use the packaged Forgejo instance list. One of `virtualisation.docker.enable` or `virtualisation.podman.enable` will need to be set. The default Forgejo image list is populated with docker images.
+
+IPv6 support is not enabled by default for docker. The following snippet enables this.
+
+```nix
+virtualisation.docker = {
+  daemon.settings = {
+    fixed-cidr-v6 = "fd00::/80";
+    ipv6 = true;
+  };
+};
+```
 
 ## Other runners
 
