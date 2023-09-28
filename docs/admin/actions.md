@@ -193,7 +193,6 @@ The `Forgejo runner` needs to connect to a `Forgejo` instance and must be regist
 
   ```sh
   $ forgejo forgejo-cli actions register --name runner-name --scope myorganization \
-  	  --labels docker \
   	  --secret 7c31591e8b67225a116d4a4519ea8e507e08f71f
   ```
 
@@ -203,8 +202,6 @@ The `Forgejo runner` needs to connect to a `Forgejo` instance and must be regist
   $ forgejo-runner create-runner-file --instance https://example.conf \
   		 --secret 7c31591e8b67225a116d4a4519ea8e507e08f71f
   ```
-
-  > **NOTE:** the labels known to the runner are defined in the `config.yml` and **MUST** match the labels provided to the `forgejo-cli actions register` command above. In this example, `labels: ['docker:docker://node:16-bullseye']` will tell the Forgejo runner that when a **job** specifies `runs-on: docker`, it will run in a container created from the `node:16-bullseye` image by default.
 
 ### Configuration
 
@@ -358,16 +355,39 @@ If no `Forgejo runner` is available, `Forgejo` will wait for one to connect and 
 
 ### Labels and `runs-on`
 
-The workflows / tasks defined in the files found in `.forgejo/workflows` must specify the environment they need to run with `runs-on`. Each `Forgejo runner` declares with **labels** which one they support so `Forgejo` sends them tasks accordingly. For instance if a job within a workflow has:
+The workflows / tasks defined in the files found in `.forgejo/workflows` must specify the environment they need to run with `runs-on`. Each `Forgejo runner` declares, when they connect to the `Forgejo` instance the list of labels they support so `Forgejo` sends them tasks accordingly. For instance if a job within a workflow has:
 
 ```yaml
 runs-on: docker
 ```
 
-it will be submitted to a runner that registered with a `docker` label (for instance with `--labels docker:docker://node:16-bullseye`).
+it will be submitted to a runner that declared supporting this label.
+
+When the `Forgejo runner` starts, it reads the list of labels from the
+configuration file specified with `--config`. For instance:
+
+```yaml
+runner:
+  labels:
+    - 'node18:docker://node:18-bookworm'
+    - 'ubuntu-22.04:docker://ubuntu:22.04'
+```
+
+will have the `Forgejo runner` declare that it supports the `node18` and `ubuntu-22.04` labels.
+
+If the list of labels is empty, it defaults to `docker:docker://node:16-bullseye` and will declare the label `docker`.
 
 - **Docker or Podman:**
-  If `runs-on` is matched to a label that contains `docker://`, the rest of it is interpreted as the default container image to use if no other is specified. The runner will execute all the steps, as root, within a container created from that image.
+  If `runs-on` is matched to a label mapped to `docker://`, the rest of it is interpreted as the default container image to use if no other is specified. The runner will execute all the steps, as root, within a container created from that image. The default container image can be overridden by a workflow to use `alpine:3.18` as follows.
+
+  ```yaml
+  runs-on: docker
+  container:
+    image: alpine:3.18
+  ```
+
+  See the user documentation for `jobs.<job_id>.container` for more information.
+
 - **LXC:**
   If `runs-on` is `self-hosted`, the runner will execute all the steps, as root, within a Debian GNU/Linux `bullseye` LXC container.
 
