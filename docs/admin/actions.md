@@ -3,22 +3,9 @@ title: 'Forgejo Actions administrator guide'
 license: 'CC-BY-SA-4.0'
 ---
 
-`Forgejo Actions` provides continuous integration driven from the files found in the `.forgejo/workflows` directory of a repository.
+`Forgejo Actions` provides continuous integration driven from the files found in the `.forgejo/workflows` directory of a repository. Note that `Forgejo` does not run the jobs, it relies on the [`Forgejo runner`](https://code.forgejo.org/forgejo/runner) to do so. It needs to be installed separately.
 
-## Forgejo settings
-
-### Enabling
-
-`Forgejo Actions` is still in alpha and disabled by default. It can be activated by adding the following to `app.ini`:
-
-```yaml
-[actions]
-ENABLED = true
-```
-
-Note that `Forgejo` does not run the jobs, it relies on the [`Forgejo
-runner`](https://code.forgejo.org/forgejo/runner) to do so. It needs
-to be installed separately.
+## Settings
 
 ### Default Actions URL
 
@@ -46,6 +33,15 @@ registration, **care must be taken to avoid name conflicts**. For
 instance if an action has `uses: foo/bar@main` it will clone and try
 to run the action found at `DEFAULT_ACTIONS_URL/foo/bar` if it exists,
 even if it provides something different than what is expected.
+
+### Disabling
+
+As of `Forgejo v1.21` it is enabled by default. It can be disabled by adding the following to `app.ini`:
+
+```yaml
+[actions]
+ENABLED = false
+```
 
 ## Forgejo runner
 
