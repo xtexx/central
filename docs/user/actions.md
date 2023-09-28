@@ -182,7 +182,11 @@ From the `Actions` tab in a repository, the list of ongoing and past tasks trigg
 
 Following the link on a task displays the logs and the `Re-run all jobs` button. It is also possible to re-run a specific job by hovering on it and clicking on the arrows.
 
-![the details of an action](../_images/user/actions/actions-detail.png)
+![the details of a task](../_images/user/actions/actions-detail.png)
+
+A `workflow` can be disabled (or enabled) by selecting it and using the three dot menu to the right.
+
+![disabling a workflow](../_images/user/actions/actions-disable.png)
 
 ## Pull request actions are moderated
 
