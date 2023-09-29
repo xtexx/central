@@ -532,13 +532,15 @@ test "KEY2=$KEY2" = "KEY2=value2"
 [test.yml/test] 🏁  Job succeeded
 ```
 
-- [Echo](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-echo/.forgejo/workflows/test.yml) - a single step that prints one sentence
-- [Expression](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml) - a collection of various forms of expression
-- [Local actions](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-local-action/.forgejo) - using an action found in a directory instead of a remote repository
-- [PostgreSQL service](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-service/.forgejo/workflows/postgres.yml) - a PostgreSQL service and a connection to display the (empty) list of tables of the default database
-- [Using services](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-service/.forgejo/workflows/) - illustrates how to configure and use services
-- [Choosing the image with `container`](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-container/.forgejo/workflows/test.yml) - replacing the `runs-on: docker` image with the `alpine:3.18` image using `container:`
-- [Docker action](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-docker-action/.forgejo/workflows/test.yml) - using a action implemented as a `Dockerfile`
+- [Echo](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-echo/.forgejo/workflows/test.yml) - a single step that prints one sentence.
+- [Expression](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml) - a collection of various forms of expression.
+- [Local actions](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-local-action/.forgejo) - using an action found in a directory instead of a remote repository.
+- [PostgreSQL service](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-service/.forgejo/workflows/postgres.yml) - a PostgreSQL service and a connection to display the (empty) list of tables of the default database.
+- [Using services](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-service/.forgejo/workflows/) - illustrates how to configure and use services.
+- [Choosing the image with `container`](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-container/.forgejo/workflows/test.yml) - replacing the `runs-on: docker` image with the `alpine:3.18` image using `container:`.
+- [Docker action](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-docker-action/.forgejo/workflows/test.yml) - using a action implemented as a `Dockerfile`.
+- [`on.pull_request` and `on.pull_request_target` events](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-pull-request/.forgejo/workflows/test.yml).
+- [`on.schedule` event](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-cron/.forgejo/workflows/test.yml).
 
 ## Glossary
 
