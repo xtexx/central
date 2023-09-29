@@ -43,6 +43,39 @@ As of `Forgejo v1.21` it is enabled by default. It can be disabled by adding the
 ENABLED = false
 ```
 
+### Storage
+
+The logs and artifacts are stored in `Forgejo`. The cache is stored by
+the runner itself and never sent to `Forgejo`.
+
+#### `job` logs
+
+The logs of each `job` run is stored by the `Forgejo` server and never
+expires. The location where these files are stored is configured in
+the `storage.actions_log` section of `app.ini` as [explained in in the
+storage documentation](../storage/).
+
+#### `artifacts` logs
+
+The artifacts uploaded by a job are stored by the `Forgejo` server and
+expire after a delay that defaults to 90 days and can be configured as
+follows:
+
+```yaml
+[actions]
+ARTIFACT_RETENTION_DAYS = 90
+```
+
+The location where these artifacts are stored is configured in
+the `storage.artifacts` section of `app.ini` as [explained in in the
+storage documentation](../storage/).
+
+The `admin/monitor/cron` administration web interface can be used to
+manually trigger the expiration of artifacts instead of waiting for
+the scheduled task to happen.
+
+![cleanup logs and artifacts](../_images/user/actions/actions-cleanup.png)
+
 ## Forgejo runner
 
 The `Forgejo runner` is a daemon that fetches workflows to run from a

@@ -108,7 +108,45 @@ In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `F
 - `toJSON(value)`. Returns a pretty-print JSON representation of `value`.
 - `fromJSON(value)`. Returns a JSON object or JSON data type for `value`. You can use this function to provide a JSON object as an evaluated expression or to convert environment variables from a string.
 
-### Caching commonly used files
+### Sharing files between jobs
+
+Two `jobs`, even if they are part of the same `workflow`, may run on
+different machines. The files created on the file system of the host
+by one `job` cannot be re-used by the `job` that follows because it
+may run on a different machine.
+
+There are three ways for a `job` to upload and download files,
+depending on the use case:
+
+- Using the cache provided by the `Forgejo runner`, for instance to
+  speed up compilation of the cache happens to contain the required file.
+- Using the artifacts provided by the `Forgejo` server, for instance to
+  share files between `jobs` within the same `workflow`.
+- Using the [a generic package](../packages/generic) to publish assets
+  such as screenshots.
+
+### Artifacts
+
+`Artifacts` allow you to persist data after a `job` has completed, and
+share that data with another `job` in the same `workflow`. An `artifact` is
+a file or collection of files produced during a `workflow` run. For
+example, you can use `artifacts` to save your build and test output
+after a workflow run has ended. All `actions` and `workflows` called
+within a run have write access to that run's `artifacts`.
+
+The artifacts created by a `workflow` can be downloaded from the web
+interface that shows the the details of the jobs for a `workflow`.
+
+![download artifacts](../_images/user/actions/actions-download-artifact.png)
+
+The `artifacts` expire after a delay that defaults to 90 days, but this value
+can be modified by the instance admin.
+
+[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-artifacts/.forgejo/workflows)
+based on the [upload-artifact](https://code.forgejo.org/actions/upload-artifact) action and
+the [download-artifact](https://code.forgejo.org/actions/download-artifact) action.
+
+### Cache
 
 When a `job` starts, it can communicate with the `Forgejo runner` to
 fetch commonly used files that were saved by previous runs. For
@@ -116,8 +154,11 @@ instance the https://code.forgejo.org/actions/setup-go action will do
 that by default to save downloading and compiling packages found in
 `go.mod`.
 
-It is also possible to explicitly control what is cached and when
-using the https://code.forgejo.org/actions/cache action.
+It is also possible to explicitly control what is cached (and when)
+by using the https://code.forgejo.org/actions/cache action.
+
+There is no guarantee that the cache is populated, even when two `jobs`
+run in sequence. It is not a substitute for `artifacts`.
 
 ### Services
 
@@ -541,6 +582,7 @@ test "KEY2=$KEY2" = "KEY2=value2"
 - [Docker action](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-docker-action/.forgejo/workflows/test.yml) - using a action implemented as a `Dockerfile`.
 - [`on.pull_request` and `on.pull_request_target` events](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-pull-request/.forgejo/workflows/test.yml).
 - [`on.schedule` event](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-cron/.forgejo/workflows/test.yml).
+- [Artifacts upload and download](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-artifacts/.forgejo/workflows) - sharing files between `jobs`.
 
 ## Glossary
 
@@ -553,3 +595,4 @@ test "KEY2=$KEY2" = "KEY2=value2"
 - **workflow or task:** a file in the `.forgejo/workflows` directory that contains **jobs**.
 - **workspace** is the directory where the files of the **job** are stored and shared between all **step**s
 - **automatic token** is the token created at the begining of each **workflow**
+- **artifact** is a file or collection of files produced during a **workflow** run.
