@@ -77,7 +77,7 @@ In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `F
 - boolean: true or false
 - null: null
 - number: any number format supported by JSON
-- string: enclosed in single quotes. Two single quotes
+- string: enclosed in single quotes
 
 #### Logical operators
 
