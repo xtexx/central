@@ -71,25 +71,7 @@ Note: Forgejo requires [docker >= 20.10.6](https://wiki.alpinelinux.org/wiki/Rel
 
 #### Unexpected database version
 
-The database version is stored in the database and can be retrieved with **select \* from version**. If the version found in the database does not match what is in the following table, it probably means the instance was installed from the development tree instead of a package and **the database may be in a state that has not been tested for upgrades**.
-
-| Forgejo version                                                                               | Date          | Database |
-| --------------------------------------------------------------------------------------------- | ------------- | -------- |
-| [1.20.3-0](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/RELEASE-NOTES.md#1-20-3-0) | August 2023   | v260     |
-| [1.19.4-0](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/RELEASE-NOTES.md#1-19-4-0) | July 2023     | v244     |
-| [1.18.5-0](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/RELEASE-NOTES.md#1-18-5-0) | February 2023 | v231     |
-
-| Gitea version                                                      | Date           | Database                                                                                                                                                                                                  |
-| ------------------------------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [1.17.4](https://github.com/go-gitea/gitea/releases/tag/v1.17.4)   | December 2022  | v224                                                                                                                                                                                                      |
-| [1.16.9](https://github.com/go-gitea/gitea/releases/tag/v1.16.9)   | July 2022      | v211                                                                                                                                                                                                      |
-| [1.15.11](https://github.com/go-gitea/gitea/releases/tag/v1.15.11) | January 2022   | v189                                                                                                                                                                                                      |
-| [1.14.7](https://github.com/go-gitea/gitea/releases/tag/v1.14.7)   | September 2021 | v178                                                                                                                                                                                                      |
-| [1.13.7](https://github.com/go-gitea/gitea/releases/tag/v1.13.7)   | April 2021     | v156 _Note that [the comment in the source](https://github.com/go-gitea/gitea/blob/63f6e6c0bd6a5314b76b7598dee77ceee1dde81a/models/migrations/migrations.go#L257) incorrectly mention it should be v155._ |
-| [1.12.6](https://github.com/go-gitea/gitea/releases/tag/v1.12.6)   | November 2020  | v141 _Note that [the comment in the source](https://github.com/go-gitea/gitea/blob/63f6e6c0bd6a5314b76b7598dee77ceee1dde81a/models/migrations/migrations.go#L224) incorrectly mention it should be v140._ |
-| [1.11.8](https://github.com/go-gitea/gitea/releases/tag/v1.11.8)   | June 2020      | v118 _Note that [the comment in the source](https://github.com/go-gitea/gitea/blob/63f6e6c0bd6a5314b76b7598dee77ceee1dde81a/models/migrations/migrations.go#L175) incorrectly mention it should be v117._ |
-| [1.10.6](https://github.com/go-gitea/gitea/releases/tag/v1.10.6)   | March 2020     | v103 _Note that [the comment in the source](https://github.com/go-gitea/gitea/blob/63f6e6c0bd6a5314b76b7598dee77ceee1dde81a/models/migrations/migrations.go#L142) incorrectly mention it should be v102._ |
-| [1.9.6](https://github.com/go-gitea/gitea/releases/tag/v1.9.6)     | November 2019  | v89 _Note that [the comment in the source](https://github.com/go-gitea/gitea/blob/63f6e6c0bd6a5314b76b7598dee77ceee1dde81a/models/migrations/migrations.go#L111) incorrectly mention it should be v88._   |
+The database version is stored in the database and used to prevent an accidental downgrade. For instance, if a running `Forgejo v1.20` instance is downgraded to `Forgejo v1.19`, it will refuse to start because it would damage the content of the database.
 
 #### When upgrading from a specific version...
 
