@@ -507,7 +507,19 @@ For remote actions that are implemented with a `Dockerfile` instead of `action.y
 
 [Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-docker-action/.forgejo/workflows/test.yml)
 
-## Debugging workflows with forgejo-runner exec
+## Debugging workflows
+
+### Errors in the YAML file
+
+When the YAML file describing the workflow contains an error that can
+be detected with static analysis, it is signaled by a warning sign in
+the actions task list of the repository, next to the file name that
+contains the workflow. Hovering on the file name will show a tooltip
+with a detailed error message.
+
+![actions results](../_images/user/actions/actions-syntax-error.png)
+
+### With forgejo-runner exec
 
 To get a quicker debug loop when working on a workflow, it may be more
 convenient to run them on your laptop using `forgejo-runner exec`. For
