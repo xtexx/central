@@ -27,13 +27,7 @@ The following guide explains key **concepts** to help understand how `workflows`
 - Click on the workflow link to see the details and the job execution logs.
   ![actions results](../_images/user/actions/workflow-demo.png)
 
-## Concepts
-
-### Forgejo runner
-
-`Forgejo` itself does not run the `jobs`, it relies on the [Forgejo runner](https://code.forgejo.org/forgejo/runner) to do so. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
-
-### Actions
+## Actions
 
 An `Action` is a repository that contains the equivalent of a function in any programming language. It comes in two flavors, depending on the file found at the root of the repository:
 
@@ -44,7 +38,7 @@ One of the most commonly used action is [checkout](https://code.forgejo.org/acti
 
 Just as any other program of function, an `Action` has pre-requisites to successfully be installed and run. When looking at re-using an existing `Action`, this is an important consideration. For instance [setup-go](https://code.forgejo.org/actions/setup-go) depends on NodeJS during installation.
 
-### Automatic token
+## Automatic token
 
 At the start of each `workflow`, a unique authentication token is
 automatically created and destroyed when it completes. It can be used
@@ -68,18 +62,18 @@ A `workflow` triggered by a `pull_request` event is an exception: in
 that case the token does not have write permissions to the repository.
 The pull request could contain an untested or malicious workflow.
 
-### Expressions
+## Expressions
 
 In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `Forgejo runner` and are called expressions. As a shortcut, `if: ${{ ... }}` is equivalent to `if: ...`, i.e the `${{ }}` surrounding the expression is implicit and can be stripped. [Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml) that illustrates expressions.
 
-#### Literals
+### Literals
 
 - boolean: true or false
 - null: null
 - number: any number format supported by JSON
 - string: enclosed in single quotes
 
-#### Logical operators
+### Logical operators
 
 | Operator | Description           |
 | -------- | --------------------- |
@@ -98,7 +92,7 @@ In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `F
 
 > **NOTE:** String comparisons are case insensitive.
 
-#### Functions
+### Functions
 
 - `contains( search, item )`. Returns `true` if `search` contains `item`. If `search` is an array, this function returns `true` if the `item` is an element in the array. If `search` is a string, this function returns `true` if the `item` is a substring of `search`. This function is not case sensitive. Casts values to a string.
 - `startsWith( searchString, searchValue )`. Returns `true` when `searchString` starts with `searchValue`. This function is not case sensitive. Casts values to a string.
@@ -108,7 +102,7 @@ In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `F
 - `toJSON(value)`. Returns a pretty-print JSON representation of `value`.
 - `fromJSON(value)`. Returns a JSON object or JSON data type for `value`. You can use this function to provide a JSON object as an evaluated expression or to convert environment variables from a string.
 
-### Sharing files between jobs
+## Sharing files between jobs
 
 Two `jobs`, even if they are part of the same `workflow`, may run on
 different machines. The files created on the file system of the host
@@ -160,7 +154,12 @@ by using the https://code.forgejo.org/actions/cache action.
 There is no guarantee that the cache is populated, even when two `jobs`
 run in sequence. It is not a substitute for `artifacts`.
 
-### Services
+## Auto cancelation of workflows
+
+When a new commit is pushed to a branch, the workflows that are were
+triggered by parent commits are canceled.
+
+## Services
 
 PostgreSQL, redis and other services can be run from container images with something similar to the following. See also the [set of examples](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-service/.forgejo/workflows/).
 
@@ -177,33 +176,37 @@ A container with the specified `image:` is run before the `job` starts and is te
 
 The IP address of `pgsql` is on the same [docker network](https://docs.docker.com/engine/reference/commandline/network/) as the container running the **steps** and there is no need for port binding (see the [docker run --publish](https://docs.docker.com/engine/reference/commandline/run/) option for more information). The `postgres:15` image exposes the PostgreSQL port 5432 and a client will be able to connect as [shown in this example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-service/.forgejo/workflows/postgresql.yml)
 
-#### image
+### image
 
 The location of the container image to run.
 
-#### env
+### env
 
 Key/value pairs injected in the environment when running the container, equivalent to [--env](https://docs.docker.com/engine/reference/commandline/run/).
 
-#### cmd
+### cmd
 
 A list of command and arguments, equivalent to [[COMMAND] [ARG...]](https://docs.docker.com/engine/reference/commandline/run/).
 
-#### options
+### options
 
 A string of additional options, as documented [docker run](https://docs.docker.com/engine/reference/commandline/run/). For instance: "--workdir /myworkdir --ulimit nofile=1024:1024".
 
 > **NOTE:** the `--volume` option is restricted to a whitelist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
 
-#### username
+### username
 
 The username to authenticate with the registry where the image is located.
 
-#### password
+### password
 
 The password to authenticate with the registry where the image is located.
 
-## The list of runners and their tasks
+## Forgejo runner
+
+`Forgejo` itself does not run the `jobs`, it relies on the [Forgejo runner](https://code.forgejo.org/forgejo/runner) to do so. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
+
+### List of runners and their tasks
 
 A `Forgejo runner` listens on a `Forgejo` instance, waiting for jobs. To figure out if a runner is available for a given repository, go to `/{owner}/{repository}/settings/actions/runners`. If there are none, you can run one for yourself on your laptop.
 
@@ -215,7 +218,7 @@ Clicking on the pencil icon next to a runner shows the list of tasks it executed
 
 ![show the runners tasks](../_images/user/actions/runner-tasks.png)
 
-## The list of tasks in a repository
+### List of tasks in a repository
 
 From the `Actions` tab in a repository, the list of ongoing and past tasks triggered by this repository is displayed with their status.
 
