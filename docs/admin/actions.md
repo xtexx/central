@@ -179,6 +179,7 @@ environment. They need to be installed and configured independently.
 The `Forgejo runner` needs to connect to a `Forgejo` instance and must be registered before doing so. It will give it permission to read the repositories and send back information to `Forgejo` such as the logs or its status.
 
 - Online registration
+
   A special kind of token is needed and can be obtained from the `Create new runner` button:
 
   - in `/admin/actions/runners` to accept workflows from all repositories.
@@ -191,7 +192,7 @@ The `Forgejo runner` needs to connect to a `Forgejo` instance and must be regist
   For instance, using a token obtained for a test repository from `next.forgejo.org`:
 
   ```shell
-  forgejo-runner register --no-interactive --token {TOKEN} --name runner --instance https://next.forgejo.org --labels docker:docker://node:16-bullseye,self-hosted
+  forgejo-runner register --no-interactive --token {TOKEN} --name runner --instance https://next.forgejo.org
   INFO Registering runner, arch=amd64, os=linux, version=3.0.0.
   INFO Runner registered successfully.
   ```
@@ -204,13 +205,15 @@ The `Forgejo runner` needs to connect to a `Forgejo` instance and must be regist
     "id": 6,
     "uuid": "fcd0095a-291c-420c-9de7-965e2ebaa3e8",
     "name": "runner",
-    "token": "{TOKEN}",
-    "address": "https://next.forgejo.org",
-    "labels": ["docker:docker://node:16-bullseye", "self-hosted"]
+    "address": "https://next.forgejo.org"
   }
   ```
 
+  The same token can be used multiple times to register any number of
+  runners, independent of each other.
+
 - Offline registration
+
   When Infrastructure as Code (Ansible, kubernetes, etc.) is used to
   deploy and configure both Forgejo and the Forgejo runner, it may be
   more convenient for it to generate a secret and share it with both.
