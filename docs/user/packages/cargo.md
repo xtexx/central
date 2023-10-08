@@ -1,7 +1,7 @@
 ---
 title: 'Cargo Package Registry'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/8d9e2d07f3f84a86265fdbe0ab7fcf63cc34ddbd/docs/content/usage/packages/cargo.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/abe8fe352711601fbcd24bf4505f7e0b81a93c5d/docs/content/usage/packages/cargo.en-us.md'
 ---
 
 Publish [Cargo](https://doc.rust-lang.org/stable/cargo/) packages for your user or organization.
@@ -39,10 +39,11 @@ Add the following text to the configuration file located in the current users ho
 default = "forgejo"
 
 [registries.forgejo]
-index = "https://forgejo.example.com/{owner}/_cargo-index.git"
+index = "sparse+https://forgejo.example.com/api/packages/{owner}/cargo/" # Sparse index
+# index = "https://forgejo.example.com/{owner}/_cargo-index.git" # Git
 
-[net]
-git-fetch-with-cli = true
+# [net]
+# git-fetch-with-cli = true
 ```
 
 | Parameter | Description               |
@@ -60,6 +61,12 @@ token = "Bearer {token}"
 | Parameter | Description                                                   |
 | --------- | ------------------------------------------------------------- |
 | `token`   | Your [personal access token](../../api-usage/#authentication) |
+
+## Git vs Sparse
+
+Currently, cargo supports two ways for fetching crates in a registry: Git index & sparse index.
+Sparse index is the newest method and offers better performance when updating crates compared to git.
+Since Rust 1.68, sparse is the default method for crates.io.
 
 ## Publish a package
 

@@ -1,15 +1,15 @@
 ---
 title: 'Agit Setup'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/8d9e2d07f3f84a86265fdbe0ab7fcf63cc34ddbd/docs/content/usage/agit-support.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/abe8fe352711601fbcd24bf4505f7e0b81a93c5d/docs/content/usage/agit-support.en-us.md'
 ---
 
 Limited support for [agit](https://git-repo.info/en/2020/03/agit-flow-and-git-repo/).
 
 ## Creating PRs
 
-Agit allows to create PRs while pushing code to the remote repo. \
-This can be done by pushing to the branch followed by a specific refspec (a location identifier known to git). \
+Agit allows to create PRs while pushing code to the remote repo.
+This can be done by pushing to the branch followed by a specific refspec (a location identifier known to git).
 The following example illustrates this:
 
 ```shell

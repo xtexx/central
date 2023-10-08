@@ -9,10 +9,10 @@ origin_url: 'https://github.com/DanielGibson/DanielGibson.github.io/blob/5836269
 Forgejo provides [container images](https://codeberg.org/forgejo/-/packages/container/forgejo/versions) for use with Docker or other containerization tools.
 
 ```shell
-docker pull codeberg.org/forgejo/forgejo:1.20.1-0
+docker pull codeberg.org/forgejo/forgejo:1.20.5-0
 ```
 
-The **1.20** tag is set to be the latest patch release, starting with [1.20.1-0](https://codeberg.org/forgejo/-/packages/container/forgejo/1.20.1-0). **1.20** will then be equal to **1.20.2-0** when it is released and so on.
+The **1.20** tag is set to be the latest patch release, starting with [1.20.5-0](https://codeberg.org/forgejo/-/packages/container/forgejo/1.20.5-0). **1.20** will then be equal to **1.20.2-0** when it is released and so on.
 
 Upgrading from **1.X** to **1.X+1** (for instance from **1.19** to **1.20**) requires a [manual operation and human verification](../upgrade/). However it is possible to use the **X.Y** tag (for instance **1.20**) to get the latest point release automatically.
 
@@ -160,7 +160,7 @@ and make it executable:
 
 > **NOTE:** when a line starts with #, it means the command 'foo --bar' must be run as root (or with sudo).
 
-`# cp forgejo-1.20.1-0-linux-amd64 /usr/local/bin/forgejo`  
+`# cp forgejo-1.20.5-0-linux-amd64 /usr/local/bin/forgejo`
 `# chmod 755 /usr/local/bin/forgejo`
 
 Make sure `git` and `git-lfs` are installed:  

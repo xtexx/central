@@ -1,7 +1,7 @@
 ---
 title: 'Search Engines Indexation'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/8d9e2d07f3f84a86265fdbe0ab7fcf63cc34ddbd/docs/content/administration/search-engines-indexation.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/abe8fe352711601fbcd24bf4505f7e0b81a93c5d/docs/content/administration/search-engines-indexation.en-us.md'
 ---
 
 ## Search engines indexation of your Forgejo installation

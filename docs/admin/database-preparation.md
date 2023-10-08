@@ -1,10 +1,10 @@
 ---
 title: 'Database Preparation'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/8d9e2d07f3f84a86265fdbe0ab7fcf63cc34ddbd/docs/content/installation/database-preparation.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/abe8fe352711601fbcd24bf4505f7e0b81a93c5d/docs/content/installation/database-preparation.en-us.md'
 ---
 
-You need a database to use Forgejo. Forgejo supports PostgreSQL (>=10), MySQL (>=5.7) or MariaDB (>=10.0), SQLite, and MSSQL (>=2008R2 SP3). This page will guide into preparing database. Only PostgreSQL and MySQL/MariaDB will be covered here since those database engines are widely-used in production. If you plan to use SQLite, you can ignore this chapter.
+You need a database to use Forgejo. Forgejo supports PostgreSQL (>=12), MySQL (>=8.0) or MariaDB (>=10.0), SQLite, and MSSQL (>=2012 SP4). This page will guide into preparing database. Only PostgreSQL and MySQL/MariaDB will be covered here since those database engines are widely-used in production. If you plan to use SQLite, you can ignore this chapter.
 
 Database instance can be on same machine as Forgejo (local database setup), or on different machine (remote database).
 
@@ -32,7 +32,7 @@ Note: All steps below requires that the database engine of your choice is instal
 
    ```sql
    SET old_passwords=0;
-   CREATE USER 'forgejo' IDENTIFIED BY 'passw0rd';
+   CREATE USER 'forgejo'@'%' IDENTIFIED BY 'passw0rd';
    ```
 
    For remote database:

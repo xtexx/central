@@ -1,7 +1,7 @@
 ---
 title: 'Authentication'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/8d9e2d07f3f84a86265fdbe0ab7fcf63cc34ddbd/docs/content/usage/authentication.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/abe8fe352711601fbcd24bf4505f7e0b81a93c5d/docs/content/usage/authentication.en-us.md'
 ---
 
 ## LDAP (Lightweight Directory Access Protocol)
@@ -144,12 +144,13 @@ Uses the following fields:
 
 - User Attribute in Group (optional)
 
-  - Which user LDAP attribute is listed in the group.
-  - Example: `uid`
+  - The user attribute that is used to reference a user in the group object.
+  - Example: `uid` if the group objects contains a `member: bender` and the user object contains a `uid: bender`.
+  - Example: `dn` if the group object contains a `member: uid=bender,ou=users,dc=planetexpress,dc=com`.
 
 - Group Attribute for User (optional)
-  - Which group LDAP attribute contains an array above user attribute names.
-  - Example: `memberUid`
+  - The attribute of the group object that lists/contains the group members.
+  - Example: `memberUid` or `member`
 
 ## PAM (Pluggable Authentication Module)
 

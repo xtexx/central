@@ -1,7 +1,7 @@
 ---
 title: 'OAuth2 provider'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/8d9e2d07f3f84a86265fdbe0ab7fcf63cc34ddbd/docs/content/development/oauth2-provider.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/abe8fe352711601fbcd24bf4505f7e0b81a93c5d/docs/content/development/oauth2-provider.en-us.md'
 ---
 
 Forgejo supports acting as an OAuth2 provider to allow third party applications to access its resources with the user's consent.

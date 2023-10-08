@@ -275,6 +275,22 @@ Once the variable is added, its value cannot be changed.
 
 ![variables list](../_images/user/actions/variable-list.png)
 
+### Name constraints
+
+The following rules apply to variable names:
+
+- Variable names can only contain alphanumeric characters (`[a-z]`, `[A-Z]`, `[0-9]`) or underscores (`_`). Spaces are not allowed.
+- Variable names must not start with the `FORGEJO_`, `GITHUB_` or `GITEA_` prefix.
+- Variable names must not start with a number.
+- Variable names are case-insensitive.
+- Variable names must be unique at the level they are created at.
+- Variable names must not be `CI`.
+
+### Precedence
+
+A variable found in the settings of the owner of a repository (organization or user) has precedence
+over the same variable found in a repository.
+
 ## Workflow reference guide
 
 The syntax and semantics of the YAML file describing a `workflow` are _partially_ explained here. When an entry is missing the [GitHub Actions](https://docs.github.com/en/actions) documentation may be helpful because there are similarities. But there also are significant differences that require testing.

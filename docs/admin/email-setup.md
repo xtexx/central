@@ -1,7 +1,7 @@
 ---
 title: 'Email setup'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/8d9e2d07f3f84a86265fdbe0ab7fcf63cc34ddbd/docs/content/administration/email-setup.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/abe8fe352711601fbcd24bf4505f7e0b81a93c5d/docs/content/administration/email-setup.en-us.md'
 ---
 
 Forgejo has mailer functionality for sending transactional emails (such as registration confirmation). It can be configured to either use Sendmail (or compatible MTAs like Postfix and msmtp) or directly use SMTP server.
@@ -14,10 +14,9 @@ Directly use SMTP server as relay. This option is useful if you don't want to se
 [mailer]
 ENABLED        = true
 FROM           = forgejo@example.com
-PROTOCOL       = smtp
+PROTOCOL       = smtps
 SMTP_ADDR      = mail.example.com
 SMTP_PORT      = 587
-IS_TLS_ENABLED = true
 USER           = forgejo@example.com
 PASSWD         = `password`
 ```
