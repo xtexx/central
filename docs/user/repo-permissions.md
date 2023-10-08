@@ -1,7 +1,7 @@
 ---
 title: 'Repository Permissions'
 license: 'CC-BY-SA-4.0'
-origin_url: 'https://codeberg.org/Codeberg/Documentation/src/commit/5d457efc069b52d512632fea024917e0848346cd/content/collaborating/repo-permissions.md'
+origin_url: 'https://codeberg.org/Codeberg/Documentation/src/commit/7bb8fa5ca559073c028805888195ee31b1f3d9c2/content/collaborating/repo-permissions.md'
 ---
 
 When you invite collaborators to join your repository or when you create teams for your organization, you have to decide what each collaborator/team is allowed to do.
@@ -10,16 +10,21 @@ You can assign teams different levels of permission for each unit (e.g. issues, 
 
 ## Profile and Visibility
 
-Visibility of your repositories is in general inherited from your profile. So other user can only see your repositories, if your profile is _public_.
+The visibility of your repositories will depend on the visibility of your profile, as well as whether you have marked a repository as private. Let's break down what this means:
 
-If you want to limit visibility access to your repositories you can set your **user visibility** in the user privacy settings to **Limited**. Even if your repository is public, non-contributors will get a 404-error if they try to access your repository.
+- If your profile's visibility is set to "Limited", _all_ of your non-private repositories will only be visible to logged in users.
+- If your profile's visibility is set to "Public", _all_ of your non-private repositories will be shown to everyone.
+- If you do not want anyone (apart from your fellow collaborators) to see your repositories, mark your repository as "Private".
+
+The visibility of your profile can be changed in the `Privacy settings`. Be careful when you set your profile's visibility to "Limited"; Even if a repository is public, users that are _not logged in_ will get a [404 error](https://en.wikipedia.org/wiki/HTTP_404) if they try to access your repository — it will seem as if it does not exist at all!
 
 ![screenshot showing the updated README](../_images/user/repo-permissions/user-settings-privacy-limited.webp)
 
 ## Collaborators
 
-There are four permission levels: Read, Write, Administrator and Owner.  
-The owner is the person who created the repository.
+There are four permission levels: **Read**, **Write**, **Administrator** and **Owner**.
+
+By default, the person who creates a repository is an **_Owner_**.
 
 The table below gives an overview of what collaborators are allowed to do when granted each of these permission levels:
 
@@ -139,4 +144,4 @@ There are also two units which can be toggled:
 - External Wiki: access to external wiki.
 - External Issues: access to the external issue tracker.
 
-A team can be given the permission to create new repositories. When a member of such team creates a new repository, he/she will get administrator access to the repository.
+A team can be given the permission to create new repositories. When a member of such team creates a new repository, they will get administrator access to the repository.
