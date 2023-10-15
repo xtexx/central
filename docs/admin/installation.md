@@ -165,7 +165,7 @@ shared via NFS. Append an entry to your `/etc/exports` like
 
 ```shell
 [...]
-/repositories	*(rw,sync,all_squash,ec=sys,anonuid=1024,anongid=100)
+/repositories	*(rw,sync,all_squash,sec=sys,anonuid=1024,anongid=100)
 ```
 
 Four aspects to consider:
@@ -195,10 +195,9 @@ $ mkdir conf
 $ mkdir data
 ```
 
-To consider in the client setup is the `hard` setting, blocking all file operations if the share is not available.
+To consider in the NFS client setup is the `hard` setting, blocking all file operations if the share is not available.
 This prevents state changes in the repository which could potentially corrupt the repository data and is an NFS-specific setting.
 
-To circumvent this, you can use the
 We will use the `rootless` image, which hosts the `ssh` server for Forgejo embedded. A possible entry for a `docker-compose` file
 would look like this (shown as a `diff like` view to the example shown [in our initial example](#installation-with-docker)):
 
@@ -245,9 +244,7 @@ It is important for all involved tools that these files not be writable by just 
 Changing permissions will also not succeed through the chosen `all_squash` setup, which was necessary to allow a correct ownership
 mechanic on the server. To resolve this, we consider the `rootless` image, which embeds the `ssh` server, circumventing the problem entirely.
 
-Note that this is a comparatively simple setup which does not necessarily reflect the reality of your network.
-User mapping and ownership could theoretically be streamlined better with Kerberos, which is however out of scope
-for this guide.
+Note this setup is simple and does not necessarily reflect the reality of your network. User mapping and ownership could be streamlined better with Kerberos, but that is out of the scope of this guide.
 
 ## Installation from binary
 
