@@ -48,6 +48,12 @@ Login in the machine hosting the Forgejo instance for debugging purposes:
 enough --domain code.forgejo.org ssh bind-host
 ```
 
+## Uberspace
+
+The website https://forgejo.org is hosted at
+https://uberspace.de/. The https://codeberg.org/forgejo/website/ CI
+has credentials to push HTML pages there.
+
 ## Installing Forgejo runners
 
 ### Preparing the LXC hypervisor
