@@ -5,7 +5,10 @@ title: 'Forgejo administrator guide'
 These documents are targeted to people who run Forgejo on their machines.
 
 - [Seek Assistance](./seek-assistance/)
-- [Installation](./installation/)
+- Installation
+  - [Introduction](./installation/)
+  - [With Docker](./installation-docker/)
+  - [From binary](./installation-binary/)
 - [Database Preparation](./database-preparation/)
 - [Configuration Cheat Sheet](./config-cheat-sheet/)
 - [Storage settings](./storage/)
