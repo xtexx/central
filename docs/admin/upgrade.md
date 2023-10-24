@@ -25,7 +25,7 @@ In the simplest case where everything is on a single file system and if the inst
 
 It is **critical** to verify that Forgejo works very carefully. Restoring the backup done before the upgrade is easy and does not lose any information. But if a problem is discovered days or weeks after the upgrade, it will not be an option and fixing it on a live Forgejo instance will be much more challenging.
 
-- Run `forgejo doctor --all --log-file /tmp/doctor.log` and make sure it does not report any problem.
+- Run `forgejo doctor check --all --log-file /tmp/doctor.log` and make sure it does not report any problem.
 - Manually verify via the web interface. Making a checklist of a typical use case is a good way to not miss anything.
 - If there is a problem of any kind, increase the log level and take a look at the logs. If you cannot figure out what the problem is, ask for help [in the Forgejo chatroom](https://matrix.to/#/#forgejo-chat:matrix.org) before trying to fix it.
 
@@ -101,11 +101,11 @@ The database version is stored in the database and used to prevent an accidental
 
 - All versions
   - Symptom: [blank / 500 page after login when running SQLite](https://github.com/go-gitea/gitea/issues/18650)
-  - Workaround: upgrade to [Forgejo 1.19.3-0 or greater](https://codeberg.org/forgejo/forgejo/commit/443675d18072d2a345bc4644d3f52dee42f58b44) and run `gitea doctor --all --fix`
+  - Workaround: upgrade to [Forgejo 1.19.3-0 or greater](https://codeberg.org/forgejo/forgejo/commit/443675d18072d2a345bc4644d3f52dee42f58b44) and run `gitea doctor check --all --fix`
 
 ### Versions with known issues
 
-- Gogs from before September 2015 migrated to Forgejo v1.18 may have a [dangling `pull_repo` table](https://forum.gna.org/t/73) and the corresponding pull requests will be removed by `gitea doctor --fix --all`.
+- Gogs from before September 2015 migrated to Forgejo v1.18 may have a [dangling `pull_repo` table](https://forum.gna.org/t/73) and the corresponding pull requests will be removed by `gitea doctor check --fix --all`.
 
 [From the 1.11.3 release notes](https://blog.gitea.io/2020/03/gitea-1.11.3-and-1.10.6-released/):
 
