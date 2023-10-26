@@ -21,4 +21,5 @@ their needs.
 - For maintainers
   - [Hardware infrastructure](./infrastructure/)
   - [Release management](./release/)
+  - [Managing dependencies between repositories](./repositories-dependencies/)
   - [Secrets](./secrets/)
