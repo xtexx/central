@@ -32,7 +32,7 @@ The following guide explains key **concepts** to help understand how `workflows`
 An `Action` is a repository that contains the equivalent of a function in any programming language. It comes in two flavors, depending on the file found at the root of the repository:
 
 - **action.yml:** describes the inputs and outputs of the action and the implementation. See [this example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/action.yml).
-- **Dockerfile:** if no `action.yml` file is found, it is used to create an image with `docker build` and run a container from it to carry out the action. See [this example](https://code.forgejo.org/forgejo/test-setup-forgejo-docker) and [the workflow that uses it](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-docker-action). Note that files written outside of the **workspace** will be lost when the **step** using such an action terminates.
+- **Dockerfile:** if no `action.yml` file is found, it is used to create an image with `docker build` and run a container from it to carry out the action. See [this example](https://code.forgejo.org/forgejo/test-setup-forgejo-docker) and [the workflow that uses it](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-docker-action). Note that files written outside of the **workspace** will be lost when the **step** using such an action terminates.
 
 One of the most commonly used action is [checkout](https://code.forgejo.org/actions/checkout#usage) which clones the repository that triggered a `workflow`. Another one is [setup-go](https://code.forgejo.org/actions/setup-go#usage) that will install Go.
 
@@ -64,7 +64,7 @@ The pull request could contain an untested or malicious workflow.
 
 ## Expressions
 
-In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `Forgejo runner` and are called expressions. As a shortcut, `if: ${{ ... }}` is equivalent to `if: ...`, i.e the `${{ }}` surrounding the expression is implicit and can be stripped. [Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml) that illustrates expressions.
+In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `Forgejo runner` and are called expressions. As a shortcut, `if: ${{ ... }}` is equivalent to `if: ...`, i.e the `${{ }}` surrounding the expression is implicit and can be stripped. [Check out the example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-expression/.forgejo/workflows/test.yml) that illustrates expressions.
 
 ### Literals
 
@@ -136,7 +136,7 @@ interface that shows the the details of the jobs for a `workflow`.
 The `artifacts` expire after a delay that defaults to 90 days, but this value
 can be modified by the instance admin.
 
-[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-artifacts/.forgejo/workflows)
+[Check out the example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-artifacts/.forgejo/workflows)
 based on the [upload-artifact](https://code.forgejo.org/actions/upload-artifact) action and
 the [download-artifact](https://code.forgejo.org/actions/download-artifact) action.
 
@@ -161,7 +161,7 @@ triggered by parent commits are canceled.
 
 ## Services
 
-PostgreSQL, redis and other services can be run from container images with something similar to the following. See also the [set of examples](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-service/.forgejo/workflows/).
+PostgreSQL, redis and other services can be run from container images with something similar to the following. See also the [set of examples](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/).
 
 ```yaml
 services:
@@ -174,7 +174,7 @@ services:
 
 A container with the specified `image:` is run before the `job` starts and is terminated when it completes. The job can address the service using its name, in this case `pgsql`.
 
-The IP address of `pgsql` is on the same [docker network](https://docs.docker.com/engine/reference/commandline/network/) as the container running the **steps** and there is no need for port binding (see the [docker run --publish](https://docs.docker.com/engine/reference/commandline/run/) option for more information). The `postgres:15` image exposes the PostgreSQL port 5432 and a client will be able to connect as [shown in this example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-service/.forgejo/workflows/postgresql.yml)
+The IP address of `pgsql` is on the same [docker network](https://docs.docker.com/engine/reference/commandline/network/) as the container running the **steps** and there is no need for port binding (see the [docker run --publish](https://docs.docker.com/engine/reference/commandline/run/) option for more information). The `postgres:15` image exposes the PostgreSQL port 5432 and a client will be able to connect as [shown in this example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/postgresql.yml)
 
 ### image
 
@@ -350,7 +350,7 @@ on:
 If the head of a pull request is from a forked repository, the secrets
 are not available and the automatic token only has read permissions.
 
-[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-pull-request/.forgejo/workflows/test.yml).
+[Check out the example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-pull-request/.forgejo/workflows/test.yml).
 
 ### `on.pull_request_target`
 
@@ -360,7 +360,7 @@ It is similar to the `on.pull_request` event, with the following exceptions:
   is used instead of the one found in the pull request.
 - secrets are available.
 
-[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-pull-request/.forgejo/workflows/test.yml).
+[Check out the example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-pull-request/.forgejo/workflows/test.yml).
 
 ### `on.schedule`
 
@@ -380,7 +380,7 @@ on:
     - cron: '30 5,17 * * *'
 ```
 
-[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-cron/.forgejo/workflows/test.yml).
+[Check out the example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-cron/.forgejo/workflows/test.yml).
 
 ### `env`
 
@@ -395,7 +395,7 @@ env:
 - The expression `${{ env.KEY1 }}` will be evaluated to `value1`
 - The environment variable `KEY1` will be set to `value1`
 
-[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml).
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-expression/.forgejo/workflows/test.yml).
 
 ### `jobs.<job_id>`
 
@@ -420,13 +420,13 @@ The list of available `labels` for a given repository can be seen in the `/{owne
 
 By default the `docker` label will create a container from a [Node.js 16 Debian GNU/Linux bullseye image](https://hub.docker.com/_/node/tags?name=16-bullseye) and will run each `step` as root. Since an application container is used, the jobs will inherit the limitations imposed by the engine (Docker for instance). In particular they will not be able to run or install software that depends on `systemd`.
 
-The `runs-on: self-hosted` label will run the jobs in a [LXC](https://linuxcontainers.org/lxc/) container where software that rely on `systemd` can be installed. Nested containers can also be created recursively (see [the `setup-forgejo` integration tests](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/.forgejo/workflows/integration.yml) for an example).
+The `runs-on: self-hosted` label will run the jobs in a [LXC](https://linuxcontainers.org/lxc/) container where software that rely on `systemd` can be installed. Nested containers can also be created recursively (see [the `setup-forgejo` integration tests](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/.forgejo/workflows/integration.yml) for an example).
 
 `Services` are not supported for jobs that run on LXC.
 
 ### `jobs.<job_id>.container`
 
-If the default image is unsuitable, a job can specify an alternate container image with `container:`, [as shown in this example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-container/.forgejo/workflows/test.yml). For instance the following will ensure the job is run using [Alpine 3.18](https://hub.docker.com/_/alpine/tags?name=3.18).
+If the default image is unsuitable, a job can specify an alternate container image with `container:`, [as shown in this example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-container/.forgejo/workflows/test.yml). For instance the following will ensure the job is run using [Alpine 3.18](https://hub.docker.com/_/alpine/tags?name=3.18).
 
 ```yaml
 runs-on: docker
@@ -456,7 +456,7 @@ The step is run if the **expression** evaluates to true. The following additiona
 - `always()`. causes the step to always execute, and returns true, even when canceled. If you want to run a job or step regardless of its success or failure, use the recommended alternative: **!cancelled()**.
 - `failure()`. returns true when any previous step of a job fails.
 
-Check out the workflows in [example-if](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-if/) and [example-if-fail](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-if-fail/).
+Check out the workflows in [example-if](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-if/) and [example-if-fail](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-if-fail/).
 
 ### `jobs.<job_id>.steps.uses`
 
@@ -501,7 +501,7 @@ Specifies the repository from which the `Action` will be cloned or a directory w
 
   > **NOTE:** the most common mistake when using an action included in the repository under test is to forget to checkout the repository with `uses: actions/checkout@v3`.
 
-  [Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-local-action/).
+  [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-local-action/).
 
 ### `jobs.<job_id>.steps.with`
 
@@ -520,11 +520,11 @@ jobs:
           input-two-required: 'two'
 ```
 
-[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-local-action/.forgejo/workflows/test.yml)
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-local-action/.forgejo/workflows/test.yml)
 
 For remote actions that are implemented with a `Dockerfile` instead of `action.yml`, the `args` key is used as command line arguments when the container is run.
 
-[Check out the example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-docker-action/.forgejo/workflows/test.yml)
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-docker-action/.forgejo/workflows/test.yml)
 
 ## Debugging workflows
 
@@ -575,12 +575,12 @@ INFO[0000] Start server on http://192.168.1.20:34567
 
 ## Examples
 
-Each example is part of the [setup-forgejo](https://code.forgejo.org/actions/setup-forgejo/) action [test suite](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata). They can be run locally with something similar to:
+Each example is part of the [setup-forgejo](https://code.forgejo.org/forgejo/end-to-end/) action [test suite](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions). They can be run locally with something similar to:
 
 ```sh
-$ git clone --depth 1 http://code.forgejo.org/actions/setup-forgejo
+$ git clone --depth 1 http://code.forgejo.org/forgejo/end-to-end
 $ cd setup-forgejo
-$ forgejo-runner exec --workflows testdata/example-expression/.forgejo/workflows/test.yml
+$ forgejo-runner exec --workflows actions/example-expression/.forgejo/workflows/test.yml
 INFO[0000] Using the only detected workflow event: push
 INFO[0000] Planning jobs for event: push
 INFO[0000] cache handler listens on: http://192.168.1.20:43773
@@ -604,16 +604,16 @@ test "KEY2=$KEY2" = "KEY2=value2"
 [test.yml/test] 🏁  Job succeeded
 ```
 
-- [Echo](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-echo/.forgejo/workflows/test.yml) - a single step that prints one sentence.
-- [Expression](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-expression/.forgejo/workflows/test.yml) - a collection of various forms of expression.
-- [Local actions](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-local-action/.forgejo) - using an action found in a directory instead of a remote repository.
-- [PostgreSQL service](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-service/.forgejo/workflows/test.yml) - a PostgreSQL service and a connection to display the (empty) list of tables of the default database.
-- [Using services](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-service/.forgejo/workflows/test.yml) - illustrates how to configure and use services.
-- [Choosing the image with `container`](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-container/.forgejo/workflows/test.yml) - replacing the `runs-on: docker` image with the `alpine:3.18` image using `container:`.
-- [Docker action](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-docker-action/.forgejo/workflows/test.yml) - using a action implemented as a `Dockerfile`.
-- [`on.pull_request` and `on.pull_request_target` events](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-pull-request/.forgejo/workflows/test.yml).
-- [`on.schedule` event](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-cron/.forgejo/workflows/test.yml).
-- [Artifacts upload and download](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/testdata/example-artifacts/.forgejo/workflows/test.yml) - sharing files between `jobs`.
+- [Echo](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-echo/.forgejo/workflows/test.yml) - a single step that prints one sentence.
+- [Expression](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-expression/.forgejo/workflows/test.yml) - a collection of various forms of expression.
+- [Local actions](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-local-action/.forgejo) - using an action found in a directory instead of a remote repository.
+- [PostgreSQL service](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/test.yml) - a PostgreSQL service and a connection to display the (empty) list of tables of the default database.
+- [Using services](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/test.yml) - illustrates how to configure and use services.
+- [Choosing the image with `container`](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-container/.forgejo/workflows/test.yml) - replacing the `runs-on: docker` image with the `alpine:3.18` image using `container:`.
+- [Docker action](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-docker-action/.forgejo/workflows/test.yml) - using a action implemented as a `Dockerfile`.
+- [`on.pull_request` and `on.pull_request_target` events](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-pull-request/.forgejo/workflows/test.yml).
+- [`on.schedule` event](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-cron/.forgejo/workflows/test.yml).
+- [Artifacts upload and download](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-artifacts/.forgejo/workflows/test.yml) - sharing files between `jobs`.
 
 ## Glossary
 
