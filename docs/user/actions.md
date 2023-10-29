@@ -32,7 +32,7 @@ The following guide explains key **concepts** to help understand how `workflows`
 An `Action` is a repository that contains the equivalent of a function in any programming language. It comes in two flavors, depending on the file found at the root of the repository:
 
 - **action.yml:** describes the inputs and outputs of the action and the implementation. See [this example](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/action.yml).
-- **Dockerfile:** if no `action.yml` file is found, it is used to create an image with `docker build` and run a container from it to carry out the action. See [this example](https://code.forgejo.org/forgejo/test-setup-forgejo-docker) and [the workflow that uses it](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-docker-action). Note that files written outside of the **workspace** will be lost when the **step** using such an action terminates.
+- **Dockerfile:** if no `action.yml` file is found, it is used to create an image with `docker build` and run a container from it to carry out the action. See [this example](https://code.forgejo.org/forgejo/test-setup-forgejo-docker) and [the workflow that uses it](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-docker-action). Note that files written outside of the **workspace** will be lost when the **step** using such an action terminates.
 
 One of the most commonly used action is [checkout](https://code.forgejo.org/actions/checkout#usage) which clones the repository that triggered a `workflow`. Another one is [setup-go](https://code.forgejo.org/actions/setup-go#usage) that will install Go.
 
@@ -64,7 +64,7 @@ The pull request could contain an untested or malicious workflow.
 
 ## Expressions
 
-In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `Forgejo runner` and are called expressions. As a shortcut, `if: ${{ ... }}` is equivalent to `if: ...`, i.e the `${{ }}` surrounding the expression is implicit and can be stripped. [Check out the example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-expression/.forgejo/workflows/test.yml) that illustrates expressions.
+In a `workflow` file strings that look like `${{ ... }}` are evaluated by the `Forgejo runner` and are called expressions. As a shortcut, `if: ${{ ... }}` is equivalent to `if: ...`, i.e the `${{ }}` surrounding the expression is implicit and can be stripped. [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-expression/.forgejo/workflows/test.yml) that illustrates expressions.
 
 ### Literals
 
@@ -136,7 +136,7 @@ interface that shows the the details of the jobs for a `workflow`.
 The `artifacts` expire after a delay that defaults to 90 days, but this value
 can be modified by the instance admin.
 
-[Check out the example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-artifacts/.forgejo/workflows)
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-artifacts/.forgejo/workflows)
 based on the [upload-artifact](https://code.forgejo.org/actions/upload-artifact) action and
 the [download-artifact](https://code.forgejo.org/actions/download-artifact) action.
 
@@ -161,7 +161,7 @@ triggered by parent commits are canceled.
 
 ## Services
 
-PostgreSQL, redis and other services can be run from container images with something similar to the following. See also the [set of examples](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/).
+PostgreSQL, redis and other services can be run from container images with something similar to the following. See also the [set of examples](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/).
 
 ```yaml
 services:
@@ -174,7 +174,7 @@ services:
 
 A container with the specified `image:` is run before the `job` starts and is terminated when it completes. The job can address the service using its name, in this case `pgsql`.
 
-The IP address of `pgsql` is on the same [docker network](https://docs.docker.com/engine/reference/commandline/network/) as the container running the **steps** and there is no need for port binding (see the [docker run --publish](https://docs.docker.com/engine/reference/commandline/run/) option for more information). The `postgres:15` image exposes the PostgreSQL port 5432 and a client will be able to connect as [shown in this example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/postgresql.yml)
+The IP address of `pgsql` is on the same [docker network](https://docs.docker.com/engine/reference/commandline/network/) as the container running the **steps** and there is no need for port binding (see the [docker run --publish](https://docs.docker.com/engine/reference/commandline/run/) option for more information). The `postgres:15` image exposes the PostgreSQL port 5432 and a client will be able to connect as [shown in this example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/postgresql.yml)
 
 ### image
 
@@ -350,7 +350,7 @@ on:
 If the head of a pull request is from a forked repository, the secrets
 are not available and the automatic token only has read permissions.
 
-[Check out the example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-pull-request/.forgejo/workflows/test.yml).
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-pull-request/.forgejo/workflows/test.yml).
 
 ### `on.pull_request_target`
 
@@ -360,7 +360,7 @@ It is similar to the `on.pull_request` event, with the following exceptions:
   is used instead of the one found in the pull request.
 - secrets are available.
 
-[Check out the example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-pull-request/.forgejo/workflows/test.yml).
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-pull-request/.forgejo/workflows/test.yml).
 
 ### `on.schedule`
 
@@ -380,7 +380,7 @@ on:
     - cron: '30 5,17 * * *'
 ```
 
-[Check out the example](https://code.forgejo.org/actions/end-to-end/src/branch/main/actions/example-cron/.forgejo/workflows/test.yml).
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-cron/.forgejo/workflows/test.yml).
 
 ### `env`
 
