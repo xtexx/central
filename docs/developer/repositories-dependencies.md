@@ -28,24 +28,18 @@ When the PR is merged in forgejo-curl, the corresponding PR in setup-forgejo is 
 # Permissions
 
 The cascading-pr action needs a token with write permissions on issues
-and pull requests for the destination repository and read permission
+and repositories that will allow it to fork the destination repository and
+create a pull request from this fork. It also needs read permission
 on issues and pull requests for the origin repository.
 
 The [cascading-pr user](https://code.forgejo.org/cascading-pr) is
-dedicated to providing such tokens and is added as a collaborator with
-write permissions to the repositories that are destinations for the
-cascading-pr action.
+dedicated to providing such tokens.
 
 For instance, a personal token named
 `https://code.forgejo.org/forgejo/forgejo-curl/` was created by the
 cascading-pr user. This token was added as two secrets named
 `CASCADING_PR_ORIGIN` and `CASCADING_PR_DESTINATION` in the
-https://code.forgejo.org/forgejo/forgejo-curl/ repository. The
-cascading-pr user was added as a collaborator with write permission to
-https://code.forgejo.org/actions/setup-forgejo. The cascading-user is
-not added as a collaborator to the forgejo-curl repository and only
-has read permission on issues which allows it to comment on the pull
-request and fetch the repository content.
+https://code.forgejo.org/forgejo/forgejo-curl/ repository.
 
 # Access to secrets
 
@@ -66,5 +60,6 @@ on:
 
 When the cascading-pr workflow is added or updated in a repository, it
 must be done in a PR from a branch of the repository and not than from
-a forked repository. It runs `on.pull_request_target` and if run from a fork it will use the
-content of the default branch instead of the proposed change.
+a forked repository. It runs `on.pull_request_target` and if run from
+a fork it will use the content of the default branch instead of the
+proposed change.
