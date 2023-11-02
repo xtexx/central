@@ -220,7 +220,7 @@ Please note, the access logger will log at `INFO` level, setting the
 
 This value represents a go template. Its default value is
 
-```tmpl
+```handlebars
 {{.Ctx.RemoteHost}} - {{.Identity}} {{.Start.Format "[02/Jan/2006:15:04:05 -0700]" }} "{{.Ctx.Req.Method}} {{.Ctx.Req.URL.RequestURI}} {{.Ctx.Req.Proto}}" {{.ResponseWriter.Status}} {{.ResponseWriter.Size}} "{{.Ctx.Req.Referer}}" "{{.Ctx.Req.UserAgent}}"`
 ```
 
