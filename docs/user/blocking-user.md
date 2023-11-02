@@ -15,13 +15,27 @@ A popup will show; please read carefully what blocking another user implies, and
 
 ![Popup where implications of the block action is listed](../_images/user/block/popup.png)
 
+### List of blocked users and unblocking
+
+If you would like to see the list of users you've blocked, navigate to your user profile in the top-right corner and click on the settings item.
+
+![Dropdown that shows up after clicking on the profile in the navigation bar](../_images/user/block/profile_dropdown.png)
+
+Select the Blocked Users item in the menu. This navigates you to the page where the users you've blocked are listed.
+
+![Blocked Users page being selected in the settings menu](../_images/user/block/user_settings.png)
+
+To unblock someone, click on the unblock button next to their name.
+
+![List of people that are currently blocked by the user](../_images/user/block/user_list_blocks.png)
+
 ## How to block someone as an organization
 
 It is possible to block a user from an organization, this has the same implications as a normal user blocking another user. To block a user from an organization, you must be on that organization's Owners team.
 
 Navigate to your organization's settings and select the Blocked Users page.
 
-![Blocked Users page being selected in the table](../_images/user/block/org_page.png)
+![Blocked Users page being selected in the settings menu](../_images/user/block/org_page.png)
 
 Find the person you want to block in the search bar, select the user and click block.
 
