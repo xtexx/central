@@ -356,9 +356,11 @@ are not available and the automatic token only has read permissions.
 
 It is similar to the `on.pull_request` event, with the following exceptions:
 
-- the `workflow` found in the target (base) branch of the pull request
-  is used instead of the one found in the pull request.
-- secrets are available.
+- secrets stored in the base repository are available in the `secrets` context, (e.g. `${{ secrets.KEY }}`).
+- the workflow runs in the context of the default branch of the base repository, meaning that:
+  - changes to the workflow in the pull request will be ignored
+  - the [actions/checkout](https://code.forgejo.org/actions/checkout) action will checkout the default branch instead
+    of the content of the pull request
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-pull-request/.forgejo/workflows/test.yml).
 
