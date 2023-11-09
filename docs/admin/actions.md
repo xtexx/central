@@ -174,6 +174,11 @@ environment. They need to be installed and configured independently.
 
   > **Warning:** LXC containers do not provide a level of security that makes them safe for potentially malicious users to run jobs. They provide an excellent isolation for jobs that may accidentally damage the system they run on.
 
+- **self-hosted:**
+  There is no requirement for jobs that run directly on the host.
+
+  > **Warning:** there is no isolation at all and a single job can permanently destroy the host.
+
 ### Registration
 
 The `Forgejo runner` needs to connect to a `Forgejo` instance and must be registered before doing so. It will give it permission to read the repositories and send back information to `Forgejo` such as the logs or its status.
@@ -405,11 +410,14 @@ configuration file specified with `--config`. For instance:
 ```yaml
 runner:
   labels:
-    - 'node18:docker://node:18-bookworm'
-    - 'ubuntu-22.04:docker://ubuntu:22.04'
+    - 'docker:docker://node:20-bookworm'
+    - 'node20:docker://node:20-bookworm'
+    - 'lxc:lxc://debian:bullseye'
+    - 'bullseye:lxc://debian:bullseye'
+    - 'self-hosted:host://-self-hosted'
 ```
 
-will have the `Forgejo runner` declare that it supports the `node18` and `ubuntu-22.04` labels.
+will have the `Forgejo runner` declare that it supports the `node20` and `bullseye` labels.
 
 If the list of labels is empty, it defaults to `docker:docker://node:16-bullseye` and will declare the label `docker`.
 
@@ -425,7 +433,18 @@ If the list of labels is empty, it defaults to `docker:docker://node:16-bullseye
   See the user documentation for `jobs.<job_id>.container` for more information.
 
 - **LXC:**
-  If `runs-on` is `self-hosted`, the runner will execute all the steps, as root, within a Debian GNU/Linux `bullseye` LXC container.
+  If `runs-on` is matched to a label mapped to `lxc://`, the rest of it is interpreted as the default [template and release](https://images.linuxcontainers.org/) to use if no other is specified. The runner will execute all the steps, as root, within a [LXC container](https://linuxcontainers.org/) created from that template and release. The default template is `debian` and the default release is `bullseye`. They can be overridden by a workflow to use `debian` and `bookworm` as follows.
+
+  ```yaml
+  runs-on: lxc
+  container:
+    image: debian:bookwork
+  ```
+
+  See the user documentation for `jobs.<job_id>.container` for more information.
+
+- **self-hosted:**
+  If `runs-on` is matched to a label mapped to `host://-self-hosted``, the runner will execute all the steps in a shell forked from the runner, directly on the host.
 
 ## Packaging
 

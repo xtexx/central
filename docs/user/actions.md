@@ -422,23 +422,33 @@ The list of available `labels` for a given repository can be seen in the `/{owne
 
 By default the `docker` label will create a container from a [Node.js 16 Debian GNU/Linux bullseye image](https://hub.docker.com/_/node/tags?name=16-bullseye) and will run each `step` as root. Since an application container is used, the jobs will inherit the limitations imposed by the engine (Docker for instance). In particular they will not be able to run or install software that depends on `systemd`.
 
-The `runs-on: self-hosted` label will run the jobs in a [LXC](https://linuxcontainers.org/lxc/) container where software that rely on `systemd` can be installed. Nested containers can also be created recursively (see [the `setup-forgejo` integration tests](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/.forgejo/workflows/integration.yml) for an example).
+The `runs-on: lxc` label will run the jobs in a [LXC](https://linuxcontainers.org/lxc/) container where software that rely on `systemd` can be installed. Nested containers can also be created recursively (see [the `end-to-end` tests](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/.forgejo/workflows/integration.yml) for an example). `Services` are not supported for jobs that run on LXC.
 
-`Services` are not supported for jobs that run on LXC.
+The `runs-on: self-hosted` label will run the jobs directly on the host, in a shell spawned from the runner. It provides no isolation at all.
 
 ### `jobs.<job_id>.container`
 
-If the default image is unsuitable, a job can specify an alternate container image with `container:`, [as shown in this example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-container/.forgejo/workflows/test.yml). For instance the following will ensure the job is run using [Alpine 3.18](https://hub.docker.com/_/alpine/tags?name=3.18).
+- **Docker or Podman:**
+  If the default image is unsuitable, a job can specify an alternate container image with `container:`, [as shown in this example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-container/.forgejo/workflows/test.yml). For instance the following will ensure the job is run using [Alpine 3.18](https://hub.docker.com/_/alpine/tags?name=3.18).
 
-```yaml
-runs-on: docker
-container:
-  image: alpine:3.18
-  ## Optionally provide credentials if the registry requires authentication.
-  #credentials:
-  #  username: "root"
-  #  password: "admin1234"
-```
+  ```yaml
+  runs-on: docker
+  container:
+    image: alpine:3.18
+    ## Optionally provide credentials if the registry requires authentication.
+    #credentials:
+    #  username: "root"
+    #  password: "admin1234"
+  ```
+
+- **LXC:**
+  If the default [template and release](https://images.linuxcontainers.org/) are unsuitable, a job can specify an alternate template and release as follows.
+
+  ```yaml
+  runs-on: lxc
+  container:
+    image: debian:bookworm
+  ```
 
 ### `jobs.<job_id>.options`
 
@@ -581,7 +591,7 @@ Each example is part of the [setup-forgejo](https://code.forgejo.org/forgejo/end
 
 ```sh
 $ git clone --depth 1 http://code.forgejo.org/forgejo/end-to-end
-$ cd setup-forgejo
+$ cd end-to-end
 $ forgejo-runner exec --workflows actions/example-expression/.forgejo/workflows/test.yml
 INFO[0000] Using the only detected workflow event: push
 INFO[0000] Planning jobs for event: push
