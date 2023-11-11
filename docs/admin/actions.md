@@ -394,7 +394,7 @@ It will also show a similar output in the `Actions` tab of the repository.
 
 If no `Forgejo runner` is available, `Forgejo` will wait for one to connect and submit the job as soon as it is available.
 
-### Labels and `runs-on`
+## Labels and `runs-on`
 
 The workflows / tasks defined in the files found in `.forgejo/workflows` must specify the environment they need to run with `runs-on`. Each `Forgejo runner` declares, when they connect to the `Forgejo` instance the list of labels they support so `Forgejo` sends them tasks accordingly. For instance if a job within a workflow has:
 
@@ -421,30 +421,50 @@ will have the `Forgejo runner` declare that it supports the `node20` and `bullse
 
 If the list of labels is empty, it defaults to `docker:docker://node:16-bullseye` and will declare the label `docker`.
 
-- **Docker or Podman:**
-  If `runs-on` is matched to a label mapped to `docker://`, the rest of it is interpreted as the default container image to use if no other is specified. The runner will execute all the steps, as root, within a container created from that image. The default container image can be overridden by a workflow to use `alpine:3.18` as follows.
+### Docker or Podman
 
-  ```yaml
-  runs-on: docker
-  container:
-    image: alpine:3.18
-  ```
+If `runs-on` is matched to a label mapped to `docker://`, the rest of it is interpreted as the default container image to use if no other is specified. The runner will execute all the steps, as root, within a container created from that image. The default container image can be overridden by a workflow to use `alpine:3.18` as follows.
 
-  See the user documentation for `jobs.<job_id>.container` for more information.
+```yaml
+runs-on: docker
+container:
+  image: alpine:3.18
+```
 
-- **LXC:**
-  If `runs-on` is matched to a label mapped to `lxc://`, the rest of it is interpreted as the default [template and release](https://images.linuxcontainers.org/) to use if no other is specified. The runner will execute all the steps, as root, within a [LXC container](https://linuxcontainers.org/) created from that template and release. The default template is `debian` and the default release is `bullseye`. They can be overridden by a workflow to use `debian` and `bookworm` as follows.
+See the user documentation for `jobs.<job_id>.container` for more information.
 
-  ```yaml
-  runs-on: lxc
-  container:
-    image: debian:bookwork
-  ```
+Labels examples:
 
-  See the user documentation for `jobs.<job_id>.container` for more information.
+- `node20:docker://node:20-bookworm` == `node20:docker://docker.io/node:20-bookworm` defines `node20` to be the `node:20-bookworm` image from hub.docker.com
+- `docker:docker://code.forgejo.org/oci/alpine:3.18` defines `docker` to be the `alpine:3.18` image from https://code.forgejo.org/oci/-/packages/container/alpine/3.18
 
-- **self-hosted:**
-  If `runs-on` is matched to a label mapped to `host://-self-hosted``, the runner will execute all the steps in a shell forked from the runner, directly on the host.
+### LXC
+
+If `runs-on` is matched to a label mapped to `lxc://`, the rest of it is interpreted as the default [template and release](https://images.linuxcontainers.org/) to use if no other is specified. The runner will execute all the steps, as root, within a [LXC container](https://linuxcontainers.org/) created from that template and release. The default template is `debian` and the default release is `bullseye`.
+
+[nodejs](https://nodejs.org/en/download/) version 20 is installed.
+
+They can be overridden by a workflow to use `debian` and `bookworm` as follows.
+
+```yaml
+runs-on: lxc
+container:
+  image: debian:bookwork
+```
+
+See the user documentation for `jobs.<job_id>.container` for more information.
+
+Labels examples:
+
+- `bookworm:lxc://debian:bookworm` defines bookworm to be an LXC container running Debian GNU/Linux bookworm.
+
+### shell
+
+If `runs-on` is matched to a label mapped to `host://-self-hosted``, the runner will execute all the steps in a shell forked from the runner, directly on the host.
+
+Label example:
+
+- `self-hosted:host://-self-hosted` defines `self-hosted` to be a shell
 
 ## Packaging
 
