@@ -450,9 +450,9 @@ The `runs-on: self-hosted` label will run the jobs directly on the host, in a sh
     image: debian:bookworm
   ```
 
-### `jobs.<job_id>.options`
+### `jobs.<job_id>.container.options`
 
-A string of additional options, as documented [docker run](https://docs.docker.com/engine/reference/commandline/run/). For instance: "--workdir /myworkdir --ulimit nofile=1024:1024".
+A string of additional options, as documented in [docker run](https://docs.docker.com/engine/reference/commandline/run/). For instance: "--workdir /myworkdir --ulimit nofile=1024:1024".
 
 > **NOTE:** the `--volume` option is restricted to a whitelist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
 
