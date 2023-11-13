@@ -65,6 +65,8 @@ ENABLE_PUSH_CREATE_USER = true
 
 > **NOTE:** it is not possible to use environment variables to remove an existing value, it must be done by editing the `app.ini` file.
 
+> **NOTE:** in case you are in a selinux environment check the audit logs if you are having issues with containers.
+
 ## Databases
 
 In the following each database is shown as part of a `docker-compose` example file, with a `diff like` presentation that highlights additions to the example above.
