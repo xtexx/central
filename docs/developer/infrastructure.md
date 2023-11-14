@@ -21,32 +21,165 @@ $ enough --domain octopuce.forgejo.org service create openvpn
 
 ## Hetzner
 
+All hardware is running Debian GNU/linux bookworm.
+
+### hetzner01
+
 https://hetzner01.forgejo.org runs on an [EX101](https://www.hetzner.com/dedicated-rootserver/ex101) Hetzner hardware.
 
-## OVH
+There is no backup, no redundancy and is dedicated to Forgejo runner instances.
+If the hardware reboots, the runners do not restart automatically, they have to be restarted manually.
 
-https://code.forgejo.org runs on an OVH virtual machine using the same
-OVH account used for the forgejo.org domain name and mails.
+It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgejo/lxc-helpers/):
 
-It is deployed and upgraded using the following [Enough command line](https://enough-community.readthedocs.io):
+- `forgejo-runners`
 
-```shell
-$ mkdir -p ~/.enough
-$ git clone https://forgejo.octopuce.forgejo.org/forgejo/enough-code ~/.enough/code.forgejo.org
-$ enough --domain code.forgejo.org service create --host bind-host forgejo
+  Dedicated to Forgejo runners for the https://codeberg.org/forgejo organization.
+
+  ```sh
+  lxc-helpers.sh lxc_container_run forgejo-runners -- sudo --user debian bash
+  cd codeberg.org/forgejo/
+  forgejo-runner-3.2.0 --config config.yml daemon >& runner.log &
+  ```
+
+- `runner01-lxc`
+
+  Dedicated to Forgejo runners for the https://code.forgejo.org
+  organization with two labels: **docker** and **self-hosted**.
+
+  - https://code.forgejo.org/forgejo
+  - https://code.forgejo.org/actions
+  - https://code.forgejo.org/forgejo-integration
+  - https://code.forgejo.org/forgejo-contrib
+
+  ```sh
+  lxc-helpers.sh lxc_container_run runner01-lxc -- sudo --user debian bash
+  cd code.forgejo.org
+  for runner in forgejo-contrib forgejo forgejo-integration actions ; do ( cd $runner ; HOME=/srv/$runner forgejo-runner-3.2.0 --config config.yml daemon >&runner.log & ) ; done
+  ```
+
+The runners are installed with something like:
+
+```sh
+sudo wget -O /usr/local/bin/forgejo-runner-3.2.0 https://code.forgejo.org/forgejo/runner/releases/download/v3.2.0/forgejo-runner-3.2.0-linux-amd64
+sudo chmod +x /usr/local/bin/forgejo-runner-3.2.0
 ```
 
-Upgrading only Forgejo:
+### hetzner{02,03}
 
-```shell
-$ enough --domain code.forgejo.org playbook -- --limit bind-host,localhost --private-key ~/.enough/code.forgejo.org/infrastructure_key venv/share/enough/playbooks/forgejo/forgejo-playbook.yml
+https://hetzner02.forgejo.org & https://hetzner03.forgejo.org run on [EX44](https://www.hetzner.com/dedicated-rootserver/ex44) Hetzner hardware.
+
+A vSwitch is assigned via the Robot console on both servers
+and [configured](https://docs.hetzner.com/robot/dedicated-server/network/vswitch#example-debian-configuration)
+in /etc/network/interfaces for each of them with something like:
+
+```
+auto enp5s0.4000
+iface enp5s0.4000 inet static
+  address 10.53.100.2
+  netmask 255.255.255.0
+  vlan-raw-device enp5s0
+  mtu 1400
 ```
 
-Login in the machine hosting the Forgejo instance for debugging purposes:
+#### DRBD
 
-```shell
-enough --domain code.forgejo.org ssh bind-host
+DRBD is configured with hetzner02 as the primary and hetzner03 as the secondary:
+
 ```
+resource r0 {
+    net {
+        # A : write completion is determined when data is written to the local disk and the local TCP transmission buffer
+        # B : write completion is determined when data is written to the local disk and remote buffer cache
+        # C : write completion is determined when data is written to both the local disk and the remote disk
+        protocol C;
+        cram-hmac-alg sha1;
+        # any secret key for authentication among nodes
+        shared-secret "***";
+    }
+    disk {
+        resync-rate 1000M;
+    }
+    on hetzner02 {
+        address 10.53.100.2:7788;
+        volume 0 {
+            # device name
+            device /dev/drbd0;
+            # specify disk to be used for devide above
+            disk /dev/nvme0n1p5;
+            # where to create metadata
+            # specify the block device name when using a different disk
+            meta-disk internal;
+        }
+    }
+    on hetzner03 {
+        address 10.53.100.3:7788;
+        volume 0 {
+            device /dev/drbd0;
+            disk /dev/nvme1n1p5;
+            meta-disk internal;
+        }
+    }
+}
+```
+
+The DRBD device is mounted on `/var/lib/lxc`.
+
+In `/etc/fstab` there is a noauto line:
+
+```
+/dev/drbd0 /var/lib/lxc ext4 noauto,defaults 0 0
+```
+
+To prevent split brain situations a manual step is required at boot
+time, on the machine that is going to be the primary, which is
+hetzner02 in a normal situation.
+
+```sh
+sudo drbdsetup status
+sudo drbdadm primary r0
+sudo mount /var/lib/lxc
+sudo lxc-autostart start
+sudo lxc-ls -f
+sudo drbdsetup status
+```
+
+#### Fast storage on /srv
+
+The second disk on each node is mounted on /srv and can be used when
+fast storage is needed and there is no need for backups, such as Forgejo runners.
+
+#### LXC
+
+LXC is setup with [lxc-helpers](https://code.forgejo.org/forgejo/lxc-helpers/).
+
+The `/etc/default/lxc-net` file is the same on both machines:
+
+```
+USE_LXC_BRIDGE="true"
+LXC_ADDR="10.6.83.1"
+LXC_NETMASK="255.255.255.0"
+LXC_NETWORK="10.6.83.0/24"
+LXC_DHCP_RANGE="10.6.83.2,10.6.83.254"
+LXC_DHCP_MAX="253"
+LXC_IPV6_ADDR="fc16::216:3eff:fe00:1"
+LXC_IPV6_MASK="64"
+LXC_IPV6_NETWORK="fc16::/64"
+LXC_IPV6_NAT="true"
+```
+
+#### Public IP addresses
+
+The public IP addresses attached to the hosts are not failover IPs that can be moved from one host to the next.
+The DNS entry needs to be updated if the primary hosts changes.
+
+#### Containers
+
+It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgejo/lxc-helpers/).
+
+- `code`
+
+  Dedicated to [code.forgejo.org](code-forgejo-org) and has its own [failover IP](https://docs.hetzner.com/robot/dedicated-server/ip/failover).
 
 ## Uberspace
 
