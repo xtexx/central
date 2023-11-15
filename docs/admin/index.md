@@ -24,3 +24,4 @@ These documents are targeted to people who run Forgejo on their machines.
 - [GPG Commit Signatures](./signing/)
 - [Moderation tools](./moderation/)
 - [Adopt existing git directories](./adopt/)
+- [Interface customization](./customization/)
