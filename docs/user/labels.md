@@ -24,6 +24,19 @@ Labels have a mandatory name, a mandatory color, an optional description, and mu
 
 When you create a repository (or an organization), you can ensure certain labels exist by using the `Issue Labels` option. This option lists a number of available label sets that are configured globally on your instance.
 
+## Archiving Labels
+
+When a label is no longer useful but needs to be kept around because
+it is still associated with existing pull requests or issues, it can
+be archived.
+
+- The label won't show up as a suggestion when you're adding/editing labels.
+- The label cannot be assigned to a new issues or pull requests.
+
+To archive a label, edit the label an click the `Archive` checkbox.
+
+![archive a label](../_images/user/labels/label-archive.png)
+
 ## Scoped Labels
 
 Scoped labels are used to ensure at most a single label with the same scope is assigned to an issue or pull request. For example, if labels `kind/bug` and `kind/enhancement` have the Exclusive option set, an issue can only be classified as a bug or an enhancement.
