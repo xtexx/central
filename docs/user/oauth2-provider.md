@@ -35,6 +35,43 @@ Forgejo supports both confidential and public client types, [as defined by RFC 6
 
 For public clients, a redirect URI of a loopback IP address such as `http://127.0.0.1/` allows any port. Avoid using `localhost`, [as recommended by RFC 8252](https://datatracker.ietf.org/doc/html/rfc8252#section-8.3).
 
+## Git authentication
+
+OAuth2 can be used as an alternative to a public SSH key or basic authentication (user/password) to obtain the required
+read or write access permissions. It relies on a Git [credential helpers](https://git-scm.com/docs/gitcredentials#_custom_helpers)
+such as:
+
+- [Git Credential Manager](https://github.com/git-ecosystem/git-credential-manager)
+- [git-credential-oauth](https://github.com/hickford/git-credential-oauth)
+
+They are both [pre-configured server
+side](../../admin/oauth2-provider/) but need to be installed and
+configured client side.
+The following example uses [git-credential-oauth](https://github.com/hickford/git-credential-oauth) on a Debian GNU/Linux machine
+to authenticate on https://code.forgejo.org:
+
+- [download the binary tarball](https://github.com/hickford/git-credential-oauth/releases/download/v0.11.0/git-credential-oauth_0.11.0_linux_amd64.tar.gz)
+- extract the binary in `/usr/local/bin/git-credential-oauth`
+- verify it is found with `git credential-oauth`
+- add the following to `~/gitconfig` (note that `a4792ccc-144e-407e-86c9-5e7d8d9c3269` is a hardcoded value that is identical for all Forgejo instances)
+  ```ini
+  [credential]
+    helper = cache --timeout 7200
+    helper = oauth
+  [credential "https://code.forgejo.org"]
+    oauthClientId = a4792ccc-144e-407e-86c9-5e7d8d9c3269
+    oauthAuthURL = /login/oauth/authorize
+    oauthTokenURL = /login/oauth/access_token
+  ```
+- `git clone https://code.forgejo.org/earl-warren/test`
+- `git push` will open new page on the default browser, looking like this:
+  ![git-credential-oauth OAuth2 grant page](../_images/user/oauth2-provider/oauth-git-credential-client.png)
+- subsequent `git push` will re-use the token obtained from OAuth2 as long as it remains in the [git credential-cache](https://git-scm.com/docs/git-credential-cache) (i.e. 2h / 7200s)
+
+> **NOTE:** Scopes are not implemented for OAuth2 tokens and they can be used to execute any actions on behalf the user, not just git related actions. Scoped applications tokens or SSH keys limited to interactions with the repository should be prefered in environments where security is a concern.
+
+It is possible for any user to manually register a new OAuth2 application in the `/user/settings/applications` page for the purpose of using a Git [credential helpers](https://git-scm.com/docs/gitcredentials#_custom_helpers) different from the pre-registered ones. In that case the `~/gitconfig` setting (`oauthClientId` etc.) needs to be adapted accrodingly
+
 ## Examples
 
 ### Confidential client

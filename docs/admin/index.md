@@ -25,3 +25,4 @@ These documents are targeted to people who run Forgejo on their machines.
 - [Moderation tools](./moderation/)
 - [Adopt existing git directories](./adopt/)
 - [Interface customization](./customization/)
+- [OAuth2 provider](./oauth2-provider/)
