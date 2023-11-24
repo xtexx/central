@@ -271,7 +271,7 @@ A repository, a user or an organization can hold variables, a set of key/value p
 
 ![add a variable](../_images/user/actions/variable-add.png)
 
-Once the variable is added, its value cannot be changed.
+After a variable is added, its value can be modified.
 
 ![variables list](../_images/user/actions/variable-list.png)
 
