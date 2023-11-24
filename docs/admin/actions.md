@@ -94,9 +94,9 @@ Each `Forgejo runner` release is published for all supported architectures as:
 Download the latest [binary release](https://code.forgejo.org/forgejo/runner/releases) and verify its signature:
 
 ```shell
-$ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.0.0/forgejo-runner-3.0.0-linux-amd64
+$ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.2.0/forgejo-runner-3.2.0-linux-amd64
 $ chmod +x forgejo-runner
-$ wget -O forgejo-runner.asc https://code.forgejo.org/forgejo/runner/releases/download/v3.0.0/forgejo-runner-3.0.0-linux-amd64.asc
+$ wget -O forgejo-runner.asc https://code.forgejo.org/forgejo/runner/releases/download/v3.2.0/forgejo-runner-3.2.0-linux-amd64.asc
 $ gpg --keyserver keys.openpgp.org --recv EB114F5E6C0DC2BCDD183550A4B61A2DC5923710
 $ gpg --verify forgejo-runner.asc forgejo-runner
 Good signature from "Forgejo <contact@forgejo.org>"
@@ -111,14 +111,14 @@ are built from the Dockerfile which is [found in the source
 directory](https://code.forgejo.org/forgejo/runner/src/branch/main/Dockerfile). It contains the `forgejo-runner` binary.
 
 ```shell
-$ docker run --rm code.forgejo.org/forgejo/runner:3.0.0 forgejo-runner --version
-forgejo-runner version v3.0.0
+$ docker run --rm code.forgejo.org/forgejo/runner:3.2.0 forgejo-runner --version
+forgejo-runner version v3.2.0
 ```
 
 It does not run as root:
 
 ```shell
-$ docker run --rm code.forgejo.org/forgejo/runner:3.0.0 id
+$ docker run --rm code.forgejo.org/forgejo/runner:3.2.0 id
 uid=1000 gid=1000 groups=1000
 ```
 
@@ -168,7 +168,7 @@ environment. They need to be installed and configured independently.
   ```shell
   $ lxc-helpers.sh lxc_container_run forgejo-runners -- sudo --user debian bash
   $ sudo apt-get install docker.io wget gnupg2
-  $ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.0.0/forgejo-runner-amd64
+  $ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.2.0/forgejo-runner-amd64
   ...
   ```
 
@@ -198,7 +198,7 @@ The `Forgejo runner` needs to connect to a `Forgejo` instance and must be regist
 
   ```shell
   forgejo-runner register --no-interactive --token {TOKEN} --name runner --instance https://next.forgejo.org
-  INFO Registering runner, arch=amd64, os=linux, version=3.0.0.
+  INFO Registering runner, arch=amd64, os=linux, version=3.2.0.
   INFO Runner registered successfully.
   ```
 
