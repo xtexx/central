@@ -8,7 +8,7 @@ This guide helps Forgejo admins perform upgrades safely and provides guidance to
 
 ### Backup
 
-To be safe, make sure to perform a full backup before upgrading. It is a requirement when upgrading to a new stable release (going from v1.19 to v1.20 for instance) but is also a good precaution when installing a patch release (going from v1.19.3-0 to v1.19.4-0 for instance).
+To be safe, make sure to perform a full backup before upgrading. It is a requirement when upgrading to a new stable release (going from v1.20 to v1.21 for instance) but is also a good precaution when installing a patch release (going from v1.20.4-0 to v1.20.5-1 for instance).
 
 The reliable way to perform a backup is with a synchronized point-in-time snapshot of all the storage used by Forgejo.
 
@@ -65,9 +65,9 @@ Note: Forgejo requires [docker >= 20.10.6](https://wiki.alpinelinux.org/wiki/Rel
    [log.file.xorm]
    FILE_NAME=xorm.log
   ```
-- If the upgrade from version x.y to version x.y+2 fails and there is a need to narrow down the problem, try upgrading to the latest minor version of each major version and verify it works. It will show which major version causes the issue and help debug the problem. For instance, if upgrading from Forgejo 1.19.3-0 to Forgejo 1.20.1-0 does not work:
+- If the upgrade from version x.y to version x.y+2 fails and there is a need to narrow down the problem, try upgrading to the latest minor version of each major version and verify it works. It will show which major version causes the issue and help debug the problem. For instance, if upgrading from Forgejo 1.19.3-0 to Forgejo 1.20.5-1 does not work:
   - Upgrade from Forgejo 1.19.3-0 to Forgejo 1.19.4-0 (the last minor version of the 1.19 major version) and verify Forgejo works.
-  - Upgrade to Forgejo 1.20.1-0 (the last minor version of the 1.20 major version) and verify Forgejo works.
+  - Upgrade to Forgejo 1.20.5-1 (the last minor version of the 1.20 major version) and verify Forgejo works.
 
 #### Unexpected database version
 
