@@ -73,7 +73,7 @@ It will trigger a [publish workflow](https://codeberg.org/forgejo/forgejo/src/br
 - Copies the binaries from https://codeberg.org/forgejo-integration/forgejo/releases to https://codeberg.org/forgejo-experimental/forgejo/releases
 - Copies the container images from https://codeberg.org/forgejo-integration/-/packages/container/forgejo/versions to https://codeberg.org/forgejo-experimental/-/packages/container/forgejo/versions
 
-To verify the container images, the [setup-forgejo](https://code.forgejo.org/actions/setup-forgejo) integration tests can be used. Push a branch with [the location of the release under test](https://code.forgejo.org/actions/setup-forgejo/src/branch/main/.forgejo/workflows/integration.yml#L20) to run a collection of test workflows.
+To verify the container images, the [end-to-end](https://code.forgejo.org/forgejo/end-to-end) integration tests can be used. Push a branch with [the location of the release under test](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/.forgejo/workflows/actions.yml) to run a collection of test workflows.
 
 Reach out to packagers and users to manually verify the release works as expected.
 
@@ -120,7 +120,6 @@ For both the Forgejo runner and Forgejo itself, copying and signing the release 
 
 - Restart the last CI build at https://codeberg.org/forgejo/website/src/branch/main/
 - Verify [https://forgejo.org/download/](/download/) points to the expected release
-- Update the [documentation link to the latest version](https://codeberg.org/forgejo/website/src/commit/e63c6f8ab64876b10b86de1d18162b6ccb87bd99/.woodpecker.yml#L35)
 - Manually try the instructions to work
 
 ### DNS update
@@ -164,15 +163,6 @@ A GPG master key with no expiration date is created and shared with members of t
 - commit to the secrets repository
 - renewal issue https://codeberg.org/forgejo/forgejo/issues/58
 
-### CI configuration
-
-In the Woodpecker CI configuration the following secrets must be set:
-
-- `releaseteamgpg` is the secret GPG key used to sign the releases
-- `releaseteamuser` is the user name to authenticate with the Forgejo API and publish the releases
-- `releaseteamtoken` is the token to authenticate `releaseteamuser` with the Forgejo API and publish the releases
-- `domain` is `codeberg.org`
-
 ## Users, organizations and repositories
 
 ### Shared user: release-team
@@ -187,7 +177,7 @@ The [forgejo-ci](https://codeberg.org/forgejo-ci) user is dedicated to https://f
 
 ### Shared user: forgejo-experimental-ci
 
-The [forgejo-experimental-ci](https://codeberg.org/forgejo-experimental-ci) user is dedicated to provide the application tokens used by Woodpecker CI repositories to build releases and publish them to https://codeberg.org/forgejo-experimental. It does not (and must not) have permission to publish releases at https://codeberg.org/forgejo.
+The [forgejo-experimental-ci](https://codeberg.org/forgejo-experimental-ci) user is dedicated to provide the application tokens used by the CI to build releases and publish them to https://codeberg.org/forgejo-experimental. It does not (and must not) have permission to publish releases at https://codeberg.org/forgejo.
 
 ### Integration and experimental organization
 
@@ -196,11 +186,3 @@ The https://codeberg.org/forgejo-integration organization is dedicated to integr
 The https://codeberg.org/forgejo-experimental organization is dedicated to publishing experimental Forgejo releases. They are copied from the https://codeberg.org/forgejo-integration organization.
 
 The `forgejo-experimental-ci` user as well as all Forgejo contributors working on the CI/CD pipeline should be owners of both organizations.
-
-The https://codeberg.org/forgejo-integration/forgejo repository is coupled with a Woodpecker CI repository configured with the credentials provided by the https://codeberg.org/forgejo-experimental-ci user. It runs the pipelines found in `releases/woodpecker-build/*.yml` which builds and publishes an unsigned release in https://codeberg.org/forgejo-integration.
-
-### Experimental and release repositories
-
-The https://codeberg.org/forgejo/experimental private repository is coupled with a Woodpecker CI repository configured with the credentials provided by the https://codeberg.org/forgejo-experimental-ci user. It runs the pipelines found in `releases/woodpecker-publish/*.yml` which signs and copies a release from https://codeberg.org/forgejo-integration into https://codeberg.org/forgejo-experimental.
-
-The https://codeberg.org/forgejo/release private repository is coupled with a Woodpecker CI repository configured with the credentials provided by the https://codeberg.org/release-team user. It runs the pipelines found in `releases/woodpecker-publish/*.yml` which signs and copies a release from https://codeberg.org/forgejo-integration into https://codeberg.org/forgejo.
