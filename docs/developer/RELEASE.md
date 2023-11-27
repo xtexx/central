@@ -20,7 +20,7 @@ Because Forgejo depends on Gitea, it must retain the same release numbering sche
 
 From a [Semantic Versioning](https://semver.org/) standpoint, all Forgejo releases are [pre-releases](https://semver.org/#spec-item-9) because they are suffixed with a dash. They are syntactically correct but do not comply with the Semantic Versioning recommendations. Gitea is not compliant either and Forgejo inherits this problem.
 
-## Release process
+## Stable release process
 
 The TL;DR: to publish a vX.Y.Z-N release is to:
 
@@ -133,6 +133,12 @@ The following toot can be re-used to announce a minor release at `https://floss.
 ```
 #Forgejo vX.Y.Z-N was just released! This is a minor patch. Check out the release notes and download it at https://forgejo.org/releases/. If you experience any issues with this release, please report to https://codeberg.org/forgejo/forgejo/issues.
 ```
+
+## Experimental release process
+
+An experimental release is published every time [an update of the Forgejo dependencies](https://codeberg.org/forgejo/forgejo/milestones?q=cleanup) is completed. This release is named after the next stable release, with the `-test` suffix. For instance `v1.22.0-test`.
+
+When the stable release is in its final stages, it is replaced by the release candidates, which changes the suffix to be `-X-rcN`. For instance `v1.22.0-2-rc1`.
 
 ## Release signing keys management
 
