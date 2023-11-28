@@ -9,7 +9,7 @@ Forgejo provides [container images](https://codeberg.org/forgejo/-/packages/cont
 docker pull codeberg.org/forgejo/forgejo:1.20.5-0
 ```
 
-The **1.20** tag is set to be the latest patch release, starting with [1.20.5-0](https://codeberg.org/forgejo/-/packages/container/forgejo/1.20.5-0). **1.20** will then be equal to **1.20.2-0** when it is released and so on.
+The **1.20** tag is set to be the latest patch release, starting with **1.20.1-0**. The **1.20** tag will then be equal to **1.20.2-0** when it is released and so on.
 
 Upgrading from **1.X** to **1.X+1** (for instance from **1.19** to **1.20**) requires a [manual operation and human verification](../upgrade/). However it is possible to use the **X.Y** tag (for instance **1.20**) to get the latest point release automatically.
 
