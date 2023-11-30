@@ -6,7 +6,17 @@ origin_url: 'https://forgejo.gna.org/Hostea/admin-guide/src/branch/master/README
 
 This guide helps Forgejo admins perform upgrades safely and provides guidance to troubleshoot problems. It also covers upgrades from Gitea back to version 1.2.0.
 
-### Backup
+## Release life cycle
+
+There are about two major versions published every year. Each version undergoes the following states:
+
+- **Experimental** (current development version): receives new features, should not be used in production
+- **Stable** (latest major version): receives full support, bugfixes and security fixes
+- **Old Stable** (previous major version): receives only critical security support
+
+To be notified in advance of security releases, watch or subscribe to the RSS feed of the [security-announcements repository](https://codeberg.org/forgejo/security-announcements/issues). The details of the vulnerability will not be revealed, only the expected release date, for administrators to plan ahead and better secure their instance.
+
+## Backup
 
 To be safe, make sure to perform a full backup before upgrading. It is a requirement when upgrading to a new stable release (going from v1.20 to v1.21 for instance) but is also a good precaution when installing a patch release (going from v1.20.4-0 to v1.20.5-1 for instance).
 
@@ -21,7 +31,7 @@ In the simplest case where everything is on a single file system and if the inst
 - `forgejo dump` to collect everything into one zip file
 - `psql/mysql/mssql dump`. Although the zip file created by `forgejo dump` contains a copy of the database it has serious long standing open bugs that may introduce problems when re-injecting the SQL dump in a new database. Note that there is no need to dump SQLite because the database itself is included in the zip file already.
 
-### Verify Forgejo works
+## Verify Forgejo works
 
 It is **critical** to verify that Forgejo works very carefully. Restoring the backup done before the upgrade is easy and does not lose any information. But if a problem is discovered days or weeks after the upgrade, it will not be an option and fixing it on a live Forgejo instance will be much more challenging.
 
@@ -29,7 +39,7 @@ It is **critical** to verify that Forgejo works very carefully. Restoring the ba
 - Manually verify via the web interface. Making a checklist of a typical use case is a good way to not miss anything.
 - If there is a problem of any kind, increase the log level and take a look at the logs. If you cannot figure out what the problem is, ask for help [in the Forgejo chatroom](https://matrix.to/#/#forgejo-chat:matrix.org) before trying to fix it.
 
-### Preparing the Forgejo upgrade
+## Preparing the Forgejo upgrade
 
 - Manually analyze (reading the patches to the sources of the template directory) and update the customized CSS / content.
 - Do not use `forgejo help` to figure out the location of `CustomPath`, look at the configuration tab of the `Site administration` panel when logged in as an admin.
@@ -38,7 +48,7 @@ It is **critical** to verify that Forgejo works very carefully. Restoring the ba
 
 Note: Forgejo requires [docker >= 20.10.6](https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_3.14.0) otherwise mysterious problems will happen (mysterious in the sense that the problem will about something unrelated to the Docker version").
 
-### Performing the upgrade
+## Performing the upgrade
 
 - If the upgrade is from a Gitea version [lower than 1.6](https://github.com/go-gitea/gitea/blob/faa28b5a44912f1c63afddab9396bae9e6fe061c/models/migrations/migrations.go#L63) and greater or equal to 1.2.0, proceed as follows:
   - Upgrade to 1.2.3 and manually verify it runs
@@ -48,7 +58,7 @@ Note: Forgejo requires [docker >= 20.10.6](https://wiki.alpinelinux.org/wiki/Rel
 - If the upgrade is from a Gitea version greater or equal to 1.6.4 that is not mentioned to be problematic [below](#when-upgrading-from-a-specific-version), upgrade directly to the latest stable Forgejo version; there is no need to upgrade to intermediate versions.
 - Verify Forgejo works
 
-### Troubleshooting
+## Troubleshooting
 
 - Increase the log level. By default, the logs are outputted to console. If you need to collect logs from files, you could copy the following config into your `app.ini` file (remove all other [log] sections), then you can find the \*.log files in Forgejo's log directory.
   ```ini
@@ -69,11 +79,11 @@ Note: Forgejo requires [docker >= 20.10.6](https://wiki.alpinelinux.org/wiki/Rel
   - Upgrade from Forgejo 1.19.3-0 to Forgejo 1.19.4-0 (the last minor version of the 1.19 major version) and verify Forgejo works.
   - Upgrade to Forgejo 1.20.5-1 (the last minor version of the 1.20 major version) and verify Forgejo works.
 
-#### Unexpected database version
+### Unexpected database version
 
 The database version is stored in the database and used to prevent an accidental downgrade. For instance, if a running `Forgejo v1.20` instance is downgraded to `Forgejo v1.19`, it will refuse to start because it would damage the content of the database.
 
-#### When upgrading from a specific version...
+### When upgrading from a specific version...
 
 - Any version before Forgejo v1.20.3-0
   - verify the `app.ini` file does not problematic `[storage*]` sections [as explained in the v1.20.3-0 blog post](https://forgejo.org/2023-08-release-v1-20-3-0/)
