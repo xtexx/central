@@ -3,14 +3,6 @@ title: Release management
 license: 'CC-BY-SA-4.0'
 ---
 
-## Maintenance policy
-
-- _experimental_: the current development version receives new features (should not be used in production)
-- _stable_: the latest major version receives full support (bugfixes and security fixes)
-- _oldstable_: the previous major version receives only critical security support
-
-There are about two major versions every year.
-
 ## Release numbering
 
 The Forgejo release numbers are composed of the Gitea release number followed by a dash and a serial number. For instance:
