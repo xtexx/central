@@ -25,6 +25,10 @@ executable path, you will have to manage this yourself.
 **Note 2**: Go version 1.20 or higher is required. However, it is recommended to
 obtain the same version as the [continuous integration](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/.forgejo/workflows/testing.yml).
 
+**Note 3**: If you want to avoid installing build dependencies manually,
+you can also [build the Docker image](#build-the-docker-image), which runs
+the build process in a Docker image containing all the required dependencies.
+
 ### Download
 
 First, we must retrieve the source code. Since, the advent of go modules, the
@@ -104,6 +108,18 @@ TAGS="bindata" make backend
 ```
 
 Webpack source maps are by default enabled in development builds and disabled in production builds. They can be enabled by setting the `ENABLE_SOURCEMAP=true` environment variable.
+
+### Build the Docker image
+
+To build Forgejo's Docker image, you need to have Docker and the Docker Buildx plugin installed.
+You can build the Docker image with:
+
+```bash
+docker buildx build .
+```
+
+This will run the entire build process in a Docker container with the required dependencies.
+You can also supply a tag during the build process with the `-t` option, to make it easier to publish or run the image later.
 
 ### Test
 
