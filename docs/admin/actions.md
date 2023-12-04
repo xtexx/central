@@ -306,6 +306,9 @@ container:
   # Could be host, bridge or the name of a custom network.
   # If it's empty, create a network automatically.
   network: ""
+  # Whether to create networks with IPv6 enabled. Requires the Docker daemon to be set up accordingly.
+  # Only takes effect if "network" is set to "".
+  enable_ipv6: false
   # Whether to use privileged mode or not when launching task containers (privileged mode is required for Docker-in-Docker).
   privileged: false
   # And other options to be used when the container is started (eg, --add-host=my.forgejo.url:host-gateway).
@@ -393,6 +396,81 @@ INFO[2023-05-28T18:54:53+02:00] task 29 repo is earl-warren/test https://code.fo
 It will also show a similar output in the `Actions` tab of the repository.
 
 If no `Forgejo runner` is available, `Forgejo` will wait for one to connect and submit the job as soon as it is available.
+
+### Enable IPv6 in Docker & Podman Networks
+
+When a `Forgejo runner` creates its own Docker or Podman networks, IPv6 is not enabled by default, and must be enabled explicitly in the `Forgejo runner` configuration.
+
+**Docker only**: The Docker daemon requires additional configuration to enable IPv6. To make use of IPv6 with Docker, you need to provide an `/etc/docker/daemon.json` configuration file with at least the following keys:
+
+```json
+{
+  "ipv6": true,
+  "experimental": true,
+  "ip6tables": true,
+  "fixed-cidr-v6": "fd00:d0ca:1::/64",
+  "default-address-pools": [
+    { "base": "172.17.0.0/16", "size": 24 },
+    { "base": "fd00:d0ca:2::/104", "size": 112 }
+  ]
+}
+```
+
+Afterwards restart the Docker daemon with `systemctl restart docker.service`.
+
+> **NOTE**: These are example values. While this setup should work out of the box, it may not meet your requirements. Please refer to the Docker documentation regarding [enabling IPv6](https://docs.docker.com/config/daemon/ipv6/#use-ipv6-for-the-default-bridge-network) and [allocating IPv6 addresses to subnets dynamically](https://docs.docker.com/config/daemon/ipv6/#dynamic-ipv6-subnet-allocation).
+
+**Docker & Podman**:
+To test IPv6 connectivity in `Forgejo runner`-created networks, create a small workflow such as the following:
+
+```yaml
+---
+on: push
+jobs:
+  ipv6:
+    runs-on: docker
+    steps:
+      - run: |
+          apt update; apt install --yes curl
+          curl -s -o /dev/null http://ipv6.google.com
+```
+
+If you run this action with `forgejo-runner exec`, you should expect this job fail:
+
+```shell-session
+$ forgejo-runner exec
+...
+| curl: (7) Couldn't connect to server
+[ipv6.yml/ipv6]   ❌  Failure - apt update; apt install --yes curl
+curl -s -o /dev/null http://ipv6.google.com
+[ipv6.yml/ipv6] exitcode '7': failure
+[ipv6.yml/ipv6] Cleaning up services for job ipv6
+[ipv6.yml/ipv6] Cleaning up container for job ipv6
+[ipv6.yml/ipv6] Cleaning up network for job ipv6, and network name is: FORGEJO-ACTIONS-TASK-push_WORKFLOW-ipv6-yml_JOB-ipv6-network
+[ipv6.yml/ipv6] 🏁  Job failed
+```
+
+To actually enable IPv6 with `forgejo-runner exec`, the flag `--enable-ipv6` must be provided. If you run this again with `forgejo-runner exec --enable-ipv6`, the job should succeed:
+
+```shell-session
+$ forgejo-runner exec --enable-ipv6
+...
+[ipv6.yml/ipv6]   ✅  Success - Main apt update; apt install --yes curl
+curl -s -o /dev/null http://ipv6.google.com
+[ipv6.yml/ipv6] Cleaning up services for job ipv6
+[ipv6.yml/ipv6] Cleaning up container for job ipv6
+[ipv6.yml/ipv6] Cleaning up network for job ipv6, and network name is: FORGEJO-ACTIONS-TASK-push_WORKFLOW-ipv6-yml_JOB-ipv6-network
+[ipv6.yml/ipv6] 🏁  Job succeeded
+```
+
+Finally, if this test was successful, enable IPv6 in the `config.yml` file of the `Forgejo runner` daemon and restart the daemon:
+
+```yaml
+container:
+  enable_ipv6: true
+```
+
+Now, `Forgejo runner` will create networks with IPv6 enabled, and workflow containers will be assigned addresses from the pools defined in the Docker daemon configuration.
 
 ## Labels and `runs-on`
 

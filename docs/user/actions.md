@@ -585,6 +585,8 @@ INFO[0000] Start server on http://192.168.1.20:34567
 [checks/check and test] 🏁  Job succeeded
 ```
 
+> **NOTE:** When Docker or Podman is used and IPv6 support is required, the `--enable-ipv6` flag must be provided, and IPv6 must be enabled in the `Forgejo runner`'s Docker daemon configuration. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
+
 ## Examples
 
 Each example is part of the [setup-forgejo](https://code.forgejo.org/forgejo/end-to-end/) action [test suite](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions). They can be run locally with something similar to:
