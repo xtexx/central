@@ -101,7 +101,7 @@ VPN and its role is to copy and sign release artifacts.
 - Binaries are downloaded from https://code.forgejo.org/forgejo-integration/runner, signed and copied to https://code.forgejo.org/forgejo/runner.
 - Container images are copied from https://code.forgejo.org/forgejo-integration to https://code.forgejo.org/forgejo
 
-If the publishing the release needs debug, it can be done manually:
+If publishing the release needs debug, it can be done manually:
 
 - https://forgejo.octopuce.forgejo.org/forgejo-release/runner-debug has the same secrets as https://forgejo.octopuce.forgejo.org/forgejo-release/runner
 - Make the changes, commit them, tag the commit with vX.Y.Z-N and force push the tag to https://forgejo.octopuce.forgejo.org/forgejo-release/runner-debug. Note that it does not matter that the tag is not on a commit that matches the release because this action only cares about the tag: it does not build any content itself, it copies it from one organization to another. However it matters that it matches a SHA that is found in the destination repository of the release otherwise it won't be able to set the tag (setting a tag on a non-existing sha does not work).
