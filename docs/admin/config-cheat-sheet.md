@@ -75,7 +75,7 @@ In addition, there is _`StaticRootPath`_ which can be set as a built-in at build
 - `DEFAULT_PUSH_CREATE_PRIVATE`: **true**: Default private when creating a new repository with push-to-create.
 - `MAX_CREATION_LIMIT`: **-1**: Global maximum creation limit of repositories per user,
   `-1` means no limit.
-- `PREFERRED_LICENSES`: **Apache License 2.0,MIT License**: Preferred Licenses to place at
+- `PREFERRED_LICENSES`: **Apache-2.0, MIT"**: Preferred Licenses to place at
   the top of the list. Name must match file name in options/license or custom/options/license.
 - `DISABLE_HTTP_GIT`: **false**: Disable the ability to interact with repositories over the
   HTTP protocol.
