@@ -177,9 +177,13 @@ The DNS entry needs to be updated if the primary hosts changes.
 
 It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgejo/lxc-helpers/).
 
-- `code`
+- `code` on hetzner02
 
-  Dedicated to [code.forgejo.org](code-forgejo-org) and has its own [failover IP](https://docs.hetzner.com/robot/dedicated-server/ip/failover).
+  Dedicated to https://code.forgejo.org
+
+- `runner-forgejo-helm` on hetzner03
+
+  Dedicated to https://codeberg.org/forgejo-contrib/forgejo-helm and running from an ephemral disk
 
 ## Uberspace
 
