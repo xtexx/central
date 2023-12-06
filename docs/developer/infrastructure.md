@@ -173,6 +173,81 @@ LXC_IPV6_NAT="true"
 The public IP addresses attached to the hosts are not failover IPs that can be moved from one host to the next.
 The DNS entry needs to be updated if the primary hosts changes.
 
+When additional IP addresses are attached to the server, they are added to `/etc/network/interfaces` like
+65.21.67.71 and 2a01:4f9:3081:51ec::102 below.
+
+```
+auto enp5s0
+iface enp5s0 inet static
+  address 65.21.67.73
+  netmask 255.255.255.192
+  gateway 65.21.67.65
+  # route 65.21.67.64/26 via 65.21.67.65
+  up route add -net 65.21.67.64 netmask 255.255.255.192 gw 65.21.67.65 dev enp5s0
+  # BEGIN code.forgejo.org
+  up ip addr add 65.21.67.71/32 dev enp5s0
+  up nft -f /home/debian/code.nftables
+  down ip addr del 65.21.67.71/32 dev enp5s0
+  # END code.forgejo.org
+
+iface enp5s0 inet6 static
+  address 2a01:4f9:3081:51ec::2
+  netmask 64
+  gateway fe80::1
+  # BEGIN code.forgejo.org
+  up ip -6 addr add 2a01:4f9:3081:51ec::102/64 dev enp5s0
+  down ip -6 addr del 2a01:4f9:3081:51ec::102/64 dev enp5s0
+  # END code.forgejo.org
+```
+
+#### Port forwarding
+
+Forwarding a port to an LXC container can be done with `/home/debian/code.nftables` for
+the public IP of code.forgejo.org (65.21.67.71) to the private IP of the `code` LXC container:
+
+```
+add table ip code;
+flush table ip code;
+add chain ip code prerouting {
+  type nat hook prerouting priority 0;
+  policy accept;
+  ip daddr 65.21.67.71 tcp dport { ssh } dnat to 10.6.83.195;
+};
+```
+
+with `nft -f /root/code.nftables`.
+
+#### Reverse proxy
+
+The reverse proxy forwards to the designated LXC container with
+something like the following in
+`/etc/nginx/sites-enabled/code.forgejo.org`, where 10.6.83.195 is the
+IP allocated to the LXC container running the web service:
+
+```
+server {
+
+    server_name code.forgejo.org;
+
+    location / {
+        proxy_pass http://10.6.83.195:8080/;
+        client_max_body_size 2G;
+	#
+	# http://nginx.org/en/docs/http/websocket.html
+	#
+        proxy_set_header Connection $http_connection;
+        proxy_set_header Upgrade $http_upgrade;
+        include proxy_params;
+    }
+}
+```
+
+The LE certificate is obtained once and automatically renewed with:
+
+```
+sudo certbot -n --agree-tos --email contact@forgejo.org -d code.forgejo.org --nginx
+```
+
 #### Containers
 
 It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgejo/lxc-helpers/).
@@ -180,6 +255,15 @@ It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgej
 - `code` on hetzner02
 
   Dedicated to https://code.forgejo.org
+
+  Upgrades checklist:
+
+  - change the `image=` in /home/debian/run-forgejo.sh
+  - docker stop forgejo
+  - sudo rsync -av --numeric-ids --delete --progress /srv/forgejo/ /root/forgejo-backup/
+  - docker rm forgejo
+  - bash -x /home/debian/run-forgejo.sh
+  - docker logs -n 200 -f forgejo
 
 - `runner-forgejo-helm` on hetzner03
 
