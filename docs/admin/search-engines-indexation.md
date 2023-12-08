@@ -12,7 +12,7 @@ If you don't want your repository to be visible for search engines read further.
 ### Block search engines indexation using robots.txt
 
 To make Forgejo serve a custom `robots.txt` (default: empty 404) for top level installations,
-create a file called `robots.txt` at the root of the `CustomPath` as displayed in the `/admin` page.
+create a file called `robots.txt` at the root of the `Custom File Root Path` as displayed in the `/admin/config` page.
 
 Examples on how to configure the `robots.txt` can be found at [https://moz.com/learn/seo/robotstxt](https://moz.com/learn/seo/robotstxt).
 
