@@ -12,6 +12,7 @@ their needs.
   - [Sustainability and funding](https://codeberg.org/forgejo/sustainability)
 - For contributors
   - [Compiling from source](./from-source/)
+  - [Development environment](./development-environment/)
   - [Interface customization](./customization/)
   - [Architecture overview](./architecture/)
   - [Developer Certificate of Origin (DCO)](./dco/)
