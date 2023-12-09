@@ -58,6 +58,11 @@ This token also has write permission to the repository and can be used
 to push commits or use API endpoints such as creating a label or merge
 a pull request.
 
+In order to avoid infinite recursion, no `workflow` will be triggered
+as a side effect of a change authored with this token. For instance,
+if a branch is pushed to the repository and there exists a workflow that
+is triggered on push events, it will not fire.
+
 A `workflow` triggered by a `pull_request` event is an exception: in
 that case the token does not have write permissions to the repository.
 The pull request could contain an untested or malicious workflow.
