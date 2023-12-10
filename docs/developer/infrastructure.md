@@ -265,6 +265,8 @@ It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgej
   - bash -x /home/debian/run-forgejo.sh
   - docker logs -n 200 -f forgejo
 
+  Rotating 30 days backups happen daily /etc/cron.daily/forgejo-code-backup.sh
+
 - `runner-forgejo-helm` on hetzner03
 
   Dedicated to https://codeberg.org/forgejo-contrib/forgejo-helm and running from an ephemral disk
