@@ -252,18 +252,57 @@ sudo certbot -n --agree-tos --email contact@forgejo.org -d code.forgejo.org --ng
 
 It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgejo/lxc-helpers/).
 
-- `code` on hetzner02
+- `fogejo-code` on hetzner02
 
   Dedicated to https://code.forgejo.org
 
-  Upgrades checklist:
+  - LXC creation
+    ```sh
+    lxc-helpers.sh lxc_container_create --config "docker" forgejo-next
+    lxc-helpers.sh --verbose lxc_container_start forgejo-next
+    lxc-helpers.sh --verbose lxc_install_docker forgejo-next
+    lxc-helpers.sh lxc_container_user_install forgejo-next $(id -u) $USER
+    ```
+  - upgrades checklist:
+    - change the `image=` in /home/debian/run-forgejo.sh
+    - docker stop forgejo
+    - sudo rsync -av --numeric-ids --delete --progress /srv/forgejo/ /root/forgejo-backup/
+    - docker rm forgejo
+    - bash -x /home/debian/run-forgejo.sh
+    - docker logs -n 200 -f forgejo
 
-  - change the `image=` in /home/debian/run-forgejo.sh
-  - docker stop forgejo
-  - sudo rsync -av --numeric-ids --delete --progress /srv/forgejo/ /root/forgejo-backup/
-  - docker rm forgejo
-  - bash -x /home/debian/run-forgejo.sh
-  - docker logs -n 200 -f forgejo
+- `forgejo-next` on hetzner02
+
+  Dedicated to https://next.forgejo.org
+
+  - LXC creation same as code.forgejo.org
+  - upgrades checklist:
+    ```sh
+    docker stop forgejo
+    docker rmi codeberg.org/forgejo-experimental/forgejo:1.22.0-test
+    docker pull codeberg.org/forgejo-experimental/forgejo:1.22.0-test
+    bash -x /home/debian/run-forgejo.sh
+    docker logs -n 200 -f forgejo
+    ```
+  - reset everything
+    ```sh
+    docker stop forgejo
+    sudo rm -fr /srv/forgejo.old
+    sudo mv /srv/forgejo /srv/forgejo.old
+    bash -x /home/debian/run-forgejo.sh
+    ```
+    and create a user with the CLI using the example from `/home/debian/run-forgejo.sh`
+  - `/home/debian/next.nftables`
+    ```
+    add table ip next;
+    flush table ip next;
+    add chain ip next prerouting {
+      type nat hook prerouting priority 0;
+      policy accept;
+      ip daddr 65.21.67.65 tcp dport { 2020 } dnat to 10.6.83.213;
+    };
+    ```
+  - `/etc/nginx/sites-available/next.forgejo.org` same as `/etc/nginx/sites-available/code.forgejo.org`
 
   Rotating 30 days backups happen daily /etc/cron.daily/forgejo-code-backup.sh
 
