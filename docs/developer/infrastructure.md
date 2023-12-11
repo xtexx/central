@@ -82,6 +82,13 @@ iface enp5s0.4000 inet static
   mtu 1400
 ```
 
+#### Root filesystem backups
+
+- `hetzner03:/etc/cron.daily/backup-hetzner02`
+  `rsync -aHS --delete-excluded --delete --numeric-ids --exclude /proc --exclude /dev --exclude /sys --exclude /srv --exclude /var/lib/lxc 10.53.100.2:/ /srv/backups/hetzner02/`
+- `hetzner02:/etc/cron.daily/backup-hetzner03`
+  `rsync -aHS --delete-excluded --delete --numeric-ids --exclude /proc --exclude /dev --exclude /sys --exclude /srv --exclude /var/lib/lxc 10.53.100.3:/ /srv/backups/hetzner03/`
+
 #### DRBD
 
 DRBD is configured with hetzner02 as the primary and hetzner03 as the secondary:
