@@ -271,12 +271,14 @@ It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgej
     lxc-helpers.sh lxc_container_user_install forgejo-next $(id -u) $USER
     ```
   - upgrades checklist:
-    - change the `image=` in /home/debian/run-forgejo.sh
-    - docker stop forgejo
-    - sudo rsync -av --numeric-ids --delete --progress /srv/forgejo/ /root/forgejo-backup/
-    - docker rm forgejo
-    - bash -x /home/debian/run-forgejo.sh
-    - docker logs -n 200 -f forgejo
+    ```sh
+    emacs /home/debian/run-forgejo.sh # change the `image=`
+    docker stop forgejo
+    sudo rsync -av --numeric-ids --delete --progress /srv/forgejo/ /root/forgejo-backup/
+    docker rm forgejo
+    bash -x /home/debian/run-forgejo.sh
+    docker logs -n 200 -f forgejo
+    ```
 
 - `forgejo-next` on hetzner02
 
