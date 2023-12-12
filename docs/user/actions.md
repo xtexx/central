@@ -159,6 +159,9 @@ by using the https://code.forgejo.org/actions/cache action.
 There is no guarantee that the cache is populated, even when two `jobs`
 run in sequence. It is not a substitute for `artifacts`.
 
+Note that [actions/cache](https://code.forgejo.org/actions/cache) has `zstd`
+as a dependency for creating tar archives in the runner.
+
 ## Auto cancelation of workflows
 
 When a new commit is pushed to a branch, the workflows that are were
