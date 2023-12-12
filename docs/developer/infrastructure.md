@@ -237,7 +237,7 @@ server {
     server_name code.forgejo.org;
 
     location / {
-        proxy_pass http://10.6.83.195:8080/;
+        proxy_pass http://10.6.83.195:8080;
         client_max_body_size 2G;
 	#
 	# http://nginx.org/en/docs/http/websocket.html
