@@ -563,6 +563,12 @@ virtualisation.docker = {
 };
 ```
 
+If you would like to use docker runners in combination with [cache actions](#cache-configuration), be sure to add docker bridge interfaces "br-\*" to the firewalls' trusted interfaces:
+
+```nix
+networking.firewall.trustedInterfaces = [ "br-+" ];
+```
+
 ## Other runners
 
 It is possible to use [other runners](https://codeberg.org/forgejo-contrib/delightful-forgejo#user-content-forgejo-actions-runners) instead of `Forgejo runner`. As long as they can connect to a `Forgejo` instance using the [same protocol](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/routers/api/actions), they will be given tasks to run.
