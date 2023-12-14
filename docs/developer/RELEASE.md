@@ -142,7 +142,7 @@ When the stable release is in its final stages, it is replaced by the release ca
 
 ## Release signing keys management
 
-A GPG master key with no expiration date is created and shared with members of the Owners team via encrypted email. A subkey with a one year expiration date is created and stored in the secrets repository, to be used by the CI pipeline. The public master key is stored in the secrets repository and published where relevant.
+A GPG master key with no expiration date is created and shared with members of the Owners team via encrypted email. A subkey with a one year expiration date is created and stored in the secrets repository (`openpgp/20??-release-team.gpg`), to be used by the release pipeline. The public master key is stored in the secrets repository and published where relevant (keys.openpgp.org for instance).
 
 ### Master key creation
 
@@ -151,23 +151,87 @@ A GPG master key with no expiration date is created and shared with members of t
 - no expiration
 - id: Forgejo Releases <contact@forgejo.org>
 - gpg --export-secret-keys --armor EB114F5E6C0DC2BCDD183550A4B61A2DC5923710 and send via encrypted email to Owners
-- gpg --export --armor EB114F5E6C0DC2BCDD183550A4B61A2DC5923710 > release-team-gpg.pub
-- commit to the secret repository
+- gpg --export --armor EB114F5E6C0DC2BCDD183550A4B61A2DC5923710 > release-team.gpg.pub
+- gpg --keyserver keys.openpgp.org --send-keys EB114F5E6C0DC2BCDD183550A4B61A2DC5923710
+- commit to the secrets repository
 
 ### Subkey creation and renewal
 
 - gpg --expert --edit-key EB114F5E6C0DC2BCDD183550A4B61A2DC5923710
 - addkey
 - key type: ECC (signature only)
-- key validity: one year
-- create [an issue](https://codeberg.org/forgejo/forgejo/issues) to schedule the renewal
-
-#### 2023
-
-- gpg --export --armor F7CBF02094E7665E17ED6C44E381BF3E50D53707 > 2023-release-team-gpg.pub
-- gpg --export-secret-keys --armor F7CBF02094E7665E17ED6C44E381BF3E50D53707 > 2023-release-team-gpg
+- elliptic curve Curve 25519
+- key validity: 18 months
+- update https://codeberg.org/forgejo/forgejo/issues/58 to schedule the renewal 12 months later
+- gpg --export --armor EB114F5E6C0DC2BCDD183550A4B61A2DC5923710 > openpgp/release-team.gpg.pub
 - commit to the secrets repository
-- renewal issue https://codeberg.org/forgejo/forgejo/issues/58
+- gpg --keyserver keys.openpgp.org --send-keys EB114F5E6C0DC2BCDD183550A4B61A2DC5923710
+
+#### Local sanity check
+
+From the root of the secrets directory, assuming the master key for
+EB114F5E6C0DC2BCDD183550A4B61A2DC5923710 is already imported in the
+keyring.
+
+There are a lot of contradictory information regarding the management
+of subkeys, with zillions ways of doing something that looks like it
+could work but creates situations that are close to impossible to
+figure out. Experimenting with the CLI, reading the gpg man page and
+using common sense is the best way to understand how it works. Reading
+the documentation or discussions on the net is highly confusing
+because it is loaded with 20 years of history, most of which is no
+longer relevant.
+
+Here are a few notions that help understand how it works:
+
+- `gpg --export-secret-subkeys --armor B3B1F60AC577F2A2!` exports the
+  secret key for the subkey B3B1F60AC577F2A2, the exclamation mark
+  meaning "nothing else".
+- a `keygrip` is something that each private key has and that can be
+  displayed with `gpg --with-keygrip --list-key`. It matters because each
+  private key is associated with exactly one file in the `private-keys-v1.d`
+  directory which is named after this keygrip. It is the best way to verify
+  an unrelated private key was not accidentally included in the export of
+  the subkey.
+- when a subkey is created, the public key for the master key must be published
+  again because it includes the public key of this new subkey.
+- all the instructions that are published to instruct people to verify
+  the signature of a release use the fingerprint of the master key. It will
+  work although the release really is signed by the subkey and not the master
+  key. This is the main benefit of using subkeys as it hides the rotation
+  of the subkeys and does not require updating instructions everywhere every
+  year.
+- whenever gpg starts working with a new directory, it will launch a gpg-agent
+  daemon that will persist. If this directory is removed manually or modified
+  it will confuse the daemon and the gpg command will misbehave in ways
+  that can be very difficult to understand. When experimenting
+  create a new directory but do not modify the files manually, even though
+  some instructions on the net recommend doing so, for instance to remove
+  a private key.
+
+```sh
+NEWKEY=????
+#
+# brand new GNUPGHOME, situation similar to the release pipeline
+#
+export GNUPGHOME=/tmp/tmpgpg1 ; mkdir $GNUPGHOME ; chmod 700 $GNUPGHOME
+gpg --import openpgp/$(date +%Y --date='next year')-release-team.gpg
+find $GNUPGHOME/private-keys-v1.d # only has **one** file named after the keygrip
+# sign something
+echo bar > /tmp/foo
+gpg --detach-sig --output /tmp/foo.asc --default-key $NEWKEY --sign /tmp/foo
+#
+# brand new GNUPGHOME: situation similar to someone verifying the release signature is good
+#
+export GNUPGHOME=/tmp/tmpgpg1 ; mkdir $GNUPGHOME ; chmod 700 $GNUPGHOME
+gpg --import release-team.gpg.pub
+gpg --verify /tmp/foo.asc /tmp/foo
+```
+
+#### 2024
+
+- `gpg --export-secret-subkeys --armor B3B1F60AC577F2A2! > openpgp/2024-release-team.gpg`
+- commit to the secrets repository
 
 ## Users, organizations and repositories
 
