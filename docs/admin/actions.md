@@ -158,7 +158,7 @@ environment. They need to be installed and configured independently.
   $ sudo cp -a lxc-helpers/lxc-helpers{,-lib}.sh /usr/local/bin
   $ lxc-helpers.sh lxc_container_create myrunner
   $ lxc-helpers.sh lxc_container_start myrunner
-  $ lxc-helpers.sh lxc_container_user_install forgejo-runners 1000 debian
+  $ lxc-helpers.sh lxc_container_user_install myrunner 1000 debian
   ```
 
   > **NOTE:** Multiarch [Go](https://go.dev/) builds and [binfmt](https://github.com/tonistiigi/binfmt) need `bookworm` to produce and test binaries on a single machine for people who do not have access to dedicated hardware. If this is not needed, installing the `Forgejo runner` on `bullseye` will also work.
