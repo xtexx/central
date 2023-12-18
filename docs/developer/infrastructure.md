@@ -296,6 +296,7 @@ It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgej
   - reset everything
     ```sh
     docker stop forgejo
+    docker rm forgejo
     sudo rm -fr /srv/forgejo.old
     sudo mv /srv/forgejo /srv/forgejo.old
     bash -x /home/debian/run-forgejo.sh
