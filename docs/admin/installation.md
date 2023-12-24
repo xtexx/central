@@ -67,11 +67,11 @@ There's then no need to change the configuration.
 
 Whichever data migration you've chosen, it's now time to start the Forgejo service.
 
-    $ sytemctl start forgejo
+    $ systemctl start forgejo
 
 Check to see that the service has started with no issues.
 
-    $ sytemctl status forgejo
+    $ systemctl status forgejo
 
 ...and set the service to start automatically.
 
