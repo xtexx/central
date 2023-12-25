@@ -9,4 +9,4 @@ The Forgejo [domains](https://codeberg.org/forgejo/meta/issues/41) are owned by 
 
 ## Forgejo Governance
 
-Forgejo was bootstraped in November 2022 and [defined its governance](https://codeberg.org/forgejo/governance/src/branch/main/README.md) in the following months.
+Forgejo was bootstraped in November 2022 and defines [its governance](https://codeberg.org/forgejo/governance/src/branch/main/README.md) in a [dedicated repository](https://codeberg.org/forgejo/governance).
