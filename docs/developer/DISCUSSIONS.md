@@ -8,10 +8,11 @@ The [Forgejo issue tracker](https://codeberg.org/forgejo/forgejo/issues) is wher
 Dedicated repositories in the [Forgejo organization](https://codeberg.org/forgejo) cover areas such as:
 
 - the [website](https://codeberg.org/forgejo/website)
+- the [governance](https://codeberg.org/forgejo/governance)
 - the [Code of Conduct](https://codeberg.org/forgejo/code-of-conduct)
 - the [sustainability and funding](https://codeberg.org/forgejo/sustainability).
 
-Other discussions regarding all **non technical aspects** of Forgejo, such as the governance, happen in a dedicated [issue tracker](https://codeberg.org/forgejo/discussions/issues) and in the [matrix chatroom](https://matrix.to/#/#forgejo-chat:matrix.org).
+Other discussions regarding all **non technical aspects** of Forgejo, happen in a dedicated [issue tracker](https://codeberg.org/forgejo/discussions/issues) and in the [matrix chatroom](https://matrix.to/#/#forgejo-chat:matrix.org).
 
 ## Security
 
