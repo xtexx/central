@@ -5,7 +5,7 @@ and is published [on the Forgejo website](https://forgejo.org/docs/next).
 
 The main development branch of this repo is the
 [`next`](https://codeberg.org/forgejo/docs/src/branch/next) branch,
-which documents the version of Forgejo that is currently being developed.
+which documents the version that is currently being developed.
 
 Each time a new major version of Forgejo is released,
 a new branch will be created in this repo to document the stable release.
