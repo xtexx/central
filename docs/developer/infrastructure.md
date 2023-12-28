@@ -9,7 +9,7 @@ Codeberg provides a LXC container with 48GB RAM, 24 threads and SSD drive to be 
 
 ## Octopuce
 
-[Octopuce provides hardware](https://codeberg.org/forgejo/sustainability) managed by [the devops team](https://codeberg.org/forgejo/governance/src/branch/main/TEAMS.md#devops). It can be accessed via a VPN which provides a DNS for the `octopuce.forgejo.org` internal domain.
+[Octopuce provides hardware](https://codeberg.org/forgejo/sustainability) managed by [the devops team](https://codeberg.org/forgejo/governance/src/branch/main/TEAMS.md#devops). It can be accessed via a VPN.
 
 The VPN is deployed and upgraded using the following [Enough command line](https://enough-community.readthedocs.io):
 
@@ -18,6 +18,46 @@ $ mkdir -p ~/.enough
 $ git clone https://forgejo.octopuce.forgejo.org/forgejo/enough-octopuce ~/.enough/octopuce.forgejo.org
 $ enough --domain octopuce.forgejo.org service create openvpn
 ```
+
+### Containers
+
+It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgejo/lxc-helpers/).
+
+- `fogejo-host`
+
+  Dedicated to https://private.forgejo.org (`ssh -p 2222 debian@private.forgejo.org`)
+
+  - LXC creation
+    ```sh
+    lxc-helpers.sh lxc_container_create --config "docker" forgejo-host
+    lxc-helpers.sh lxc_container_start forgejo-host
+    lxc-helpers.sh lxc_install_docker forgejo-host
+    lxc-helpers.sh lxc_container_user_install forgejo-host $(id -u) $USER
+    ```
+  - upgrades checklist:
+    ```sh
+    emacs /home/debian/run-forgejo.sh # change the `image=`
+    docker stop forgejo
+    sudo rsync -av --numeric-ids --delete --progress /srv/forgejo/ /root/forgejo-backup/
+    docker rm forgejo
+    bash -x /home/debian/run-forgejo.sh
+    docker logs -n 200 -f forgejo
+    ```
+
+- `fogejo-runner-host`
+
+  Dedicated to https://private-runner.forgejo.org (`ssh debian@private-runner.forgejo.org`)
+
+  Has runners installed as explained elsewhere in this document.
+
+  - LXC creation
+    ```sh
+    lxc-helpers.sh lxc_container_create --config "docker" forgejo-runner-host
+    lxc-helpers.sh lxc_container_start forgejo-runner-host
+    lxc-helpers.sh lxc_install_docker forgejo-runner-host
+    lxc-helpers.sh lxc_install_lxc forgejo-runner-host 10.85.12 fc33
+    lxc-helpers.sh lxc_container_user_install forgejo-runner-host $(id -u) $USER
+    ```
 
 ## Hetzner
 
@@ -266,8 +306,8 @@ It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgej
   - LXC creation
     ```sh
     lxc-helpers.sh lxc_container_create --config "docker" forgejo-next
-    lxc-helpers.sh --verbose lxc_container_start forgejo-next
-    lxc-helpers.sh --verbose lxc_install_docker forgejo-next
+    lxc-helpers.sh lxc_container_start forgejo-next
+    lxc-helpers.sh lxc_install_docker forgejo-next
     lxc-helpers.sh lxc_container_user_install forgejo-next $(id -u) $USER
     ```
   - upgrades checklist:
@@ -343,13 +383,14 @@ sudo lxc-helpers.sh lxc_install_lxc_inside 10.120.13
 ```shell
 lxc-helpers.sh lxc_container_create forgejo-runners
 lxc-helpers.sh lxc_container_start forgejo-runners
+lxc-helpers.sh lxc_install_docker forgejo-runner
+lxc-helpers.sh lxc_install_lxc forgejo-runner 10.85.12 fc33
 lxc-helpers.sh lxc_container_user_install forgejo-runners $(id -u) $USER
 lxc-helpers.sh lxc_container_run forgejo-runners -- sudo --user debian bash
 sudo apt-get update
-sudo apt-get install -y wget docker.io emacs-nox
-sudo usermod -aG docker $USER # exit & enter again for the group to be active
+sudo apt-get install -y wget emacs-nox
 lxc-helpers.sh lxc_prepare_environment
-sudo wget -O /usr/local/bin/forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v2.0.4/forgejo-runner-amd64
+sudo wget -O /usr/local/bin/forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.3.0/forgejo-runner-3.3.0-linux-amd64
 sudo chmod +x /usr/local/bin/forgejo-runner
 echo 'export TERM=vt100' >> .bashrc
 ```
@@ -363,19 +404,19 @@ DIR=codeberg.org/forgejo-integration means that the token was obtained from the
 https://codeberg.org/forgejo-integration organization.
 
 If a runner only provides unprivileged docker containers, the labels
-should be
-`LABELS=docker:docker://node:16-bullseye,ubuntu-latest:docker://node:16-bullseye`.
+in `config.yml` should be:
+`labels: ['docker:docker://node:20-bookworm']`.
 
 If a runner provides LXC containers and unprivileged docker
-containers, the labels should be
-`LABELS=docker:docker://node:16-bullseye,self-hosted`.
+containers, the labels in `config.yml` should be
+`labels: ['self-hosted:lxc://debian:bookworm', 'docker:docker://node:20-bookworm']`.
 
 ```shell
 mkdir -p $DIR ; cd $DIR
 forgejo-runner generate-config > config.yml
-## edit config.yml
+## edit config.yml and adjust the `labels:`
 ## Obtain a $TOKEN from https://$DIR
-forgejo-runner register --no-interactive --token $TOKEN --name runner --instance https://codeberg.org --labels $LABELS
+forgejo-runner register --no-interactive --token $TOKEN --name runner --instance https://codeberg.org
 forgejo-runner --config config.yml daemon |& cat -v > runner.log &
 ```
 
@@ -383,4 +424,3 @@ forgejo-runner --config config.yml daemon |& cat -v > runner.log &
 
 - `fetch_timeout: 30s` # because it can be slow at times
 - `fetch_interval: 60s` # because there is throttling and 429 replies will mess up the runner
-- cache `enabled: false` # because codeberg.org is still v1.19
