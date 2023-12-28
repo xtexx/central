@@ -46,13 +46,15 @@ Note: All steps below requires that the database engine of your choice is instal
 
    Replace username and password above as appropriate.
 
-4. Create database with UTF-8 charset and collation. Make sure to use `utf8mb4` charset instead of `utf8` as the former supports all Unicode characters (including emojis) beyond _Basic Multilingual Plane_. Also, collation chosen depending on your expected content. When in doubt, use either `unicode_ci` or `general_ci`.
+4. Create database with UTF-8 charset and collation. Make sure to use `utf8mb4` charset instead of `utf8` as the former supports all Unicode characters (including emojis) beyond _Basic Multilingual Plane_. Also, collation chosen depending on your expected content, but make sure that the collation is accent- and case sensitive. When in doubt, use `utf8mb4_bin`.
 
    ```sql
-   CREATE DATABASE forgejodb CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';
+   CREATE DATABASE forgejodb CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_bin';
    ```
 
    Replace database name as appropriate.
+
+   Using an accent- and case sensitive collation such as `utf8mb4_bin` is important, because Forgejo often relies on these sensitivities, and if those assumptions are broken, that may lead to internal server errors or other unexpected results.
 
 5. Grant all privileges on the database to database user created above.
 
