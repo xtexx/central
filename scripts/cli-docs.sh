@@ -26,7 +26,7 @@ function download() {
 	return
     fi
     local version=$(latest)
-    wget -O ${FORGEJO} "https://codeberg.org/forgejo/forgejo/releases/download/${version}/forgejo-${version#v}-linux-amd64"
+    curl -sS "https://codeberg.org/forgejo/forgejo/releases/download/${version}/forgejo-${version#v}-linux-amd64" > ${FORGEJO}
     chmod +x ${FORGEJO}
 }
 
