@@ -22,10 +22,12 @@ function latest() {
 }
 
 function download() {
+    local major="$1"
+
     if test -f /tmp/forgejo ; then
 	return
     fi
-    local version=$(latest)
+    local version=$(latest $major)
     curl -sS "https://codeberg.org/forgejo/forgejo/releases/download/${version}/forgejo-${version#v}-linux-amd64" > ${FORGEJO}
     chmod +x ${FORGEJO}
 }
@@ -155,7 +157,7 @@ function cleanup() {
 function run() {
     local version="$1"
 
-    dependencies
+    dependencies >& /dev/null
     download $version
     generate | cleanup
 }
