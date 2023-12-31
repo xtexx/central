@@ -4,6 +4,13 @@ set -e
 
 : ${FORGEJO:=/tmp/forgejo}
 
+function dependencies() {
+    if ! which jq curl > /dev/null ; then
+	apt-get -qq update
+	apt-get -q install -q jq curl
+    fi
+}
+
 function latest() {
     local major="$1"
 
@@ -148,6 +155,7 @@ function cleanup() {
 function run() {
     local version="$1"
 
+    dependencies
     download $version
     generate | cleanup
 }
