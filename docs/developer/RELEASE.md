@@ -235,6 +235,10 @@ gpg --verify /tmp/foo.asc /tmp/foo
 
 ## Users, organizations and repositories
 
+### Shared user: forgejo-cascading-pr
+
+The [forgejo-cascading-pr](https://codeberg.org/forgejo-cascading-pr) user opens pull requests on behalf of other repositories by way of the [cascading-pr action](https://code.forgejo.org/actions/cascading-pr/). It is a regular user, not part of any team. It is only used for that purpose for security reasons.
+
 ### Shared user: release-team
 
 The [release-team](https://codeberg.org/release-team) user publishes and signs all releases. The associated email is mailto:release@forgejo.org.
