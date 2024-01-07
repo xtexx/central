@@ -241,10 +241,6 @@ The [release-team](https://codeberg.org/release-team) user publishes and signs a
 
 The public GPG key used to sign the releases is [EB114F5E6C0DC2BCDD183550A4B61A2DC5923710](https://codeberg.org/release-team.gpg) `Forgejo Releases <release@forgejo.org>`
 
-### Shared user: forgejo-ci
-
-The [forgejo-ci](https://codeberg.org/forgejo-ci) user is dedicated to https://forgejo-ci.codeberg.org/ and provides it with OAuth2 credentials it uses to run.
-
 ### Shared user: forgejo-experimental-ci
 
 The [forgejo-experimental-ci](https://codeberg.org/forgejo-experimental-ci) user is dedicated to provide the application tokens used by the CI to build releases and publish them to https://codeberg.org/forgejo-experimental. It does not (and must not) have permission to publish releases at https://codeberg.org/forgejo.
