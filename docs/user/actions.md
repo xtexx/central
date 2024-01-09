@@ -363,6 +363,43 @@ In addition the following variables are defined by default:
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-context/.forgejo/workflows/test.yml).
 
+### github
+
+The following are identical to the matching environment variable
+(e.g. `github.base_ref` is the same as `env.GITHUB_BASE_REF`):
+
+| Name              |
+| ----------------- |
+| action_path       |
+| action_repository |
+| actions           |
+| actor             |
+| api_url           |
+| base_ref          |
+| head_ref          |
+| event_name        |
+| event_path        |
+| job               |
+| output            |
+| ref               |
+| ref_name          |
+| repository        |
+| repository_owner  |
+| run_number        |
+| server_url        |
+| sha               |
+| token             |
+| workspace         |
+
+The `github.event` object is set to the payload associated with the
+event (`github.event_name`) that triggered the workflow.
+
+- `pull_request` and `pull_request_event` events produced by [an example workflow](https://code.forgejo.org/forgejo/end-to-end/src/commit/bc1e2aafa98850f8c366e4d7388dd6bdb98933ee/actions/example-pull-request/.forgejo/workflows/test.yml).
+  - `pull_request` from the [same repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/root/pull_request/github)
+  - `pull_request` from a [forked repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/fork/pull_request/github)
+  - `pull_request_target` from the [same repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/root/pull_request_target/github)
+  - `pull_request_target` from a [forked repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/fork/pull_request_target/github)
+
 ## Workflow reference guide
 
 The syntax and semantics of the YAML file describing a `workflow` are _partially_ explained here. When an entry is missing the [GitHub Actions](https://docs.github.com/en/actions) documentation may be helpful because there are similarities. But there also are significant differences that require testing.
