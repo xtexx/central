@@ -421,6 +421,35 @@ Example: `${{ matrix.info.version }}`
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/commit/b6591e2f71196b12f6e0851774f0bd6e2148ec18/.forgejo/workflows/actions.yml#L22-L37).
 
+### steps
+
+The `steps` context contains information about the `steps` in the current job that have
+an id specified (`jobs.<job_id>.step[*].id`) and have already run.
+
+The `steps.<step_id>.outputs` object is a key/value map of the output of the
+corresponding step, defined by writing to `$GITHUB_OUTPUT`. For instance:
+
+```yaml
+- id: mystep
+  run: echo 'check=good' >> $GITHUB_OUTPUT
+- run: test ${{ steps.mystep.outputs.check }} = good
+```
+
+Values that contain newlines can be set as follows:
+
+```yaml
+      - id: mystep
+        run: |
+	   cat >> $GITHUB_OUTPUT <<EOF
+	   thekey<<STRING
+	   value line 1
+	   value line 2
+	   STRING
+	   EOF
+```
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-expression/.forgejo/workflows/test.yml).
+
 ## Workflow reference guide
 
 The syntax and semantics of the YAML file describing a `workflow` are _partially_ explained here. When an entry is missing the [GitHub Actions](https://docs.github.com/en/actions) documentation may be helpful because there are similarities. But there also are significant differences that require testing.
@@ -633,11 +662,19 @@ A string of additional options, as documented in [docker run](https://docs.docke
 
 > **NOTE:** the `--volume` option is restricted to a whitelist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
 
+### `jobs.<job_id>.steps.if`
+
+The steps are run if the **expression** evaluates to true.
+
 ### `jobs.<job_id>.steps`
 
 An array of steps executed sequentially on the host specified by `runs-on`.
 
-### `jobs.<job_id>.steps.if`
+### `jobs.<job_id>.step[*].id`
+
+A unique identifier for the step.
+
+### `jobs.<job_id>.step[*].if`
 
 The step is run if the **expression** evaluates to true. The following additional boolean functions are supported:
 
@@ -647,7 +684,7 @@ The step is run if the **expression** evaluates to true. The following additiona
 
 Check out the workflows in [example-if](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-if/) and [example-if-fail](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-if-fail/).
 
-### `jobs.<job_id>.steps.uses`
+### `jobs.<job_id>.step[*].uses`
 
 Specifies the repository from which the `Action` will be cloned or a directory where it can be found.
 
@@ -692,7 +729,7 @@ Specifies the repository from which the `Action` will be cloned or a directory w
 
   [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-local-action/).
 
-### `jobs.<job_id>.steps.with`
+### `jobs.<job_id>.step[*].with`
 
 A dictionary mapping the inputs of the action to concrete values. The `action.yml` defines and documents the inputs.
 
