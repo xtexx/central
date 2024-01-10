@@ -391,6 +391,8 @@ The following are identical to the matching environment variable
 | token             |
 | workspace         |
 
+Example: `${{ github.SHA }}`
+
 The `github.event` object is set to the payload associated with the
 event (`github.event_name`) that triggered the workflow.
 
@@ -399,6 +401,25 @@ event (`github.event_name`) that triggered the workflow.
   - `pull_request` from a [forked repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/fork-org/pull_request/github)
   - `pull_request_target` from the [same repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/root/pull_request_target/github)
   - `pull_request_target` from a [forked repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/fork-org/pull_request_target/github)
+
+### matrix
+
+An object that exists in the context of a job where `jobs.<job_id>.strategy.matrix` is defined . For instance:
+
+```yaml
+jobs:
+  actions:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        info:
+          - version: v1.22
+            branch: next
+```
+
+Example: `${{ matrix.info.version }}`
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/commit/b6591e2f71196b12f6e0851774f0bd6e2148ec18/.forgejo/workflows/actions.yml#L22-L37).
 
 ## Workflow reference guide
 
@@ -543,6 +564,44 @@ By default the `docker` label will create a container from a [Node.js 16 Debian 
 The `runs-on: lxc` label will run the jobs in a [LXC](https://linuxcontainers.org/lxc/) container where software that rely on `systemd` can be installed. Nested containers can also be created recursively (see [the `end-to-end` tests](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/.forgejo/workflows/integration.yml) for an example). `Services` are not supported for jobs that run on LXC.
 
 The `runs-on: self-hosted` label will run the jobs directly on the host, in a shell spawned from the runner. It provides no isolation at all.
+
+### `jobs.<job_id>.strategy.matrix`
+
+If present, it will generate a matrix from the content of the object
+and create one job per cell in the matrix instead of a single job.
+
+For instance:
+
+```yaml
+jobs:
+  test:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        variant: ["bookworm", "bullseye"]
+	node: ["18", "20"]
+```
+
+Will create four jobs where:
+
+- `matrix.variant` = "bookworm" & `matrix.node` = "18"
+- `matrix.variant` = "bookworm" & `matrix.node` = "20"
+- `matrix.variant` = "bullseye" & `matrix.node` = "18"
+- `matrix.variant` = "bullseye" & `matrix.node` = "20"
+
+They each run independently and can use the `matrix` context to access these values. For instance:
+
+```yaml
+jobs:
+  test:
+---
+steps:
+  - uses: https://code.forgejo.org/actions/setup-node@v4
+    with:
+      node-version: '${{ matrix.node }}'
+```
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/commit/b6591e2f71196b12f6e0851774f0bd6e2148ec18/.forgejo/workflows/actions.yml#L22-L37).
 
 ### `jobs.<job_id>.container`
 
