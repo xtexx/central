@@ -182,7 +182,7 @@ services:
 
 A container with the specified `image:` is run before the `job` starts and is terminated when it completes. The job can address the service using its name, in this case `pgsql`.
 
-The IP address of `pgsql` is on the same [docker network](https://docs.docker.com/engine/reference/commandline/network/) as the container running the **steps** and there is no need for port binding (see the [docker run --publish](https://docs.docker.com/engine/reference/commandline/run/) option for more information). The `postgres:15` image exposes the PostgreSQL port 5432 and a client will be able to connect as [shown in this example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/postgresql.yml)
+The IP address of `pgsql` is on the same [network](https://docs.docker.com/engine/reference/commandline/network/) as the container running the **steps** and there is no need for port binding (see the [docker run --publish](https://docs.docker.com/engine/reference/commandline/run/) option for more information). The `postgres:15` image exposes the PostgreSQL port 5432 and a client will be able to connect as [shown in this example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/test.yml)
 
 ### image
 
@@ -450,6 +450,24 @@ Values that contain newlines can be set as follows:
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-expression/.forgejo/workflows/test.yml).
 
+### inputs
+
+The `inputs` context maps keys (strings) to values (also strings) when running an action. They are provided as `jobs.<job_id>.step[*].with`
+in a step where `jobs.<job_id>.step[*].uses` specifies an action. For instance:
+
+```yaml
+inputs:
+  input-one:
+    description: 'description one'
+
+runs:
+  using: 'composite'
+  steps:
+    - run: echo ${{ inputs.input-one }}
+```
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-local-action/.forgejo/workflows/test.yml)
+
 ## Workflow reference guide
 
 The syntax and semantics of the YAML file describing a `workflow` are _partially_ explained here. When an entry is missing the [GitHub Actions](https://docs.github.com/en/actions) documentation may be helpful because there are similarities. But there also are significant differences that require testing.
@@ -632,7 +650,7 @@ steps:
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/commit/b6591e2f71196b12f6e0851774f0bd6e2148ec18/.forgejo/workflows/actions.yml#L22-L37).
 
-### `jobs.<job_id>.container`
+### `jobs.<job_id>.container.image`
 
 - **Docker or Podman:**
   If the default image is unsuitable, a job can specify an alternate container image with `container:`, [as shown in this example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-container/.forgejo/workflows/test.yml). For instance the following will ensure the job is run using [Alpine 3.18](https://hub.docker.com/_/alpine/tags?name=3.18).
@@ -640,11 +658,7 @@ steps:
   ```yaml
   runs-on: docker
   container:
-    image: alpine:3.18
-    ## Optionally provide credentials if the registry requires authentication.
-    #credentials:
-    #  username: "root"
-    #  password: "admin1234"
+    image: alpine:3.19
   ```
 
 - **LXC:**
@@ -656,11 +670,86 @@ steps:
     image: debian:bookworm
   ```
 
+### `jobs.<job_id>.container.env`
+
+Set environment variables in the container.
+
+> **NOTE:** ignored if `jobs.<job_id>.runs-on` is an LXC container.
+
+### `jobs.<job_id>.container.credentials`
+
+If the image's container registry requires authentication to pull the image, `username` and `password` will be used.
+The credentials are the same values that you would provide to the docker login command. For instance:
+
+```yaml
+runs-on: docker
+container:
+  image: alpine:3.18
+  credentials:
+    username: 'root'
+    password: 'admin1234'
+```
+
+> **NOTE:** ignored if `jobs.<job_id>.runs-on` is an LXC container.
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-container/.forgejo/workflows/test.yml)
+
+### `jobs.<job_id>.container.volumes`
+
+Set the volumes for the container to use, as if provided with the `--volume` argument of the `docker run` command.
+
+> **NOTE:** the `--volume` option is restricted to a whitelist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
+
+> **NOTE:** ignored if `jobs.<job_id>.runs-on` is an LXC container.
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-context/.forgejo/workflows/test.yml)
+
 ### `jobs.<job_id>.container.options`
 
 A string of additional options, as documented in [docker run](https://docs.docker.com/engine/reference/commandline/run/). For instance: "--workdir /myworkdir --ulimit nofile=1024:1024".
 
 > **NOTE:** the `--volume` option is restricted to a whitelist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
+
+> **NOTE:** ignored if `jobs.<job_id>.runs-on` is an LXC container.
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/test.yml)
+
+### `jobs.<job_id>.services`
+
+The map of services to run before the job starts and terminate when it completes. The key determines the name of the host where the
+service runs. For instance:
+
+```yaml
+services:
+  pgsql:
+    image: postgres:15
+      POSTGRES_DB: test
+      POSTGRES_PASSWORD: postgres
+steps:
+  - run: PGPASSWORD=postgres psql -h pgsql -U postgres -c '\dt' test
+```
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-service/.forgejo/workflows/test.yml)
+
+### `jobs.<job_id>.services.image`
+
+See also `jobs.<job_id>.container.image`
+
+### `jobs.<job_id>.services.credentials`
+
+See also `jobs.<job_id>.container.credentials`
+
+### `jobs.<job_id>.services.env`
+
+See also `jobs.<job_id>.container.env`
+
+### `jobs.<job_id>.services.volumes`
+
+See also `jobs.<job_id>.container.volumes`
+
+### `jobs.<job_id>.services.options`
+
+See also `jobs.<job_id>.container.options`
 
 ### `jobs.<job_id>.steps.if`
 
@@ -669,6 +758,47 @@ The steps are run if the **expression** evaluates to true.
 ### `jobs.<job_id>.steps`
 
 An array of steps executed sequentially on the host specified by `runs-on`.
+
+### `jobs.<job_id>.step[*].run`
+
+A shell script to run in the environment specified with
+`jobs.<job_id>.runs-on`. It runs as root using the default shell unless
+specified otherwise with `jobs.<job_id>.steps[*].shell`. For instance:
+
+```yaml
+jobs:
+  test:
+    runs-on: docker
+    container:
+      image: alpine:3.19
+    steps:
+      - run: |
+          grep Alpine /etc/os-release
+	  echo SUCESS
+```
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-container/.forgejo/workflows/test.yml)
+
+### `jobs.<job_id>.steps[*].working-directory`
+
+The working directory from which the script specified with `jobs.<job_id>.step[*].run` will run. For instance:
+
+```yaml
+- run: test $(pwd) = /tmp
+  working-directory: /tmp
+```
+
+### `jobs.<job_id>.steps[*].shell`
+
+The shell used to run the script specified with `jobs.<job_id>.step[*].run`. For instance:
+
+```yaml
+steps:
+  - shell: bash
+    run: echo $PATH
+```
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-pull-request/.forgejo/workflows/test.yml)
 
 ### `jobs.<job_id>.step[*].id`
 
@@ -739,16 +869,23 @@ jobs:
   ls:
     runs-on: docker
     steps:
-      - uses: actions/checkout@v3
-      - id: local-action
-        uses: ./.forgejo/local-action
+      - uses: ./.forgejo/local-action
         with:
-          input-two-required: 'two'
+          input-two: 'two'
 ```
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-local-action/.forgejo/workflows/test.yml)
 
-For remote actions that are implemented with a `Dockerfile` instead of `action.yml`, the `args` key is used as command line arguments when the container is run.
+### `jobs.<job_id>.steps[*].with.args`
+
+For actions that are implemented with a `Dockerfile`, the `args` key is used as command line arguments when the container is run.
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-docker-action/.forgejo/workflows/test.yml)
+
+### `jobs.<job_id>.steps[*].with.entrypoint`
+
+For actions that are implemented with a `Dockerfile`, the `entrypoint` key is used to overrides the `ENTRYPOINT` in the Dockerfile. It must be
+the path to the executable file to run.
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-docker-action/.forgejo/workflows/test.yml)
 
