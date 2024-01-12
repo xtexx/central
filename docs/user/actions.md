@@ -502,6 +502,45 @@ on:
       - main
 ```
 
+### `on.push`
+
+Trigger the workflow when a commit or a tag is pushed.
+
+If the `branches` event parameter is present, it will only be
+triggered if the a commit is pushed to one of the branches in the
+list.
+
+If the `paths` event parameter is present, it will only be
+triggered if the a pushed commit modifies one of the path in the list.
+
+If both `branches` and `paths` are present, the workflow will only
+be triggered if both match.
+
+```yaml
+on:
+  push:
+    branches:
+      - 'mai*'
+    paths:
+      - '**/test.yml'
+```
+
+[Check out the push branches example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-push/.forgejo/workflows/test.yml).
+
+If the `tags` event parameter is present, it will only be
+triggered if the the pushed tag matches one of the tags in the list.
+
+```yaml
+on:
+  push:
+    tags:
+      - 'v1.*'
+```
+
+[Check out the push tags example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-tag/.forgejo/workflows/test.yml).
+
+> **NOTE:** combining `tags` with `paths` or `branches` is unspecified.
+
 ### `on.pull_request`
 
 Trigger the workflow when an event happens on a pull request, as
