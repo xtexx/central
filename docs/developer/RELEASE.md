@@ -87,6 +87,12 @@ It will trigger a workflow to:
 - Downoad Binaries from https://codeberg.org/forgejo-experimental, sign them and copy them to https://codeberg.org/forgejo
 - Copy container images from https://codeberg.org/forgejo-experimental to https://codeberg.org/forgejo
 
+### Forgejo release mirror
+
+The https://code.forgejo.org/forgejo/forgejo repository is a read-only
+mirror [updated daily](https://code.forgejo.org/forgejo/forgejo/src/branch/main/.forgejo/workflows) with the release assets
+and the branches from https://codeberg.org/forgejo/forgejo.
+
 ### Forgejo runner publication
 
 - Push the vX.Y.Z-N tag to https://code.forgejo.org/forgejo/runner
