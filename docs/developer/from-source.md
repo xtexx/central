@@ -138,3 +138,9 @@ make watch
 ```
 
 > **NOTE:** do not set the `bindata` tag such as in `TAGS="bindata" make watch` or the browser may fail to load pages with an error like `Failed to load asset`
+
+To run automated frontend and backend tests:
+
+```bash
+make test
+```
