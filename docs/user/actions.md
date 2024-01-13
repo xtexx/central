@@ -393,14 +393,18 @@ The following are identical to the matching environment variable
 
 Example: `${{ github.SHA }}`
 
+### github.event
+
 The `github.event` object is set to the payload associated with the
 event (`github.event_name`) that triggered the workflow.
 
+- [`push` and `push.branches` event](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/push/push/github) produced by [an example workflow](https://code.forgejo.org/forgejo/end-to-end/src/commit/6e3976b17ce122aa6374b34a6b9e1849fb88bd36/actions/example-push/.forgejo/workflows/test.yml)
+- [`push.tags` event](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/tag/push/github) produced by [an example workflow](https://code.forgejo.org/forgejo/end-to-end/src/commit/6e3976b17ce122aa6374b34a6b9e1849fb88bd36/actions/example-tag/.forgejo/workflows/test.yml)
 - `pull_request` and `pull_request_event` events produced by [an example workflow](https://code.forgejo.org/forgejo/end-to-end/src/commit/bc1e2aafa98850f8c366e4d7388dd6bdb98933ee/actions/example-pull-request/.forgejo/workflows/test.yml).
-  - `pull_request` from the [same repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/root/pull_request/github)
-  - `pull_request` from a [forked repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/fork-org/pull_request/github)
-  - `pull_request_target` from the [same repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/root/pull_request_target/github)
-  - `pull_request_target` from a [forked repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/fork-org/pull_request_target/github)
+  - [`pull_request` from the same repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/root/pull_request/github)
+  - [`pull_request` from a forked repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/fork-org/pull_request/github)
+  - [`pull_request_target` from the same repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/root/pull_request_target/github)
+  - [`pull_request_target` from a forked repository](https://codeberg.org/forgejo/docs/src/branch/v1.21/docs/user/actions-contexts/pull-request/fork-org/pull_request_target/github)
 
 ### matrix
 
