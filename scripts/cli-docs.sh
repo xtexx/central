@@ -63,10 +63,14 @@ function section() {
     echo '```'
 }
 
+function section_help() {
+    section "##" "" 'forgejo `--help`' | sed -e '/^VERSION:/d' -e '/built with GNU Make/d'
+}
+
 function generate() {
     front
 
-    section "##" "" 'forgejo `--help`'
+    section_help
 
     section "##" "forgejo-cli"
 

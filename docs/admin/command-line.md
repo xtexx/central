@@ -20,8 +20,6 @@ NAME:
 USAGE:
    Forgejo [global options] command [command options] [arguments...]
 
-VERSION:
-   1.21.3+0 built with GNU Make 4.4.1, go1.21.5 : bindata, timetzdata, sqlite, sqlite_unlock_notify
 
 DESCRIPTION:
    By default, forgejo will start serving using the web-server with no argument, which can alternatively be run by running the subcommand "web".
