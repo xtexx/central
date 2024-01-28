@@ -45,10 +45,7 @@ By default, Weblate will use your primary e-mail address for your contributions.
 
 If you want to make direct changes, accept other's suggestions or start a new translation - consider becoming a part of the localization team.
 
-There are two ways available to apply to the team:
-
-- open a new issue at [forgejo/governance](https://codeberg.org/forgejo/governance) repository
-- join the [Matrix room](https://matrix.to/#/#forgejo-localization:matrix.org) and send your application message here
+In order to apply to the team you must open a new issue at [forgejo/governance](https://codeberg.org/forgejo/governance) repository. See previous applications such as [this one](https://codeberg.org/forgejo/governance/issues/69) for inspiration.
 
 In your application message, please include:
 
