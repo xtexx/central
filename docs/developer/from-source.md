@@ -19,10 +19,9 @@ version is 20.
 **Note**: When executing make tasks that require external tools, like
 `make misspell-check`, Forgejo will automatically download and build these as
 necessary. To be able to use these, you must have the `"$GOPATH/bin"` directory
-on the executable path. If you don't add the go bin directory to the
-executable path, you will have to manage this yourself.
+on the executable path.
 
-**Note 2**: Go version 1.20 or higher is required. However, it is recommended to
+**Note 2**: Go version 1.21 or higher is required. However, it is recommended to
 obtain the same version as the [continuous integration](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/.forgejo/workflows/testing.yml).
 
 **Note 3**: If you want to avoid installing build dependencies manually,
@@ -31,9 +30,7 @@ the build process in a Docker image containing all the required dependencies.
 
 ### Download
 
-First, we must retrieve the source code. Since, the advent of go modules, the
-simplest way of doing this is to use Git directly as we no longer have to have
-Forgejo built from within the GOPATH.
+First, we must retrieve the source code.
 
 ```bash
 git clone https://codeberg.org/forgejo/forgejo
@@ -64,9 +61,25 @@ git checkout v1.21.2-0
 
 To build from source, the following programs must be present on the system:
 
-- `go` v1.20 or higher, see [here](https://golang.org/dl/)
+- `go` v1.21 or higher, see [here](https://golang.org/dl/)
 - `node` 20 or higher with `npm`, see [here](https://nodejs.org/en/download/current)
 - `make`
+
+There are a number of useful `make` targets, only some of which are documented here.
+They can all be displayed with:
+
+```sh
+$ make help
+Make Routines:
+ - ""                               equivalent to "build"
+ - build                            build everything
+ - frontend                         build frontend files
+ - backend                          build backend files
+ - watch                            watch everything and continuously rebuild
+ - watch-frontend                   watch frontend files and continuously rebuild
+ - watch-backend                    watch backend files and continuously rebuild
+...
+```
 
 Depending on requirements, the following build tags can be included.
 
@@ -98,7 +111,7 @@ TAGS="bindata sqlite sqlite_unlock_notify" make build
 
 The `build` target is split into two sub-targets:
 
-- `make backend` which requires [Go v1.20](https://golang.org/dl/) or greater.
+- `make backend` which requires [Go v1.21](https://golang.org/dl/) or greater.
 - `make frontend` which requires [Node.js 20](https://nodejs.org/en/download/current) or greater.
 
 If pre-built frontend files are present it is possible to only build the backend:
@@ -134,7 +147,7 @@ launched manually from command line, it can be killed by pressing `Ctrl + C`.
 To run and continuously rebuild when the source files change:
 
 ```bash
-make watch
+TAGS='sqlite sqlite_unlock_notify' make watch
 ```
 
 > **NOTE:** do not set the `bindata` tag such as in `TAGS="bindata" make watch` or the browser may fail to load pages with an error like `Failed to load asset`
