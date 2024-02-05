@@ -314,6 +314,12 @@ PHONY += multi_v7_lpae_defconfig
 multi_v7_lpae_defconfig:
 	$(call merge_into_defconfig,multi_v7_defconfig,lpae)
 
+PHONY += klte_defconfig klte_postmarketos_defconfig
+klte_defconfig:
+	$(call merge_into_defconfig,msm8974_defconfig,klte)
+klte_postmarketos_defconfig:
+	$(call merge_into_defconfig,msm8974_defconfig,klte klte-postmarketos)
+
 define archhelp
   echo  '* zImage        - Compressed kernel image (arch/$(ARCH)/boot/zImage)'
   echo  '  Image         - Uncompressed kernel image (arch/$(ARCH)/boot/Image)'
@@ -329,4 +335,6 @@ define archhelp
   echo  '                  install to $$(INSTALL_PATH) and run lilo'
   echo
   echo  '  multi_v7_lpae_defconfig     - multi_v7_defconfig with CONFIG_ARM_LPAE enabled'
+  echo  '  klte_defconfig              - msm8974_defconfig with HyperPsi and klte additions'
+  echo  '  klte_postmarketos_defconfig - klte_defconfig for postmarketOS'
 endef
