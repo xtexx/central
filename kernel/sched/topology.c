@@ -4,8 +4,12 @@
  */
 
 #include <linux/bsearch.h>
+#include <trace/hooks/sched.h>
 
 DEFINE_MUTEX(sched_domains_mutex);
+#ifdef CONFIG_LOCKDEP
+EXPORT_SYMBOL_GPL(sched_domains_mutex);
+#endif
 
 /* Protected by sched_domains_mutex: */
 static cpumask_var_t sched_domains_tmpmask;
@@ -2533,6 +2537,7 @@ build_sched_domains(const struct cpumask *cpu_map, struct sched_domain_attr *att
 		pr_info("root domain span: %*pbl (max cpu_capacity = %lu)\n",
 			cpumask_pr_args(cpu_map), rq->rd->max_cpu_capacity);
 	}
+	trace_android_vh_build_sched_domains(has_asym);
 
 	ret = 0;
 error:

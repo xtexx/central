@@ -424,6 +424,7 @@ struct task_struct *find_task_by_vpid(pid_t vnr)
 {
 	return find_task_by_pid_ns(vnr, task_active_pid_ns(current));
 }
+EXPORT_SYMBOL_GPL(find_task_by_vpid);
 
 struct task_struct *find_get_task_by_vpid(pid_t nr)
 {
@@ -700,7 +701,7 @@ static int pidfd_getfd(struct pid *pid, int fd)
 	if (IS_ERR(file))
 		return PTR_ERR(file);
 
-	ret = receive_fd(file, O_CLOEXEC);
+	ret = receive_fd(file, NULL, O_CLOEXEC);
 	fput(file);
 
 	return ret;
