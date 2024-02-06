@@ -13,6 +13,10 @@ not upstream (msm8974-mainline, torvalds tree, and Android Common Kernel).
 
    author & commiter: xtex
 
+3. ARM: config: Add postmarketOS extra config for samsung-klte
+
+   author & commiter: xtex
+
 ## Upstream-queued
 
 This list tracks all changes in this tree that have been sent to upstream and is waiting for review.
