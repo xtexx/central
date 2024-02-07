@@ -15,7 +15,11 @@ pub fn logger(
     comptime format: []const u8,
     args: anytype,
 ) void {
-    const prefix = "[" ++ comptime level.asText() ++ "] " ++ @tagName(scope) ++ ": ";
+    const scopeTag = switch (scope) {
+        .default => "",
+        else => " " + @tagName(scope) ++ ":",
+    };
+    const prefix = "[" ++ comptime level.asText() ++ "]" ++ scopeTag ++ " ";
     logger_mutex.lock();
     defer logger_mutex.unlock();
 
