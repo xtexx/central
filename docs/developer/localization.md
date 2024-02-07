@@ -23,19 +23,23 @@ From the language page you can browse all translation strings, as well as untran
 
 ### Suggesting changes
 
-You can suggest changes and additions to the existing translation anonymously: find the string for which you want to suggest a change, type your change in, and click "Suggest". Your change will be checked by a team member for your language before being accepted. Most contributors are volunteers, this can take a while.
+You can suggest changes and additions to the existing translation anonymously: find the string for which you want to suggest a change, type your change in, and click "Suggest". Your change will be checked before being accepted. Most contributors are volunteers, this can take a while.
 
-### Accepting suggestions, making direct changes
+### Making direct changes, accepting suggestions
 
-To prevent spam and trolling, direct translations are limited to Forgejo Localization team members.
+Making direct changes requires a [Codeberg](https://codeberg.org/) account. Use it to log into [Codeberg Translate](https://translate.codeberg.org/).
 
-Being team member, you can use the "Save" button to update the translation directly. You can also apply existing suggestions by clicking the checkmark icon, or reject, optionally specifying the rejection reason.
+If the string is not translated or approved, you can edit it and use the "Save" button to save the change. You can also apply existing suggestions by clicking the checkmark icon, or reject, optionally specifying the rejection reason.
+
+If the string is translated and approved, it can only be changed by a Forgejo Localization team member, but everyone else is still able suggest changes.
+
+To protect the existing translations from vandalism, all strings imported from Gitea were automatically marked as approved.
 
 ### Adding a new language
 
 If your language is not available in the language list, you must add first it before translating.
 
-You need to be a Localization team member to add new language. If you're not, please apply! If there's no team member for your language, nobody will be able to check and accept your translations.
+To add a new language, go to the [page for starting new translation](https://translate.codeberg.org/new-lang/forgejo/forgejo/), select your language and click "Start new translation".
 
 ### E-mail privacy
 
@@ -43,18 +47,20 @@ By default, Weblate will use your primary e-mail address for your contributions.
 
 ## Joining the Localization team
 
-If you want to make direct changes, accept other's suggestions or start a new translation - consider becoming a part of the localization team.
+If you want to be more involved in maintaining the translation - consider becoming a part of the Localization team.
 
-In order to apply to the team you must open a new issue at [forgejo/governance](https://codeberg.org/forgejo/governance) repository. See previous applications such as [this one](https://codeberg.org/forgejo/governance/issues/69) for inspiration.
+In order to apply to the team you must open a new issue at [forgejo/governance](https://codeberg.org/forgejo/governance) repository. See [previous applications](https://codeberg.org/forgejo/governance/issues?q=application+to+the+localization+team&state=closed) for inspiration.
 
 In your application message, please include:
 
 - your motivation for becoming a member
 - your experience at translating other projects and using Weblate. e.g. link(s) to your public translation profile(s) or contributions
 
-Please apply to the team only if you want your actions as a team member to be beneficial to all translation users. Do not apply to make changes that will only benefit you.
+Please apply to the team only if you want your actions as a team member to be beneficial to all translation users.
 
-To be able to become a member, you'll need a [Codeberg](https://codeberg.org/) account. Then you can use it to log into [Codeberg Translate](https://translate.codeberg.org/).
+### Discussing the translation
+
+Ask questions, clarify string meaning, report vandalism and suggest changes to source strings in [Matrix room](https://matrix.to/#/#forgejo-localization:matrix.org) or [issues](https://codeberg.org/forgejo/forgejo/issues). For this you don't need to be a member of the Localization team.
 
 ## Troubleshooting
 
