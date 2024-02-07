@@ -1,5 +1,8 @@
+const root = @import("root");
 const std = @import("std");
 const File = std.fs.File;
+
+const global_prefix = root.log_prefix;
 
 pub const std_options = struct {
     pub const log_level = .debug;
@@ -19,7 +22,7 @@ pub fn logger(
         .default => "",
         else => " " + @tagName(scope) ++ ":",
     };
-    const prefix = "[" ++ comptime level.asText() ++ "]" ++ scopeTag ++ " ";
+    const prefix = "[" ++ global_prefix ++ "] " ++ "[" ++ comptime level.asText() ++ "]" ++ scopeTag ++ " ";
     logger_mutex.lock();
     defer logger_mutex.unlock();
 
