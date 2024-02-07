@@ -316,7 +316,7 @@ multi_v7_lpae_defconfig:
 
 PHONY += klte_defconfig klte_postmarketos_defconfig
 klte_defconfig:
-	$(call merge_into_defconfig,msm8974_defconfig,klte)
+	$(call merge_into_defconfig,msm8974_defconfig,klte klte-hyperpsi)
 klte_postmarketos_defconfig:
 	$(call merge_into_defconfig,msm8974_defconfig,klte klte-postmarketos)
 
