@@ -1,8 +1,10 @@
 .{
-    .name = "hyplog",
-    .version = "1.0.0",
+    .name = "hypearly_init",
+    .version = "0.0.0",
     .minimum_zig_version = "0.11.0",
-    .dependencies = .{},
+    .dependencies = .{
+        .hyplog = .{ .path = "../log" },
+    },
     .paths = .{
         "build.zig",
         "build.zig.zon",
