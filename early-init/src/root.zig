@@ -7,10 +7,10 @@ pub const std_options = struct {
 };
 pub const logger = hyplog.logger;
 
-pub fn init_logger() !void {
+pub fn init_logger() void {
     hyplog.log_targets = .{
-        hyplog.openHyperpsiLog() orelse null,
-        hyplog.openDevConsole() orelse null,
-        hyplog.openPmsg() orelse null,
-    };
+        hyplog.openHyperpsiLog() catch null,
+        hyplog.openDevConsole() catch null,
+        hyplog.openPmsg() catch null,
+    } ++ .{null} ** 13;
 }

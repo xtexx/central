@@ -31,13 +31,13 @@ pub fn logger(
 }
 
 pub fn openDevConsole() File.OpenError!File {
-    std.fs.openFileAbsolute("/dev/console", .{ .mode = .write_only });
+    return std.fs.openFileAbsolute("/dev/console", .{ .mode = .write_only });
 }
 
 pub fn openPmsg() File.OpenError!File {
-    std.fs.openFileAbsolute("/dev/pmsg0", .{ .mode = .write_only });
+    return std.fs.openFileAbsolute("/dev/pmsg0", .{ .mode = .write_only });
 }
 
 pub fn openHyperpsiLog() File.OpenError!File {
-    std.fs.createFileAbsolute("/hyperpsi_log", .{ .truncate = false, .read = false, .mode = 0o660 });
+    return std.fs.createFileAbsolute("/hyperpsi_log", .{ .truncate = false, .read = false, .mode = 0o660 });
 }
