@@ -7,7 +7,7 @@ pub const std_options = struct {
 };
 
 var logger_mutex = std.Thread.Mutex{};
-pub var log_targets = [16]?File;
+pub var log_targets: [16]?File = [_]?File{null} ** 16;
 
 pub fn logger(
     comptime level: std.log.Level,
@@ -26,7 +26,7 @@ pub fn logger(
     // write to log targets
     for (log_targets) |target| {
         const writer = (target orelse continue).writer();
-        writer.print(prefix ++ format ++ "\n", args);
+        writer.print(prefix ++ format ++ "\n", args) catch {};
     }
 }
 
