@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: GPL-2.0
+#include "qcom-msm8974.dtsi"
+
+&gcc {
+	compatible = "qcom,gcc-msm8974pro";
+};
+
+&gpu {
+	compatible = "qcom,adreno-330.2", "qcom,adreno";
+};
+
+&sdhc_1 {
+	clocks = <&gcc GCC_SDCC1_AHB_CLK>,
+		 <&gcc GCC_SDCC1_APPS_CLK>,
+		 <&xo_board>,
+		 <&gcc GCC_SDCC1_CDCCAL_FF_CLK>,
+		 <&gcc GCC_SDCC1_CDCCAL_SLEEP_CLK>;
+	clock-names = "iface", "core", "xo", "cal", "sleep";
+};
+
+/ {
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@3e8e0000 {
+			compatible = "ramoops";
+			reg = <0x3e8e0000 0x200000>;
+
+			console-size = <0x100000>;
+			record-size = <0x10000>;
+			ftrace-size = <0x10000>;
+			pmsg-size = <0x80000>;
+			ecc-size = <8>;
+		};
+	};
+};
