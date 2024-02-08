@@ -17,16 +17,31 @@ pub fn init(allocator: std.mem.Allocator) Self {
 
 pub fn load(self: *Self) !void {
     try self.loadFromBootConfig();
+    try self.loadFromBootConfigFile("/usr/share/hypearly-init.config");
+    try self.loadFromBootConfigFile("/etc/hypearly-init.config");
     try self.loadFromArgs();
 }
 
 fn loadFromBootConfig(self: *Self) !void {
-    self.mutex.lock();
-    defer self.mutex.unlock();
+    try self.loadFromBootConfigFile("/proc/bootconfig");
+}
+
+fn loadFromBootConfigFile(self: *Self, path: []const u8) !void {
+    var file = std.fs.openFileAbsolute(path, .{ .mode = .read_only }) catch |err| switch (err) {
+        error.FileNotFound => return,
+        else => return err,
+    };
+    defer file.close();
+    var reader = file.reader();
+    while (true) {
+        const line = try reader.readUntilDelimiterOrEofAlloc(self.allocator, '\n', 1024) orelse break;
+        try self.parseProperty(line);
+        self.allocator.free(line);
+    }
 }
 
 fn loadFromArgs(self: *Self) !void {
-    var iter = std.process.ArgIterator.init();
+    var iter = std.process.args();
     try std.testing.expect(iter.skip());
     while (iter.next()) |arg| {
         try self.parseProperty(arg);
@@ -130,7 +145,7 @@ pub fn parseProperty(self: *Self, str: []const u8) !void {
                 '\n', ' ' => continue,
                 ',' => {
                     phase = .begin_value;
-                    // try value.append(0);
+                    try value.append(0);
                 },
                 '#' => phase = .comment,
                 else => return error.UnexpectedCharAfterEnd,
