@@ -20,7 +20,7 @@ pub fn logger(
 ) void {
     const scopeTag = switch (scope) {
         .default => "",
-        else => " " + @tagName(scope) ++ ":",
+        else => " " ++ @tagName(scope) ++ ":",
     };
     const prefix = "[" ++ global_prefix ++ "] " ++ "[" ++ comptime level.asText() ++ "]" ++ scopeTag ++ " ";
     logger_mutex.lock();
