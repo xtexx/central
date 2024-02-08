@@ -1,6 +1,7 @@
 const std = @import("std");
 const log = std.log;
 pub const hyplog = @import("hyplog");
+pub const BootConfig = @import("./BootConfig.zig");
 
 pub const std_options = struct {
     pub const log_level = .debug;
@@ -16,22 +17,13 @@ pub fn init_logger() void {
     } ++ .{null} ** 13;
 }
 
-pub fn check_kernel() void {
+pub fn check_kernel() error{KernelNotSuitable}!void {
     const utsname = std.os.uname();
+    log.info("{s} {s} {s}", .{ utsname.sysname, utsname.release, utsname.version });
     if (std.mem.indexOf(u8, &utsname.version, "hyperpsi") == null) {
         log.warn("The kernel seems not to be for HyperPsi", .{});
-    }
-    log.info("{s} {s} {s}", .{ utsname.sysname, utsname.release, utsname.version });
-}
-
-pub fn strict_check_kernel() error{KernelNotSuitable}!void {
-    const utsname = std.os.uname();
-    if (std.mem.indexOf(u8, &utsname.version, "hyperpsi") == null) {
-        log.err("The kernel seems not to be for HyperPsi: {s} {s} {s}", .{
-            utsname.sysname,
-            utsname.release,
-            utsname.version,
-        });
         return error.KernelNotSuitable;
     }
 }
+
+pub var bootconfig: BootConfig = undefined;
