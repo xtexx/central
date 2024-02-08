@@ -747,6 +747,7 @@ Define allowed algorithms and their minimum key length (use -1 to disable a type
 - `HOST`: **\<empty\>**: Connection string for `redis`, `redis-cluster` and `memcache`. For `twoqueue` sets configuration for the queue.
   - Redis: `redis://:macaron@127.0.0.1:6379/0?pool_size=100&idle_timeout=180s`
   - Redis-cluster `redis+cluster://:macaron@127.0.0.1:6379/0?pool_size=100&idle_timeout=180s`
+  - Redis-sentinel `redis+sentinel://127.0.0.1:26379/0?mastername=mymaster`
   - Memcache: `127.0.0.1:9090;127.0.0.1:9091`
   - TwoQueue LRU cache: `{"size":50000,"recent_ratio":0.25,"ghost_ratio":0.5}` or `50000` representing the maximum number of objects stored in the cache.
 - `ITEM_TTL`: **16h**: Time to keep items in cache if not used, Setting it to -1 disables caching.
