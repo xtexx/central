@@ -34,7 +34,7 @@ fn loadFromArgs(self: *Self) !void {
 }
 
 pub fn parseProperty(self: *Self, str: []const u8) !void {
-    const Phase = enum { begin_key, key_quoted, key_raw, equals, begin_value, value_quoted, value_raw, end };
+    const Phase = enum { begin_key, key_quoted, key_raw, equals, begin_value, value_quoted, value_raw, end, comment };
     var phase = Phase.begin_key;
     var separator: u8 = undefined;
     var prop = str;
@@ -120,21 +120,23 @@ pub fn parseProperty(self: *Self, str: []const u8) !void {
                     phase = .end;
                     continue;
                 },
-                '#' => return error.InvalidKey,
+                '#' => phase = .comment,
                 else => switch (char) {
                     33...126 => try value.append(char),
                     else => return error.InvalidValue,
                 },
             },
             .end => switch (char) {
-                '\n' => continue,
+                '\n', ' ' => continue,
+                '#' => phase = .comment,
                 else => return error.UnexpectedCharAfterEnd,
             },
+            .comment => {},
         }
         prop = prop[1..];
     }
     switch (phase) {
-        .value_raw, .end => {
+        .value_raw, .end, .comment => {
             self.mutex.lock();
             defer self.mutex.unlock();
             try self.map.put(try key.toOwnedSlice(), try value.toOwnedSlice());
