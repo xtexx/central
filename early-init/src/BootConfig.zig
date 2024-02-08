@@ -53,7 +53,7 @@ pub fn parseProperty(self: *Self, str: []const u8) !void {
                     phase = .key_quoted;
                 },
                 '"' => {
-                    separator = '\'';
+                    separator = '"';
                     phase = .key_quoted;
                 },
                 ' ' => {},
@@ -94,7 +94,7 @@ pub fn parseProperty(self: *Self, str: []const u8) !void {
                     phase = .value_quoted;
                 },
                 '"' => {
-                    separator = '\'';
+                    separator = '"';
                     phase = .value_quoted;
                 },
                 ' ' => {},
@@ -128,6 +128,10 @@ pub fn parseProperty(self: *Self, str: []const u8) !void {
             },
             .end => switch (char) {
                 '\n', ' ' => continue,
+                ',' => {
+                    phase = .begin_value;
+                    // try value.append(0);
+                },
                 '#' => phase = .comment,
                 else => return error.UnexpectedCharAfterEnd,
             },
@@ -139,7 +143,7 @@ pub fn parseProperty(self: *Self, str: []const u8) !void {
         .value_raw, .end, .comment => {
             self.mutex.lock();
             defer self.mutex.unlock();
-            try self.map.put(try key.toOwnedSlice(), try value.toOwnedSlice());
+            try self.map.put(key.items, value.items);
         },
         else => return error.UnexpectedEnd,
     }
