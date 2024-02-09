@@ -21,6 +21,7 @@ their needs.
   - [next.forgejo.org](./next-forgejo-org/)
   - [Forgejo runner implementation notes](https://code.forgejo.org/forgejo/runner/#hacking)
   - [Localization](./localization/)
+  - [Localization admin duties](./localization-admin/)
 - For maintainers
   - [Hardware infrastructure](./infrastructure/)
   - [Release management](./release/)
