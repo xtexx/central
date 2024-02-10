@@ -1,8 +1,8 @@
 O ?= out
 Q ?= @
 
-OUTDIR := $(realpath $O)
-HYPDIR := $(realpath $(HYP))
+OUTDIR := $(abspath $O)
+HYPDIR := $(abspath $(HYP))
 
 ifneq ($(LLVM),)
 ifneq ($(filter %/,$(LLVM)),)
@@ -31,8 +31,17 @@ CFLAGS:=-Os $(CFLAGS)
 LDFLAGS:=-Wl,-z,relro,-z,now $(LDFLAGS)
 export CFLAGS LDFLAGS
 
-zig-toolchain=CC='zig cc' CXX='zig c++' LD='zig cc' AR='zig ar' OBJCOPY='zig objcopy'
 ZIGFLAGS:=--prefix-lib-dir '' --prefix-exe-dir '' $(ZIGFLAGS)
+
+define use-zig-toolchain
+$(eval
+$1: CC=zig cc
+$1: CXX=zig c++
+$1: LD=zig cc
+$1: AR=zig ar
+$1: OBJCOPY=zig objcopy
+)
+endef
 
 define use-host-flags
 $(eval
@@ -63,7 +72,7 @@ quiet-cmd-makefile = 'MAKE     $@'
 cmd-makefile = make -C '$(dir $(obj))' -f '$(notdir $(obj))'
 
 .DELETE_ON_ERROR:
-.ONESHELL:
+MAKE := $(MAKE) --no-print-directory
 
 $O:
 	$(call cmd, mkdir)
@@ -73,7 +82,6 @@ $(eval $1: $O
 	@mkdir -p $$@
 $1/.dir:
 	@mkdir -p $$(dir $$@); touch $$@
-include $1/.dir	
 )
 endef
 

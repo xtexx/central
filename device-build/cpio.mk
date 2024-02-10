@@ -16,10 +16,10 @@ $$($1-srctree)/configure: $$($1-srctree)/configure.ac
 endif
 
 $$($1-out)/Makefile: $$($1-srctree)/configure $$($1-out)/.dir
-	$$(call cmd, configure,,$$(zig-toolchain) $$($1-opts))
+	$$(call cmd, configure,,$$($1-opts))
 
 $$($1-out)/src/%: $$($1-out)/Makefile
-	$$(call cmd, makefile,,$$(zig-toolchain) all)
+	$$(call cmd, makefile,,all)
 
 .PHONY: $$($1-target)
 $$($1-target): $$($1-out)/src/cpio
