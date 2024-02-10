@@ -1,5 +1,5 @@
 HYP ?= ../hyperpsi
-$(shell [ -e $(HYP) ] || git clone --depth 1 --recurse-submodules --shallow-submodules https://git.sr.ht/~xtex/hyperpsi $(HYP))
+$(shell [ -e $(HYP) ] || git clone --depth 1 https://git.sr.ht/~xtex/hyperpsi $(HYP))
 
 DEVICE := samsung-klte
 ARCH := arm
@@ -9,16 +9,16 @@ include $(HYP)/device-build/device.mk
 include $(HYP)/device-build/kmod.mk
 include $(HYP)/device-build/linux.mk
 
-KMOD_OPTS := --disable-manpages --disable-test-modules \
+kmod-opts := --disable-manpages --disable-test-modules \
 	--with-module-directory=/lib/modules --without-zstd --without-xz \
 	--without-zlib --without-openssl
-$(call add-kmod,KMOD)
+$(call add-kmod,kmod)
 
-KERNEL_CONFIG := klte_defconfig
-KERNEL_CONFIG_FILES := linux/arch/arm/configs/msm8974_defconfig \
+kernel-config := klte_defconfig
+kernel-config-files := linux/arch/arm/configs/msm8974_defconfig \
 	linux/arch/arm/configs/klte.config \
 	linux/arch/arm/configs/klte-hyperpsi.config
-$(call add-kernel,KERNEL)
+$(call add-kernel,kernel)
 
 .PHONY: all
 all: kernel
