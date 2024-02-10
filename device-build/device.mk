@@ -57,7 +57,7 @@ quiet-cmd-gen = 'GEN      $@'
 cmd-gen = true
 
 quiet-cmd-configure = 'CONF     $@'
-cmd-configure = cd '$(dir $@)'; $(abspath $(obj)) --quiet --srcdir='$(abspath $(dir $(obj)))'
+cmd-configure = cd '$(dir $@)'; $(abspath $(obj)) --srcdir='$(abspath $(dir $(obj)))'
 
 quiet-cmd-makefile = 'MAKE     $@'
 cmd-makefile = make -C '$(dir $(obj))' -f '$(notdir $(obj))'
