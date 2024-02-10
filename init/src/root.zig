@@ -45,15 +45,15 @@ pub fn check_bootconfig() !void {
 }
 
 pub fn setup_firmware_path() !void {
-    set_firmware_path("/lib/firmware/hyperpsi") catch |err| switch (err) {
-        std.fs.File.OpenError.FileNotFound => return,
-        else => return err,
-    };
+    try set_firmware_path("/lib/firmware/hyperpsi");
 }
 
 pub fn set_firmware_path(path: []const u8) !void {
     std.fs.makeDirAbsolute(path) catch {};
-    const file = try std.fs.openFileAbsolute("/sys/module/firmware_class/parameters/path", .{ .mode = .write_only });
+    const file = std.fs.openFileAbsolute("/sys/module/firmware_class/parameters/path", .{ .mode = .write_only }) catch |err| switch (err) {
+        std.fs.File.OpenError.FileNotFound => return,
+        else => return err,
+    };
     defer file.close();
     try file.writeAll(path);
 }
