@@ -28,9 +28,9 @@ pub fn logger(
     logger_mutex.lock();
     defer logger_mutex.unlock();
 
-    // write to stderr
-    const stderr = std.io.getStdErr().writer();
-    nosuspend stderr.print(prefix ++ format ++ "\n", args) catch {};
+    // write to stdout
+    const stdout = std.io.getStdOut().writer();
+    nosuspend stdout.print(prefix ++ format ++ "\n", args) catch {};
 
     // write to log targets
     for (log_targets) |target| {
