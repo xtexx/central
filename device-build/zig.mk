@@ -22,5 +22,5 @@ $$($1-out)/%: $$($1-target)
 ))
 endef
 
-quiet-zig-build := 'ZIG      '
+quiet-cmd-zig-build = $(if $(V_ZIG),'ZIG      $@')
 cmd-zig-build = cd $(obj); zig build $(ZIGFLAGS)

@@ -20,7 +20,7 @@ $1-makeflags := O="$$(realpath $$($1-out))" ARCH="$$($1-arch)" \
 	$$(if $$($1-llvm),LLVM=$$($1-llvm)) DEPMOD="$$($1-depmod)" \
 	$$($1-makeflags)
 
-quiet-$1-make := 'MAKE     '
+quiet-cmd-$1-make := 'MAKE     '
 cmd-$1-make = $$(MAKE) -C $$($1-srctree) $$($1-makeflags) $$(obj)
 
 .PHONY: $$($1-target) $$($1-target)-all

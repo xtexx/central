@@ -44,8 +44,7 @@ endef
 
 define cmd
 $(let cmd obj,cmd-$(strip $1) $(if $2,$2,$<),$(if $($(cmd)),,$(error $(cmd) not defined)) \
-$(if $Q,,echo Deps $? were changed; ) \
-$(if $Q,$Q$(if $(quiet-$(cmd)),echo '  '$(quiet-$(cmd));)) $($(cmd)) $3)
+$(if $Q,$Q$(if $(quiet-$(cmd)),echo '  '$(quiet-$(cmd));),echo Deps $? were changed;) $($(cmd)) $3)
 endef
 
 quiet-cmd-cp = 'CP       $@'
