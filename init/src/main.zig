@@ -22,5 +22,7 @@ pub fn main() !void {
 
     try hypinit.setup_firmware_path();
 
+    // hypinit.fb.setup_fbs();
+
     while (true) {}
 }
