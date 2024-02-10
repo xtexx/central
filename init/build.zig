@@ -8,7 +8,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const module = b.addModule("hypearly_init", .{
+    const module = b.addModule("hypinit", .{
         .root_source_file = .{ .path = "src/root.zig" },
     });
     module.addImport("hyplog", log_dep.module("hyplog"));
