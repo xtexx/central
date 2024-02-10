@@ -15,6 +15,7 @@ kmod-opts := --disable-manpages --disable-test-modules \
 	--with-module-directory=/lib/modules --without-zstd --without-xz \
 	--without-zlib --without-openssl
 $(call add-kmod,kmod)
+$(call use-zig-toolchain,$(kmod-out)/%)
 
 kernel-config := klte_defconfig
 kernel-config-files := linux/arch/arm/configs/msm8974_defconfig \
@@ -26,6 +27,7 @@ init-zigflags := --release=small
 $(call add-zig,init)
 
 $(call add-cpio,cpio)
+$(call use-zig-toolchain,$(cpio-out)/%)
 
 .PHONY: all
 all: kernel
