@@ -20,6 +20,7 @@ $$($1-out)/Makefile: $$($1-srctree)/configure $$($1-out)/.dir
 
 $$($1-out)/tools/%: $$($1-out)/Makefile
 	$$(call cmd, makefile,,$$(zig-toolchain) all)
+	@touch $$@
 
 .PHONY: $$($1-target)
 $$($1-target): $$($1-out)/tools/kmod
