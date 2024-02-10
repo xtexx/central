@@ -32,10 +32,13 @@ LDFLAGS:=-Wl,-z,relro,-z,now $(LDFLAGS)
 export CFLAGS LDFLAGS
 
 zig-toolchain=CC='zig cc' CXX='zig c++' LD='zig cc' AR='zig ar' OBJCOPY='zig objcopy'
+ZIGFLAGS:=--prefix-lib-dir '' --prefix-exe-dir '' $(ZIGFLAGS)
+
 define use-host-flags
 $(eval
 $1: CFLAGS=$(HOSTCFLAGS)
 $1: LDFLAGS=$(HOSTLDFLAGS)
+$1: ZIGFLAGS=$(HOSTZIGFLAGS)
 )
 endef
 
@@ -70,9 +73,15 @@ define out-dir
 $(eval $1: $O
 	@mkdir -p $$@
 $1/.dir:
-	@mkdir -p $$(dir $$@); touch $$@)
+	@mkdir -p $$(dir $$@); touch $$@
+include $1/.dir	
+)
 endef
 
 define dedup
 $(if $($1_DEDUP),,1$(eval $1_DEDUP=1))
 endef
+
+phony-target := PHONY_TARGET
+.PHONY: PHONY_TARGET
+PHONY_TARGET:

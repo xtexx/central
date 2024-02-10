@@ -20,17 +20,17 @@ $1-makeflags := O="$$(realpath $$($1-out))" ARCH="$$($1-arch)" \
 	$$(if $$($1-llvm),LLVM=$$($1-llvm)) DEPMOD="$$($1-depmod)" \
 	$$($1-makeflags)
 
-quiet-$1_make := 'MAKE     '
-cmd-$1_make = $$(MAKE) -C $$($1-srctree) $$($1-makeflags) $$(obj)
+quiet-$1-make := 'MAKE     '
+cmd-$1-make = $$(MAKE) -C $$($1-srctree) $$($1-makeflags) $$(obj)
 
 .PHONY: $$($1-target) $$($1-target)-all
 $$($1-target): $$($1-out)/.config
 
 $$($1-target)-all: $$($1-out)/.config
-	$$(call cmd,$1_make,--)
+	$$(call cmd,$1-make,--)
 
 $$($1-out)/.config: $$($1-config-files) $$($1-out)/.dir $$($1-depmod)
-	$$(call cmd,$1_make,$$($1-config))
+	$$(call cmd,$1-make,$$($1-config))
 	# make zinstall modules_install dtbs_install \
 	# 	ARCH="$$($1-arch)" \
 	# 	INSTALL_PATH="$pkgdir"/boot \
