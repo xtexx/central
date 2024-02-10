@@ -40,25 +40,25 @@ $1: LDFLAGS=$(HOSTLDFLAGS)
 endef
 
 define cmd
-$(let cmd obj,cmd_$(strip $1) $(if $2,$2,$<),$(if $($(cmd)),,$(error $(cmd) not defined)) \
+$(let cmd obj,cmd-$(strip $1) $(if $2,$2,$<),$(if $($(cmd)),,$(error $(cmd) not defined)) \
 $(if $Q,,echo Deps $? were changed; ) \
-$(if $Q,$Q$(if $(quiet_$(cmd)),echo '  '$(quiet_$(cmd));)) $($(cmd)) $3)
+$(if $Q,$Q$(if $(quiet-$(cmd)),echo '  '$(quiet-$(cmd));)) $($(cmd)) $3)
 endef
 
-quiet_cmd_cp = 'CP       $@'
-cmd_cp = cp $(obj) $@
+quiet-cmd-cp = 'CP       $@'
+cmd-cp = cp $(obj) $@
 
-quiet_cmd_touch = 'TOUCH    $@'
-cmd_touch = touch $@
+quiet-cmd-touch = 'TOUCH    $@'
+cmd-touch = touch $@
 
-quiet_cmd_gen = 'GEN      $@'
-cmd_gen = true
+quiet-cmd-gen = 'GEN      $@'
+cmd-gen = true
 
-quiet_cmd_configure = 'CONF     $@'
-cmd_configure = cd '$(dir $@)'; $(abspath $(obj)) --srcdir='$(abspath $(dir $(obj)))'
+quiet-cmd-configure = 'CONF     $@'
+cmd-configure = cd '$(dir $@)'; $(abspath $(obj)) --srcdir='$(abspath $(dir $(obj)))'
 
-quiet_cmd_makefile = 'MAKE     $@'
-cmd_makefile = make -C '$(dir $(obj))' -f '$(notdir $(obj))'
+quiet-cmd-makefile = 'MAKE     $@'
+cmd-makefile = make -C '$(dir $(obj))' -f '$(notdir $(obj))'
 
 .DELETE_ON_ERROR:
 .ONESHELL:

@@ -1,38 +1,38 @@
 define add-kernel
 $(if $(call dedup,linux-$1),$(eval
-$1_SRCTREE ?= linux
-$1_MAKEFLAGS ?=
-$1_LLVM ?= $$(LLVM)
-$1_TARGET ?= kernel
-$1_OUT ?= $O/$$($1_TARGET)
-$$(call out-dir, $$($1_OUT))
-$1_ARCH ?= $$(ARCH)
+$1-srctree ?= linux
+$1-makeflags ?=
+$1-llvm ?= $$(LLVM)
+$1-target ?= $1
+$1-out ?= $O/$$($1-target)
+$$(call out-dir, $$($1-out))
+$1-arch ?= $$(ARCH)
 
-ifeq ($$($1_ARCH),)
-$$(error $1_ARCH is required)
+ifeq ($$($1-arch),)
+$$(error $1-arch is required)
 endif
-ifeq ($$($1_CONFIG),)
-$$(error $1_CONFIG is required)
+ifeq ($$($1-config),)
+$$(error $1-config is required)
 endif
-$1_CONFIG_FILES ?= arch/$$($1_ARCH)/configs/$$($1_CONFIG)
+$1-config-files ?= arch/$$($1-arch)/configs/$$($1-config)
+$1-depmod ?= $$(host-kmod-out)/tools/depmod
+$1-makeflags := O="$$(realpath $$($1-out))" ARCH="$$($1-arch)" \
+	$$(if $$($1-llvm),LLVM=$$($1-llvm)) DEPMOD="$$($1-depmod)" \
+	$$($1-makeflags)
 
-$1_MAKEFLAGS := O="$$(realpath $$($1_OUT))" ARCH="$$($1_ARCH)" \
-	$$(if $$($1_LLVM),LLVM=$$($1_LLVM)) DEPMOD="$$(HOST_KMOD_OUT)/tools/depmod" \
-	$$($1_MAKEFLAGS)
+quiet-$1_make := 'MAKE     '
+cmd-$1_make = $$(MAKE) -C $$($1-srctree) $$($1-makeflags) $$(obj)
 
-quiet_$1_make := 'MAKE     '
-cmd_$1_make = $$(MAKE) -C $$($1_SRCTREE) $$($1_MAKEFLAGS) $$(obj)
+.PHONY: $$($1-target) $$($1-target)-all
+$$($1-target): $$($1-out)/.config
 
-.PHONY: $$($1_TARGET) $$($1_TARGET)-all
-$$($1_TARGET): $$($1_OUT)/.config
-
-$$($1_TARGET)-all: $$($1_OUT)/.config
+$$($1-target)-all: $$($1-out)/.config
 	$$(call cmd,$1_make,--)
 
-$$($1_OUT)/.config: $$($1_CONFIG_FILES) $$($1_OUT)/.dir
-	$$(call cmd,$1_make,$$($1_CONFIG))
+$$($1-out)/.config: $$($1-config-files) $$($1-out)/.dir $$($1-depmod)
+	$$(call cmd,$1_make,$$($1-config))
 	# make zinstall modules_install dtbs_install \
-	# 	ARCH="$($1_ARCH)" \
+	# 	ARCH="$$($1-arch)" \
 	# 	INSTALL_PATH="$pkgdir"/boot \
 	# 	INSTALL_MOD_PATH="$pkgdir" \
 	# 	INSTALL_MOD_STRIP=1 \
@@ -43,7 +43,7 @@ endef
 
 include $(HYP)/device-build/kmod.mk
 
-HOST_KMOD_TARGET := host-kmod
-HOST_KMOD_OPTS := --disable-manpages --disable-test-modules --with-module-directory=/lib/modules --with-zstd --with-xz --with-zlib --without-openssl
-$(call add-kmod,HOST_KMOD)
-$(call use-host-flags,$(HOST_KMOD_OUT)/%)
+host-kmod-target := host-kmod
+host-kmod-opts := --disable-manpages --disable-test-modules --with-module-directory=/lib/modules --with-zstd --with-xz --with-zlib --without-openssl
+$(call add-kmod,host-kmod)
+$(call use-host-flags,$(host-kmod-out)/%)
