@@ -5,7 +5,7 @@ $1-target ?= $1
 $1-out ?= $O/$$($1-target)
 $$(call out-dir, $$($1-out))
 
-$$($1-out)/%: CFLAGS+=-static $$($1-cflags)
+$$($1-out)/%: CFLAGS+=-static -g0 $$($1-cflags)
 $$($1-out)/%: LDFLAGS+=-static -flto $$($1-ldflags)
 
 ifneq ($$(call dedup,kmod-conf-$$($1-srctree)),)
@@ -19,7 +19,7 @@ $$($1-out)/Makefile: $$($1-srctree)/configure $$($1-out)/.dir
 	$$(call cmd, configure,,$$(zig-toolchain) $$($1-opts))
 
 $$($1-out)/tools/%: $$($1-out)/Makefile
-	$$(call cmd, makefile,,all)
+	$$(call cmd, makefile,,$$(zig-toolchain) all)
 
 .PHONY: $$($1-target)
 $$($1-target): $$($1-out)/tools/kmod
