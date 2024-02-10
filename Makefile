@@ -9,6 +9,7 @@ include $(HYP)/device-build/device.mk
 include $(HYP)/device-build/kmod.mk
 include $(HYP)/device-build/linux.mk
 include $(HYP)/device-build/zig.mk
+include $(HYP)/device-build/cpio.mk
 
 kmod-opts := --disable-manpages --disable-test-modules \
 	--with-module-directory=/lib/modules --without-zstd --without-xz \
@@ -23,6 +24,8 @@ $(call add-kernel,kernel)
 
 init-zigflags := --release=small
 $(call add-zig,init)
+
+$(call add-cpio,cpio)
 
 .PHONY: all
 all: kernel
