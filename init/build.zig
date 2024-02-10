@@ -19,11 +19,11 @@ pub fn build(b: *std.Build) void {
         .pic = true,
         .single_threaded = true,
     });
-    const early_init_dep = b.dependency("hypearly_init", .{
+    const init_dep = b.dependency("hypinit", .{
         .target = target,
         .optimize = optimize,
     });
-    exe.root_module.addImport("hypearly_init", early_init_dep.module("hypearly_init"));
+    exe.root_module.addImport("hypinit", init_dep.module("hypinit"));
 
     b.installArtifact(exe);
 }

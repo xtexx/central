@@ -2,7 +2,7 @@
     .name = "hypklte_init",
     .version = "0.0.0",
     .dependencies = .{
-        .hypearly_init = .{ .path = "../../hyperpsi/early-init" },
+        .hypinit = .{ .path = "../../hyperpsi/init" },
     },
     .paths = .{
         "build.zig",
