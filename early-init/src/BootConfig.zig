@@ -164,4 +164,9 @@ pub fn parseProperty(self: *Self, str: []const u8) !void {
     }
 }
 
-pub fn get() void {}
+pub fn get(self: *Self, key: []const u8) ?[]const u8 {
+    self.mutex.lock();
+    defer self.mutex.unlock();
+    const value = self.map.get(key) orelse return null;
+    return value;
+}

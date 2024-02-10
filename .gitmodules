@@ -1,0 +1,6 @@
+[submodule "kmod"]
+	path = lib/kmod
+	url = git://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git
+[submodule "cpio"]
+	path = lib/cpio
+	url = git://git.savannah.gnu.org/cpio.git
