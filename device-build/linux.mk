@@ -57,6 +57,8 @@ $$($1-target)-install: $$($1-depmod)
 
 $$($1-install-dir)/.hypinststamp: $$($1-instdeps) $$($1-install-dir)/.dir
 	$Qrm -rf $$($1-install-dir)/boot $$($1-install-dir)/lib
+	# TODO: https://patchwork.kernel.org/project/linux-riscv/patch/20240210074601.5363-3-xtex@envs.net/
+	$Qmkdir $$($1-install-dir)/boot
 	$$(call cmd,$1-make,$$($$($1-target)-install),,install)
 	$Qrm -f $$($1-install-dir)/lib/modules/*/build
 	$Qtouch $$@

@@ -1,7 +1,6 @@
 const root = @import("root");
 const std = @import("std");
-const log = std.log;
-pub const hyplog = @import("hyplog");
+pub const log = @import("hyplog");
 pub const BootConfig = @import("./BootConfig.zig");
 pub const mount = @import("./mount.zig");
 
@@ -9,22 +8,21 @@ pub const std_options = struct {
     pub const log_level = .debug;
     pub const logFn = logger;
 };
-pub const logger = hyplog.logger;
+pub const logger = log.logger;
 pub const device = root.hypearly_init_device;
 
 pub fn init_logger() void {
-    hyplog.log_targets = .{
-        hyplog.openHyperpsiLog() catch null,
-        hyplog.openDevConsole() catch null,
-        hyplog.openPmsg() catch null,
-    } ++ .{null} ** 13;
+    log.log_targets[0] = log.openHyperpsiLog() catch null;
+    log.log_targets[1] = log.openDevConsole() catch null;
+    log.log_targets[2] = log.openPmsg() catch null;
+    std.log.info("Logger initialized", .{});
 }
 
 pub fn check_kernel() error{KernelNotSuitable}!void {
     const utsname = std.os.uname();
-    log.info("{s} {s} {s}", .{ utsname.sysname, utsname.release, utsname.version });
-    if (std.mem.indexOf(u8, &utsname.version, "hyperpsi") == null) {
-        log.warn("The kernel seems not to be for HyperPsi", .{});
+    std.log.info("{s} {s} {s}", .{ utsname.sysname, utsname.release, utsname.version });
+    if (std.mem.indexOf(u8, &utsname.release, "hyperpsi") == null) {
+        std.log.warn("The kernel seems not to be for HyperPsi", .{});
         return error.KernelNotSuitable;
     }
 }
@@ -34,12 +32,12 @@ pub var bootconfig: BootConfig = undefined;
 pub fn check_bootconfig() !void {
     const config_device = bootconfig.get("hyperpsi.device") orelse "";
     if (!std.mem.eql(u8, config_device, device)) {
-        log.err("Not supported hyperpsi.device value, booting may fail", .{});
+        std.log.err("Not supported hyperpsi.device value, booting may fail", .{});
     }
     if (bootconfig.get("hyperpsi.kernel_release")) |kernel| {
         const utsname = std.os.uname();
         if (!std.mem.eql(u8, &utsname.release, kernel)) {
-            log.err("Kernel requirement not meet", .{});
+            std.log.err("Kernel requirement not meet", .{});
         }
     }
 }

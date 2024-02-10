@@ -11,6 +11,8 @@ pub const std_options = struct {
 
 var logger_mutex = std.Thread.Mutex{};
 pub var log_targets: [16]?File = [_]?File{null} ** 16;
+// TODO: Add sync open to zig
+pub var sync_log: bool = true;
 
 pub fn logger(
     comptime level: std.log.Level,
@@ -28,12 +30,17 @@ pub fn logger(
 
     // write to stderr
     const stderr = std.io.getStdErr().writer();
-    nosuspend stderr.print(prefix ++ format ++ "\n", args) catch return;
+    nosuspend stderr.print(prefix ++ format ++ "\n", args) catch {};
 
     // write to log targets
     for (log_targets) |target| {
-        const writer = (target orelse continue).writer();
-        writer.print(prefix ++ format ++ "\n", args) catch {};
+        if (target) |file| {
+            const writer = file.writer();
+            nosuspend writer.print(prefix ++ format ++ "\n", args) catch {};
+            if (sync_log) {
+                file.sync() catch {};
+            }
+        }
     }
 }
 
