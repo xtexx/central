@@ -13,8 +13,7 @@ pub const device = root.hypearly_init_device;
 
 pub fn init_logger() void {
     log.log_targets[0] = log.openHyperpsiLog() catch null;
-    log.log_targets[1] = log.openDevConsole() catch null;
-    log.log_targets[2] = log.openPmsg() catch null;
+    log.log_targets[1] = log.openPmsg() catch null;
     std.log.info("Logger initialized", .{});
 }
 
