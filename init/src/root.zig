@@ -4,9 +4,9 @@ pub const log = @import("hyplog");
 pub const BootConfig = @import("./BootConfig.zig");
 pub const mount = @import("./mount.zig");
 
-pub const std_options = struct {
-    pub const log_level = .debug;
-    pub const logFn = logger;
+pub const std_options: std.Options = .{
+    .log_level = .debug,
+    .logFn = logger,
 };
 pub const logger = log.logger;
 pub const device = root.hypearly_init_device;

@@ -4,9 +4,9 @@ const File = std.fs.File;
 
 const global_prefix = root.log_prefix;
 
-pub const std_options = struct {
-    pub const log_level = .debug;
-    pub const logFn = logger;
+pub const std_options: std.Options = .{
+    .log_level = .debug,
+    .logFn = logger,
 };
 
 var logger_mutex = std.Thread.Mutex{};
