@@ -11,6 +11,9 @@ include $(HYP)/device-build/linux.mk
 include $(HYP)/device-build/zig.mk
 include $(HYP)/device-build/cpio.mk
 
+.PHONY: all
+all: kernel
+
 kmod-opts := --disable-manpages --disable-test-modules \
 	--with-module-directory=/lib/modules --without-zstd --without-xz \
 	--without-zlib --without-openssl
@@ -28,6 +31,3 @@ $(call add-zig,init)
 
 $(call add-cpio,cpio)
 $(call use-zig-toolchain,$(cpio-out)/%)
-
-.PHONY: all
-all: kernel
