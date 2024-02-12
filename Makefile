@@ -10,6 +10,8 @@ include $(HYP)/device-build/kmod.mk
 include $(HYP)/device-build/linux.mk
 include $(HYP)/device-build/zig.mk
 include $(HYP)/device-build/cpio.mk
+include $(HYP)/device-build/initcpio.mk
+include $(HYP)/device-build/compress.mk
 
 .PHONY: all
 all: kernel
@@ -31,3 +33,9 @@ $(call add-zig,init)
 
 $(call add-cpio,cpio)
 $(call use-zig-toolchain,$(cpio-out)/%)
+
+initcpio-src := init/initcpio.txt
+$(call add-initcpio,initcpio)
+
+initcpio-xz-algo := xz
+$(call add-compress,initcpio-xz,initcpio)

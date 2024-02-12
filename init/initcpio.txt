@@ -1,0 +1,5 @@
+file /init out/init/init 700 0 0
+
+dir /usr 755 0 0
+dir /usr/bin 755 0 0
+file /usr/bin/cpio out/cpio/src/cpio 777 0 0
