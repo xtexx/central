@@ -44,6 +44,15 @@ pub fn logger(
     }
 }
 
+pub fn closeTargets() void {
+    for (log_targets) |target| {
+        if (target) |file| {
+            file.close();
+        }
+    }
+    log_targets = [_]?File{null} ** 16;
+}
+
 pub fn openDevConsole() File.OpenError!File {
     return std.fs.openFileAbsolute("/dev/console", .{ .mode = .write_only });
 }
@@ -53,5 +62,8 @@ pub fn openPmsg() File.OpenError!File {
 }
 
 pub fn openHyperpsiLog() File.OpenError!File {
-    return std.fs.createFileAbsolute("/hyperpsi_log", .{ .truncate = false, .read = false, .mode = 0o660 });
+    // TODO: https://github.com/ziglang/zig/issues/14375
+    return std.fs.createFileAbsolute("/loader/hyperpsi_log", .{ .truncate = false, .read = false, .mode = 0o660 }) catch {
+        return std.fs.createFileAbsolute("/hyperpsi_log", .{ .truncate = false, .read = false, .mode = 0o660 });
+    };
 }

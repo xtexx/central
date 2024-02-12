@@ -47,6 +47,9 @@ $$($1-target)-menuconfig: $$($1-out)/.config
 	$$(call cmd,$1-make,menuconfig)
 	$@diff $$($1-out)/.config.old $$($1-out)/.config
 
+$$($1-out)/%:
+	$Q$$(MAKE) $$($1-target)
+
 $$($1-out)/.config: $$($1-config-files) $$($1-out)/.dir
 	$$(call cmd,$1-make,$$($1-config))
 

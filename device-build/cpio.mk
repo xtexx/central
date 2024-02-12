@@ -6,6 +6,8 @@ $1-out ?= $O/$$($1-target)
 $$(call out-dir, $$($1-out))
 $1-opts := --enable-rpath $$($1-opts)
 
+$1-output := $$($1-out)/src/cpio
+
 $$($1-out)/%: CFLAGS+=-static -g0 $$($1-cflags)
 $$($1-out)/%: LDFLAGS+=-static -flto $$($1-ldflags)
 
@@ -22,7 +24,7 @@ $$($1-out)/src/%: $$($1-out)/Makefile
 	$$(call cmd, makefile,,all)
 
 .PHONY: $$($1-target)
-$$($1-target): $$($1-out)/src/cpio
+$$($1-target): $$($1-output)
 ))
 endef
 

@@ -19,6 +19,7 @@ $$($1-target): $$($1-out)/.dir $$($1-cache)/.dir
 	$$(call cmd,zig-build,$$($1-srctree))
 
 $$($1-out)/%: $$($1-target)
+	$$(call cmd,zig-build,$$($1-srctree))
 ))
 endef
 

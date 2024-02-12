@@ -7,11 +7,11 @@ mutex: std.Thread.Mutex,
 map: std.StringHashMap([]const u8) = undefined,
 allocator: std.mem.Allocator,
 
-pub fn init(allocator: std.mem.Allocator) Self {
+pub fn init(alloc: std.mem.Allocator) Self {
     return .{
         .mutex = .{},
-        .map = std.StringHashMap([]const u8).init(allocator),
-        .allocator = allocator,
+        .map = std.StringHashMap([]const u8).init(alloc),
+        .allocator = alloc,
     };
 }
 
