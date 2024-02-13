@@ -13,6 +13,7 @@ include $(HYP)/device-build/cpio.mk
 include $(HYP)/device-build/initcpio.mk
 include $(HYP)/device-build/compress.mk
 include $(HYP)/device-build/bootimg.mk
+include $(HYP)/device-build/squashfs.mk
 
 .PHONY: all
 all: kernel
@@ -31,9 +32,6 @@ $(call add-kernel,kernel)
 
 init-zigflags := --release=small
 $(call add-zig,init)
-
-$(call add-cpio,cpio)
-$(call use-zig-toolchain,$(cpio-out)/%)
 
 initcpio-src := init/initcpio.txt
 $(call add-initcpio,initcpio)
@@ -58,3 +56,8 @@ $(call add-bootimg,bootimg-klte)
 bootimg-kltechn-variant := kltechn
 bootimg-kltechn-kernel := kernel-kltechn
 $(call add-bootimg,bootimg-kltechn)
+
+systemimg-src += /init::out/init/init
+systemimg-src += /usr/bin/kmod::$(kmod-out)/tools/kmod
+systemimg-src += /lib/modules::$(kernel-install-dir)/lib/modules::$(kernel-install-dir)/.hypinststamp
+$(call add-squashfs,systemimg)
