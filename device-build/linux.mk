@@ -64,6 +64,8 @@ $$($1-install-dir)/.hypinststamp: $$($1-instdeps) $$($1-install-dir)/.dir
 	$Qmkdir $$($1-install-dir)/boot
 	$$(call cmd,$1-make,$$($$($1-target)-install),,install)
 	$Qrm -f $$($1-install-dir)/lib/modules/*/build
+	$Qmv $$($1-install-dir)/boot/System.map-* $$($1-install-dir)/boot/System.map
+	$Qmv $$($1-install-dir)/boot/vmlinuz-* $$($1-install-dir)/boot/vmlinuz
 	$Qtouch $$@
 ))
 endef
@@ -74,3 +76,22 @@ host-kmod-target := host-kmod
 host-kmod-opts := --disable-manpages --disable-test-modules --with-module-directory=/lib/modules --with-zstd --with-xz --with-zlib --without-openssl
 $(call add-kmod,host-kmod)
 $(call use-host-flags,$(host-kmod-out)/%)
+
+define add-kernel-dtb
+$(if $(call dedup,linux-dtb-$1),$(eval
+$1-kernel ?= kernel
+ifeq ($$($1-dtb),)
+$$(error $1-dtb is required)
+endif
+$1-out ?= $$($$($1-kernel)-out)-dtb
+$$(call out-dir, $$($1-out))
+$$(eval include $$($1-out)/.dir)
+$1-output ?= $$($1-out)/$$($1-dtb)
+
+$$($1-output): $$($$($1-kernel)-install-dir)/boot/vmlinuz \
+	$$($$($1-kernel)-install-dir)/boot/dtbs/$$($1-dtb).dtb
+	$$(call cmd, gen,,,$$($1-output))
+	$$Qcat $$($$($1-kernel)-install-dir)/boot/vmlinuz* \
+		$$($$($1-kernel)-install-dir)/boot/dtbs/$$($1-dtb).dtb > $$($1-output)
+))
+endef
