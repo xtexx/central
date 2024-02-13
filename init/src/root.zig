@@ -47,7 +47,7 @@ pub fn checkBootConfig() !void {
 }
 
 pub fn setupFirmwarePath() !void {
-    try setFirmwarePath("/lib/firmware/hyperpsi");
+    try setFirmwarePath(bootconfig.get("hyperpsi.firmware_path") orelse "/lib/firmware/hyperpsi");
 }
 
 pub fn setFirmwarePath(path: []const u8) !void {
