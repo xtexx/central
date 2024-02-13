@@ -4,3 +4,6 @@
 [submodule "cpio"]
 	path = lib/cpio
 	url = git://git.savannah.gnu.org/cpio.git
+[submodule "busybox"]
+	path = lib/busybox
+	url = git://git.busybox.net/busybox
