@@ -7,3 +7,6 @@
 [submodule "busybox"]
 	path = lib/busybox
 	url = git://git.busybox.net/busybox
+[submodule "mdev-conf"]
+	path = lib/mdev-conf
+	url = https://gitlab.alpinelinux.org/alpine/mdev-conf.git
