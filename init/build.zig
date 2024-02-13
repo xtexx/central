@@ -6,6 +6,7 @@ pub fn build(b: *std.Build) void {
             .cpu_arch = .arm,
             .os_tag = .linux,
             .abi = .musleabihf,
+            .cpu_model = .{ .explicit = &std.Target.arm.cpu.krait },
         },
     });
     const optimize = b.standardOptimizeOption(.{});
