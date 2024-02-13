@@ -12,6 +12,7 @@ include $(HYP)/device-build/zig.mk
 include $(HYP)/device-build/cpio.mk
 include $(HYP)/device-build/initcpio.mk
 include $(HYP)/device-build/compress.mk
+include $(HYP)/device-build/bootimg.mk
 
 .PHONY: all
 all: kernel
@@ -37,5 +38,23 @@ $(call use-zig-toolchain,$(cpio-out)/%)
 initcpio-src := init/initcpio.txt
 $(call add-initcpio,initcpio)
 
-initcpio-xz-algo := xz
+initcpio-xz-algo := xzkern
 $(call add-compress,initcpio-xz,initcpio)
+
+kernel-klte-dtb := qcom-msm8974pro-samsung-klte
+$(call add-kernel-dtb,kernel-klte)
+kernel-kltechn-dtb := qcom-msm8974pro-samsung-kltechn
+$(call add-kernel-dtb,kernel-kltechn)
+
+bootimg-ramdisk := initcpio-xz
+bootimg-cmdline := msm.vram=192m msm.allow_vram_carveout=1
+bootimg-opts := --base 0x00000000 --kernel_offset 0x00008000 \
+	--ramdisk_offset 0x02000000 --second_offset 0x00f00000 \
+	--tags_offset 0x01e00000 --pagesize 2048
+
+bootimg-klte-variant := klte
+bootimg-klte-kernel := kernel-klte
+$(call add-bootimg,bootimg-klte)
+bootimg-kltechn-variant := kltechn
+bootimg-kltechn-kernel := kernel-kltechn
+$(call add-bootimg,bootimg-kltechn)
