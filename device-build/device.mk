@@ -53,7 +53,7 @@ endef
 
 define cmd
 $(let cmd obj,cmd-$(strip $1) $(if $2,$2,$<),$(if $($(cmd)),,$(error $(cmd) not defined)) \
-$(if $Q,$Q$(if $(quiet-$(cmd)),echo '  '$(quiet-$(cmd));),echo Deps $? were changed;) $($(cmd)) $3)
+$(if $Q,$Q$(if $(quiet-$(cmd)),echo '  '$(quiet-$(cmd));))$(if $(DEPS),echo $@ '<--' $?;) $($(cmd)) $3)
 endef
 
 quiet-cmd-cp = 'CP       $@'
@@ -62,7 +62,7 @@ cmd-cp = cp $(obj) $@
 quiet-cmd-touch = 'TOUCH    $@'
 cmd-touch = touch $@
 
-quiet-cmd-gen = 'GEN      $@'
+quiet-cmd-gen = 'GEN      $(if $4,$4,$@)'
 cmd-gen = true
 
 quiet-cmd-configure = 'CONF     $@'
@@ -78,17 +78,30 @@ $O:
 	$(call cmd, mkdir)
 
 define out-dir
-$(eval $1: $O
+$(if $(call dedup,out-dir-$(strip $1)),$(eval $1: $O
 	@mkdir -p $$@
 $1/.dir:
 	@mkdir -p $$(dir $$@); touch $$@
-)
+))
 endef
 
 define dedup
-$(if $($1_DEDUP),,1$(eval $1_DEDUP=1))
+$(if $($1_DEDUP),,1$(eval $1_DEDUP:=1))
 endef
 
 phony-target := PHONY_TARGET
 .PHONY: PHONY_TARGET
 PHONY_TARGET:
+
+define clean-if-changed
+$(let stamp,$(dir $1).$(notdir $1)-$2,$(eval $$(stamp):
+	@mkdir -p $$(dir $1)
+	$$(file >$$@,cache-$1-$2 := $3)
+)$(eval 
+include $$(stamp)
+ifneq ($$(cache-$1-$2),$3)
+$$(shell rm -f $$(stamp) $1)
+include $$(stamp)
+endif
+))
+endef
