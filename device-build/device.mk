@@ -57,7 +57,7 @@ $(if $Q,$Q$(if $(quiet-$(cmd)),echo '  '$(quiet-$(cmd));))$(if $(DEPS),echo $@ '
 endef
 
 quiet-cmd-cp = 'CP       $@'
-cmd-cp = cp $(obj) $@
+cmd-cp = cp -R $(obj) $@
 
 quiet-cmd-touch = 'TOUCH    $@'
 cmd-touch = touch $@
