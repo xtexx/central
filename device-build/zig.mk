@@ -11,7 +11,6 @@ $1-zigflags := --prefix "$$(abspath $$($1-out))" \
 	--cache-dir "$$(abspath $$($1-cache))" \
 	$$($1-zigflags)
 
-$$($1-target): ZIGFLAGS+=$$($1-zigflags)
 $$($1-out)/%: ZIGFLAGS+=$$($1-zigflags)
 
 .PHONY: $$($1-target)
