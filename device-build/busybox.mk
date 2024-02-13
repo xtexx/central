@@ -16,7 +16,7 @@ $$($1-out)/.config: $$($1-config).config $$($1-config).txt $$($1-srctree)/Makefi
 	$Qcat $$< $$@.old > $$@
 	$Qrm $$@.old
 	$Qsed -f $$(word 2,$$^) -i $$@
-	$$(call cmd, $1-make, oldconfig) >/dev/null 2>&1
+	$$(call cmd, $1-make, oldconfig) >/dev/null 2>&1 </dev/null
 
 $$($1-out)/%: $$($1-out)/.config
 	$$(call cmd, $1-make,CC='$$(abspath $$(HYP)/device-build/busybox-cc.sh) $$(CC)' LDFLAGS='$$(CFLAGS) $$(LDFLAGS)')
