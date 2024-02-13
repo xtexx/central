@@ -18,5 +18,9 @@ cmd-gzip = gzip -c $(obj) > $@
 compress-gzip-ext = $1.gz
 
 quiet-cmd-xz = 'XZ       $@'
-cmd-xz = xz -cz $(obj) > $@
+cmd-xz = xz -zc $(obj) > $@
 compress-xz-ext = $1.xz
+
+quiet-cmd-xzkern = 'XZ       $@'
+cmd-xzkern = xz -zc --check=crc32 --lzma2=dict=512KiB $(obj) > $@
+compress-xzkern-ext = $1.xz
