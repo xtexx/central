@@ -1,14 +1,17 @@
 const std = @import("std");
 const hyplog = @import("hyplog");
+const hypinit = @import("./root.zig");
 const log = std.log.scoped(.hypinit_mount);
 
 pub const MS = std.os.linux.MS;
 
-pub fn mount(source: [:0]const u8, target: [:0]const u8, fstype: ?[*:0]const u8, flags: u32, data: usize) error{MountFailure}!void {
-    std.fs.makeDirAbsolute(@as([]const u8, target)) catch {};
-    const rc = std.os.linux.mount(source.ptr, target.ptr, fstype, flags, data);
+pub fn mount(source: []const u8, target: []const u8, fstype: ?[*:0]const u8, flags: u32, data: usize) !void {
+    std.fs.makeDirAbsolute(target) catch {};
+    const source_c = try std.os.toPosixPath(source);
+    const target_c = try std.os.toPosixPath(target);
+    const rc = std.os.linux.mount(&source_c, &target_c, fstype, flags, data);
     if (std.os.linux.getErrno(rc) != .SUCCESS) {
-        const rc1 = std.os.linux.mount(source.ptr, target.ptr, fstype, flags | MS.REMOUNT, data);
+        const rc1 = std.os.linux.mount(&source_c, &target_c, fstype, flags | MS.REMOUNT, data);
         if (std.os.linux.getErrno(rc1) != .SUCCESS) {
             log.err("Failed to mount {s} to {s}, errno {}, remount {}", .{
                 source,
@@ -24,10 +27,11 @@ pub fn mount(source: [:0]const u8, target: [:0]const u8, fstype: ?[*:0]const u8,
     }
 }
 
-pub fn mountFn(comptime source: [:0]const u8, comptime target: [:0]const u8, comptime fstype: ?[*:0]const u8, comptime flags: u32, comptime data: usize) fn () error{MountFailure}!void {
+pub fn mountFn(comptime source: []const u8, comptime target: []const u8, comptime fstype: ?[*:0]const u8, comptime flags: u32, comptime data: usize) fn () error{ MountFailure, NameTooLong }!void {
     return struct {
-        pub fn function() error{MountFailure}!void {
+        pub fn function() !void {
             try mount(source, target, fstype, flags, data);
+            log.debug("Mounted {s} {?s} on {s}", .{ source, fstype, target });
         }
     }.function;
 }
@@ -72,4 +76,16 @@ pub fn loadFromPartition() !void {
     //     log.info("{!} {s}", .{ dir.kind, dir.path });
     // }
     // rt.close();
+}
+
+pub fn getSystemPart() []const u8 {
+    return hypinit.bootconfig.get("hyperpsi.systempart") orelse "/dev/disk/by-partlabel/system";
+}
+
+pub fn autoMountSystemPart(fstype: ?[*:0]const u8, loader_fstype: ?[*:0]const u8) !void {
+    try mount(getSystemPart(), "/system", fstype, MS.NOSUID | MS.NOEXEC | MS.SYNCHRONOUS | MS.DIRSYNC, 0);
+    log.info("Mounted /system with {?s}", .{fstype});
+
+    try mount("/system/loader", "/loader", loader_fstype, MS.RDONLY, 0);
+    log.info("Mounted /loader with {?s}", .{loader_fstype});
 }
