@@ -158,7 +158,7 @@ pub fn parseProperty(self: *Self, str: []const u8) !void {
         .value_raw, .end, .comment => {
             self.mutex.lock();
             defer self.mutex.unlock();
-            try self.map.put(key.items, value.items);
+            try self.map.put(try key.toOwnedSlice(), try value.toOwnedSlice());
         },
         else => return error.UnexpectedEnd,
     }
