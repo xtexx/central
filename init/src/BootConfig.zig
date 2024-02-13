@@ -17,8 +17,8 @@ pub fn init(alloc: std.mem.Allocator) Self {
 
 pub fn load(self: *Self) !void {
     try self.loadFromBootConfig();
-    try self.loadFromBootConfigFile("/usr/share/hypearly-init.config");
-    try self.loadFromBootConfigFile("/etc/hypearly-init.config");
+    try self.loadFromBootConfigFile("/usr/share/hypinit.config");
+    try self.loadFromBootConfigFile("/etc/hypinit.config");
     try self.loadFromArgs();
 }
 
