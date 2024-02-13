@@ -29,14 +29,16 @@ pub fn logger(
     defer logger_mutex.unlock();
 
     // write to stdout
-    const stdout = std.io.getStdOut().writer();
-    nosuspend stdout.print(prefix ++ format ++ "\n", args) catch {};
+    const stdout = std.io.getStdOut();
+    nosuspend stdout.writer().print(prefix ++ format ++ "\n", args) catch {};
+    if (sync_log) {
+        stdout.sync() catch {};
+    }
 
     // write to log targets
     for (log_targets) |target| {
         if (target) |file| {
-            const writer = file.writer();
-            nosuspend writer.print(prefix ++ format ++ "\n", args) catch {};
+            nosuspend file.writer().print(prefix ++ format ++ "\n", args) catch {};
             if (sync_log) {
                 file.sync() catch {};
             }
