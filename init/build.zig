@@ -18,6 +18,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
         .single_threaded = true,
+        .strip = true,
     });
     const init_dep = b.dependency("hypinit", .{
         .target = target,
