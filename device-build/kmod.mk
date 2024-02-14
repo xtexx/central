@@ -10,9 +10,8 @@ $$($1-out)/%: LDFLAGS+=-static -flto $$($1-ldflags)
 
 ifneq ($$(call dedup,kmod-conf-$$($1-srctree)),)
 $$($1-srctree)/configure: $$($1-srctree)/configure.ac
-	$$(call cmd, gen)
 	$@touch $$($1-srctree)/libkmod/docs/gtk-doc.make
-	$@cd $$($1-srctree); autoreconf -i -s
+	$$(call cmd, autoreconf)
 endif
 
 $$($1-out)/Makefile: $$($1-srctree)/configure $$($1-out)/.dir
