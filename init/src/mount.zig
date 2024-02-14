@@ -52,32 +52,6 @@ pub fn mountProcSysDev() !void {
     mountDevpts() catch {};
 }
 
-pub fn loadFromPartition() !void {
-    switch (std.os.linux.getErrno(std.os.linux.umount2("/dev", std.os.linux.MNT.DETACH))) {
-        .SUCCESS => {},
-        else => |err| {
-            log.err("Failed to umount devtmpfs: errno {}", .{err});
-            return std.os.unexpectedErrno(err);
-        },
-    }
-    try std.fs.deleteDirAbsolute("/dev");
-    log.debug("pivot_root: dev umounted", .{});
-
-    const loader_dir = "/loader";
-    try std.fs.makeDirAbsolute(loader_dir);
-    log.debug("pivot_root: new root prepared", .{});
-
-    // var rt = try std.fs.openDirAbsolute("/", .{ .iterate = true });
-    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    // defer _ = gpa.deinit();
-    // const alloc = gpa.allocator();
-    // var iter = try rt.walk(alloc);
-    // while (try iter.next()) |dir| {
-    //     log.info("{!} {s}", .{ dir.kind, dir.path });
-    // }
-    // rt.close();
-}
-
 pub fn getSystemPart() []const u8 {
     return hypinit.bootconfig.get("hyperpsi.systempart") orelse "/dev/disk/by-partlabel/system";
 }
