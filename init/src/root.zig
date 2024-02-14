@@ -4,6 +4,7 @@ const log = std.log.scoped(.hypinit);
 pub const hyplog = @import("hyplog");
 pub const BootConfig = @import("./BootConfig.zig");
 pub const mount = @import("./mount.zig");
+pub const loopdev = @import("./loopdev.zig");
 
 pub const std_options: std.Options = .{
     .log_level = .debug,
@@ -60,4 +61,22 @@ pub fn setFirmwarePath(path: []const u8) !void {
     defer file.close();
     try file.writeAll(path);
     log.info("Firmware path set to {s}", .{path});
+}
+
+pub fn exec(alloc: std.mem.Allocator, argv: []const []const u8) !void {
+    const result = try std.process.Child.run(.{
+        .allocator = alloc,
+        .argv = argv,
+    });
+    defer alloc.free(result.stdout);
+    defer alloc.free(result.stderr);
+    log.info("{s}: exit code: {!}, stdout: {s}, stderr: {s}", .{ argv[0], result.term, result.stdout, result.stderr });
+    switch (result.term) {
+        .Exited => |status| {
+            if (status != 0) {
+                return error.ChildProcessNonZeroExit;
+            }
+        },
+        else => return error.ChildProcessError,
+    }
 }
