@@ -15,6 +15,10 @@ pub fn init(alloc: std.mem.Allocator) Self {
     };
 }
 
+pub fn deinit(self: *Self) void {
+    self.map.deinit();
+}
+
 pub fn load(self: *Self) !void {
     try self.loadFromBootConfig();
     try self.loadFromBootConfigFile("/usr/share/hypinit.config");
