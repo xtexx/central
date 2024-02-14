@@ -23,6 +23,10 @@ $$($1-out)/%: $$($1-out)/.config
 
 .PHONY: $$($1-target)
 $$($1-target): $$($1-output)
+
+$$($1-target)-menuconfig: $$($1-out)/.config
+	$$(call cmd,$1-make,menuconfig)
+	$@diff $$($1-out)/.config.old $$($1-out)/.config
 ))
 endef
 
