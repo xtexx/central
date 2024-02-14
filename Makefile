@@ -36,7 +36,7 @@ $(call add-kernel,kernel)
 init-zigflags := --release=small
 $(call add-zig,init)
 
-busybox-init-config := init/busybox-init
+busybox-init-config := init/busybox
 $(call add-busybox,busybox-init)
 $(call use-zig-toolchain,$(busybox-init-out)/%)
 
@@ -69,7 +69,13 @@ bootimg-kltechn-variant := kltechn
 bootimg-kltechn-kernel := kernel-kltechn
 $(call add-bootimg,bootimg-kltechn)
 
-systemimg-src += /init::out/init/init
-systemimg-src += /usr/bin/kmod::$(kmod-out)/tools/kmod
-systemimg-src += /lib/modules::$(kernel-install-dir)/lib/modules::$(kernel-install-dir)/.hypinststamp
+loader-zigflags := --release=fast
+$(call add-zig,loader)
+
+busybox-config := loader/busybox
+busybox-base-config := defconfig
+$(call add-busybox,busybox)
+$(call use-zig-toolchain,$(busybox-out)/%)
+
+include loader/systemimg.mk
 $(call add-squashfs,systemimg)

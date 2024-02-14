@@ -8,11 +8,9 @@ pub const hypinit_device = "samsung,klte";
 
 pub fn main() !void {
     try hyploader.prepareLoader();
-    try hyploader.mount.mountDev();
+    try hyploader.mount.mountProcSysDev();
     hyploader.initLogger();
     log.info("HyperPsi samsung-klte loader", .{});
-    hyploader.checkKernel() catch {};
-    try hyploader.mount.mountProcSysDev();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -22,7 +20,7 @@ pub fn main() !void {
     defer hyploader.bootconfig.deinit();
     try hyploader.bootconfig.load();
 
-    // try hyploader.exec(alloc, &.{ "/usr/bin/busybox", "--install", "-s", "/usr/bin" });
+    try hyploader.exec(alloc, &.{ "/loader/usr/bin/busybox", "--install", "-s", "/loader/usr/bin" });
 
     while (true) {}
 }
