@@ -18,6 +18,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    main_tests.root_module.addImport("hyplog", log_dep.module("hyplog"));
 
     const run_main_tests = b.addRunArtifact(main_tests);
 
