@@ -6,14 +6,17 @@ ARCH := arm
 LLVM := 1
 LLVM_TARGET := arm-linux-musleabihf
 include $(HYP)/device-build/device.mk
-include $(HYP)/device-build/kmod.mk
-include $(HYP)/device-build/linux.mk
-include $(HYP)/device-build/zig.mk
+include $(HYP)/device-build/bootimg.mk
+include $(HYP)/device-build/busybox.mk
+include $(HYP)/device-build/compress.mk
 include $(HYP)/device-build/cpio.mk
 include $(HYP)/device-build/initcpio.mk
-include $(HYP)/device-build/compress.mk
-include $(HYP)/device-build/bootimg.mk
+include $(HYP)/device-build/kmod.mk
+include $(HYP)/device-build/linux.mk
+include $(HYP)/device-build/mdev-conf.mk
 include $(HYP)/device-build/squashfs.mk
+include $(HYP)/device-build/util-linux.mk
+include $(HYP)/device-build/zig.mk
 
 .PHONY: all
 all: kernel
@@ -32,6 +35,15 @@ $(call add-kernel,kernel)
 
 init-zigflags := --release=small
 $(call add-zig,init)
+
+busybox-init-config := init/busybox-init
+$(call add-busybox,busybox-init)
+$(call use-zig-toolchain,$(busybox-init-out)/%)
+
+util-linux-init-opts := --disable-all-programs --disable-nls \
+	--enable-static --enable-libblkid --enable-blkid
+$(call add-util-linux,util-linux-init)
+$(call use-zig-toolchain,$(util-linux-init-out)/%)
 
 initcpio-src := init/initcpio.txt
 $(call add-initcpio,initcpio)
