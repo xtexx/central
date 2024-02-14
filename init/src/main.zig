@@ -20,6 +20,7 @@ pub fn main() !void {
     const alloc = gpa.allocator();
 
     hypinit.bootconfig = hypinit.BootConfig.init(alloc);
+    defer hypinit.bootconfig.deinit();
     try hypinit.bootconfig.load();
     hypinit.checkBootConfig() catch {};
 
@@ -30,27 +31,8 @@ pub fn main() !void {
 
     try hypinit.mount.mount("none", "/", "tmpfs", 0, 0);
     log.info("Tmpfs mounted on root dir", .{});
-    try hypinit.mount.autoMountSystemPart(alloc, null, null);
+    try hypinit.mount.autoMountLoader(alloc, null, null);
     try hypinit.exec(alloc, &.{ "/usr/bin/rm", "-rf", "/init", "/etc", "/usr", "/bin", "/lib" });
 
-    {
-        var dir = try std.fs.openDirAbsolute("/", .{ .iterate = true });
-        defer dir.close();
-        var walk = try dir.walk(alloc);
-        defer walk.deinit();
-        while (try walk.next()) |ent| {
-            if (std.mem.startsWith(u8, ent.path, "proc/")) {
-                continue;
-            }
-            if (std.mem.startsWith(u8, ent.path, "sys/")) {
-                continue;
-            }
-            if (std.mem.startsWith(u8, ent.path, "dev")) {
-                continue;
-            }
-            log.info("{s} {!}", .{ ent.path, ent.kind });
-        }
-    }
-
-    while (true) {}
+    try hypinit.execLoader(alloc);
 }

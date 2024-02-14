@@ -11,6 +11,11 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
+    const init_dep = b.dependency("hypinit", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const exe = b.addExecutable(.{
         .name = "init",
         .root_source_file = .{ .path = "src/main.zig" },
@@ -19,10 +24,6 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
         .single_threaded = true,
         .strip = true,
-    });
-    const init_dep = b.dependency("hypinit", .{
-        .target = target,
-        .optimize = optimize,
     });
     exe.root_module.addImport("hypinit", init_dep.module("hypinit"));
 
