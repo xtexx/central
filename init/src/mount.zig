@@ -1,6 +1,6 @@
 const std = @import("std");
-const hyplog = @import("hyplog");
 const hypinit = @import("./root.zig");
+const loopdev = hypinit.loopdev;
 const log = std.log.scoped(.hypinit_mount);
 
 pub const MS = std.os.linux.MS;
@@ -82,10 +82,54 @@ pub fn getSystemPart() []const u8 {
     return hypinit.bootconfig.get("hyperpsi.systempart") orelse "/dev/disk/by-partlabel/system";
 }
 
-pub fn autoMountSystemPart(fstype: ?[*:0]const u8, loader_fstype: ?[*:0]const u8) !void {
-    try mount(getSystemPart(), "/system", fstype, MS.NOSUID | MS.NOEXEC | MS.SYNCHRONOUS | MS.DIRSYNC, 0);
-    log.info("Mounted /system with {?s}", .{fstype});
+// if system partition is a SquashFS image, we load it to tmpfs first
+// later the 2-stage loader will create ext FS on system partition
+// otherwise, we mount system to /system and mount /system/loader to /loader
+pub fn autoMountSystemPart(alloc: std.mem.Allocator, fstype: ?[*:0]const u8, loader_fstype: ?[*:0]const u8) !void {
+    if (try getSQFSSize(getSystemPart())) |syssize| {
+        const syspart = getSystemPart();
+        log.info("System part is SQFS: {s}, size {}", .{ syspart, syssize });
+        {
+            log.info("Copying {} bytes from system partition", .{syssize});
+            const sysfile = try std.fs.openFileAbsolute(syspart, .{ .mode = .read_only, .lock = .exclusive });
+            defer sysfile.close();
+            const tmpfile = try std.fs.createFileAbsolute("/loader.sqfs", .{ .exclusive = true, .lock = .exclusive, .mode = 0o600 });
+            defer tmpfile.close();
+            try tmpfile.writeFileAll(sysfile, .{ .in_len = syssize });
+            log.info("Copied system partition to /loader.sqfs", .{});
+        }
+        const loop_path = try loopdev.getLoopDevicePath(alloc, try loopdev.getFreeLoop());
+        defer alloc.free(loop_path);
+        const loop = try std.fs.openFileAbsolute(loop_path, .{ .mode = .read_write });
+        try loopdev.configure(alloc, loop, "/loader.sqfs", loopdev.c.LO_FLAGS_READ_ONLY);
+        defer loop.close();
 
-    try mount("/system/loader", "/loader", loader_fstype, MS.RDONLY, 0);
-    log.info("Mounted /loader with {?s}", .{loader_fstype});
+        try hypinit.mount.mount(loop_path, "/loader", "squashfs", hypinit.mount.MS.RDONLY, 0);
+        log.info("Mounted loader.sqfs", .{});
+    } else {
+        try mount(getSystemPart(), "/system", fstype, MS.NOSUID | MS.NOEXEC | MS.SYNCHRONOUS | MS.DIRSYNC, 0);
+        log.info("Mounted /system with {?s}", .{fstype});
+
+        try mount("/system/loader", "/loader", loader_fstype, MS.RDONLY, 0);
+        log.info("Mounted /loader with {?s}", .{loader_fstype});
+    }
+}
+
+fn getSQFSSize(path: []const u8) !?usize {
+    const file = try std.fs.openFileAbsolute(path, .{ .mode = .read_only, .lock = .exclusive });
+    defer file.close();
+    var magic: [4]u8 = undefined;
+    if (try file.readAll(&magic) != 4) {
+        return error.SystemPartitionTooSmall;
+    }
+    if (std.mem.eql(u8, &magic, &.{ 0x68, 0x73, 0x71, 0x73 })) {
+        const reader = file.reader();
+        try file.seekTo(12);
+        const block_size = try reader.readInt(u32, .little);
+        try file.seekTo(40);
+        const bytes_used = try reader.readInt(u32, .little);
+        return bytes_used + (block_size - (bytes_used % block_size));
+    } else {
+        return null;
+    }
 }
