@@ -27,15 +27,16 @@ pub fn getLoopDevicePath(alloc: std.mem.Allocator, nr: usize) ![]u8 {
     return try std.fmt.allocPrint(alloc, "/dev/loop{}", .{nr});
 }
 
-pub fn configure(alloc: std.mem.Allocator, device: File, backing: []const u8, flags: u32) !void {
-    const lcfg = try alloc.create(c.struct_loop_config);
+pub fn configure(device: File, backing: []const u8, flags: u32) !void {
     const file = try std.fs.openFileAbsolute(backing, .{ .mode = .read_write });
+
+    var lcfg = std.mem.zeroes(c.struct_loop_config);
     lcfg.fd = @as(usize, @bitCast(file.handle));
     @memcpy(&lcfg.info.lo_file_name, backing[0..@min(64, backing.len)].ptr);
     lcfg.info.lo_offset = 0;
     lcfg.info.lo_sizelimit = (try file.stat()).size;
     lcfg.info.lo_flags = flags;
-    const rc = ioctl(device.handle, c.LOOP_CONFIGURE, @as(usize, @intFromPtr(lcfg)));
+    const rc = ioctl(device.handle, c.LOOP_CONFIGURE, @as(usize, @intFromPtr(&lcfg)));
     if (rc != 0) {
         log.err("Failed to configure loop device: {}", .{rc});
     } else {

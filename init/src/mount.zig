@@ -59,7 +59,7 @@ pub fn getSystemPart() []const u8 {
 // if system partition is a SquashFS image, we load it to tmpfs first
 // later the 2-stage loader will create ext FS on system partition
 // otherwise, we mount system to /system and mount /system/loader to /loader
-pub fn autoMountSystemPart(alloc: std.mem.Allocator, fstype: ?[*:0]const u8, loader_fstype: ?[*:0]const u8) !void {
+pub fn autoMountLoader(alloc: std.mem.Allocator, fstype: ?[*:0]const u8, loader_fstype: ?[*:0]const u8) !void {
     if (try getSQFSSize(getSystemPart())) |syssize| {
         const syspart = getSystemPart();
         log.info("System part is SQFS: {s}, size {}", .{ syspart, syssize });
@@ -75,7 +75,7 @@ pub fn autoMountSystemPart(alloc: std.mem.Allocator, fstype: ?[*:0]const u8, loa
         const loop_path = try loopdev.getLoopDevicePath(alloc, try loopdev.getFreeLoop());
         defer alloc.free(loop_path);
         const loop = try std.fs.openFileAbsolute(loop_path, .{ .mode = .read_write });
-        try loopdev.configure(alloc, loop, "/loader.sqfs", loopdev.c.LO_FLAGS_READ_ONLY);
+        try loopdev.configure(loop, "/loader.sqfs", loopdev.c.LO_FLAGS_READ_ONLY);
         defer loop.close();
 
         try hypinit.mount.mount(loop_path, "/loader", "squashfs", hypinit.mount.MS.RDONLY, 0);
