@@ -12,6 +12,7 @@ $$(call out-dir,$$($1-out-fs))
 $1-target ?= $1
 
 $$(call clean-if-changed,$$($1-output),opts,$$($1-opts))
+$$(call clean-if-changed,$$($1-output),src,$$($1-src))
 $$($1-output): $$($1-out)/.dir $$($1-out-fs)/.dir \
 		$$(addprefix $$($1-out-fs),$$(foreach src,$$($1-src),$$(word 1,$$(subst ::, ,$$(src)))))
 	$$(call cmd, mksquashfs,$$($1-out-fs),$$($1-opts))
