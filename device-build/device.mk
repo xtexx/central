@@ -68,6 +68,12 @@ cmd-gen = true
 quiet-cmd-configure = 'CONF     $@'
 cmd-configure = cd '$(dir $@)'; $(abspath $(obj)) --srcdir='$(abspath $(dir $(obj)))'
 
+quiet-cmd-autoreconf = 'RECONF   $@'
+cmd-autoreconf = cd '$(dir $@)'; autoreconf -i -s
+
+quiet-cmd-autogen-sh = 'RECONF   $@'
+cmd-autogen-sh = cd '$(dir $@)'; ./autogen.sh
+
 quiet-cmd-makefile = 'MAKE     $@'
 cmd-makefile = make -C '$(dir $(obj))' -f '$(notdir $(obj))'
 
