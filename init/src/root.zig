@@ -83,5 +83,5 @@ pub fn exec(alloc: std.mem.Allocator, argv: []const []const u8) !void {
 
 pub fn execLoader(alloc: std.mem.Allocator) !void {
     try std.os.chdir("/loader");
-    return std.process.execv(alloc, &.{"/init"});
+    return std.process.execv(alloc, &.{"/loader/init"});
 }
