@@ -1,0 +1,13 @@
+.{
+    .name = "hypklte_loader",
+    .version = "0.0.0",
+    .dependencies = .{
+        .hyploader = .{ .path = "../../hyperpsi/loader" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "LICENSE",
+    },
+}
