@@ -9,6 +9,8 @@ $1-base-config ?= allnoconfig
 
 cmd-$1-make = make -C $$($1-out) KBUILD_SRC=$$(abspath $$($1-srctree)) -f $$(abspath $$($1-srctree)/Makefile) $$(obj)
 
+$$(call clean-if-changed,$$($1-out)/.config,basecfg,$$($1-base-config))
+$$(call clean-if-changed,$$($1-out)/.config,cfg,$$($1-config))
 $$($1-out)/.config: $$($1-config).config $$($1-config).txt $$($1-srctree)/Makefile $$($1-out)/.dir
 	$$(call cmd, gen)
 	$$(call cmd, $1-make, $$($1-base-config)) >/dev/null 2>&1
