@@ -1,0 +1,14 @@
+.{
+    .name = "hyploader",
+    .version = "0.0.0",
+    .dependencies = .{
+        .hypinit = .{ .path = "../init" },
+        .hyplog = .{ .path = "../log" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "LICENSE",
+    },
+}
