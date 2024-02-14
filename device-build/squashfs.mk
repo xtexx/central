@@ -20,10 +20,10 @@ $$($1-output): $$($1-out)/.dir $$($1-out-fs)/.dir \
 .PHONY: $$($1-target)
 $$($1-target): $$($1-output)
 ))
-$(foreach src,$($1-src),$(let ssrc,$(subst ::, ,$(src)),$(let dest source dep,$(ssrc),$(eval
+$(foreach src,$($1-src),$(let ssrc,$(subst ::, ,$(src)),$(let dest source cmdtype dep,$(ssrc),$(eval
 $($1-out-fs)$(dest): $(if $(dep),$(dep),$(source)) $($1-out-fs)/.dir
 	$$Qmkdir -p $$(dir $$@)
-	$$(call cmd,cp,$(source))
+	$$(call cmd,$(if $(cmdtype),$(cmdtype),cp),$(source))
 ))))
 endef
 
