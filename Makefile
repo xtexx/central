@@ -69,13 +69,8 @@ bootimg-kltechn-variant := kltechn
 bootimg-kltechn-kernel := kernel-kltechn
 $(call add-bootimg,bootimg-kltechn)
 
-loader-zigflags := --release=fast
+loader-zigflags := --release=small
 $(call add-zig,loader)
-
-busybox-config := loader/busybox
-busybox-base-config := defconfig
-$(call add-busybox,busybox)
-$(call use-zig-toolchain,$(busybox-out)/%)
 
 include loader/systemimg.mk
 $(call add-squashfs,systemimg)

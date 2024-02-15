@@ -1,9 +1,14 @@
 systemimg-src += /init::out/loader/loader
 systemimg-src += /etc/hypinit.config::init/hypinit.config
 
-systemimg-opt += -p '/bin/sh s 777 0 0 /usr/bin/busybox'
-systemimg-src += /usr/bin/busybox::$(busybox-out)/busybox
 systemimg-src += /usr/bin/kmod::$(kmod-out)/tools/kmod
+systemimg-opts += -p '/usr/bin/depmod s 777 0 0 /usr/bin/kmod'
+systemimg-opts += -p '/usr/bin/lsmod s 777 0 0 /usr/bin/kmod'
+systemimg-opts += -p '/usr/bin/insmod s 777 0 0 /usr/bin/kmod'
+systemimg-opts += -p '/usr/bin/rmmod s 777 0 0 /usr/bin/kmod'
+systemimg-opts += -p '/usr/bin/modinfo s 777 0 0 /usr/bin/kmod'
+systemimg-opts += -p '/usr/bin/modprobe s 777 0 0 /usr/bin/kmod'
+
 systemimg-src += /lib/modules::$(kernel-install-dir)/lib/modules::cp::$(kernel-install-dir)/.hypinststamp
 
 # dir /etc 755 0 0
