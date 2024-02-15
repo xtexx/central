@@ -3,6 +3,9 @@ const log = std.log.scoped(.hyploader);
 const hyplog = @import("hyplog");
 const init = @import("hypinit");
 
+pub const keyboard = @import("./keyboard.zig");
+pub const recovery = @import("./recovery.zig");
+
 pub const BootConfig = init.BootConfig;
 pub const mount = init.mount;
 pub const std_options = init.std_options;

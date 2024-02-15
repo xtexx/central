@@ -14,10 +14,9 @@ $1-zigflags := --prefix "$$(abspath $$($1-out))" \
 $$($1-out)/%: ZIGFLAGS+=$$($1-zigflags)
 
 .PHONY: $$($1-target)
-$$($1-target): $$($1-out)/.dir $$($1-cache)/.dir
-	$$(call cmd,zig-build,$$($1-srctree))
+$$($1-target): $$($1-out)/.dir $$($1-cache)/.dir $$($1-out)/--
 
-$$($1-out)/%: $$($1-target)
+$$($1-out)/%: $$(phony-target)
 	$$(call cmd,zig-build,$$($1-srctree))
 ))
 endef

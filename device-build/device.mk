@@ -100,14 +100,14 @@ phony-target := PHONY_TARGET
 PHONY_TARGET:
 
 define clean-if-changed
-$(let stamp,$(dir $1).$(notdir $1)-$2,$(eval $$(stamp):
+$(let stamp,$(dir $1).$(notdir $1)-$2,$(eval $(stamp):
 	@mkdir -p $$(dir $1)
-	$$(file >$$@,cache-$1-$2 := $3)
+	@echo "$(subst ",\",cache-$1-$2 := $3)" > $$@
 )$(eval 
-include $$(stamp)
+include $(stamp)
 ifneq ($$(cache-$1-$2),$3)
-$$(shell rm -f $$(stamp) $1)
-include $$(stamp)
+$$(shell rm -f $(stamp) $1)
+include $(stamp)
 endif
 ))
 endef

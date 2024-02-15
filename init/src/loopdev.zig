@@ -30,7 +30,7 @@ pub fn getLoopDevicePath(alloc: std.mem.Allocator, nr: usize) ![]u8 {
 pub fn configure(device: File, backing: []const u8, flags: u32) !void {
     const file = try std.fs.openFileAbsolute(backing, .{ .mode = .read_write });
 
-    var lcfg = std.mem.zeroes(c.struct_loop_config);
+    var lcfg = std.mem.zeroes(c.loop_config);
     lcfg.fd = @as(usize, @bitCast(file.handle));
     @memcpy(&lcfg.info.lo_file_name, backing[0..@min(64, backing.len)].ptr);
     lcfg.info.lo_offset = 0;
