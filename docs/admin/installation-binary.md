@@ -16,7 +16,7 @@ and make it executable:
 
 > **NOTE:** when a line starts with #, it means the command 'foo --bar' must be run as root (or with sudo).
 
-`# cp forgejo-1.20.5-0-linux-amd64 /usr/local/bin/forgejo`
+`# cp forgejo-1.21.5-0-linux-amd64 /usr/local/bin/forgejo`
 `# chmod 755 /usr/local/bin/forgejo`
 
 Make sure `git` and `git-lfs` are installed:
