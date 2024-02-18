@@ -36,7 +36,7 @@ At the moment, only the following files are served:
 - files in the `public/assets/` folder
 
 For example, a file `image.png` stored in `$FORGEJO_CUSTOM/public/assets/`, can be accessed with
-the url `http://forgejo.domain.tld/assets/image.png`.
+the url `http://forgejo.example.com/assets/image.png`.
 
 ## Changing the logo
 
