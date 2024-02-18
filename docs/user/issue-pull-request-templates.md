@@ -285,6 +285,5 @@ contact_links:
 | Key   | Description                      | Type   | Required |
 | ----- | -------------------------------- | ------ | -------- |
 | name  | the name of your link            | String | true     |
-| name  | The name of your link            | String | true     |
 | url   | The URL of your link             | String | true     |
 | about | A short description of your link | String | true     |
