@@ -64,7 +64,11 @@ which can be modified by placing replacements below the `$FORGEJO_CUSTOM/templat
 To obtain any embedded file (including templates), the `forgejo embedded` CLI can be used. Alternatively, they can be found in the [`templates`](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/templates) directory of Forgejo source.
 
 Be aware that any statement contained inside `{{` and `}}` are Forgejo's template syntax and
-shouldn't be touched without fully understanding these components.
+should **not** be touched without fully understanding these components.
+
+Forgejo regularly makes backward incompatible changes to its own templates, which makes templates **very likely to break when upgrading Forgejo**.
+
+Before deploying your changes to production or upgrading a modified Forgejo instance, we urge that you test your custom modifications in a testing environment first.
 
 ### Customizing startpage / homepage
 
