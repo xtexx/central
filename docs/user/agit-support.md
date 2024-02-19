@@ -82,7 +82,7 @@ The following parameters are available:
   - `topic`: Essentially an identifier. **If left empty,** the value of `<session>`, if present, will also be used for the topic. Otherwise, Forgejo will return an error. If you want to push additional commits to a Pull Request that was created using AGit, you **must** use the same topic.
   - `title`: Title of the Pull Request. **If left empty,** the first line of the first new Git commit will be used instead.
   - `description`: Description of the Pull Request.
-  - `force-push`: Necessary when rebasing, amending or [retroactively modifying](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History) your previous commits. Otherwise, a new Pull Request will be opened, **even if you use the same topic**.
+  - `force-push`: Necessary when rebasing, amending or [retroactively modifying](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History) your previous commits. Otherwise, a new Pull Request will be opened, **even if you use the same topic**. If used, the value of this parameter should be set to `true`.
 
 Forgejo relies on the `topic` parameter and a linear commit history in order to associate new commits with an existing Pull Request.
 
