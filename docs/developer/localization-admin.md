@@ -15,9 +15,10 @@ development branch as follows:
 
 - go to the [weblate repository admin page](https://translate.codeberg.org/projects/forgejo/forgejo/#repository)
 - click lock
-- click commit
-- click push
+- reload the page
+  - check the number of commits
+  - verify there are 0 pending changes
+- go to the pull request and wait until it is rebased and has the same number of commits
 - squash merge the pending pull request ([similar to this example](https://codeberg.org/forgejo/forgejo/pulls/2317))
 - click reset
-- click update (should not be necessary, but just in case)
 - click unlock
