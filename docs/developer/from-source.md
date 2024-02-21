@@ -134,26 +134,6 @@ docker buildx build .
 This will run the entire build process in a Docker container with the required dependencies.
 You can also supply a tag during the build process with the `-t` option, to make it easier to publish or run the image later.
 
-### Test
+### Testing
 
-After following the steps above, a `forgejo` binary will be available in the working directory.
-It can be tested from this directory or moved to a directory with test data. When Forgejo is
-launched manually from command line, it can be killed by pressing `Ctrl + C`.
-
-```bash
-./forgejo web
-```
-
-To run and continuously rebuild when the source files change:
-
-```bash
-TAGS='sqlite sqlite_unlock_notify' make watch
-```
-
-> **NOTE:** do not set the `bindata` tag such as in `TAGS="bindata" make watch` or the browser may fail to load pages with an error like `Failed to load asset`
-
-To run automated frontend and backend tests:
-
-```bash
-make test
-```
+See [the section dedicated to testing](./testing/).
