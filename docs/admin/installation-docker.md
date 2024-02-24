@@ -48,7 +48,7 @@ If you don't give the volume correct permissions, the container may not start.
 
 The Forgejo configuration is stored in the `app.ini` file as described
 in the [Configuration Cheat Sheet](../config-cheat-sheet). When using
-the Forgegjo container image, this file is automatically created if it
+the Forgejo container image, this file is automatically created if it
 does not exist already. In addition it is possible to add settings
 using configuration variables. For instance:
 
