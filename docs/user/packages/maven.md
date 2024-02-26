@@ -20,14 +20,8 @@ To register the package registry you first need to add your access token to the 
   <servers>
     <server>
       <id>forgejo</id>
-      <configuration>
-        <httpHeaders>
-          <property>
-            <name>Authorization</name>
-            <value>token {access_token}</value>
-          </property>
-        </httpHeaders>
-      </configuration>
+      <username>{owner}</username>
+      <password>{access_token}</password>
     </server>
   </servers>
 </settings>
