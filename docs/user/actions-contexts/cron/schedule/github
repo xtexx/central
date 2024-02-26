@@ -1,0 +1,33 @@
+{
+  "event": {
+    "action": "schedule"
+  },
+  "event_path": "/var/run/act/workflow/event.json",
+  "workflow": "",
+  "run_id": "20",
+  "run_number": "1",
+  "actor": "root",
+  "repository": "root/example-cron",
+  "event_name": "schedule",
+  "sha": "0e929441f8f2f61c3d43f16ede4ee9f7ad5198ac",
+  "ref": "main",
+  "ref_name": "main",
+  "ref_type": "",
+  "head_ref": "",
+  "base_ref": "",
+  "token": "0fccb5f85853e86829e7efc25b882ad0a2988b3b",
+  "workspace": "/workspace/root/example-cron",
+  "action": "1",
+  "action_path": "",
+  "action_ref": "",
+  "action_repository": "",
+  "job": "test",
+  "job_name": "",
+  "repository_owner": "root",
+  "retention_days": "",
+  "runner_perflog": "/dev/null",
+  "runner_tracking_id": "",
+  "server_url": "http://10.201.14.185:3000",
+  "api_url": "http://10.201.14.185:3000/api/v1",
+  "graphql_url": ""
+}
