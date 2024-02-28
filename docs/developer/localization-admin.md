@@ -13,6 +13,7 @@ Weblate is [configured to propose pull requests](https://translate.codeberg.org/
 to the Forgejo repository with new translations. These pull requests should be **squash merged** into the Forgejo
 development branch as follows:
 
+- announce 15 minutes before in the chatroom `@room the translations will be locked for maintenance in 15 minutes, make sure you don't try to save a translation when that happens as it will be lost.`
 - go to the [weblate repository admin page](https://translate.codeberg.org/projects/forgejo/forgejo/#repository)
 - click lock
 - reload the page
