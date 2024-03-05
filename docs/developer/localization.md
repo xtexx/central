@@ -56,9 +56,13 @@ In your application message, please include:
 - your motivation for becoming a member
 - your experience at translating other projects and using Weblate. e.g. link(s) to your public translation profile(s) or contributions
 
+Application process takes 2 weeks or more. However, it doesn't prevent you from working on the translation: you can add suggestions which you will be able accept later being a team member, translate new strings, add comments and discuss the translation.
+
+It is a good idea to work on the translation first for a bit, before applying to the Localization team, to see how the workflow looks like.
+
 Please apply to the team only if you want your actions as a team member to be beneficial to all translation users.
 
-### Discussing the translation
+## Discussing the translation
 
 Ask questions, clarify string meaning, report vandalism and suggest changes to source strings in [Matrix room](https://matrix.to/#/#forgejo-localization:matrix.org) or [issues](https://codeberg.org/forgejo/forgejo/issues). For this you don't need to be a member of the Localization team.
 
