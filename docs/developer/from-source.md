@@ -128,7 +128,7 @@ To build Forgejo's Docker image, you need to have Docker and the Docker Buildx p
 You can build the Docker image with:
 
 ```bash
-docker buildx build .
+docker buildx build --output type=docker --tag forgejo:mybuild .
 ```
 
 This will run the entire build process in a Docker container with the required dependencies.
