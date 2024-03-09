@@ -122,7 +122,81 @@ $ docker run --rm code.forgejo.org/forgejo/runner:3.3.0 id
 uid=1000 gid=1000 groups=1000
 ```
 
-A [docker-compose](https://docs.docker.com/compose/) example [is
+One way to run the Docker image is via Docker Compose. To do so,
+first prepare a `data` directory with non-root permissions
+(in this case, we pick `1001:1001`):
+
+```shell
+#!/usr/bin/env bash
+
+set -e
+
+mkdir -p data
+touch data/.runner
+mkdir -p data/.cache
+
+chown -R 1001:1001 data/.runner
+chown -R 1001:1001 data/.cache
+chmod 775 data/.runner
+chmod 775 data/.cache
+chmod g+s data/.runner
+chmod g+s data/.cache
+```
+
+After running this script with `bash setup.sh`, define the following
+`docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  docker-in-docker:
+    image: docker:dind
+    container_name: 'docker_dind'
+    privileged: true
+    command: ['dockerd', '-H', 'tcp://0.0.0.0:2375', '--tls=false']
+    restart: 'unless-stopped'
+
+  gitea:
+    image: 'code.forgejo.org/forgejo/runner:3.3.0'
+    links:
+      - docker-in-docker
+    depends_on:
+      docker-in-docker:
+        condition: service_started
+    container_name: 'runner'
+    environment:
+      DOCKER_HOST: tcp://docker-in-docker:2375
+    # User without root privileges, but with access to `./data`.
+    user: 1001:1001
+    volumes:
+      - ./data:/data
+    restart: 'unless-stopped'
+
+    command: '/bin/sh -c "while : ; do sleep 1 ; done ;"'
+```
+
+Here, we're not running the `forgejo-runner daemon` yet because we
+need to register it first. Follow the registration instructions below
+by starting the `runner` service with `docker-compose up -d` and
+entering it via:
+
+```shell
+docker exec -it runner /bin/sh
+```
+
+In this shell, run the `forgejo-runner register` command as described
+below. After that is done, take the service down again with
+`docker-compose down` and modify the `command` to:
+
+```yaml
+command: '/bin/sh -c "sleep 5; forgejo-runner daemon"'
+```
+
+Here, the sleep allows the `docker-in-docker` service to start up
+before the `forgejo-runner daemon` is started.
+
+More [docker compose](https://docs.docker.com/compose/) examples [are
 provided](https://codeberg.org/forgejo/runner/src/branch/main/examples/docker-compose)
 to demonstrate how to install that OCI image to successfully run a workflow.
 
