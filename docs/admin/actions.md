@@ -291,6 +291,24 @@ The `Forgejo runner` needs to connect to a `Forgejo` instance and must be regist
   The same token can be used multiple times to register any number of
   runners, independent of each other.
 
+  When using the `forgejo-runner register` command, it will ask for a
+  label too. To get a runner that is close to GitHub's runners, use
+
+  ```
+  ubuntu-22.04:docker://node:20-bullseye
+  ```
+
+  or
+
+  ```
+  ubuntu-22.04:docker://ghcr.io/catthehacker/ubuntu:act-22.04
+  ```
+
+  as the label. The `act` container image is much bigger than the
+  `node` image, but also more similar to the GitHub runners. See
+  the [labels and `runs-on`](#labels-and-runs-on) section for
+  more information.
+
 - Offline registration
 
   When Infrastructure as Code (Ansible, kubernetes, etc.) is used to
@@ -572,6 +590,13 @@ runner:
 will have the `Forgejo runner` declare that it supports the `node20` and `bullseye` labels.
 
 If the list of labels is empty, it defaults to `docker:docker://node:16-bullseye` and will declare the label `docker`.
+Declaring a label means that the `Forgejo runner` will accept tasks that specify this label in the `runs-on` field.
+
+So, to mimick the GitHub runners, the `runs-on` field can be set to `ubuntu-22.04:docker://node:20-bullseye` for instance.
+With this, the Forgejo runner will respond to `runs-on: ubuntu-22.04` and will use the `node:20-bullseye` image from hub.docker.com.
+This image is quite capable of running many of the workflows that are designed for the GitHub runners.
+For a slightly bigger image, use `ghcr.io/catthehacker/ubuntu:act-22.04` instead of `node:20-bullseye` which should be compatible with most actions while remaining relatively small.
+There exist larger images used that can go up to 20GB compressed with more software installed if needed.
 
 ### Docker or Podman
 
