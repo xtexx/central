@@ -802,7 +802,7 @@ The steps are run if the **expression** evaluates to true.
 
 An array of steps executed sequentially on the host specified by `runs-on`.
 
-### `jobs.<job_id>.step[*].run`
+### `jobs.<job_id>.steps[*].run`
 
 A shell script to run in the environment specified with
 `jobs.<job_id>.runs-on`. It runs as root using the default shell unless
@@ -843,11 +843,11 @@ steps:
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-pull-request/.forgejo/workflows/test.yml)
 
-### `jobs.<job_id>.step[*].id`
+### `jobs.<job_id>.steps[*].id`
 
 A unique identifier for the step.
 
-### `jobs.<job_id>.step[*].if`
+### `jobs.<job_id>.steps[*].if`
 
 The step is run if the **expression** evaluates to true. The following additional boolean functions are supported:
 
@@ -857,7 +857,7 @@ The step is run if the **expression** evaluates to true. The following additiona
 
 Check out the workflows in [example-if](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-if/) and [example-if-fail](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-if-fail/).
 
-### `jobs.<job_id>.step[*].uses`
+### `jobs.<job_id>.steps[*].uses`
 
 Specifies the repository from which the `Action` will be cloned or a directory where it can be found.
 
@@ -902,7 +902,7 @@ Specifies the repository from which the `Action` will be cloned or a directory w
 
   [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-local-action/).
 
-### `jobs.<job_id>.step[*].with`
+### `jobs.<job_id>.steps[*].with`
 
 A dictionary mapping the inputs of the action to concrete values. The `action.yml` defines and documents the inputs.
 
