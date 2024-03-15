@@ -363,7 +363,7 @@ It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgej
 
 - `runner-forgejo-helm` on hetzner03
 
-  Dedicated to https://codeberg.org/forgejo-contrib/forgejo-helm and running from an ephemral disk
+  Dedicated to https://codeberg.org/forgejo-contrib/forgejo-helm and running from an ephemeral disk
 
 ## Uberspace
 
