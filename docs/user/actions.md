@@ -932,6 +932,10 @@ the path to the executable file to run.
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-docker-action/.forgejo/workflows/test.yml)
 
+### `jobs.<job_id>.steps[*].env`
+
+Set environment variables like it's [top-level variant `env`](#env-2), but only for the current step.
+
 ## Debugging workflows
 
 ### Errors in the YAML file
