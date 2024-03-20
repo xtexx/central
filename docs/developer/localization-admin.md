@@ -14,12 +14,25 @@ to the Forgejo repository with new translations. These pull requests should be *
 development branch as follows:
 
 - announce 15 minutes before in the chatroom `@room the translations will be locked for maintenance in 15 minutes, make sure you don't try to save a translation when that happens as it will be lost.`
-- go to the [weblate repository admin page](https://translate.codeberg.org/projects/forgejo/forgejo/#repository)
+- go to the [Weblate repository admin page](https://translate.codeberg.org/projects/forgejo/forgejo/#repository)
 - click lock
 - reload the page
   - check the number of commits
   - verify there are 0 pending changes
 - go to the pull request and wait until it is rebased and has the same number of commits
-- squash merge the pending pull request ([similar to this example](https://codeberg.org/forgejo/forgejo/pulls/2317))
+- squash merge the pending `[I18N]` pull request ([similar to this example](https://codeberg.org/forgejo/forgejo/pulls/2317))
+- click reset
+- click unlock
+
+## Merging a pull request that changes translations
+
+When a [Forgejo pull
+request](https://codeberg.org/forgejo/forgejo/pulls) modifies files in
+`options/locale` other than `locale_en-US.ini` for which it is
+authoritative, it must be merged after all pending changes in Weblate
+are merged as explained above. Only the end of the sequence changes:
+
+- squash merge the pending `[I18N]` pull request ([similar to this example](https://codeberg.org/forgejo/forgejo/pulls/2317))
+- merge the PR (after resolving conflicts due to the merge of the Weblate changes)
 - click reset
 - click unlock
