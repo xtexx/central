@@ -25,6 +25,7 @@ In the top level `[log]` section the following configurations can be placed:
 
 And it can contain the following sub-loggers:
 
+- `logger.default.MODE`: (Default: **,**): List of log outputs to use for the default logger.
 - `logger.router.MODE`: (Default: **,**): List of log outputs to use for the Router logger.
 - `logger.access.MODE`: (Default: **\<empty\>**) List of log outputs to use for the Access logger. By default, the access logger is disabled.
 - `logger.xorm.MODE`: (Default: **,**) List of log outputs to use for the XORM logger.
@@ -43,6 +44,7 @@ ROOT_PATH = %(GITEA_WORK_DIR)/log
 MODE = console
 LEVEL = Info
 STACKTRACE_LEVEL = None
+logger.default.MODE = ,
 logger.router.MODE = ,
 logger.xorm.MODE = ,
 logger.access.MODE =
@@ -76,14 +78,14 @@ FILE_NAME = access.log
 
 ### Set different log levels for different modes
 
-Default logs (>=Warn) goes into `forgejo.log`, while Error logs goes into `file-error.log`:
+Default logs (>=Warn) goes into `gitea.log`, while Error logs goes into `file-error.log`:
 
 ```ini
 [log]
 LEVEL = Warn
 MODE = file, file-error
 
-; by default, the "file" mode will record logs to %(log.ROOT_PATH)/forgejo.log, so we don't need to set it
+; by default, the "file" mode will record logs to %(log.ROOT_PATH)/gitea.log, so we don't need to set it
 ; [log.file]
 ; by default, the MODE (actually it's the output writer of this logger) is taken from the section name, so we don't need to set it either
 ; MODE = file
@@ -124,7 +126,7 @@ Please note this expression will be run in the writer's goroutine but not the lo
 `FLAGS` represents the preceding logging context information that is
 printed before each message. It is a comma-separated string set. The order of values does not matter.
 
-It defaults to `stdflags` (= `date,time,medfile,shortfuncname,levelinitial`)
+It defaults to `stdflags` (= `date,time,medfile,shortfuncname,levelinitial`). Except for the access log which defaults to `none`
 
 Possible values are:
 
@@ -162,9 +164,9 @@ In this mode the logger will save log messages to a file.
 
 Settings:
 
-- `FILE_NAME`: The file to write the log events to, relative to `ROOT_PATH`, Default to `%(ROOT_PATH)/forgejo.log`. Exception: access log will default to `%(ROOT_PATH)/access.log`.
+- `FILE_NAME`: The file to write the log events to, relative to `ROOT_PATH`, Default to `%(ROOT_PATH)/gitea.log`. Exception: access log will default to `%(ROOT_PATH)/access.log`.
 - `MAX_SIZE_SHIFT`: **28**: Maximum size shift of a single file. 28 represents 256Mb. For details see below.
-- `LOG_ROTATE` **true**: Whether to rotate the log files. TODO: if false, will it delete instead on daily rotate, or do nothing?.
+- `LOG_ROTATE` **true**: Whether to rotate the log files. If `false`, log files will always be appended.
 - `DAILY_ROTATE`: **true**: Whether to rotate logs daily.
 - `MAX_DAYS`: **7**: Delete rotated log files after this number of days.
 - `COMPRESS`: **true**: Whether to compress old log files by default with gzip.
