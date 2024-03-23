@@ -255,6 +255,10 @@ The public GPG key used to sign the releases is [EB114F5E6C0DC2BCDD183550A4B61A2
 
 The [forgejo-experimental-ci](https://codeberg.org/forgejo-experimental-ci) user is dedicated to provide the application tokens used by the CI to build releases and publish them to https://codeberg.org/forgejo-experimental. It does not (and must not) have permission to publish releases at https://codeberg.org/forgejo.
 
+### Dedicated user: forgejo-renovate-action
+
+The [forgejo-renovate-action](https://codeberg.org/forgejo-renovate-action) user opens renovate pull requests on the forgejo repository. It is a member of the mergers team. The associated email is mailto:forgejo-renovate-action@forgejo.org.
+
 ### Integration and experimental organization
 
 The https://codeberg.org/forgejo-integration organization is dedicated to integration testing. Its purpose is to ensure all artefacts can effectively be published and retrieved by the CI/CD pipelines.
