@@ -134,7 +134,11 @@ func combineallFeeds(allFeeds []*gofeed.Feed) *feeds.Feed {
 			if i > limit_per_feed {
 				break
 			}
+			if len(item.Links) > 0 {
+				item.Link = item.Links[0]
+			}
 			if seen[item.Link] {
+				fmt.Printf("seen link \"%s\" for item %s\n", item.Link, item.Title)
 				continue
 			}
 			created := item.PublishedParsed
@@ -148,6 +152,7 @@ func combineallFeeds(allFeeds []*gofeed.Feed) *feeds.Feed {
 				Author:      &feeds.Author{Name: getAuthor(sourceFeed)},
 				Created:     *created,
 				Content:     item.Content,
+				Id:          item.Link,
 			})
 			seen[item.Link] = true
 		}
