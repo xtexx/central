@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -177,6 +178,7 @@ func LoadConfig() {
 	viper.SetDefault("client_timeout_seconds", "60")
 	viper.SetDefault("feed_limit_per_feed", "20")
 	viper.SetDefault("feed_limit", "20")
+	viper.SetDefault("output", "rss.xml")
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
@@ -188,6 +190,8 @@ func main() {
 	combinedFeed := GetAtomFeed()
 	atom, _ := combinedFeed.ToAtom()
 	log.Printf("Rendered RSS with %v items", len(combinedFeed.Items))
-	fmt.Print(atom)
+	if err := os.WriteFile(viper.GetString("output"), []byte(atom), 0666); err != nil {
+		log.Fatal(err)
+	}
 	return
 }

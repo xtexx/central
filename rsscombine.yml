@@ -1,22 +1,12 @@
-title: My Technical RSS Feed
-link: http://wherethisfeedishosted.com/feed
-description: This is a personal collection of technical RSS feeds.
-author_name: John Doe
-author_email: john@example.com
-port: 8080
-server_timeout_seconds: 60
-client_timeout_seconds: 60
-cache_timeout_seconds: 3600
-s3_bucket: rsscombine
-s3_filename: engineering-manager-blogs.xml
-feed_urls: https://raw.githubusercontent.com/chase-seibert/new-york-times-rss-top-100/master/README.md
-feed_exclude_prefixes:
-  - https://raw.githubusercontent.com/
-  - https://github.com/chase-seibert/rsscombine
-  - https://engineering-manager-blogs.herokuapp.com/
-  - https://s3-us-west-2.amazonaws.com/rsscombine/
+title: exozy.me RSS Feed
+link: https://feeds.exozy.me/rss.xml
+description: exozyme members' RSS feeds
+author_name: Ersei
+author_email: contact+exozyme@ersei.net
+feed_limit: 10
 feeds:
-  - http://feeds.feedburner.com/TechCrunch
-  - http://feeds.arstechnica.com/arstechnica/technology-lab
-  - http://www.reddit.com/r/technology/.rss
-  - http://rss.slashdot.org/slashdot/slashdotMainatom
+  - https://ersei.net/en/blog.atom
+  - https://a.exozy.me/index.xml
+  - https://aryak.me/rss.xml
+  - https://www.1a-insec.net/all.atom.xml
+  - https://karawale.in/index.xml
