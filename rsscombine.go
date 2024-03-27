@@ -2,16 +2,13 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/gorilla/feeds"
 	"github.com/mmcdole/gofeed"
 	"github.com/spf13/viper"
@@ -28,7 +25,7 @@ func getUrlsFromFeedsUrl(feeds_url string) []string {
 		log.Fatal(err)
 	} else {
 		defer response.Body.Close()
-		contents, err := ioutil.ReadAll(response.Body)
+		contents, err := io.ReadAll(response.Body)
 		if err != nil {
 			log.Fatal(err)
 		} else {
@@ -129,6 +126,7 @@ func combineallFeeds(allFeeds []*gofeed.Feed) *feeds.Feed {
 	}
 	sort.Sort(sort.Reverse(byPublished(allFeeds)))
 	limit_per_feed := viper.GetInt("feed_limit_per_feed")
+	limit_all := viper.GetInt("feed_limit")
 	seen := make(map[string]bool)
 	for _, sourceFeed := range allFeeds {
 		for i, item := range sourceFeed.Items {
@@ -153,6 +151,13 @@ func combineallFeeds(allFeeds []*gofeed.Feed) *feeds.Feed {
 			seen[item.Link] = true
 		}
 	}
+	// Sort items by created date
+	feed.Sort(func(a, b *feeds.Item) bool {
+		return a.Created.After(b.Created)
+	})
+	// Only keep first set of items
+	limit_all = min(len(feed.Items), limit_all)
+	feed.Items = feed.Items[:limit_all]
 	return feed
 }
 
@@ -171,6 +176,7 @@ func LoadConfig() {
 	viper.SetDefault("default_author_name", "Unknown Author")
 	viper.SetDefault("client_timeout_seconds", "60")
 	viper.SetDefault("feed_limit_per_feed", "20")
+	viper.SetDefault("feed_limit", "20")
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
@@ -179,28 +185,9 @@ func LoadConfig() {
 
 func main() {
 	LoadConfig()
-	bucket := viper.GetString("s3_bucket")
-	filename := viper.GetString("s3_filename")
 	combinedFeed := GetAtomFeed()
 	atom, _ := combinedFeed.ToAtom()
 	log.Printf("Rendered RSS with %v items", len(combinedFeed.Items))
-	// if no S3 bucket is defined, simply print the feed on standard output
-	if len(bucket) == 0 {
-		fmt.Print(atom)
-		return
-	}
-	// Upload the feed to S3
-	sess, err := session.NewSession(&aws.Config{})
-	uploader := s3manager.NewUploader(sess)
-	_, err = uploader.Upload(&s3manager.UploadInput{
-		Bucket:      aws.String(bucket),
-		Key:         aws.String(filename),
-		Body:        strings.NewReader(atom),
-		ContentType: aws.String("text/xml"),
-		ACL:         aws.String("public-read"),
-	})
-	if err != nil {
-		log.Fatalf("Unable to upload %q to %q, %v", filename, bucket, err)
-	}
-	log.Printf("Successfully uploaded %q to %q\n", filename, bucket)
+	fmt.Print(atom)
+	return
 }

@@ -1,3 +1,5 @@
+Forked from [rsscombine](https://github.com/chase-seibert/rsscombine) by [Chase Seibert](https://github.com/chase-seibert).
+
 # RSS Combine
 
 Combine multiple RSS feeds into a single feed, as a service.
