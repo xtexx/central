@@ -2,51 +2,18 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/gorilla/feeds"
 	"github.com/mmcdole/gofeed"
 	"github.com/spf13/viper"
-	"mvdan.cc/xurls"
 )
 
-func getUrlsFromFeedsUrl(feeds_url string) []string {
-	log.Printf("Loading feed URLs from: %v", feeds_url)
-	client := &http.Client{
-		Timeout: time.Duration(viper.GetInt("client_timeout_seconds")) * time.Second,
-	}
-	response, err := client.Get(feeds_url)
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		defer response.Body.Close()
-		contents, err := io.ReadAll(response.Body)
-		if err != nil {
-			log.Fatal(err)
-		} else {
-			stringContents := string(contents)
-			// TODO: this is a hack
-			for _, exclude := range viper.GetStringSlice("feed_exclude_prefixes") {
-				stringContents = strings.Replace(stringContents, exclude, "", -1)
-			}
-			feed_urls := xurls.Strict.FindAllString(stringContents, -1)
-			return feed_urls
-		}
-	}
-	return nil
-}
-
 func getUrls() []string {
-	feeds_url := viper.GetString("feed_urls")
-	if feeds_url != "" {
-		return getUrlsFromFeedsUrl(feeds_url)
-	}
 	return viper.GetStringSlice("feeds")
 }
 

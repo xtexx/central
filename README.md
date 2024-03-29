@@ -20,87 +20,41 @@ go run rsscombine.go
 
 You can specify configuration options as either a YAML file, or as environment
 variables. Environment variable names should be in all caps, prefixed by
-`RSSCOMBINE_` with underscored included. The only exception is the `feeds`
-items. You cannot specify that list of URLs via environment variables. Instead,
-you can specify a `RSSCOMBINE_FEEDS_URL`. See "Feeds URL" bellow.
+`RSSCOMBINE_` with underscored included.
 
 ### Options
 
 See the "Example YAML File" section for example defaults.
 
-| YAML Name             | Environment Variable             | Description                                                                           |
-|-----------------------|----------------------------------|---------------------------------------------------------------------------------------|
-| title                 | RSSCOMBINE_TITLE                 | Title of the new RSS feed.                                                            |
-| link                  | RSSCOMBINE_LINK                  | Link to the new RSS feed. Can be a webpage or the feed URL.                           |
-| description           | RSSCOMBINE_DESCRIPTION           | Description of your new feed, shows in RSS readers.                                   |
-| author_name           | RSSCOMBINE_AUTHOR_NAME           | Your full name, shows in RSS readers.                                                 |
-| author_email          | RSSCOMBINE_AUTHOR_EMAIL          | Your email, shows in RSS readers.                                                     |
-| client_timeout_seconds | RSSCOMBINE_CLIENT_TIMEOUT_SECONDS | Seconds to timeout call from the server to the individual RSS feeds.             |
-| feeds                 |                                  | List of feeds to combine. Cannot be specified via environment variable.               |
-| feed_urls             | RSSCOMBINE_FEED_URLS             | Optional: URL to parse feed URLs from. If set, this overrides the feeds setting.      |
-| feed_exclude_prefixes | RSSCOMBINE_FEED_EXCLUDE_PREFIXES | Optional: list of URL prefixes to exclude from feed_urls parsing.                     |
-| feed_limit_per_feed   | RSSCOMBINE_FEED_LIMIT_PER_FEED   | Optional: how many items you want to pull from each sub-feed. |
-| s3_bucket             | RSSCOMBINE_S3_BUCKET             | Optional: bucket name to use when uploading to S3. |
-| s3_filename           | RSSCOMBINE_S3_FILENAME           | Optional: file name to use when uploading to S3. |
+| YAML Name              | Environment Variable              | Description                                                                        |
+| ---------------------- | --------------------------------- | ---------------------------------------------------------------------------------- |
+| title                  | RSSCOMBINE_TITLE                  | Title of the new RSS feed.                                                         |
+| link                   | RSSCOMBINE_LINK                   | Link to the new RSS feed. Can be a webpage or the feed URL.                        |
+| description            | RSSCOMBINE_DESCRIPTION            | Description of your new feed, shows in RSS readers.                                |
+| author_name            | RSSCOMBINE_AUTHOR_NAME            | Your full name, shows in RSS readers.                                              |
+| author_email           | RSSCOMBINE_AUTHOR_EMAIL           | Your email, shows in RSS readers.                                                  |
+| client_timeout_seconds | RSSCOMBINE_CLIENT_TIMEOUT_SECONDS | Seconds to timeout call from the server to the individual RSS feeds.               |
+| feeds                  |                                   | List of feeds to combine. Cannot be specified via environment variable.            |
+| feed_urls              | RSSCOMBINE_FEED_URLS              | Optional: URL to parse feed URLs from. If set, this overrides the feeds setting.   |
+| feed_exclude_prefixes  | RSSCOMBINE_FEED_EXCLUDE_PREFIXES  | Optional: list of URL prefixes to exclude from feed_urls parsing.                  |
+| feed_limit_per_feed    | RSSCOMBINE_FEED_LIMIT_PER_FEED    | Optional: how many items you want to pull from each sub-feed.                      |
+| feed_limit             | RSSCOMBINE_FEED_LIMIT             | Optional: how many total entries should appear in the final feed (defaults to 20). |
 
 ## Example YAML File
 
 You can create a local `rsscombine.yml` file in this format:
 
 ```yaml
-title: My Technical RSS Feed
-link: http://wherethisfeedishosted.com/feed
-description: This is a personal collection of technical RSS feeds.
-author_name: John Doe
-author_email: john@example.com
-port: 8080
-cache_timeout_seconds: 3600
+title: exozy.me RSS Feed
+link: https://feeds.exozy.me/rss.xml
+description: exozyme members' RSS feeds
+author_name: Ersei
+author_email: contact+exozyme@ersei.net
+feed_limit: 10
 feeds:
-  - http://feeds.feedburner.com/TechCrunch
-  - http://feeds.arstechnica.com/arstechnica/technology-lab
-  - http://www.reddit.com/r/technology/.rss
-  - http://rss.slashdot.org/slashdot/slashdotMainatom
+  - https://ersei.net/en/blog.atom
+  - https://a.exozy.me/index.xml
+  - https://aryak.me/rss.xml
+  - https://www.1a-insec.net/all.atom.xml
+  - https://karawale.in/index.xml
 ```
-
-### Feeds URL
-
-You can create a public file on the web, and RSS Combine can query that file and
-parse out the URLs. This is especially useful for GitHub README files.
-
-*Note: the file format does not matter, RSS Combine will pull any URL it can
-find in the file.*
-
-Example `README.md`:
-
-```
-This is a README with some URLs.
-
-- TechCrunch http://feeds.feedburner.com/TechCrunch
-- Ars Technica http://feeds.arstechnica.com/arstechnica/technology-lab
-- Reddit http://www.reddit.com/r/technology/.rss
-```
-
-If that file is hosted at
-`https://raw.githubusercontent.com/chase-seibert/rsscombine/master/examples/basic.md`, then you can
-have RSS Combine load the file by defining the YAML key `feeds_url` or the
-environment variable `RSSCOMBINE_FEEDS_URL` with that URL as the value.
-
-## Generate Static RSS File in S3
-
-You can also generate a static RSS file and upload to S3. 
-
-Just run:
-
-```bash
-go run rsscombine.go
-```
-
-For S3 uploads, you need to set the following as environment variables.
-
-| Environment Variable             | Description                                                                           |
-|----------------------------------|---------------------------------------------------------------------------------------|
-| AWS_REGION                       | The AWS Region your bucket is in. |
-| AWS_ACCESS_KEY_ID                | The AWS access key ID for your bucket. |
-| AWS_SECRET_ACCESS_KEY            | The AWS secret access key for your bucket. |
-
-See the Configuration section for setting `s3_bucket` and `s3_filename`.
