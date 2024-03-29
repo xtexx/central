@@ -7,5 +7,9 @@ tasks:
       cd rsscombine
       go build -ldflags "-s -w"
   - deploy: |
+      echo exozy.me ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP1oikcRgozFVQKbwE0j7QtpUPEXUb9Yl9kTBmOH8yIR >> ~/.ssh/known_hosts
+      echo exozy.me ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCvzyiJPonTxjV79rJSQ65wGm3YwlRr8dPXlftJbb09sE5lL9Vxd277HRz8duvwdyczccWyvpKBxt3B7hS94DfzGCLEF2zRfW/DqbHkVig58tf0PkcNzQaZWSE3796vz7cGBSUDpEp22w5U76ukqmIGVDicvFtMRUvkuo8M8Vp86P/zPsy1igFSAix4nlGQjiKRB8+vTzgIDMMD40S3pfk0I2x1rYu9H1sbUVQ+YHzOEsMMy2speFzYDf0yx7Km30Vz/kGMyHaiViHgQuQ3OrCj4NBdEQQt8muSkEmO728jN1e/objNDoudMzYRqJfVqQ4qCnfhYuBYikj8y1sYo3tnr1SlmUjKaKt9PLHfD/PHDUteuaHEyP+4TFbS2SeA/b3yqxg1byG3XBnaAhPvJaVxbx3cgBscXUQWhGVYZ6miP77Lu3vzGufUhOKtDYh7cjYJIp20EZwJlyavSd5kgKsd3O50h+f+knzI5/58WXCKtfPvq82yYBtpaFcgXpR0pCc= >> ~/.ssh/known_hosts
+      echo exozy.me ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJKitsqoZJwut30US61vi8epjImN4KsWKjwGK3zsQf9+tW9JSua+lAT4h0t800L3nZZEMcv+izr8meSXEnfMMVE= >> ~/.ssh/known_hosts
+
       cd rsscombine
       scp rsscombine ersei@exozy.me:feed-aggregator
