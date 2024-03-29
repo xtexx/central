@@ -1,0 +1,9 @@
+image: alpine/edge
+secrets:
+  - 6933adf0-6afb-4d56-9043-455089bca591
+tasks:
+  - build: |
+      sudo apk add go
+      go build -ldflags "-s -w"
+  - deploy: |
+      scp rsscombine ersei@exozy.me:feed-aggregator
