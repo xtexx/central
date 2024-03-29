@@ -4,6 +4,8 @@ secrets:
 tasks:
   - build: |
       sudo apk add go
+      cd rsscombine
       go build -ldflags "-s -w"
   - deploy: |
+      cd rsscombine
       scp rsscombine ersei@exozy.me:feed-aggregator
