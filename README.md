@@ -1,3 +1,5 @@
+[![builds.sr.ht status](https://builds.sr.ht/~fd/rsscombine.svg)](https://builds.sr.ht/~fd/rsscombine)
+
 Forked from [rsscombine](https://github.com/chase-seibert/rsscombine) by [Chase Seibert](https://github.com/chase-seibert).
 
 # RSS Combine
