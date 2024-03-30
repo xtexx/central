@@ -267,6 +267,8 @@ IP allocated to the LXC container running the web service:
 
 ```
 server {
+    listen 80;
+    listen [::]:80;
 
     server_name code.forgejo.org;
 
@@ -319,6 +321,8 @@ It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgej
       bash -x /home/debian/run-forgejo.sh
       docker logs -n 200 -f forgejo
       ```
+  - Rotating 30 days backups happen daily `/etc/cron.daily/forgejo-code-backup.sh`
+  - Add code.forgejo.org to the forgejo.org SPF record
 
 - `forgejo-next` on hetzner02
 
@@ -335,7 +339,6 @@ It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgej
     sudo mv /srv/forgejo /srv/forgejo.old
     bash -x /home/debian/run-forgejo.sh
     ```
-    and create a user with the CLI using the example from `/home/debian/run-forgejo.sh`
   - `/home/debian/next.nftables`
     ```
     add table ip next;
@@ -346,9 +349,49 @@ It hosts LXC containers setup with [lxc-helpers](https://code.forgejo.org/forgej
       ip daddr 65.21.67.65 tcp dport { 2020 } dnat to 10.6.83.213;
     };
     ```
+  - Add to `iface enp5s0 inet static` in `/etc/network/interfaces`
+    ```
+    up nft -f /home/debian/next.nftables
+    ```
+
+  ```
   - `/etc/nginx/sites-available/next.forgejo.org` same as `/etc/nginx/sites-available/code.forgejo.org`
 
-  Rotating 30 days backups happen daily `/etc/cron.daily/forgejo-code-backup.sh`
+  ```
+
+- `forgejo-v7` on hetzner02
+
+  Dedicated to https://v7.next.forgejo.org
+
+  - LXC creation same as code.forgejo.org
+  - `/etc/cron.hourly/forgejo-upgrade` runs `/home/debian/run-forgejo.sh > /home/debian/run-forgejo-$(date +%d).log`
+  - Reset everything
+    ```sh
+    docker stop forgejo
+    docker rm forgejo
+    sudo rm -fr /srv/forgejo.old
+    sudo mv /srv/forgejo /srv/forgejo.old
+    bash -x /home/debian/run-forgejo.sh
+    ```
+  - `/home/debian/v7.nftables`
+    ```
+    add table ip v7;
+    flush table ip v7;
+    add chain ip v7 prerouting {
+      type nat hook prerouting priority 0;
+      policy accept;
+      ip daddr 65.21.67.65 tcp dport { 2070 } dnat to 10.6.83.179;
+    };
+    ```
+  - Add to `iface enp5s0 inet static` in `/etc/network/interfaces`
+    ```
+    up nft -f /home/debian/v7.nftables
+    ```
+
+  ```
+  - `/etc/nginx/sites-available/v7.forgejo.org` same as `/etc/nginx/sites-available/code.forgejo.org`
+
+  ```
 
 - `runner-forgejo-helm` on hetzner03
 

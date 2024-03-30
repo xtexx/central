@@ -7,20 +7,10 @@ _This is the developer documentation for Forgejo Next, covering technical
 details for Forgejo contributors.
 [Go to end-user documentation for service overview.](../../user/forgejo-next/)_
 
-https://next.forgejo.org, also known as Forgejo Next, is Forgejo's
-official testing and demonstration instance. The specific version of
-Forgejo running on this instance varies depending on the status of the
-latest release branch.
+The Forgejo instances running under the `next.forgejo.org` domain are official testing and demonstration instance. They are updated daily. The data they contain may be wiped out without notice.
 
-Typically, the instance will be running the daily build straight from the
-`forgejo` branch, meaning it contains experimental code that will be
-included in the next major version of Forgejo.
+- https://next.forgejo.org runs the tip of the [forgejo branch](https://codeberg.org/forgejo/forgejo/src/branch/forgejo).
+- https://v7.next.forgejo.org runs from the [codeberg.org/forgejo-experimental/forgejo:7](https://codeberg.org/forgejo-experimental/-/packages/container/forgejo/7) OCI image. It is built from the latest commit of the most recent branch.
 
-When a release branch is created and release candidates are posted,
-Forgejo Next will be switched to the latest release candidate. Release
-candidates are to be deployed until a stable release is
-available. next.forgejo.org will then be upgraded back to the
-`forgejo` branch.
-
-For details on the hardward from which it is running, [checkout the section in the
+For details on the hardware from which it is running, [checkout the section in the
 infrastructe documentation](../infrastructure/#containers).
