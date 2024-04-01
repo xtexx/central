@@ -689,7 +689,7 @@ Define allowed algorithms and their minimum key length (use -1 to disable a type
   - Wildcard hosts: `*.example.com`, `192.168.100.*`
 - `SKIP_TLS_VERIFY`: **false**: Allow insecure certification.
 - `PAGING_NUM`: **10**: Number of webhook history events that are shown in one page.
-- `PROXY_URL`: **\<empty\>**: Proxy server URL, support http://, https//, socks://, blank will follow environment http_proxy/https_proxy. If not given, will use global proxy setting.
+- `PROXY_URL`: **\<empty\>**: Proxy server URL, support http://, https//, socks5://, blank will follow environment http_proxy/https_proxy. If not given, will use global proxy setting.
 - `PROXY_HOSTS`: **\<empty\>`**: Comma separated list of host names requiring proxy. Glob patterns (\*) are accepted; use \*\* to match all hosts. If not given, will use global proxy setting.
 
 ## Mailer (`mailer`)
@@ -1260,14 +1260,14 @@ The settings for all these sections are [explained in detail in the storage docu
 ## Proxy (`proxy`)
 
 - `PROXY_ENABLED`: **false**: Enable the proxy if true, all requests to external via HTTP will be affected, if false, no proxy will be used even environment http_proxy/https_proxy
-- `PROXY_URL`: **\<empty\>**: Proxy server URL, support http://, https//, socks://, blank will follow environment http_proxy/https_proxy
+- `PROXY_URL`: **\<empty\>**: Proxy server URL, support http://, https//, socks5://, blank will follow environment http_proxy/https_proxy
 - `PROXY_HOSTS`: **\<empty\>**: Comma separated list of host names requiring proxy. Glob patterns (\*) are accepted; use \*\* to match all hosts.
 
 i.e.
 
 ```ini
 PROXY_ENABLED = true
-PROXY_URL = socks://127.0.0.1:1080
+PROXY_URL = socks5://127.0.0.1:1080
 PROXY_HOSTS = *.github.com
 ```
 
