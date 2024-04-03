@@ -1,9 +1,10 @@
-image: alpine/edge
+image: archlinux
 secrets:
   - 6933adf0-6afb-4d56-9043-455089bca591
+packages:
+  - go
 tasks:
   - build: |
-      sudo apk add go
       cd rsscombine
       go build -ldflags "-s -w"
   - deploy: |
