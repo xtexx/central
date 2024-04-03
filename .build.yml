@@ -1,4 +1,4 @@
-image: archlinux
+image: alpine/edge
 secrets:
   - 6933adf0-6afb-4d56-9043-455089bca591
 packages:
@@ -6,6 +6,7 @@ packages:
 tasks:
   - build: |
       cd rsscombine
+      export CGO_ENABLED=0
       go build -ldflags "-s -w"
   - deploy: |
       echo exozy.me ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP1oikcRgozFVQKbwE0j7QtpUPEXUb9Yl9kTBmOH8yIR >> ~/.ssh/known_hosts
