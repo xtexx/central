@@ -13,16 +13,18 @@ Weblate is [configured to propose pull requests](https://translate.codeberg.org/
 to the Forgejo repository with new translations. These pull requests should be **squash merged** into the Forgejo
 development branch as follows:
 
-- announce 15 minutes before in the chatroom `@room the translations will be locked for maintenance in 15 minutes, make sure you don't try to save a translation when that happens as it will be lost.`
+- announce in the chatroom: `@room the translations will be locked for maintenance in about 15 minutes. Make sure you don't try to save a translation when that happens as it will be lost.`
 - go to the [Weblate repository admin page](https://translate.codeberg.org/projects/forgejo/forgejo/#repository)
-- click lock
+- click `Commit`. This is done optionally to make tests run before interrupting anyone, to reduce the total maintenance time
+- wait 15 minutes
+- click `Lock`
 - reload the page
   - check the number of commits
   - verify there are 0 pending changes
 - go to the pull request and wait until it is rebased and has the same number of commits
-- squash merge the pending `[I18N]` pull request ([similar to this example](https://codeberg.org/forgejo/forgejo/pulls/2317))
-- click reset
-- click unlock
+- squash-merge the pending `[I18N]` pull request ([similar to this example](https://codeberg.org/forgejo/forgejo/pulls/2317))
+- click `Reset`
+- click `Unlock`
 
 ## Merging a pull request that changes translations
 
@@ -34,5 +36,5 @@ are merged as explained above. Only the end of the sequence changes:
 
 - squash merge the pending `[I18N]` pull request ([similar to this example](https://codeberg.org/forgejo/forgejo/pulls/2317))
 - merge the PR (after resolving conflicts due to the merge of the Weblate changes)
-- click reset
-- click unlock
+- click `Reset`
+- click `Unlock`
