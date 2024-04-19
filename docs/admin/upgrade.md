@@ -1,7 +1,7 @@
 ---
 title: 'Upgrade guide'
 license: 'CC-BY-SA-4.0'
-origin_url: 'https://forgejo.gna.org/Hostea/admin-guide/src/branch/master/README.md'
+origin_url: 'https://web.archive.org/web/20240310104438/https://forgejo.gna.org/Hostea/admin-guide/src/branch/master/README.md'
 ---
 
 This guide helps Forgejo admins perform upgrades safely and provides guidance to troubleshoot problems. It also covers upgrades from Gitea back to version 1.2.0.
