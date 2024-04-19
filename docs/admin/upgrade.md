@@ -78,7 +78,7 @@ The database version is stored in the database and can be retrieved with **selec
 #### When upgrading from a specific version...
 
 - Any version before [Gitea 1.17](https://github.com/go-gitea/gitea/releases/tag/v1.17.4)
-  - preserve a custom gitconfig: [episode 1](https://gna.org/blog/1-17-breaking-episode-1/), [episode 2](https://gna.org/blog/1-17-breaking-episode-2/)
+  - preserve a custom gitconfig: [episode 1](https://web.archive.org/web/20240313092747/https://gna.org/blog/1-17-breaking-episode-1/), [episode 2](https://web.archive.org/web/20240313092759/https://gna.org/blog/1-17-breaking-episode-2/)
 - [Gitea 1.13.0](https://blog.gitea.io/2020/12/gitea-1.13.0-is-released/)
   - The Webhook shared secret inside the webhook payload has been deprecated and will be removed in 1.14.0: https://github.com/go-gitea/gitea/issues/11755 please use the secret header that uses an hmac signature to validate the webhook payload.
   - Git hooks now default to `off`! ([#13058](https://github.com/go-gitea/gitea/pull/13058))
@@ -101,7 +101,7 @@ The database version is stored in the database and can be retrieved with **selec
 
 ### Versions with known issues
 
-Gogs from before September 2015 migrated to Forgejo v1.18 may have a [dangling `pull_repo` table](https://forum.gna.org/t/73) and the corresponding pull requests will be removed by `gitea doctor --fix --all`.
+Gogs from before September 2015 migrated to Forgejo v1.18 may have a [dangling `pull_repo` table](https://web.archive.org/web/20230207122019/https://forum.gna.org/t/gitea-upgrade-from-gogs-to-1-16-8-unmigrated-pull-repo-table/73) and the corresponding pull requests will be removed by `gitea doctor --fix --all`.
 
 [From the 1.11.3 release notes](https://blog.gitea.io/2020/03/gitea-1.11.3-and-1.10.6-released/):
 
