@@ -102,11 +102,11 @@ TAGS="bindata" make build
 ```
 
 In the default release build of the continuous integration system, the build
-tags are: `TAGS="bindata sqlite sqlite_unlock_notify"`. The simplest
+tags are: `TAGS="bindata timetzdata sqlite sqlite_unlock_notify"`. The simplest
 recommended way to build from source is therefore:
 
 ```bash
-TAGS="bindata sqlite sqlite_unlock_notify" make build
+TAGS="bindata timetzdata sqlite sqlite_unlock_notify" make build
 ```
 
 The `build` target is split into two sub-targets:
