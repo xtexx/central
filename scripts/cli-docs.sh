@@ -2,7 +2,7 @@
 
 set -e
 
-: ${FORGEJO:=/tmp/forgejo}
+: ${FORGEJO:=/tmp/forgejo-binary}
 
 function dependencies() {
     if ! which jq curl > /dev/null ; then
@@ -15,20 +15,21 @@ function latest() {
     local major="$1"
 
     if test "$major" = "next" ; then
-	curl -sS https://codeberg.org/api/v1/repos/forgejo/forgejo/releases | jq -r '.[] | .tag_name' | sort -r | head -1
+	select="" # this will pick whatever is the highest numbered release
     else
-	curl -sS https://codeberg.org/api/v1/repos/forgejo/forgejo/releases | jq -r '.[] | .tag_name | select(startswith("'$major'"))' | sort -r | head -1
+	select="$major"
     fi
+    curl -sS https://codeberg.org/api/v1/repos/forgejo-experimental/forgejo/releases | jq -r '.[] | .tag_name | select(startswith("'$select'"))' | sort --reverse --version-sort | head -1
 }
 
 function download() {
     local major="$1"
 
-    if test -f /tmp/forgejo ; then
+    if test -f $FORGEJO ; then
 	return
     fi
     local version=$(latest $major)
-    curl -sS "https://codeberg.org/forgejo/forgejo/releases/download/${version}/forgejo-${version#v}-linux-amd64" > ${FORGEJO}
+    curl -sS "https://codeberg.org/forgejo-experimental/forgejo/releases/download/${version}/forgejo-${version#v}-linux-amd64" > ${FORGEJO}
     chmod +x ${FORGEJO}
 }
 
@@ -155,7 +156,8 @@ function generate() {
 function cleanup() {
     sed \
 	-e 's/forgejo-dump-.*.zip/forgejo-dump-<timestamp>.zip/' \
-	-e '/^ *actions *$/d'
+	-e '/^ *actions *$/d' \
+	-e 's/ *$//'
 }
 
 function run() {

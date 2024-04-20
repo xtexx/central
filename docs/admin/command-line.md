@@ -15,32 +15,33 @@ To update this page, run the following command from the root of the docs repo:
 
 ```
 NAME:
-   Forgejo - Beyond coding. We forge.
+   forgejo - Beyond coding. We forge.
 
 USAGE:
-   Forgejo [global options] command [command options] [arguments...]
+   forgejo [global options] command [command options]
 
 
 DESCRIPTION:
    By default, forgejo will start serving using the web-server with no argument, which can alternatively be run by running the subcommand "web".
 
 COMMANDS:
+   help, h          Shows a list of commands or help for one command
    web              Start the Forgejo web server
-   serv             This command should only be called by SSH shell
-   hook             Delegate commands to corresponding Git hooks
+   serv             (internal) Should only be called by SSH shell
+   hook             (internal) Should only be called by Git
+   keys             (internal) Should only be called by SSH server
    dump             Dump Forgejo files and database
-   admin            Command line interface to perform common administrative operations
+   admin            Perform common administrative operations
    migrate          Migrate the database
-   keys             This command queries the Forgejo database to get the authorized command for a given ssh key fingerprint
-   doctor           Diagnose and optionally fix problems
+   doctor           Diagnose and optionally fix problems, convert or re-create database tables
    manager          Manage the running forgejo process
    embedded         Extract embedded resources
    migrate-storage  Migrate the storage
    dump-repo        Dump the repository from git/github/gitea/gitlab
    restore-repo     Restore the repository from disk
-   help, h          Shows a list of commands or help for one command
+   actions          Manage Forgejo Actions
    cert             Generate self-signed certificate
-   generate         Command line interface for running generators
+   generate         Generate Gitea's secrets/keys/tokens
    docs             Output CLI documentation
    forgejo-cli      Forgejo CLI
 
@@ -56,10 +57,10 @@ GLOBAL OPTIONS:
 
 ```
 NAME:
-   Forgejo forgejo-cli - Forgejo CLI
+   forgejo forgejo-cli - Forgejo CLI
 
 USAGE:
-   Forgejo forgejo-cli command [command options] [arguments...]
+   forgejo forgejo-cli command [command options]
 
 COMMANDS:
    actions  Commands for managing Forgejo Actions
@@ -73,10 +74,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo forgejo-cli actions - Commands for managing Forgejo Actions
+   forgejo forgejo-cli actions - Commands for managing Forgejo Actions
 
 USAGE:
-   Forgejo forgejo-cli actions command [command options] [arguments...]
+   forgejo forgejo-cli actions command [command options]
 
 COMMANDS:
    generate-runner-token  Generate a new token for a runner to use to register with the server
@@ -92,10 +93,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo forgejo-cli actions generate-runner-token - Generate a new token for a runner to use to register with the server
+   forgejo forgejo-cli actions generate-runner-token - Generate a new token for a runner to use to register with the server
 
 USAGE:
-   Forgejo forgejo-cli actions generate-runner-token [command options] [arguments...]
+   forgejo forgejo-cli actions generate-runner-token [command options] [arguments...]
 
 OPTIONS:
    --scope value, -s value  {owner}[/{repo}] - leave empty for a global runner
@@ -106,10 +107,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo forgejo-cli actions generate-secret - Generate a secret suitable for input to the register subcommand
+   forgejo forgejo-cli actions generate-secret - Generate a secret suitable for input to the register subcommand
 
 USAGE:
-   Forgejo forgejo-cli actions generate-secret [command options] [arguments...]
+   forgejo forgejo-cli actions generate-secret [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help
@@ -119,10 +120,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo forgejo-cli actions register - Idempotent registration of a runner using a shared secret
+   forgejo forgejo-cli actions register - Idempotent registration of a runner using a shared secret
 
 USAGE:
-   Forgejo forgejo-cli actions register [command options] [arguments...]
+   forgejo forgejo-cli actions register [command options] [arguments...]
 
 OPTIONS:
    --secret value           the secret the runner will use to connect as a 40 character hexadecimal string
@@ -139,10 +140,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo web - Start the Forgejo web server
+   forgejo web - Start the Forgejo web server
 
 USAGE:
-   Forgejo web command [command options] [arguments...]
+   forgejo web command [command options]
 
 DESCRIPTION:
    The Forgejo web server is the only thing you need to run,
@@ -167,10 +168,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo dump - Dump Forgejo files and database
+   forgejo dump - Dump Forgejo files and database
 
 USAGE:
-   Forgejo dump command [command options] [arguments...]
+   forgejo dump command [command options]
 
 DESCRIPTION:
    Dump compresses all related files and database into zip file.
@@ -188,7 +189,7 @@ OPTIONS:
    --verbose, -V                  Show process details (default: false)
    --quiet, -q                    Only display warnings and errors (default: false)
    --tempdir value, -t value      Temporary dir path (default: "/tmp")
-   --database value, -d value     Specify the database SQL syntax: sqlite3, mysql, mssql, postgres
+   --database value, -d value     Specify the database SQL syntax: sqlite3, mysql, postgres
    --skip-repository, -R          Skip the repository dumping (default: false)
    --skip-log, -L                 Skip the log dumping (default: false)
    --skip-custom-dir              Skip custom directory (default: false)
@@ -203,10 +204,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin - Command line interface to perform common administrative operations
+   forgejo admin - Perform common administrative operations
 
 USAGE:
-   Forgejo admin command [command options] [arguments...]
+   forgejo admin command [command options]
 
 COMMANDS:
    user                Modify users
@@ -227,10 +228,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin user - Modify users
+   forgejo admin user - Modify users
 
 USAGE:
-   Forgejo admin user command [command options] [arguments...]
+   forgejo admin user command [command options]
 
 COMMANDS:
    create                 Create a new user in database
@@ -252,10 +253,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin user create - Create a new user in database
+   forgejo admin user create - Create a new user in database
 
 USAGE:
-   Forgejo admin user create command [command options] [arguments...]
+   forgejo admin user create command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -271,7 +272,7 @@ OPTIONS:
    --email value                   User email address
    --admin                         User is an admin (default: false)
    --random-password               Generate a random password for the user (default: false)
-   --must-change-password          Set this option to false to prevent forcing the user to change their password after initial login, (Default: true) (default: false)
+   --must-change-password          Set this option to false to prevent forcing the user to change their password after initial login (default: true)
    --random-password-length value  Length of the random password to be generated (default: 12)
    --access-token                  Generate access token for the user (default: false)
    --restricted                    Make a restricted user account (default: false)
@@ -281,10 +282,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin user list - List users
+   forgejo admin user list - List users
 
 USAGE:
-   Forgejo admin user list command [command options] [arguments...]
+   forgejo admin user list command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -301,10 +302,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin user change-password - Change a user's password
+   forgejo admin user change-password - Change a user's password
 
 USAGE:
-   Forgejo admin user change-password command [command options] [arguments...]
+   forgejo admin user change-password command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -316,16 +317,17 @@ OPTIONS:
    --work-path value, -w value    Set Forgejo's working path (defaults to the directory of the Forgejo binary)
    --username value, -u value     The user to change password for
    --password value, -p value     New password to set for user
+   --must-change-password         User must change password (default: false)
 ```
 
 ### admin user delete
 
 ```
 NAME:
-   Forgejo admin user delete - Delete specific user by id, name or email
+   forgejo admin user delete - Delete specific user by id, name or email
 
 USAGE:
-   Forgejo admin user delete command [command options] [arguments...]
+   forgejo admin user delete command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -345,10 +347,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin user generate-access-token - Generate an access token for a specific user
+   forgejo admin user generate-access-token - Generate an access token for a specific user
 
 USAGE:
-   Forgejo admin user generate-access-token command [command options] [arguments...]
+   forgejo admin user generate-access-token command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -368,10 +370,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin user must-change-password - Set the must change password flag for the provided users or all users
+   forgejo admin user must-change-password - Set the must change password flag for the provided users or all users
 
 USAGE:
-   Forgejo admin user must-change-password command [command options] [arguments...]
+   forgejo admin user must-change-password command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -390,10 +392,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin repo-sync-releases - Synchronize repository releases with tags
+   forgejo admin repo-sync-releases - Synchronize repository releases with tags
 
 USAGE:
-   Forgejo admin repo-sync-releases command [command options] [arguments...]
+   forgejo admin repo-sync-releases command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -409,10 +411,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin regenerate - Regenerate specific files
+   forgejo admin regenerate - Regenerate specific files
 
 USAGE:
-   Forgejo admin regenerate command [command options] [arguments...]
+   forgejo admin regenerate command [command options]
 
 COMMANDS:
    hooks    Regenerate git-hooks
@@ -430,10 +432,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin auth - Modify external auth providers
+   forgejo admin auth - Modify external auth providers
 
 USAGE:
-   Forgejo admin auth command [command options] [arguments...]
+   forgejo admin auth command [command options]
 
 COMMANDS:
    add-oauth           Add new Oauth authentication source
@@ -459,10 +461,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin auth add-oauth - Add new Oauth authentication source
+   forgejo admin auth add-oauth - Add new Oauth authentication source
 
 USAGE:
-   Forgejo admin auth add-oauth command [command options] [arguments...]
+   forgejo admin auth add-oauth command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -499,10 +501,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin auth update-oauth - Update existing Oauth authentication source
+   forgejo admin auth update-oauth - Update existing Oauth authentication source
 
 USAGE:
-   Forgejo admin auth update-oauth command [command options] [arguments...]
+   forgejo admin auth update-oauth command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -540,10 +542,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin auth add-ldap - Add new LDAP (via Bind DN) authentication source
+   forgejo admin auth add-ldap - Add new LDAP (via Bind DN) authentication source
 
 USAGE:
-   Forgejo admin auth add-ldap command [command options] [arguments...]
+   forgejo admin auth add-ldap command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -584,10 +586,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin auth update-ldap - Update existing LDAP (via Bind DN) authentication source
+   forgejo admin auth update-ldap - Update existing LDAP (via Bind DN) authentication source
 
 USAGE:
-   Forgejo admin auth update-ldap command [command options] [arguments...]
+   forgejo admin auth update-ldap command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -629,10 +631,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin auth add-ldap-simple - Add new LDAP (simple auth) authentication source
+   forgejo admin auth add-ldap-simple - Add new LDAP (simple auth) authentication source
 
 USAGE:
-   Forgejo admin auth add-ldap-simple command [command options] [arguments...]
+   forgejo admin auth add-ldap-simple command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -661,17 +663,17 @@ OPTIONS:
    --public-ssh-key-attribute value  The attribute of the user’s LDAP record containing the user’s public ssh key.
    --skip-local-2fa                  Set to true to skip local 2fa for users authenticated by this source (default: false)
    --avatar-attribute value          The attribute of the user’s LDAP record containing the user’s avatar.
-   --user-dn value                   The user’s DN.
+   --user-dn value                   The user's DN.
 ```
 
 ### admin auth update-ldap-simple
 
 ```
 NAME:
-   Forgejo admin auth update-ldap-simple - Update existing LDAP (simple auth) authentication source
+   forgejo admin auth update-ldap-simple - Update existing LDAP (simple auth) authentication source
 
 USAGE:
-   Forgejo admin auth update-ldap-simple command [command options] [arguments...]
+   forgejo admin auth update-ldap-simple command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -701,17 +703,17 @@ OPTIONS:
    --public-ssh-key-attribute value  The attribute of the user’s LDAP record containing the user’s public ssh key.
    --skip-local-2fa                  Set to true to skip local 2fa for users authenticated by this source (default: false)
    --avatar-attribute value          The attribute of the user’s LDAP record containing the user’s avatar.
-   --user-dn value                   The user’s DN.
+   --user-dn value                   The user's DN.
 ```
 
 ### admin auth add-smtp
 
 ```
 NAME:
-   Forgejo admin auth add-smtp - Add new SMTP authentication source
+   forgejo admin auth add-smtp - Add new SMTP authentication source
 
 USAGE:
-   Forgejo admin auth add-smtp command [command options] [arguments...]
+   forgejo admin auth add-smtp command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -738,10 +740,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin auth update-smtp - Update existing SMTP authentication source
+   forgejo admin auth update-smtp - Update existing SMTP authentication source
 
 USAGE:
-   Forgejo admin auth update-smtp command [command options] [arguments...]
+   forgejo admin auth update-smtp command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -769,10 +771,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin auth list - List auth sources
+   forgejo admin auth list - List auth sources
 
 USAGE:
-   Forgejo admin auth list command [command options] [arguments...]
+   forgejo admin auth list command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -793,10 +795,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin auth delete - Delete specific auth source
+   forgejo admin auth delete - Delete specific auth source
 
 USAGE:
-   Forgejo admin auth delete command [command options] [arguments...]
+   forgejo admin auth delete command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -813,10 +815,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo admin sendmail - Send a message to all users
+   forgejo admin sendmail - Send a message to all users
 
 USAGE:
-   Forgejo admin sendmail command [command options] [arguments...]
+   forgejo admin sendmail command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -835,10 +837,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo migrate - Migrate the database
+   forgejo migrate - Migrate the database
 
 USAGE:
-   Forgejo migrate command [command options] [arguments...]
+   forgejo migrate command [command options]
 
 DESCRIPTION:
    This is a command for migrating the database, so that you can run gitea admin create-user before starting the server.
@@ -857,10 +859,13 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo keys - This command queries the Forgejo database to get the authorized command for a given ssh key fingerprint
+   forgejo keys - (internal) Should only be called by SSH server
 
 USAGE:
-   Forgejo keys command [command options] [arguments...]
+   forgejo keys command [command options]
+
+DESCRIPTION:
+   Queries the Forgejo database to get the authorized command for a given ssh key fingerprint
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -880,10 +885,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo doctor - Diagnose and optionally fix problems
+   forgejo doctor - Diagnose and optionally fix problems, convert or re-create database tables
 
 USAGE:
-   Forgejo doctor command [command options] [arguments...]
+   forgejo doctor command [command options]
 
 DESCRIPTION:
    A command to diagnose problems with the current Forgejo instance according to the given configuration. Some problems can optionally be fixed by modifying the database or data storage.
@@ -905,10 +910,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo doctor check - Diagnose and optionally fix problems
+   forgejo doctor check - Diagnose and optionally fix problems
 
 USAGE:
-   Forgejo doctor check command [command options] [arguments...]
+   forgejo doctor check command [command options]
 
 DESCRIPTION:
    A command to diagnose problems with the current Forgejo instance according to the given configuration. Some problems can optionally be fixed by modifying the database or data storage.
@@ -934,10 +939,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo doctor recreate-table - Recreate tables from XORM definitions and copy the data.
+   forgejo doctor recreate-table - Recreate tables from XORM definitions and copy the data.
 
 USAGE:
-   Forgejo doctor recreate-table command [command options] [TABLE]... : (TABLEs to recreate - leave blank for all)
+   forgejo doctor recreate-table command [command options] [TABLE]... : (TABLEs to recreate - leave blank for all)
 
 DESCRIPTION:
    The database definitions Forgejo uses change across versions, sometimes changing default values and leaving old unused columns.
@@ -961,13 +966,13 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo doctor convert - Convert the database
+   forgejo doctor convert - Convert the database
 
 USAGE:
-   Forgejo doctor convert command [command options] [arguments...]
+   forgejo doctor convert command [command options]
 
 DESCRIPTION:
-   A command to convert an existing MySQL database from utf8 to utf8mb4 or MSSQL database from varchar to nvarchar
+   A command to convert an existing MySQL database from utf8 to utf8mb4
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -983,10 +988,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager - Manage the running forgejo process
+   forgejo manager - Manage the running forgejo process
 
 USAGE:
-   Forgejo manager command [command options] [arguments...]
+   forgejo manager command [command options]
 
 DESCRIPTION:
    This is a command for managing the running forgejo process
@@ -1011,10 +1016,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager shutdown - Gracefully shutdown the running process
+   forgejo manager shutdown - Gracefully shutdown the running process
 
 USAGE:
-   Forgejo manager shutdown command [command options] [arguments...]
+   forgejo manager shutdown command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1031,10 +1036,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager restart - Gracefully restart the running process - (not implemented for windows servers)
+   forgejo manager restart - Gracefully restart the running process - (not implemented for windows servers)
 
 USAGE:
-   Forgejo manager restart command [command options] [arguments...]
+   forgejo manager restart command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1051,10 +1056,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager reload-templates - Reload template files in the running process
+   forgejo manager reload-templates - Reload template files in the running process
 
 USAGE:
-   Forgejo manager reload-templates command [command options] [arguments...]
+   forgejo manager reload-templates command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1071,10 +1076,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager flush-queues - Flush queues in the running process
+   forgejo manager flush-queues - Flush queues in the running process
 
 USAGE:
-   Forgejo manager flush-queues command [command options] [arguments...]
+   forgejo manager flush-queues command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1093,10 +1098,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager logging - Adjust logging commands
+   forgejo manager logging - Adjust logging commands
 
 USAGE:
-   Forgejo manager logging command [command options] [arguments...]
+   forgejo manager logging command [command options]
 
 COMMANDS:
    pause               Pause logging (Forgejo will buffer logs up to a certain point and will drop them after that point)
@@ -1118,10 +1123,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager logging pause - Pause logging (Forgejo will buffer logs up to a certain point and will drop them after that point)
+   forgejo manager logging pause - Pause logging (Forgejo will buffer logs up to a certain point and will drop them after that point)
 
 USAGE:
-   Forgejo manager logging pause command [command options] [arguments...]
+   forgejo manager logging pause command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1138,10 +1143,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager logging resume - Resume logging
+   forgejo manager logging resume - Resume logging
 
 USAGE:
-   Forgejo manager logging resume command [command options] [arguments...]
+   forgejo manager logging resume command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1158,10 +1163,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager logging release-and-reopen - Cause Forgejo to release and re-open files used for logging
+   forgejo manager logging release-and-reopen - Cause Forgejo to release and re-open files used for logging
 
 USAGE:
-   Forgejo manager logging release-and-reopen command [command options] [arguments...]
+   forgejo manager logging release-and-reopen command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1178,10 +1183,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager logging remove - Remove a logger
+   forgejo manager logging remove - Remove a logger
 
 USAGE:
-   Forgejo manager logging remove command [command options] [name] Name of logger to remove
+   forgejo manager logging remove command [command options] [name] Name of logger to remove
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1199,10 +1204,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager logging add - Add a logger
+   forgejo manager logging add - Add a logger
 
 USAGE:
-   Forgejo manager logging add command [command options] [arguments...]
+   forgejo manager logging add command [command options]
 
 COMMANDS:
    file     Add a file logger
@@ -1220,10 +1225,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager logging add file - Add a file logger
+   forgejo manager logging add file - Add a file logger
 
 USAGE:
-   Forgejo manager logging add file command [command options] [arguments...]
+   forgejo manager logging add file command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1255,10 +1260,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager logging add conn - Add a net conn logger
+   forgejo manager logging add conn - Add a net conn logger
 
 USAGE:
-   Forgejo manager logging add conn command [command options] [arguments...]
+   forgejo manager logging add conn command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1287,10 +1292,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager logging log-sql - Set LogSQL
+   forgejo manager logging log-sql - Set LogSQL
 
 USAGE:
-   Forgejo manager logging log-sql command [command options] [arguments...]
+   forgejo manager logging log-sql command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1308,10 +1313,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo manager processes - Display running processes within the current process
+   forgejo manager processes - Display running processes within the current process
 
 USAGE:
-   Forgejo manager processes command [command options] [arguments...]
+   forgejo manager processes command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1333,10 +1338,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo embedded - Extract embedded resources
+   forgejo embedded - Extract embedded resources
 
 USAGE:
-   Forgejo embedded command [command options] [arguments...]
+   forgejo embedded command [command options]
 
 DESCRIPTION:
    A command for extracting embedded resources, like templates and images
@@ -1358,10 +1363,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo embedded list - List files matching the given pattern
+   forgejo embedded list - List files matching the given pattern
 
 USAGE:
-   Forgejo embedded list command [command options] [arguments...]
+   forgejo embedded list command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1378,10 +1383,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo embedded view - View a file matching the given pattern
+   forgejo embedded view - View a file matching the given pattern
 
 USAGE:
-   Forgejo embedded view command [command options] [arguments...]
+   forgejo embedded view command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1398,10 +1403,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo embedded extract - Extract resources
+   forgejo embedded extract - Extract resources
 
 USAGE:
-   Forgejo embedded extract command [command options] [arguments...]
+   forgejo embedded extract command [command options]
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
@@ -1422,10 +1427,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo migrate-storage - Migrate the storage
+   forgejo migrate-storage - Migrate the storage
 
 USAGE:
-   Forgejo migrate-storage command [command options] [arguments...]
+   forgejo migrate-storage command [command options]
 
 DESCRIPTION:
    Copies stored files from storage configured in app.ini to parameter-configured storage
@@ -1456,10 +1461,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo dump-repo - Dump the repository from git/github/gitea/gitlab
+   forgejo dump-repo - Dump the repository from git/github/gitea/gitlab
 
 USAGE:
-   Forgejo dump-repo command [command options] [arguments...]
+   forgejo dump-repo command [command options]
 
 DESCRIPTION:
    This is a command for dumping the repository data.
@@ -1488,10 +1493,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo restore-repo - Restore the repository from disk
+   forgejo restore-repo - Restore the repository from disk
 
 USAGE:
-   Forgejo restore-repo command [command options] [arguments...]
+   forgejo restore-repo command [command options]
 
 DESCRIPTION:
    This is a command for restoring the repository data.
@@ -1516,10 +1521,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo cert - Generate self-signed certificate
+   forgejo cert - Generate self-signed certificate
 
 USAGE:
-   Forgejo cert [command options] [arguments...]
+   forgejo cert [command options] [arguments...]
 
 DESCRIPTION:
    Generate a self-signed X.509 certificate for a TLS server.
@@ -1539,10 +1544,10 @@ OPTIONS:
 
 ```
 NAME:
-   Forgejo generate secret - Generate a secret token
+   forgejo generate secret - Generate a secret token
 
 USAGE:
-   Forgejo generate secret command [command options] [arguments...]
+   forgejo generate secret command [command options]
 
 COMMANDS:
    INTERNAL_TOKEN              Generate a new INTERNAL_TOKEN
