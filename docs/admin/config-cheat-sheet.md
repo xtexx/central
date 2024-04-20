@@ -209,7 +209,7 @@ The following configuration set `Content-Type: application/vnd.android.package-a
 - `CODE_COMMENT_LINES`: **4**: Number of line of codes shown for a code comment.
 - `DEFAULT_THEME`: **forgejo-auto**: \[forgejo-auto, forgejo-light, forgejo-dark, auto, gitea, arc-green\]: Set the default theme for the Forgejo install.
 - `SHOW_USER_EMAIL`: **true**: Whether the email of the user should be shown in the Explore Users page.
-- `THEMES`: **forgejo-auto,forgejo-light,forgejo-dark,auto,gitea,arc-green**: All available themes. Allow users select personalized themes.
+- `THEMES`: **forgejo-auto, forgejo-light, forgejo-dark, gitea-auto, gitea-light, gitea-dark, forgejo-auto-deuteranopia-protanopia, forgejo-light-deuteranopia-protanopia, forgejo-dark-deuteranopia-protanopia, forgejo-auto-tritanopia, forgejo-light-tritanopia, forgejo-dark-tritanopia**: All available themes. Allow users select personalized themes.
   regardless of the value of `DEFAULT_THEME`.
 - `MAX_DISPLAY_FILE_SIZE`: **8388608**: Max size of files to be displayed (default is 8MiB)
 - `REACTIONS`: All available reactions users can choose on issues/prs and comments
