@@ -189,7 +189,7 @@ OPTIONS:
    --verbose, -V                  Show process details (default: false)
    --quiet, -q                    Only display warnings and errors (default: false)
    --tempdir value, -t value      Temporary dir path (default: "/tmp")
-   --database value, -d value     Specify the database SQL syntax: sqlite3, mysql, postgres
+   --database value, -d value     Specify the database SQL syntax: sqlite3, mysql, mssql, postgres
    --skip-repository, -R          Skip the repository dumping (default: false)
    --skip-log, -L                 Skip the log dumping (default: false)
    --skip-custom-dir              Skip custom directory (default: false)
@@ -972,7 +972,7 @@ USAGE:
    forgejo doctor convert command [command options]
 
 DESCRIPTION:
-   A command to convert an existing MySQL database from utf8 to utf8mb4
+   A command to convert an existing MySQL database from utf8 to utf8mb4 or MSSQL database from varchar to nvarchar
 
 COMMANDS:
    help, h  Shows a list of commands or help for one command
