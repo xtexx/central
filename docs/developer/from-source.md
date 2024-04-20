@@ -136,4 +136,4 @@ You can also supply a tag during the build process with the `-t` option, to make
 
 ### Testing
 
-See [the section dedicated to testing](./testing/).
+See [the section dedicated to testing](../testing/).
