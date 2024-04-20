@@ -13,6 +13,7 @@ a new branch will be created in this repo to document the stable release.
 Current release branches are as follows:
 
 - [`next`](https://codeberg.org/forgejo/docs/src/branch/next)
+- [`v7.0`](https://codeberg.org/forgejo/docs/src/branch/v7.0)
 - [`v1.21`](https://codeberg.org/forgejo/docs/src/branch/v1.21)
 - [`v1.20`](https://codeberg.org/forgejo/docs/src/branch/v1.20)
 - [`v1.19`](https://codeberg.org/forgejo/docs/src/branch/v1.19)
@@ -119,7 +120,7 @@ version branches into which it will potentially be merged.
 #### Backports
 
 If a PR is meant to be backported to a stable branch, it must be
-labelled with `backport/v1.20`, `backport/v1.19`, etc.
+labelled with `backport/v7.0`, `backport/v1.21`, etc.
 
 ### Content guidelines
 
