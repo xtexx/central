@@ -81,6 +81,11 @@ When a new `vX.Y.Z` release is ready to enter the release candidate stages:
 - Add add a `vX.Y/forgejo` branch protection rule https://codeberg.org/forgejo/forgejo/settings/branches
 - Trigger a mirror workflow in https://codeberg.org/forgejo/forgejo and verify the `X.Y-test` and `(X+1).0-test` releases are published in https://codeberg.org/forgejo-experimental
 - Update end-to-end to [know about the new release](https://code.forgejo.org/forgejo/end-to-end/pulls/139). It must be done after the first `(X+1).0-test` release is available in experimental otherwise it will fail to find it and will block the automated release process in the forgejo-integration repository
+- Documentation
+  - In [the documentation](https://codeberg.org/forgejo/docs)
+    - Create the `vX.Y` branche from next
+    - Create the `backport/vX.Y` label
+  - In [the website](https://codeberg.org/forgejo/website) add a submodule similar to [this commit](https://codeberg.org/forgejo/website/commit/3f1e62be22f96d048309157e8779cbfcf204eb90)
 
 ### Release Notes
 
