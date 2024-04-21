@@ -1,7 +1,7 @@
 ---
 title: 'Access Token scope'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/d3982bcd814bac93e3cbce1c7eb749b17e413fbd/docs/content/development/oauth2-provider.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/e865de1e9d65dc09797d165a51c8e705d2a86030/docs/content/development/oauth2-provider.en-us.md'
 ---
 
 Forgejo supports scoped access tokens, which allow users to restrict tokens to operate only on selected url routes. Scopes are grouped by high-level API routes, and further refined to the following:

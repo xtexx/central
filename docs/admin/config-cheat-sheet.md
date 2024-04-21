@@ -1,7 +1,7 @@
 ---
 title: 'Configuration Cheat Sheet'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/d3982bcd814bac93e3cbce1c7eb749b17e413fbd/docs/content/administration/config-cheat-sheet.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/e865de1e9d65dc09797d165a51c8e705d2a86030/docs/content/administration/config-cheat-sheet.en-us.md'
 ---
 
 This is a cheat sheet for the Forgejo configuration file. It contains most of the settings
@@ -509,8 +509,14 @@ And the following unique queues:
 
 - `DEFAULT_EMAIL_NOTIFICATIONS`: **enabled**: Default configuration for email notifications for users (user configurable). Options: enabled, onmention, disabled
 - `DISABLE_REGULAR_ORG_CREATION`: **false**: Disallow regular (non-admin) users from creating organizations.
-- `USER_DISABLED_FEATURES`: **_empty_** Disabled features for users, could be `deletion` and more features can be added in future.
+- `USER_DISABLED_FEATURES`: **_empty_** Disabled features for users, could be `deletion`, `manage_ssh_keys`, `manage_gpg_keys` and more features can be added in future.
   - `deletion`: User cannot delete their own account.
+  - `manage_ssh_keys`: User cannot configure ssh keys.
+  - `manage_gpg_keys`: User cannot configure gpg keys.
+- `EXTERNAL_USER_DISABLE_FEATURES`: **_empty_**: Comma separated list of disabled features ONLY if the user has an external login type (eg. LDAP, Oauth, etc.), could be `deletion`, `manage_ssh_keys`, `manage_gpg_keys`. This setting is independent from `USER_DISABLED_FEATURES` and supplements its behavior.
+  - `deletion`: User cannot delete their own account.
+  - `manage_ssh_keys`: User cannot configure ssh keys.
+  - `manage_gpg_keys`: User cannot configure gpg keys.
 - `SEND_NOTIFICATION_EMAIL_ON_NEW_USER`: **false**: enable email notifications to instance admins on new user sign-up. It requires `ENABLE_NOTIFY_MAIL` to be true.
 
 ## Security (`security`)
@@ -518,7 +524,7 @@ And the following unique queues:
 - `INSTALL_LOCK`: **false**: Controls access to the installation page. When set to "true", the installation page is not accessible.
 - `SECRET_KEY`: **\<random at every install\>**: Global secret key. This key is VERY IMPORTANT, if you lost it, the data encrypted by it (like 2FA secret) can't be decrypted anymore.
 - `SECRET_KEY_URI`: **\<empty\>**: Instead of defining SECRET_KEY, this option can be used to use the key stored in a file (example value: `file:/etc/forgejo/secret_key`). It shouldn't be lost like SECRET_KEY.
-- `LOGIN_REMEMBER_DAYS`: **7**: Cookie lifetime, in days.
+- `LOGIN_REMEMBER_DAYS`: **31**: Cookie lifetime, in days.
 - `COOKIE_REMEMBER_NAME`: **gitea_incredible**: Name of cookie used to store authentication
   information.
 - `REVERSE_PROXY_AUTHENTICATION_USER`: **X-WEBAUTH-USER**: Header name for reverse proxy
@@ -580,7 +586,7 @@ And the following unique queues:
 
 ## OpenID (`openid`)
 
-- `ENABLE_OPENID_SIGNIN`: **false**: Allow authentication in via OpenID.
+- `ENABLE_OPENID_SIGNIN`: **true**: Allow authentication in via OpenID.
 - `ENABLE_OPENID_SIGNUP`: **! DISABLE_REGISTRATION**: Allow registering via OpenID.
 - `WHITELISTED_URIS`: **\<empty\>**: If non-empty, list of POSIX regex patterns matching
   OpenID URI's to permit.
@@ -816,7 +822,7 @@ Default templates for project boards:
 ## Issue and pull request attachments (`attachment`)
 
 - `ENABLED`: **true**: Whether issue and pull request attachments are enabled.
-- `ALLOWED_TYPES`: **.csv,.docx,.fodg,.fodp,.fods,.fodt,.gif,.gz,.jpeg,.jpg,.log,.md,.mov,.mp4,.odf,.odg,.odp,.ods,.odt,.patch,.pdf,.png,.pptx,.svg,.tgz,.txt,.webm,.xls,.xlsx,.zip**: Comma-separated list of allowed file extensions (`.zip`), mime types (`text/plain`) or wildcard type (`image/*`, `audio/*`, `video/*`). Empty value or `*/*` allows all types.
+- `ALLOWED_TYPES`: **.cpuprofile,.csv,.dmp,.docx,.fodg,.fodp,.fods,.fodt,.gif,.gz,.jpeg,.jpg,.json,.jsonc,.log,.md,.mov,.mp4,.odf,.odg,.odp,.ods,.odt,.patch,.pdf,.png,.pptx,.svg,.tgz,.txt,.webm,.xls,.xlsx,.zip**: Comma-separated list of allowed file extensions (`.zip`), mime types (`text/plain`) or wildcard type (`image/*`, `audio/*`, `video/*`). Empty value or `*/*` allows all types.
 - `MAX_SIZE`: **4**: Maximum size (MB).
 - `MAX_FILES`: **5**: Maximum number of attachments that can be uploaded at once.
 
@@ -1177,14 +1183,6 @@ If the rule is defined above the renderer ini section or the name does not match
 
 - `DEFAULT_UI_LOCATION`: Default location of time on the UI, so that we can display correct user's time on UI. i.e. Asia/Shanghai
 
-## Task (`task`)
-
-Task queue configuration has been moved to `queue.task`. However, the below configuration values are kept for backwards compatibility:
-
-- `QUEUE_TYPE`: **channel**: Task queue type, could be `channel` or `redis`.
-- `QUEUE_LENGTH`: **1000**: Task queue length, available only when `QUEUE_TYPE` is `channel`.
-- `QUEUE_CONN_STR`: **redis://127.0.0.1:6379/0**: Task queue connection string, available only when `QUEUE_TYPE` is `redis`. If redis needs a password, use `redis://123@127.0.0.1:6379/0` or `redis+cluster://123@127.0.0.1:6379/0`.
-
 ## Migrations (`migrations`)
 
 - `MAX_ATTEMPTS`: **3**: Max attempts per http/https request on migrations.
@@ -1302,11 +1300,12 @@ PROXY_HOSTS = *.github.com
 - `ZOMBIE_TASK_TIMEOUT`: **10m**: Timeout to stop the task which have running status, but haven't been updated for a long time.
 - `ENDLESS_TASK_TIMEOUT`: **3h**: Timeout to stop the tasks which have running status and continuous updates, but don't end for a long time.
 - `ABANDONED_JOB_TIMEOUT`: **24h**: Timeout to cancel the jobs which have waiting status, but haven't been picked by a runner for a long time.
-- `SKIP_WORKFLOW_STRINGS`: **[skip ci],[ci skip],[no ci],[skip actions],[actions skip]**: Strings committers can place inside a commit message to skip executing the corresponding actions workflow
+- `SKIP_WORKFLOW_STRINGS`: **[skip ci],[ci skip],[no ci],[skip actions],[actions skip]**: Strings committers can place inside a commit message or pull request title to skip executing the corresponding actions workflow
 
 ## Other (`other`)
 
 - `SHOW_FOOTER_VERSION`: **true**: Show Forgejo and Go version information in the footer.
 - `SHOW_FOOTER_TEMPLATE_LOAD_TIME`: **true**: Show time of template execution in the footer.
+- `SHOW_FOOTER_POWERED_BY`: **true**: Show the "powered by" text in the footer.
 - `ENABLE_SITEMAP`: **true**: Generate sitemap.
 - `ENABLE_FEED`: **true**: Enable/Disable RSS/Atom feed.

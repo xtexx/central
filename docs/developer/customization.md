@@ -1,7 +1,7 @@
 ---
 title: 'Interface customization'
 license: 'Apache-2.0'
-origin_url: 'https://github.com/go-gitea/gitea/blob/d3982bcd814bac93e3cbce1c7eb749b17e413fbd/docs/content/administration/customizing-gitea.en-us.md'
+origin_url: 'https://github.com/go-gitea/gitea/blob/e865de1e9d65dc09797d165a51c8e705d2a86030/docs/content/administration/customizing-gitea.en-us.md'
 ---
 
 This sections documents the Forgejo interface customization that requires an intimate knowledge of the underlying codebase. The user interface customization documented and supported for Forgejo admins to use [is found in the corresponding administrator guide section](../../admin/customization/).
