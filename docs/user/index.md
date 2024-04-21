@@ -32,6 +32,7 @@ involved in running it on their machines.
   - [README badges](./readme-badges/)
 - Advanced Usage
   - [Issue and Pull Request Templates](./issue-pull-request-templates/)
+  - [Comment on issues and pull requests via email](./incoming/)
   - [Actions](./actions/)
   - [Merge Message templates](./merge-message-templates/)
   - [Webhooks](./webhooks/)
