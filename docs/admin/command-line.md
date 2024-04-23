@@ -272,7 +272,7 @@ OPTIONS:
    --email value                   User email address
    --admin                         User is an admin (default: false)
    --random-password               Generate a random password for the user (default: false)
-   --must-change-password          Set this option to false to prevent forcing the user to change their password after initial login (default: true)
+   --must-change-password          Set this option to false to prevent forcing the user to change their password after initial login
    --random-password-length value  Length of the random password to be generated (default: 12)
    --access-token                  Generate access token for the user (default: false)
    --restricted                    Make a restricted user account (default: false)
@@ -317,7 +317,7 @@ OPTIONS:
    --work-path value, -w value    Set Forgejo's working path (defaults to the directory of the Forgejo binary)
    --username value, -u value     The user to change password for
    --password value, -p value     New password to set for user
-   --must-change-password         User must change password (default: false)
+   --must-change-password         User must change password (default: true)
 ```
 
 ### admin user delete
