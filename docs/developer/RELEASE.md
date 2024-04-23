@@ -7,18 +7,18 @@ license: 'CC-BY-SA-4.0'
 
 Forgejo stable releases are published on a fixed schedule, every quarter.
 
-| **Date** | **Version**            | **Release date** | **End Of Life**  |
-| -------- | ---------------------- | ---------------- | ---------------- |
-| 2024 Q1  | 7.0.0+LTS-gitea-1.22.0 | 23 April 2024    | **16 July 2025** |
-| 2024 Q2  | X.Y.Z+gitea-A.B.C      | 17 July 2024     | 16 October 2024  |
-| 2024 Q3  | X.Y.Z+gitea-A.B.C      | 16 October 2024  | 15 January 2025  |
-| 2024 Q4  | X.Y.Z+gitea-A.B.C      | 15 January 2025  | 16 April 2025    |
-| 2025 Q1  | X.Y.Z+LTS-gitea-A.B.C  | 16 April 2025    | **14 July 2026** |
-| 2025 Q2  | X.Y.Z+gitea-A.B.C      | 16 July 2025     | 15 October 2025  |
-| 2025 Q3  | X.Y.Z+gitea-A.B.C      | 15 October 2025  | 14 January 2026  |
-| 2025 Q4  | X.Y.Z+gitea-A.B.C      | 14 January 2026  | 15 April 2026    |
-| 2026 Q1  | X.Y.Z+LTS-gitea-A.B.C  | 15 April 2026    | **14 July 2027** |
-| 2026 Q2  | X.Y.Z+gitea-A.B.C      | 15 July 2026     | 14 October 2026  |
+| **Date** | **Version**              | **Release date** | **End Of Life**  |
+| -------- | ------------------------ | ---------------- | ---------------- |
+| 2024 Q1  | 7.0.0+gitea-1.22.0 (LTS) | 23 April 2024    | **16 July 2025** |
+| 2024 Q2  | 8.0.0+gitea-A.B.C        | 17 July 2024     | 16 October 2024  |
+| 2024 Q3  | X.Y.Z+gitea-A.B.C        | 16 October 2024  | 15 January 2025  |
+| 2024 Q4  | X.Y.Z+gitea-A.B.C        | 15 January 2025  | 16 April 2025    |
+| 2025 Q1  | X.Y.Z+gitea-A.B.C (LTS)  | 16 April 2025    | **14 July 2026** |
+| 2025 Q2  | X.Y.Z+gitea-A.B.C        | 16 July 2025     | 15 October 2025  |
+| 2025 Q3  | X.Y.Z+gitea-A.B.C        | 15 October 2025  | 14 January 2026  |
+| 2025 Q4  | X.Y.Z+gitea-A.B.C        | 14 January 2026  | 15 April 2026    |
+| 2026 Q1  | X.Y.Z+gitea-A.B.C (LTS)  | 15 April 2026    | **14 July 2027** |
+| 2026 Q2  | X.Y.Z+gitea-A.B.C        | 15 July 2026     | 14 October 2026  |
 
 ### Stable release support
 
@@ -42,14 +42,11 @@ The Forgejo release numbers are compliant with [Semantic Versioning](https://sem
 
 - Forgejo **v7.1.0+gitea-1.22.0** is compatible with Gitea **v1.22.0**.
 
-Long term support releases have the `LTS` string in their metadata. For instance:
+The release candidates are built of the stable branch and published with the **-test** suffix:
 
-- Forgejo **v7.0.0+LTS-gitea-1.22.0** is a long term support release compatible with Gitea **v1.22.0**.
-
-The release candidates are composed by adding the `-rc` suffix. For instance:
-
-- Forgejo **v7.1.0-rc0+gitea-1.22.0**
-- Forgejo **v7.1.0-rc1+gitea-1.22.0**
+- Forgejo **v7.0-test**
+- Forgejo **v8.0-test**
+- Forgejo **v8.1-test**
 - etc.
 
 ## Stable release process

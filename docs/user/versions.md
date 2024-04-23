@@ -61,16 +61,12 @@ The structure of the version number is `<MAJOR>.<MINOR>.<PATCH>+gitea-<GITEA VER
 - `<MAJOR>.<MINOR>.<PATCH>` is conformant to [Semantic Versioning 2.0.0](https://semver.org/#semantic-versioning-200)
 - `gitea-<GITEA VERSION>` is the Gitea version this Forgejo release is compatible with
 
-### Long Term Support (LTS) versions
-
-The structure is the same as stable versions, with the `LTS` string added to the metadata: `<MAJOR>.<MINOR>.<PATCH>+LTS-gitea-<GITEA VERSION>`.
-
 ### Experimental and pre-release versions
 
-The structure of the version number is `<MAJOR>.<MINOR>.<PATCH>-<PRE-RELEASE>+gitea-<GITEA VERSION>`, where:
+The structure of the version number is `<MAJOR>.<MINOR>.<PATCH>-dev-<SHA>+gitea-<GITEA VERSION>`, where:
 
 - `<MAJOR>.<MINOR>.<PATCH>` is conformant to [Semantic Versioning 2.0.0](https://semver.org/#semantic-versioning-200)
-- `<PRE-RELEASE>` is the pre-release version, such as a release candidate (`RC`)
+- `<SHA>` is the Git SHA from which the release was built
 - `gitea-<GITEA VERSION>` is the Gitea version this Forgejo release is compatible with
 
 ## Legacy forgejo numbering scheme
