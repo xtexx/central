@@ -16,6 +16,7 @@ development branch as follows:
 - announce in the chatroom: `@room the translations will be locked for maintenance in about 15 minutes. Make sure you don't try to save a translation when that happens as it will be lost.`
 - go to the [Weblate repository admin page](https://translate.codeberg.org/projects/forgejo/forgejo/#repository)
 - click `Commit`. This is done optionally to make tests run before interrupting anyone, to reduce the total maintenance time
+- post an [announcement in Weblate](https://translate.codeberg.org/projects/forgejo/#announcement): `The translations will be locked for maintenance soon. Make sure you don't try to save a translation when that happens as it will be lost.`
 - wait 15 minutes
 - click `Lock`
 - reload the page
@@ -25,6 +26,7 @@ development branch as follows:
 - squash-merge the pending `[I18N]` pull request ([similar to this example](https://codeberg.org/forgejo/forgejo/pulls/2317))
 - click `Reset`
 - click `Unlock`
+- remove Weblate announcement
 
 ## Merging a pull request that changes translations
 
