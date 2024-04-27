@@ -95,9 +95,15 @@ The database version is stored in the database and used to prevent an accidental
 - Any version before [Gitea 1.17](https://github.com/go-gitea/gitea/releases/tag/v1.17.4)
   - preserve a custom gitconfig: [episode 1](https://web.archive.org/web/20240313092747/https://gna.org/blog/1-17-breaking-episode-1/), [episode 2](https://web.archive.org/web/20240313092759/https://gna.org/blog/1-17-breaking-episode-2/)
 - [Gitea 1.13.0](https://blog.gitea.io/2020/12/gitea-1.13.0-is-released/)
+
   - The Webhook shared secret inside the webhook payload has been deprecated and will be removed in 1.14.0: https://github.com/go-gitea/gitea/issues/11755 please use the secret header that uses an hmac signature to validate the webhook payload.
   - Git hooks now default to `off`! ([#13058](https://github.com/go-gitea/gitea/pull/13058))
     In your config, you can check the security section for `DISABLE_GIT_HOOKS`. To enable them again, you must set the setting to `false`.
+
+- From an instance originally installed with gogs, even if migrated later to Gitea or Forgejo because database columns are not automatically removed by migrations.
+  - Drop the `created` column from the `issue` table while Forgejo is not running. It will be re-created:
+    - SQLite `ALTER TABLE `issue`DROP`created``
+    - MySQL/MariaDB/PostgreSQL `ALTER TABLE `issue`DROP COLUMN`created``
 
 ### Only when upgrading to a specific version
 
