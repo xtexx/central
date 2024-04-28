@@ -48,6 +48,7 @@ involved in running it on their machines.
     - [Forgejo versions](./versions/)
     - [Reference](https://codeberg.org/api/swagger)
   - [Migrating Repositories](https://docs.codeberg.org/advanced/migrating-repos/)
+  - [Repository Mirrors](./repo-mirror/)
   - [Push to create](./push-to-create/)
   - [AGit Workflow Usage](./agit-support/)
   - [Packages](./packages/)
