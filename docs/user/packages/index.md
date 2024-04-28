@@ -145,7 +145,7 @@ The patterns are case-insensitive which matches the behaviour of the package reg
 
 ### How the cleanup rules work
 
-The cleanup rules are part of the [clean up job]../../admin/config-cheat-sheet/#cron---cleanup-expired-packages-croncleanup_packages) and run periodically.
+The cleanup rules are part of the [clean up job](../../admin/config-cheat-sheet/#cron---cleanup-expired-packages-croncleanup_packages) and run periodically.
 
 The cleanup rule:
 
