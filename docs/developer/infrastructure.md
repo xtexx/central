@@ -403,6 +403,22 @@ The website https://forgejo.org is hosted at
 https://uberspace.de/. The https://codeberg.org/forgejo/website/ CI
 has credentials to push HTML pages there.
 
+## ubuntu-runner.forgejo.org
+
+The ubuntu-runner.forgejo.org virtual machine is hosted in the OVH
+public cloud under the same account as the domain names. It is
+dedicated to a [Forgejo runner for the benefit of the snap package](https://codeberg.org/forgejo-contrib/snap/issues/9) of
+Forgejo.
+
+As of April 2024 it is unclear how to run snapd in an LXC nested
+container. When [this is resolved](https://code.forgejo.org/forgejo/lxc-helpers/issues/24), the machine can be destroyed and the
+runner moved to an LXC container instead.
+
+Forgejo contributors with SSH access to this machine are:
+
+- https://codeberg.org/popey
+- https://codeberg.org/earl-warren
+
 ## Installing Forgejo runners
 
 ### Preparing the LXC hypervisor
