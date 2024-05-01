@@ -84,6 +84,22 @@ the `forgejo` bucket, LFS to `lfs/` in the `forgejo` bucket etc.
 
 > **NOTE:** `MINIO_BASE_PATH` must not be set in the `[storage]` section.
 
+The configuration option `MINIO_USE_SSL` defaults to `false` to maintain compatibility with locally hosted MinIO instances. If an external S3 provider is intended to be used, this option should be set to `true`.
+
+For instance, assuming a MinIO instance at `https://minio.example.com`:
+
+```
+[storage]
+STORAGE_TYPE = minio
+
+MINIO_USE_SSL = true
+MINIO_ENDPOINT = minio.example.com
+MINIO_ACCESS_KEY_ID = [redacted]
+MINIO_SECRET_ACCESS_KEY = [redacted]
+MINIO_BUCKET = bucket
+MINIO_LOCATION = us-east-1
+```
+
 ## Storage settings for a single subsystem
 
 It is possible to configure some subsystems to use S3 storage and others to use local
@@ -218,7 +234,7 @@ within the `forgejo` bucket instead of the `lfs/` directory
 
 Although the S3 storage type is named `minio` it does not rely on any
 [MinIO](https://min.io/) specific features. The S3 storage type is
-[tested](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/.forgejo/upgrades/test-upgrade.sh) to be compatible with:
+[tested](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/storage/storage.sh) to be compatible with:
 
 - [MinIO](https://min.io/) 2021.3.17 and 2023-08-23
 - [garage](https://garagehq.deuxfleurs.fr/) v0.8.2
