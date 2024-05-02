@@ -9,7 +9,7 @@ The Forgejo API for all versions that have the same major number
 are breaking changes (e.g. removal of an API endpoint) when the major
 number changes and the release notes of this major version provide
 explanations to help developers upgrade their software
-accordingly. Read more about the [Forgejo numbering scheme](./versions/).
+accordingly. Read more about the [Forgejo numbering scheme](../versions/).
 
 ## Enabling/configuring API access
 
