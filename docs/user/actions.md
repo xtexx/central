@@ -1,7 +1,7 @@
 ---
 title: 'Forgejo Actions user guide'
 license: 'CC-BY-SA-4.0'
-similar: 'https://github.com/go-gitea/gitea/blob/main/docs/content/doc/usage/actions/faq.en-us.md https://docs.github.com/en/actions'
+similar: 'https://github.com/go-gitea/gitea/blob/main/docs/content/usage/actions/faq.en-us.md https://docs.github.com/en/actions'
 ---
 
 `Forgejo Actions` provides Continuous Integration driven from the files in the `.forgejo/workflows` directory of a repository, with a web interface to show the results. The syntax and semantics of the `workflow` files will be familiar to people used to [GitHub Actions](https://docs.github.com/en/actions) but **they are not and will never be identical**.
