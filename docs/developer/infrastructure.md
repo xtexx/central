@@ -146,7 +146,7 @@ resource r0 {
         volume 0 {
             # device name
             device /dev/drbd0;
-            # specify disk to be used for devide above
+            # specify disk to be used for device above
             disk /dev/nvme0n1p5;
             # where to create metadata
             # specify the block device name when using a different disk
@@ -434,7 +434,7 @@ echo 'export TERM=vt100' >> .bashrc
 ### Creating a runner
 
 Multiple runners can co-exist on the same machine. To keep things
-organized they are located in a directtory that is the same as the url
+organized they are located in a directory that is the same as the url
 from which the token is obtained. For instance
 DIR=codeberg.org/forgejo-integration means that the token was obtained from the
 https://codeberg.org/forgejo-integration organization.

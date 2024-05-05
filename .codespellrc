@@ -1,0 +1,7 @@
+[codespell]
+# Ref: https://github.com/codespell-project/codespell#using-a-config-file
+skip = .git*,*-lock.yaml,.codespellrc
+check-hidden = true
+# ALLWAYS - ALL WAYS, config variable
+ignore-regex = \bALLWAYS\b
+# ignore-words-list =

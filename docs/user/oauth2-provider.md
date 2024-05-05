@@ -66,11 +66,11 @@ to authenticate on https://code.forgejo.org:
 - `git clone https://code.forgejo.org/earl-warren/test`
 - `git push` will open new page on the default browser, looking like this:
   ![git-credential-oauth OAuth2 grant page](../_images/user/oauth2-provider/oauth-git-credential-client.png)
-- subsequent `git push` will re-use the token obtained from OAuth2 as long as it remains in the [git credential-cache](https://git-scm.com/docs/git-credential-cache) (i.e. 2h / 7200s)
+- subsequent `git push` will reuse the token obtained from OAuth2 as long as it remains in the [git credential-cache](https://git-scm.com/docs/git-credential-cache) (i.e. 2h / 7200s)
 
-> **NOTE:** Scopes are not implemented for OAuth2 tokens and they can be used to execute any actions on behalf the user, not just git related actions. Scoped applications tokens or SSH keys limited to interactions with the repository should be prefered in environments where security is a concern.
+> **NOTE:** Scopes are not implemented for OAuth2 tokens and they can be used to execute any actions on behalf the user, not just git related actions. Scoped applications tokens or SSH keys limited to interactions with the repository should be preferred in environments where security is a concern.
 
-It is possible for any user to manually register a new OAuth2 application in the `/user/settings/applications` page for the purpose of using a Git [credential helpers](https://git-scm.com/docs/gitcredentials#_custom_helpers) different from the pre-registered ones. In that case the `~/gitconfig` setting (`oauthClientId` etc.) needs to be adapted accrodingly
+It is possible for any user to manually register a new OAuth2 application in the `/user/settings/applications` page for the purpose of using a Git [credential helpers](https://git-scm.com/docs/gitcredentials#_custom_helpers) different from the pre-registered ones. In that case the `~/gitconfig` setting (`oauthClientId` etc.) needs to be adapted accordingly
 
 ## Examples
 

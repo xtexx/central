@@ -6,7 +6,7 @@ origin_url: 'https://github.com/go-gitea/gitea/blob/e865de1e9d65dc09797d165a51c8
 
 ## Swift Packages Repository
 
-Publish [Swift](hhttps://www.swift.org/) packages for your user or organization.
+Publish [Swift](https://www.swift.org/) packages for your user or organization.
 
 ### Requirements
 

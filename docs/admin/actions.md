@@ -379,7 +379,7 @@ runner:
   # The labels of a runner are used to determine which jobs the runner can run, and how to run them.
   # Like: ["macos-arm64:host", "ubuntu-latest:docker://node:16-bullseye", "ubuntu-22.04:docker://node:16-bullseye"]
   # If it's empty when registering, it will ask for inputting labels.
-  # If it's empty when execute `deamon`, will use labels in `.runner` file.
+  # If it's empty when execute `daemon`, will use labels in `.runner` file.
   labels: []
 
 cache:
@@ -595,7 +595,7 @@ will have the `Forgejo runner` declare that it supports the `node20` and `bullse
 If the list of labels is empty, it defaults to `docker:docker://node:16-bullseye` and will declare the label `docker`.
 Declaring a label means that the `Forgejo runner` will accept tasks that specify this label in the `runs-on` field.
 
-So, to mimick the GitHub runners, the `runs-on` field can be set to `ubuntu-22.04:docker://node:20-bullseye` for instance.
+So, to mimic the GitHub runners, the `runs-on` field can be set to `ubuntu-22.04:docker://node:20-bullseye` for instance.
 With this, the Forgejo runner will respond to `runs-on: ubuntu-22.04` and will use the `node:20-bullseye` image from hub.docker.com.
 This image is quite capable of running many of the workflows that are designed for the GitHub runners.
 For a slightly bigger image, use `ghcr.io/catthehacker/ubuntu:act-22.04` instead of `node:20-bullseye` which should be compatible with most actions while remaining relatively small.

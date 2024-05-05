@@ -83,7 +83,7 @@ pnpm run lint
 ```
 
 Prettier is also able to automatically format the code according to its rules.
-To do so, ue the following command.
+To do so, use the following command.
 Be aware that it can occasionally break things, so be sure to check what it changes.
 
 ```shell
@@ -111,7 +111,7 @@ Most changes should either be sent as a _single commit per PR_, or should be squ
 _Fast-forwarding is the preferred merge strategy._
 Changes can then be [backported](#backports) (or if appropriate frontported) by cherry-picking.
 
-Rarely, it will make sense to create a feature branch containting a series of commits that will
+Rarely, it will make sense to create a feature branch containing a series of commits that will
 be merged instead of squashing and fast-forwarding.
 Such a feature branch can then be merged into multiple versions of the docs if appropriate.
 In this case, the feature branch should usually be taken from the last common ancestor of all of the

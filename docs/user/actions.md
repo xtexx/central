@@ -162,7 +162,7 @@ run in sequence. It is not a substitute for `artifacts`.
 Note that [actions/cache](https://code.forgejo.org/actions/cache) has `zstd`
 as a dependency for creating tar archives in the runner.
 
-## Auto cancelation of workflows
+## Auto cancellation of workflows
 
 When a new commit is pushed to a branch, the workflows that are were
 triggered by parent commits are canceled.
@@ -315,13 +315,13 @@ A context is an object that contains information relevant to a `workflow` run. F
 
 ### secrets
 
-A map of the respository secrets. It is empty if the `event` that triggered the `workflow` is `pull_request` and the head is from a fork of the repository.
+A map of the repository secrets. It is empty if the `event` that triggered the `workflow` is `pull_request` and the head is from a fork of the repository.
 
 Example: `${{ secrets.MYSECRETS }}`
 
 ### vars
 
-A map of the respository variables.
+A map of the repository variables.
 
 Example: `${{ vars.MYVARIABLE }}`
 
@@ -818,7 +818,7 @@ jobs:
     steps:
       - run: |
           grep Alpine /etc/os-release
-	  echo SUCESS
+	  echo SUCCESS
 ```
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-container/.forgejo/workflows/test.yml)
@@ -1032,7 +1032,7 @@ test "KEY2=$KEY2" = "KEY2=value2"
 
 - **action:** a repository that can be used in a way similar to a function in any programming language to run a single **step**.
 - **artifact** is a file or collection of files produced during a **workflow** run.
-- **automatic token** is the token created at the begining of each **workflow**.
+- **automatic token** is the token created at the beginning of each **workflow**.
 - **context** is a top level object available in an expression that contains information about the running workflow.
 - **expression:** a string enclosed in `${{ ... }}` and evaluated at runtime.
 - **job:** a sequential set of **steps**.

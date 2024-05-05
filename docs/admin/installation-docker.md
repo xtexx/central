@@ -184,7 +184,7 @@ An important assumption for the Forgejo image to make is to own the folders it w
 and reads from. This is naturally an issue since file-system permissions are a machine-local
 concept and don't translate over the network easily.
 
-We assume that a server with the hostname `server` is accessible which has a folder `/respositories`
+We assume that a server with the hostname `server` is accessible which has a folder `/repositories`
 shared via NFS. Append an entry to your `/etc/exports` like
 
 ```shell
@@ -204,7 +204,7 @@ Four aspects to consider:
 
 Effectively we are now able to write and create files and folders on the remote share. With the `all_squash` setting, we map
 all users to one user, hence all data writable by one user is writable by all users, implying all files have a `drwxrwxrwx`
-setting (abreviated "`0777` permissions"). We can also "fake-own" data, since all `chown` calls are now mapped to the anonymous user. This is an
+setting (abbreviated "`0777` permissions"). We can also "fake-own" data, since all `chown` calls are now mapped to the anonymous user. This is an
 important behaviour.
 We now mount this folder on the `client` which will host Forgejo to a folder `/mnt/repositories`...
 

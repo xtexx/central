@@ -65,7 +65,7 @@ Example:
 
 There are some restrictions in place:
 
-- Code linked in private repositories will not be displayed if the current viewer has insufficent permissions.
+- Code linked in private repositories will not be displayed if the current viewer has insufficient permissions.
 - It can only ever be a permalink; means linking to files by a branch or tag will not result in a preview.
 - There is a maximum amount of lines that will be rendered. By default this is 50.
 - Only permalinks to the current instance will work.

@@ -130,7 +130,7 @@ Reach out to packagers and users to manually verify the release works as expecte
 It will trigger a workflow to:
 
 - Push the vX.Y.Z tag to https://codeberg.org/forgejo/forgejo
-- Downoad Binaries from https://codeberg.org/forgejo-experimental, sign them and copy them to https://codeberg.org/forgejo
+- Download Binaries from https://codeberg.org/forgejo-experimental, sign them and copy them to https://codeberg.org/forgejo
 - Copy container images from https://codeberg.org/forgejo-experimental to https://codeberg.org/forgejo
 
 ### Forgejo release mirror

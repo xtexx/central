@@ -38,7 +38,7 @@ Please consult the [enry][enry] or [linguist][linguist] documentation for more d
 
 ## Adjusting the language detection
 
-Sometimes the programming language of a file is not recognized properly, or it is miscategorized. Forgejo provides a mechanism where the language detection can be told about the language of a file, and its category can be adjusted aswell. The same mechanism can also force a file to be considered for language statistics, regardless of its category - or the opposite, too: to tell Forgejo never to consider it.
+Sometimes the programming language of a file is not recognized properly, or it is miscategorized. Forgejo provides a mechanism where the language detection can be told about the language of a file, and its category can be adjusted as well. The same mechanism can also force a file to be considered for language statistics, regardless of its category - or the opposite, too: to tell Forgejo never to consider it.
 
 The way to do this is via a [`.gitattributes`][gitattributes] file. This file has a simple syntax where each line is made up of a pattern, followed by a space separated list of attributes. There are many attributes that git itself supports, but we're only going to talk about the custom attributes for language detection. All of these have a `linguist-` prefix, as that is where they originate from.
 
