@@ -442,7 +442,7 @@ lxc-helpers.sh lxc_container_run forgejo-runners -- sudo --user debian bash
 sudo apt-get update
 sudo apt-get install -y wget emacs-nox
 lxc-helpers.sh lxc_prepare_environment
-sudo wget -O /usr/local/bin/forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.3.0/forgejo-runner-3.3.0-linux-amd64
+sudo wget -O /usr/local/bin/forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.4.1/forgejo-runner-3.4.1-linux-amd64
 sudo chmod +x /usr/local/bin/forgejo-runner
 echo 'export TERM=vt100' >> .bashrc
 ```
