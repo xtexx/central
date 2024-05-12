@@ -15,9 +15,9 @@ Pull [requests are opened](https://codeberg.org/forgejo/forgejo/pulls?poster=165
 - The comment of the review:
   - explains the decision (needed, not needed)
   - explains why the change has an impact on Forgejo
-- If the upgrade is needed, user visible changes must be included in the draft release notes for the upcoming release.
+- If the upgrade is needed, user visible changes must be included in the draft release notes for the upcoming release. See [this upgrade for an example](https://codeberg.org/forgejo/forgejo/pulls/3724/files).
 - Security fix and important bug fixes are backported to the stable releases.
-- Set the dependency label
+- Set the dependency label.
 
 # Soft forks
 
