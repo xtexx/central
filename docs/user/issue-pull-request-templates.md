@@ -13,6 +13,26 @@ It is currently not possible to provide generic issue/pull-request templates glo
 
 Additionally, the New Issue page URL can be suffixed with `?title=Issue+Title&body=Issue+Text` and the form will be populated with those strings. Those strings will be used instead of the template if there is one.
 
+## Directory names
+
+Users can create multiple issue templates inside a special directory and allow users to choose one that more specifically
+addresses their problem.
+
+Forgejo will look for template files in the following directories:
+
+- `ISSUE_TEMPLATE`
+- `issue_template`
+- `.forgejo/ISSUE_TEMPLATE`
+- `.forgejo/issue_template`
+- `.gitea/ISSUE_TEMPLATE`
+- `.gitea/issue_template`
+- `.github/ISSUE_TEMPLATE`
+- `.github/issue_template`
+- `.gitlab/ISSUE_TEMPLATE`
+- `.gitlab/issue_template`
+
+Inside the directory can be multiple markdown (`.md`) or yaml (`.yaml`/`.yml`) issue templates of the form.
+
 ## File names
 
 Possible file names for issue templates:
@@ -23,29 +43,11 @@ Possible file names for issue templates:
 - `issue_template.md`
 - `issue_template.yaml`
 - `issue_template.yml`
-- `.gitea/ISSUE_TEMPLATE.md`
-- `.gitea/ISSUE_TEMPLATE.yaml`
-- `.gitea/ISSUE_TEMPLATE.yml`
-- `.gitea/issue_template.md`
-- `.gitea/issue_template.yaml`
-- `.gitea/issue_template.yml`
-- `.github/ISSUE_TEMPLATE.md`
-- `.github/ISSUE_TEMPLATE.yaml`
-- `.github/ISSUE_TEMPLATE.yml`
-- `.github/issue_template.md`
-- `.github/issue_template.yaml`
-- `.github/issue_template.yml`
 
 Possible file names for issue config:
 
-- `.gitea/ISSUE_TEMPLATE/config.yaml`
-- `.gitea/ISSUE_TEMPLATE/config.yml`
-- `.gitea/issue_template/config.yaml`
-- `.gitea/issue_template/config.yml`
-- `.github/ISSUE_TEMPLATE/config.yaml`
-- `.github/ISSUE_TEMPLATE/config.yml`
-- `.github/issue_template/config.yaml`
-- `.github/issue_template/config.yml`
+- `config.yaml`
+- `config.yml`
 
 Possible file names for PR templates:
 
@@ -55,36 +57,6 @@ Possible file names for PR templates:
 - `pull_request_template.md`
 - `pull_request_template.yaml`
 - `pull_request_template.yml`
-- `.gitea/PULL_REQUEST_TEMPLATE.md`
-- `.gitea/PULL_REQUEST_TEMPLATE.yaml`
-- `.gitea/PULL_REQUEST_TEMPLATE.yml`
-- `.gitea/pull_request_template.md`
-- `.gitea/pull_request_template.yaml`
-- `.gitea/pull_request_template.yml`
-- `.github/PULL_REQUEST_TEMPLATE.md`
-- `.github/PULL_REQUEST_TEMPLATE.yaml`
-- `.github/PULL_REQUEST_TEMPLATE.yml`
-- `.github/pull_request_template.md`
-- `.github/pull_request_template.yaml`
-- `.github/pull_request_template.yml`
-
-## Directory names
-
-Alternatively, users can create multiple issue templates inside a special directory and allow users to choose one that more specifically
-addresses their problem.
-
-Possible directory names for issue templates:
-
-- `ISSUE_TEMPLATE`
-- `issue_template`
-- `.gitea/ISSUE_TEMPLATE`
-- `.gitea/issue_template`
-- `.github/ISSUE_TEMPLATE`
-- `.github/issue_template`
-- `.gitlab/ISSUE_TEMPLATE`
-- `.gitlab/issue_template`
-
-Inside the directory can be multiple markdown (`.md`) or yaml (`.yaml`/`.yml`) issue templates of the form.
 
 ## Syntax for markdown template
 
@@ -115,6 +87,10 @@ This example YAML configuration file defines an issue form using several inputs 
 name: Bug Report
 about: File a bug report
 title: '[Bug]: '
+ref: 'main'
+labels:
+  - bug
+  - 'help needed'
 body:
   - type: markdown
     attributes:
