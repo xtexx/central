@@ -22,6 +22,10 @@ Documentation content lives in the `docs` directory, and images in the `docs/_im
 
 ## Contributing
 
+There are many ways to contribute to improving the Forgejo documentation
+including reviewing the current information, making suggestions for
+improvement or reporting bugs.
+
 ### Tooling
 
 It is possible to simply edit the documentation with a text editor and [send PRs](#pull-requests) without using any other tooling.
