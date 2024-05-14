@@ -532,7 +532,7 @@ jobs:
 
 If you run this action with `forgejo-runner exec`, you should expect this job fail:
 
-```shell-session
+```shellsession
 $ forgejo-runner exec
 ...
 | curl: (7) Couldn't connect to server
