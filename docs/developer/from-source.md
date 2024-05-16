@@ -21,7 +21,7 @@ version is 20.
 necessary. To be able to use these, you must have the `"$GOPATH/bin"` directory
 on the executable path.
 
-**Note 2**: Go version 1.21 or higher is required. However, it is recommended to
+**Note 2**: Go version 1.22 or higher is required. However, it is recommended to
 obtain the same version as the [continuous integration](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/.forgejo/workflows/testing.yml).
 
 **Note 3**: If you want to avoid installing build dependencies manually,
@@ -44,24 +44,24 @@ To work with tagged releases, the following commands can be used:
 
 ```bash
 git branch -a
-git checkout v1.21.2-0
+git checkout v7.0.3
 ```
 
-To build Forgejo from source at a specific tagged release (like v1.21.2-0), list the
+To build Forgejo from source at a specific tagged release (like v7.0.3), list the
 available tags and check out the specific tag.
 
 List available tags with the following.
 
 ```bash
 git tag -l
-git checkout v1.21.2-0
+git checkout v7.0.3
 ```
 
 ### Build
 
 To build from source, the following programs must be present on the system:
 
-- `go` v1.21 or higher, see [here](https://golang.org/dl/)
+- `go` v1.22 or higher, see [here](https://golang.org/dl/)
 - `node` 20 or higher with `npm`, see [here](https://nodejs.org/en/download/current)
 - `make`
 
@@ -111,7 +111,7 @@ TAGS="bindata timetzdata sqlite sqlite_unlock_notify" make build
 
 The `build` target is split into two sub-targets:
 
-- `make backend` which requires [Go v1.21](https://golang.org/dl/) or greater.
+- `make backend` which requires [Go v1.22](https://golang.org/dl/) or greater.
 - `make frontend` which requires [Node.js 20](https://nodejs.org/en/download/current) or greater.
 
 If pre-built frontend files are present it is possible to only build the backend:
