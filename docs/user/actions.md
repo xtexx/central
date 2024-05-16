@@ -27,6 +27,13 @@ The following guide explains key **concepts** to help understand how `workflows`
 - Click on the workflow link to see the details and the job execution logs.
   ![actions results](../_images/user/actions/workflow-demo.png)
 
+## Hierarchy
+
+In Forgejo terminology a `workflow` is a `.yml` file in the
+`.forgejo/workflows` directory of the repository. A `workflow` has `jobs` with
+`steps` to be executed by a Action runner. See the [Glossary](#glossary) for
+more descriptions of key terms.
+
 ## Actions
 
 An `Action` is a repository that contains the equivalent of a function in any programming language. It comes in two flavors, depending on the file found at the root of the repository:
