@@ -1443,7 +1443,7 @@ OPTIONS:
    --custom-path value, -C value     Set custom path (defaults to '{WorkPath}/custom')
    --config value, -c value          Set custom config file (defaults to '{WorkPath}/custom/conf/app.ini')
    --work-path value, -w value       Set Forgejo's working path (defaults to the directory of the Forgejo binary)
-   --type value, -t value            Type of stored files to copy.  Allowed types: 'attachments', 'lfs', 'avatars', 'repo-avatars', 'repo-archivers', 'packages', 'actions-log'
+   --type value, -t value            Type of stored files to copy.  Allowed types: 'attachments', 'lfs', 'avatars', 'repo-avatars', 'repo-archivers', 'packages', 'actions-log', 'actions-artifacts
    --storage value, -s value         New storage type: local (default) or minio
    --path value, -p value            New storage placement if store is local (leave blank for default)
    --minio-endpoint value            Minio storage endpoint
