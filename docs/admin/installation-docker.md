@@ -248,7 +248,7 @@ services:
       - forgejo
     volumes:
 -      - ./forgejo:/data
-+      - /mnt/repositories/data:/data
++      - /mnt/repositories/data:/var/lib/gitea
 +      - /mnt/repositories/conf:/etc/gitea
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
