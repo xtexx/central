@@ -45,6 +45,24 @@ This can be **any** markdown content.\n
 - [x] Ok"
 ```
 
+To be able to easily push new commits to your pull request, you first need to switch the [default push method](https://git-scm.com/docs/git-config#Documentation/git-config.txt-pushdefault) to "upstream":
+
+```shell
+# To only set this option for this specific repository
+git config push.default upstream
+# Or run this instead if you want to set this option globally
+git config --global push.default upstream
+```
+
+Then, run the following command:
+
+```shell
+git config branch.local-branch.merge refs/for/main/topic-branch
+```
+
+After doing so, you can now simply run `git push` to push commits to your pull request, without having to specify the refspec.
+This also will allow you to pull, fetch, rebase, etc. from the AGit pull request by default.
+
 #### A More Complex Example
 
 Suppose that the currently checked out branch in your local repository is `main`, yet you would like to submit a Pull Request meant for a remote branch called `remote-branch`.
