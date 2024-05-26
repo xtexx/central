@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 : ${FORGEJO:=/tmp/forgejo-binary}
 
@@ -17,7 +17,7 @@ function latest() {
     if test "$major" = "next" ; then
 	select="" # this will pick whatever is the highest numbered release
     else
-	select="$major"
+	select="$major-test"
     fi
     curl -sS https://codeberg.org/api/v1/repos/forgejo-experimental/forgejo/releases | jq -r '.[] | .tag_name | select(startswith("'$select'"))' | sort --reverse --version-sort | head -1
 }
