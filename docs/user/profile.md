@@ -22,7 +22,7 @@ Making the `.profile` repository private will hide the Profile README.
 Rather than supporting multiple social links on the profile card, under the user
 avatar, such links - including
 [`rel=me`](https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/rel/me)
-attributes - can be placed in the `.profile` readme instead. This gives a user a
+attributes - can be placed in the `.profile` README instead. This gives a user a
 lot of flexibility on how they wish to display these links. To add a `rel=me`
 attribute, the link should be written in HTML, rather than in Markdown format,
 for example: `<a rel="me"

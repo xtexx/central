@@ -6,7 +6,7 @@ origin_url: 'https://codeberg.org/Codeberg/Documentation/src/commit/85d333f48bad
 
 When you invite collaborators to join your repository or when you create teams for your organization, you have to decide what each collaborator/team is allowed to do.
 
-You can assign teams different levels of permission for each unit (e.g. issues, PR's, wiki).
+You can assign teams different levels of permission for each unit (e.g. issues, PRs, wiki).
 
 ## Profile and Visibility
 

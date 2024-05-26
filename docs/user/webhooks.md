@@ -119,7 +119,7 @@ X-Gitea-Event: push
 
 ### Example
 
-This is an example of how to use webhooks to run a php script upon push requests to the repository.
+This is an example of how to use webhooks to run a PHP script upon push requests to the repository.
 In your repository Settings, under Webhooks, Setup a Forgejo webhook as follows:
 
 - Target URL: http://example.com/webhook.php
@@ -129,7 +129,7 @@ In your repository Settings, under Webhooks, Setup a Forgejo webhook as follows:
 - Trigger On: Push Events
 - Active: Checked
 
-Now on your server create the php file webhook.php
+Now on your server create the PHP file webhook.php
 
 ```
 <?php

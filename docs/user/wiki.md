@@ -5,7 +5,7 @@ origin_url: 'https://codeberg.org/Codeberg/Documentation/src/commit/85d333f48bad
 ---
 
 A [wiki](https://en.wikipedia.org/wiki/Wiki) is a collaborative space on the web. It is a common practice to use wikis to collect knowledge and share information.  
-Codeberg allows you to add a wiki to a repo for additional documentation.
+Codeberg allows you to add a wiki to a repository for additional documentation.
 
 The user in these examples is `knut`, the polar bear and its repository is `foobar`.
 
@@ -23,7 +23,7 @@ To edit the wiki `write` permission to the repository is required, unless the `A
 
 ## Wiki structure
 
-The wiki is essentially a separate Git repo in your repository with a predefined name in the form of `<your-repository-name>.wiki.git`.
+The wiki is essentially a separate Git repository in your repository with a predefined name in the form of `<your-repository-name>.wiki.git`.
 
 It consists of [Markdown](https://en.wikipedia.org/wiki/Markdown) files (file extension `.md`) and additional assets like images.  
 No further stylesheets are needed. The Markdown files are automatically rendered according to the selected Forgejo theme.
@@ -40,7 +40,7 @@ Clicking on the "Insert Image" button will make the following text appear in you
 
 ## Adding content using a local Git client
 
-You can work with the wiki repo as you would with any other Git repo on Forgejo.
+You can work with the wiki repository as you would with any other Git repository on Forgejo.
 
 ```shell
 git clone git@codeberg.org:knut/foobar.wiki.git

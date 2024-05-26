@@ -647,7 +647,7 @@ jobs:
     runs-on: docker
 ```
 
-means that the `Forgejo runner` that claims to provide a kind of machine labelled `docker` will be selected by `Forgejo` and sent the job to be run.
+means that the `Forgejo runner` that claims to provide a kind of machine labeled `docker` will be selected by `Forgejo` and sent the job to be run.
 
 The actual machine provided by the runner **entirely depends on how the `Forgejo runner` was registered** (see the [Forgejo Actions administrator guide](../../admin/actions/) for more information).
 

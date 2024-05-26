@@ -37,4 +37,4 @@ You can use the following variables enclosed in `${}` inside these templates whi
 When rebasing without a merge commit, `REBASE_TEMPLATE.md` modifies the message of the last commit. The following additional variables are available in this template:
 
 - CommitTitle: Commit's title
-- CommitBody: Commits's body text
+- CommitBody: Commit's body text

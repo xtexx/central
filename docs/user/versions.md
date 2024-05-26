@@ -23,7 +23,7 @@ and they match what is displayed by the CLI or the web UI.
 
 ## Compatibility with Gitea
 
-As of Forgejeo 7.0.0 tools designed to work with Gitea 1.22.0 and
+As of Forgejo 7.0.0 tools designed to work with Gitea 1.22.0 and
 below are compatible and do not need any modification to keep working.
 
 In the future, if a tool wants to assert the level of compatibility of

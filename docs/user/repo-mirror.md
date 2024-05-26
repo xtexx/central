@@ -28,7 +28,7 @@ For an existing remote repository, you can set up pull mirroring as follows:
 
 The repository now gets mirrored periodically from the remote repository. You can force a sync by selecting **Synchronize Now** in the repository settings.
 
-:exclamation::exclamation: **NOTE:** You can only set up pull mirroring for repos that don't exist yet on your instance. Once the repo is created, you can't convert it into a pull mirror anymore. :exclamation::exclamation:
+:exclamation::exclamation: **NOTE:** You can only set up pull mirroring for repositories that don't exist yet on your instance. Once the repository is created, you can't convert it into a pull mirror anymore. :exclamation::exclamation:
 
 ## Pushing to a remote repository
 
