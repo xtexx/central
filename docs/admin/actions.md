@@ -178,7 +178,7 @@ services:
 
 Here, we're not running the `forgejo-runner daemon` yet because we
 need to register it first. Please note that in a recent install of
-docker `docker-compose`is not a separate command but should be run as
+docker `docker-compose` is not a separate command but should be run as
 `docker compose`.
 Follow the registration instructions below
 by starting the `runner` service with `docker-compose up -d` and
@@ -218,7 +218,7 @@ environment. They need to be installed and configured independently.
   (because it doesn't usually need one).
 
   If the Forgejo runner complains about "daemon Docker Engine socket not found", or "cannot ping the docker daemon",
-  you can use podman to provide a Docker compatible socket from an unprivileged user
+  you can use Podman to provide a Docker compatible socket from an unprivileged user
   and pass that socket on to the runner,
   e.g. by executing:
 
