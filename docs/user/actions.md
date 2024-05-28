@@ -676,8 +676,8 @@ jobs:
     runs-on: self-hosted
     strategy:
       matrix:
-        variant: ["bookworm", "bullseye"]
-	node: ["18", "20"]
+        variant: ['bookworm', 'bullseye']
+        node: ['18', '20']
 ```
 
 Will create four jobs where:
