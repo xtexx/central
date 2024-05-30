@@ -4,7 +4,7 @@ license: 'CC-BY-SA-4.0'
 origin_url: 'https://github.com/DanielGibson/DanielGibson.github.io/blob/58362695f743a545d2530508ce42d5fe1eea84a9/content/post/setup-vps-with-wireguard-and-forgejo.md'
 ---
 
-## Install Forgejo and git, create git user
+## Install Forgejo and Git, create git user
 
 > **NOTE:** this guide assumes that you'll host on the server with the domain git.example.com.
 
@@ -25,14 +25,14 @@ Make sure `git` and `git-lfs` are installed:
 Create a user `git` on the system. Forgejo will run as that user, and when accessing git through ssh
 (which is the default), this user is part of the URL _(for example in
 `git clone git@git.example.com:YourOrg/YourRepo.git` the `git` before the `@` is the user you'll create now)._
-On **Debian, Ubuntu** and their derivates that's done with:
+On **Debian, Ubuntu** and their derivatives that's done with:
 
 ```
 # adduser --system --shell /bin/bash --gecos 'Git Version Control' \
   --group --disabled-password --home /home/git  git
 ```
 
-On **Linux distributions not based on Debian/Ubuntu** (this should at least work with Red Hat derivates
+On **Linux distributions not based on Debian/Ubuntu** (this should at least work with Red Hat derivatives
 like Fedora, CentOS etc.), run this instead:
 
 ```
@@ -51,7 +51,7 @@ Now create the directories Forgejo will use and set access rights appropriately:
 # chown git:git /var/lib/forgejo && chmod 750 /var/lib/forgejo
 ```
 
-This is the directory Forgejo will store its data in, including your git repos.
+This is the directory Forgejo will store its data in, including your Git repositories.
 
 ```
 # mkdir /etc/forgejo
@@ -64,12 +64,12 @@ then it shouldn't modify it anymore.
 
 ## Optional: Set up database
 
-When using sqlite as Forgejos database, nothing needs to be done here.
+When using sqlite as Forgejo's database, nothing needs to be done here.
 
 If you need a more powerful database, you can use MySQL/MariaDB or PostgreSQL (apparently sqlite
 is good enough for at least 10 users, but might even suffice for more).
 
-See [Forgejos Database Preparation guide](../database-preparation/) for
+See [Forgejo's Database Preparation guide](../database-preparation/) for
 setup instructions.
 
 ## Install systemd service for Forgejo
@@ -87,7 +87,7 @@ Now enable and start the Forgejo service, so you can go on with the installation
 `# systemctl enable forgejo.service`
 `# systemctl start forgejo.service`
 
-## Forgejos web-based configuration
+## Forgejo's web-based configuration
 
 You should now be able to access Forgejo in your local web browser, so open http://git.example.com:3000/.
 
@@ -136,7 +136,7 @@ Now (as root) edit `/etc/forgejo/app.ini`
 
 The following changes are recommended if dealing with many large files:
 
-- Forgejo allows uploading files to git repos through the web interface.
+- Forgejo allows uploading files to Git repositories through the web interface.
   By default the **file size for uploads**
   is limited to 3MB per file, and 5 files at once. To increase it, under the `[repository]` section,
   add a `[repository.upload]` section with a line like `FILE_MAX_SIZE = 4095`
