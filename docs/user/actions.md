@@ -1038,13 +1038,14 @@ test "KEY2=$KEY2" = "KEY2=value2"
 ## Glossary
 
 - **action:** a repository that can be used in a way similar to a function in any programming language to run a single **step**.
-- **artifact** is a file or collection of files produced during a **workflow** run.
-- **automatic token** is the token created at the beginning of each **workflow**.
-- **context** is a top level object available in an expression that contains information about the running workflow.
+- **artifact:** a file or collection of files produced during a **workflow** **run**.
+- **automatic token:** the unique token created during each **run** by the **runner**.
+- **context:** top level objects containing the current state of a **run** containing information about the **workflow** and the **runner** handling the **job**.
 - **expression:** a string enclosed in `${{ ... }}` and evaluated at runtime.
 - **job:** a sequential set of **steps**.
-- **label** the kind of machine that is matched against the value of `runs-on` in a **workflow**.
-- **runner:** the [Forgejo runner](https://code.forgejo.org/forgejo/runner) daemon tasked to execute the **workflows**.
+- **label:** the kind of machine that is matched against the value of `runs-on` in a **workflow**.
+- **run:** the execution of a **job**.
+- **runner:** the [Forgejo runner](https://code.forgejo.org/forgejo/runner) daemon created to execute the **workflows**.
 - **step:** a command the **runner** is required to carry out.
-- **workflow or task:** a file in the `.forgejo/workflows` directory that contains **jobs**.
-- **workspace** is the directory where the files of the **job** are stored and shared between all **step**s.
+- **workflow:** a file in the `.forgejo/workflows` directory containing **jobs**.
+- **workspace:** the directory where the files of the **job** are stored and shared between all **step**s.
