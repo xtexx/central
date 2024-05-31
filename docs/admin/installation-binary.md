@@ -22,7 +22,7 @@ and make it executable:
 Make sure `git` and `git-lfs` are installed:
 `# apt install git git-lfs`
 
-Create a user `git` on the system. Forgejo will run as that user, and when accessing git through ssh
+Create a user `git` on the system. Forgejo will run as that user, and when accessing git through SSH
 (which is the default), this user is part of the URL _(for example in
 `git clone git@git.example.com:YourOrg/YourRepo.git` the `git` before the `@` is the user you'll create now)._
 On **Debian, Ubuntu** and their derivatives that's done with:
@@ -116,7 +116,7 @@ Once you're done configuring, click `Install Forgejo` and a few seconds later yo
 on the dashboard (if you created an administrator account) or at the login/register screen, where you
 can create an account to then get to the dashboard.
 
-So far, so good, but we're not quite done yet - some manual configuration in the app.ini is needed.
+So far, so good, but we're not quite done yet - some manual configuration in the `app.ini` is needed.
 
 ## Further configuration in Forgejo's app.ini
 

@@ -7,7 +7,7 @@ Moderation tools are meant to help the Forgejo users and admins cope
 with spam bots and undesirable interactions.
 
 `[admin].SEND_NOTIFICATION_EMAIL_ON_NEW_USER` can be set to `true` on
-small Fogejo instances with an open registration. Such instances are
+small Forgejo instances with an open registration. Such instances are
 subject to occasional spam bots registrations and saves the admin the
 trouble to check on a regular basis. Read more in the [config cheat
 sheet](../config-cheat-sheet/#security-security).

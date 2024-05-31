@@ -67,7 +67,7 @@ ENABLE_PUSH_CREATE_USER = true
 
 > **NOTE:** it is not possible to use environment variables to remove an existing value, it must be done by editing the `app.ini` file.
 
-> **NOTE:** in case you are in a selinux environment check the audit logs if you are having issues with containers.
+> **NOTE:** in case you are in a SELinux environment check the audit logs if you are having issues with containers.
 
 ## Databases
 

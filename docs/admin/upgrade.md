@@ -17,7 +17,7 @@ To be notified in advance of security releases, watch or subscribe to the RSS fe
 
 ## Semantic version compliance
 
-Forgejo is compliant with [semantic versioning](https://semver.org/spec/v2.0.0.html) as of 7.0.0. In a nutshell it means that there is no breaking change unless the first number changes (e.g. when 8.0.0 is published it will contain breaking changes compared to 7.0.0). The release notes document those breaking changes and theey may require manual intervention depending on the Forgejo installation.
+Forgejo is compliant with [semantic versioning](https://semver.org/spec/v2.0.0.html) as of 7.0.0. In a nutshell it means that there is no breaking change unless the first number changes (e.g. when 8.0.0 is published it will contain breaking changes compared to 7.0.0). The release notes document those breaking changes and they may require manual intervention depending on the Forgejo installation.
 
 In versions prior to 7.0.0, the releases 1.19, 1.20 and 1.21 all contained breaking changes and the versioning scheme was not compliant with semantic versioning.
 
@@ -48,7 +48,7 @@ It is **critical** to verify that Forgejo works very carefully. Restoring the ba
 
 - Manually analyze (reading the patches to the sources of the template directory) and update the customized CSS / content.
 - Do not use `forgejo help` to figure out the location of `CustomPath`, look at the configuration tab of the `Site administration` panel when logged in as an admin.
-- `forgejo manager flush-queues`. If it timesout, run it again with a more generous `--timeout` argument. It is important because the queues contain serialized data that is not guaranteed to be backward compatible between versions.
+- `forgejo manager flush-queues`. If it times out, run it again with a more generous `--timeout` argument. It is important because the queues contain serialized data that is not guaranteed to be backward compatible between versions.
 - Go to the `Site administration` panel and pause all queues
 
 Note: Forgejo requires [docker >= 20.10.6](https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_3.14.0) otherwise mysterious problems will happen (mysterious in the sense that the problem will about something unrelated to the Docker version").

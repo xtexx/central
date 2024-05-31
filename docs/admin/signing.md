@@ -54,7 +54,7 @@ There are three main options:
 
 - `none` - this prevents Forgejo from signing any commits
 - `default` - Forgejo will default to the key configured within `git config`
-- `KEYID` - Forgejo will sign commits with the gpg key with the ID
+- `KEYID` - Forgejo will sign commits with the GPG key with the ID
   `KEYID`. In this case you should provide a `SIGNING_NAME` and
   `SIGNING_EMAIL` to be displayed for this key.
 
@@ -120,7 +120,7 @@ The possible options are:
 - `never`: Never sign
 - `pubkey`: Only sign if the user has a public key
 - `twofa`: Only sign if the user logs in with two-factor authentication
-- `basesigned`: Only sign if the parent commit in the base repo is signed.
+- `basesigned`: Only sign if the parent commit in the base repository is signed.
 - `headsigned`: Only sign if the head commit in the head branch is signed.
 - `commitssigned`: Only sign if all the commits in the head branch to the merge point are signed.
 - `approved`: Only sign approved merges to a protected branch.
