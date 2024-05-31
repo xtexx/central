@@ -24,7 +24,7 @@ Here's an explanation of the form's fields:
 
 - **Owner** Here, you can specify whether you want this to be your own personal project or whether you want it to be part of an organization that you're a part of
 - **Repository name** A name for your repository (which will also be part of its path, in this case `https://codeberg.org/knut/foobar`)
-- **Visibility** Repositories are either _public_ or _private_, where public means that everyone will be able to access your repository, while your private repositories can only be accessed by you and your collaborators (see [Invite Collaborators](../invite-collaborators))
+- **Visibility** Repositories are either _public_ or _private_, where public means that everyone will be able to access your repository, while your private repositories can only be accessed by you and your collaborators (see [Invite Collaborators](https://docs.codeberg.org/collaborating/invite-collaborators/))
 - **Description** A short description that appears next to your repository's name where appropriate
 - **Template** Occasionally you may want to generate your repository from an existing template. In that case, you can specify that template here. Otherwise, simply leave this field empty.
 - **Issue Labels** If you want to initialize your project's issue tracker with a set of labels that you can use to categorize issues, you can choose one here. You don't have to choose this right away though, as you can choose and modify issue labels at a later time as well.
@@ -48,7 +48,7 @@ Here's what the most important buttons do:
 - **The Repository Tabs (3)** contain links to every important feature within this repository:
   - **Code** lets you browse through all versions of this repository's code.
   - **Issues** is a very important communication tool between the author, their users and their contributors. Think of it as part bug-tracker, part forum.
-    For more information on this, have a look at [The Basics of Issue Tracking](/getting-started/issue-tracking-basics/)
+    For more information on this, have a look at [The Basics of Issue Tracking](../issue-tracking-basics/)
   - **Pull Requests** is where other users can ask the author to "pull" in code, from a fork into the author's program.
   - **Releases** is a space where the author can upload finished versions of their program, e.g. binaries
   - **Wiki** is a basic wiki feature built into Forgejo.
