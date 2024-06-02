@@ -1164,7 +1164,7 @@ ALLOW_DATA_URI_IMAGES = true
 
 - `ELEMENT`: The element this policy applies to. Must be non-empty.
 - `ALLOW_ATTR`: The attribute this policy allows. Must be non-empty.
-- `REGEXP`: A regex to match the contents of the attribute against. Must be present but may be empty for unconditional whitelisting of this attribute.
+- `REGEXP`: A regex to match the contents of the attribute against. Must be present but may be empty for unconditional allowlisting of this attribute.
 - `ALLOW_DATA_URI_IMAGES`: **false** Allow data uri images (`<img src="data:image/png;base64,..."/>`).
 
 Multiple sanitisation rules can be defined by adding unique subsections, e.g. `[markup.sanitizer.TeX-2]`.

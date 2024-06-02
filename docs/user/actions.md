@@ -207,7 +207,7 @@ A list of command and arguments, equivalent to [[COMMAND] [ARG...]](https://docs
 
 A string of additional options, as documented [docker run](https://docs.docker.com/engine/reference/commandline/run/). For instance: "--workdir /myworkdir --ulimit nofile=1024:1024".
 
-> **NOTE:** the `--volume` option is restricted to a whitelist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
+> **NOTE:** the `--volume` option is restricted to a allowlist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
 
 ### username
 
@@ -749,7 +749,7 @@ container:
 
 Set the volumes for the container to use, as if provided with the `--volume` argument of the `docker run` command.
 
-> **NOTE:** the `--volume` option is restricted to a whitelist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
+> **NOTE:** the `--volume` option is restricted to a allowlist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
 
 > **NOTE:** ignored if `jobs.<job_id>.runs-on` is an LXC container.
 
@@ -759,7 +759,7 @@ Set the volumes for the container to use, as if provided with the `--volume` arg
 
 A string of additional options, as documented in [docker run](https://docs.docker.com/engine/reference/commandline/run/). For instance: "--workdir /myworkdir --ulimit nofile=1024:1024".
 
-> **NOTE:** the `--volume` option is restricted to a whitelist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
+> **NOTE:** the `--volume` option is restricted to a allowlist of volumes configured in the runner executing the task. See the [Forgejo Actions administrator guide](../../admin/actions/) for more information.
 
 > **NOTE:** ignored if `jobs.<job_id>.runs-on` is an LXC container.
 
