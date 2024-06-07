@@ -704,7 +704,7 @@ steps:
 ### `jobs.<job_id>.container.image`
 
 - **Docker or Podman:**
-  If the default image is unsuitable, a job can specify an alternate container image with `container:`, [as shown in this example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-container/.forgejo/workflows/test.yml). For instance the following will ensure the job is run using [Alpine 3.18](https://hub.docker.com/_/alpine/tags?name=3.18).
+  If the default image is unsuitable, a job can specify an alternate container image with `container:`, [as shown in this example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-container/.forgejo/workflows/test.yml). If not specified, the shell defaults to `sh`. For instance the following will ensure the job is run using [Alpine 3.18](https://hub.docker.com/_/alpine/tags?name=3.18).
 
   ```yaml
   runs-on: docker
@@ -825,7 +825,7 @@ jobs:
     steps:
       - run: |
           grep Alpine /etc/os-release
-	  echo SUCCESS
+          echo SUCCESS
 ```
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-container/.forgejo/workflows/test.yml)
@@ -841,12 +841,41 @@ The working directory from which the script specified with `jobs.<job_id>.step[*
 
 ### `jobs.<job_id>.steps[*].shell`
 
-The shell used to run the script specified with `jobs.<job_id>.step[*].run`. For instance:
+The shell used to run the script specified with `jobs.<job_id>.step[*].run`. If not specified it defaults to `bash`.
+
+For instance:
 
 ```yaml
-steps:
-  - shell: bash
-    run: echo $PATH
+jobs:
+  test:
+    runs-on: docker
+    steps:
+      - run: echo using bash here
+```
+
+Or to specify that `sh` must be used instead:
+
+```yaml
+jobs:
+  test:
+    runs-on: docker
+    steps:
+      - shell: sh
+	    run: echo using sh here
+```
+
+If `jobs.<job_id>.container.image` is set and the shell is not specified, it defaults to `sh`.
+
+For instance:
+
+```yaml
+jobs:
+  test:
+    runs-on: docker
+    container:
+      image: alpine:3.20
+    steps:
+      - run: echo using sh here
 ```
 
 [Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-pull-request/.forgejo/workflows/test.yml)
