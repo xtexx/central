@@ -29,3 +29,85 @@ Do you know how to configure it properly? Why not document that here?
 
 Vim has [a Go plugin](https://github.com/fatih/vim-go) that can likely be used to work on Forgejo's code base.
 Do you know how to configure it properly? Why not document that here?
+
+## Neovim
+
+Here's a minimal example that configures `gopls` and `golangci_lint_ls` using
+the `Lazy.nvim` plugin manager.
+
+<details>
+<summary>init.lua</summary>
+
+```lua
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not vim.uv.fs_stat(lazypath) then
+	vim.fn.system({
+		"git",
+		"clone",
+		"--filter=blob:none",
+		"https://github.com/folke/lazy.nvim.git",
+		"--branch=stable", -- latest stable release
+		lazypath,
+	})
+end
+vim.opt.rtp:prepend(lazypath)
+
+require("lazy").setup({
+	"neovim/nvim-lspconfig",
+	{
+		"nvim-telescope/telescope.nvim",
+		branch = "0.1.x",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			{
+				"nvim-telescope/telescope-fzf-native.nvim",
+				build = "make",
+				cond = vim.fn.executable("make") == 1,
+			},
+		},
+	},
+})
+
+vim.g.mapleader = " "
+vim.g.maplocalleader = " "
+
+local on_attach = function(client, bufno)
+	-- depricated since neovim 0.10
+	-- vim.api.nvim_buf_set_option(bufno, "omnifunc", "v:lua.vim.lsp.omnifunc")
+	vim.api.nvim_set_option_value("omnifunc", "v:lua.vim.lsp.omnifunc", { buf = bufno })
+
+	local ts = require("telescope.builtin")
+	local opts = { buffer = bufno }
+
+	vim.keymap.set("n", "<leader>e", vim.diagnostic.open_float)
+	vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+	vim.keymap.set("n", "<C-k>", vim.lsp.buf.signature_help, opts)
+	vim.keymap.set("n", "gD", vim.lsp.buf.declaration, opts)
+	vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+	vim.keymap.set("n", "gtd", vim.lsp.buf.type_definition, opts)
+	vim.keymap.set("n", "gi", vim.lsp.buf.implementation, opts)
+	vim.keymap.set("n", "gu", ts.lsp_references, opts)
+	vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
+	vim.keymap.set("n", "<leader>cl", vim.lsp.codelens.run, opts)
+	vim.keymap.set("n", "<leader>r", vim.lsp.buf.rename, opts)
+	vim.keymap.set("n", "<leader>f", function()
+		vim.lsp.buf.format({ async = true })
+	end, opts)
+end
+
+local capabilities = vim.lsp.protocol.make_client_capabilities()
+
+require("lspconfig")["gopls"].setup({
+	capabilities = capabilities,
+	settings = {},
+	on_attach = on_attach,
+})
+
+require("lspconfig")["golangci_lint_ls"].setup({
+	capabilities = capabilities,
+	settings = {},
+	on_attach = on_attach,
+})
+```
+
+</details>
