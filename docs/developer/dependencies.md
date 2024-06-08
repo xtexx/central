@@ -20,7 +20,7 @@ There is no need to upgrade if there is no indication that it is beneficial to F
 
 ## Reviewing renovate pull requests
 
-Pull [requests are opened](https://codeberg.org/forgejo/forgejo/pulls?poster=165503) when an upgrade is available and the decision to merge (positive review) or not (request for change review) depends on what the upgrade offers.
+Pull [requests are opened](https://codeberg.org/forgejo/forgejo/pulls?poster=165503) when an upgrade is available and the decision to merge (positive review) or not (request for change review) depends on what the upgrade offers. The history of past upgrades can be browsed by looking for PR with the same title (e.g. [happy-dom upgrades](https://codeberg.org/forgejo/forgejo/pulls?q=Update+dependency+happy-dom)).
 
 - The PR contains information about the release. If it does not, it has detailed references that can be used to browse the commits in the dependency source repository and figure out what the changes are.
 - The comment of the review:
@@ -28,7 +28,6 @@ Pull [requests are opened](https://codeberg.org/forgejo/forgejo/pulls?poster=165
   - explains why the change has an impact on Forgejo
 - If the upgrade is needed, user visible changes must be included in the draft release notes for the upcoming release. See [this upgrade for an example](https://codeberg.org/forgejo/forgejo/pulls/3724/files).
 - Security fix and important bug fixes are backported to the stable releases.
-- Set the dependency label.
 
 Note that renovate will keep a few (see `prConcurrentLimit` in [renovate.json](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/renovate.json)) pull request open at any given time. If no decision is made, newer upgrades will accumulate in the backlog visible in the [dashboard](https://codeberg.org/forgejo/forgejo/issues/2779).
 
@@ -102,10 +101,6 @@ There is no uniformity in how software is released and they call for different s
 
 - https://code.forgejo.org/forgejo/download-artifact
 - https://code.forgejo.org/forgejo/upload-artifact
-
-# Labels
-
-The [labels](https://codeberg.org/forgejo/forgejo/labels) that begin with `dependency/*` group all issues and PRs related to a dependency. When an upgrade is proposed, it helps browse the history of past upgrade decisions and their rationale. See [go-enry](https://codeberg.org/forgejo/forgejo/pulls?labels=158513) for example.
 
 # Cherry-picking
 
