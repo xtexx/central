@@ -595,6 +595,8 @@ And the following unique queues:
 
 ## OAuth2 Client (`oauth2_client`)
 
+**Note**: Please note that if `SAME_SITE` is set to `strict` then login via an external OAuth2 provider may be broken. - this is a [known bug](https://codeberg.org/forgejo/forgejo/issues/1205).
+
 - `REGISTER_EMAIL_CONFIRM`: _[service]_ **REGISTER_EMAIL_CONFIRM**: Set this to enable or disable email confirmation of OAuth2 auto-registration. (Overwrites the REGISTER_EMAIL_CONFIRM setting of the `[service]` section)
 - `OPENID_CONNECT_SCOPES`: **\<empty\>**: List of additional openid connect scopes. (`openid` is implicitly added)
 - `ENABLE_AUTO_REGISTRATION`: **false**: Automatically create user accounts for new oauth2 users.
