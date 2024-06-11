@@ -182,6 +182,7 @@ connect to a S3 compatible server:
 - `MINIO_LOCATION`: **us-east-1**: S3 location to create bucket.
 - `MINIO_USE_SSL`: **false**: S3 enabled ssl.
 - `MINIO_INSECURE_SKIP_VERIFY`: **false**: S3 skip SSL verification.
+- `MINIO_CHECKSUM_ALGORITHM`: Minio checksum algorithm: **default** (for MinIO, garage or AWS S3) or **md5** (for Cloudflare or Backblaze)
 
 When used in the `[storage]` section they apply to all
 subsystems. When used in the section specific to a subsystem (see the table in the introduction), they
@@ -200,6 +201,7 @@ MINIO_BUCKET_LOOKUP = auto
 MINIO_LOCATION = us-east-1
 MINIO_USE_SSL = false
 MINIO_INSECURE_SKIP_VERIFY = false
+MINIO_CHECKSUM_ALGORITHM = md5
 
 [lfs]
 STORAGE_TYPE = minio
@@ -234,7 +236,7 @@ within the `forgejo` bucket instead of the `lfs/` directory
 
 Although the S3 storage type is named `minio` it does not rely on any
 [MinIO](https://min.io/) specific features. The S3 storage type is
-[tested](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/storage/storage.sh) to be compatible with:
+[tested](https://code.forgejo.org/forgejo/end-to-end/src/commit/9cfd043b8af18ce0df48fa6e44772d9bd521cab4/storage/storage.sh) to be compatible with:
 
 - [MinIO](https://min.io/) 2021.3.17 and 2023-08-23
 - [garage](https://garagehq.deuxfleurs.fr/) v0.8.2
