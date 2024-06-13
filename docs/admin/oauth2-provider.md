@@ -3,10 +3,6 @@ title: 'OAuth2 provider'
 license: 'CC-BY-SA-4.0'
 ---
 
-Forgejo can act as an instance wide OAuth2 provider. To achieve that, OAuth2 applications must be created in the `/admin/applications` page.
-
-> **NOTE:** Third party applications obtaining a token for a user via such an application will have administrative rights. OAuth2 scopes are not yet implemented.
-
 ## Pre-registered applications
 
 The following OAuth2 applications are pre-registered because it is generally useful for Forgejo to be an OAuth2 provider for the corresponding third party software. Their usage is explained in the [Forgejo user guide](../../user/oauth2-provider/).
