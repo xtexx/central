@@ -237,9 +237,8 @@ services:
 -    image: codeberg.org/forgejo/forgejo:7
 +    image: codeberg.org/forgejo/forgejo:7-rootless
     container_name: forgejo
-    environment:
-+      - USER_UID=1024
-+      - USER_GID=100
++   user: "1024:100"
+-    environment:
 -      - USER_UID=1000
 -      - USER_GID=1000
 
@@ -258,7 +257,7 @@ services:
 ```
 
 This will write the configuration into our created `conf` folder and all other data into the `data` folder.
-Make sure that `USER_UID` and `USER_GID` match the `anonuid` and `anongid` setting
+Make sure that `1024` and `100` match the `anonuid` and `anongid` setting
 in the NFS server setting here such that the Forgejo user sees files and folders with the same UID and GID
 in the respective folders and thus identifies itself as the sole owner of the folder structure.
 
