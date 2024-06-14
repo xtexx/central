@@ -33,6 +33,7 @@ Here's an explanation of the form's fields:
 - **README** is the first file one should read when accessing a repository. It's also the first file displayed when accessing a repository, a bit like the "homepage" of your repository. On Forgejo, this is interpreted as a [Markdown](/markdown/) file.
 - **Initialize repository** In order to add the `LICENSE`, `README` and `.gitignore` files mentioned above to your new repository, make sure you tick this box.
 - **Default branch** Using this field, you can choose how to name the default branch of your Git repository. We recommend you use the predefined default.
+- **Object format** is the repository's object format. We recommend SHA1 as it's the most compatible. It cannot be changed later once the repository has been created.
 
 It's okay to only specify owner and repository name, if you want to get started quickly.
 After filling out the fields, click the green "Create Repository" button on the bottom of the page.
@@ -44,8 +45,8 @@ You should now see a screen similar to the one below. If you haven't chosen to g
 Here's what the most important buttons do:
 
 - **Repository Settings (1)** is where you can make adjustments to your repository settings, such as setting a project website, changing the repository description, enabling/disabling a wiki and issue tracker or deleting the repository. You may want to give this page a visit right now, to get an overview of your options.
-- **The Watch, Star and Fork buttons (2)** allow you to interact with other people's repositories. While they don't do much for your own repository, when visiting another user's repository, you can click on "Watch" to get notified about everything important happening in that repository, "Star" to show the user your appreciation (and to help other users find interesting projects more quickly) and "Fork" to create your own copy of the repository, for example to make modifications that you want to share with the original author.
-- **The Repository Tabs (3)** contain links to every important feature within this repository:
+- **The RSS, Watch, Star and Fork buttons (2)** allow you to interact with other people's repositories. While they don't do much for your own repository, when visiting another user's repository, you can click on "Watch" to get notified about everything important happening in that repository, "Star" to show the user your appreciation (and to help other users find interesting projects more quickly) and "Fork" to create your own copy of the repository, for example to make modifications that you want to share with the original author. You can also use the RSS button to get the RSS feed of the repository.
+- **The Repository Tabs (3)** contain links to every important feature within this repository (some may not be visible by default):
   - **Code** lets you browse through all versions of this repository's code.
   - **Issues** is a very important communication tool between the author, their users and their contributors. Think of it as part bug-tracker, part forum.
     For more information on this, have a look at [The Basics of Issue Tracking](../issue-tracking-basics/)
