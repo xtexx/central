@@ -629,7 +629,7 @@ They can be overridden by a workflow to use `debian` and `bookworm` as follows.
 ```yaml
 runs-on: lxc
 container:
-  image: debian:bookwork
+  image: debian:bookworm
 ```
 
 See the user documentation for `jobs.<job_id>.container` for more information.
