@@ -9,11 +9,11 @@ Forgejo base localization is English. This means that all translations are deriv
 
 English localization strings are stored in the file `options/locale/locale_en-US.ini`. Strings are [translated](../localization) on Weblate and string management is partially done by it.
 
-When a new string needs to be added to Forgejo, it must be added to the base language to be picked up by Weblate. Optionally, if the author knows other languages, string translations for other languages can be added so they don't need to be translated for those languages after the PR is merged. This is not necessary and translation can be delegated to the translators at Weblate.
+When a new string needs to be added to Forgejo, it must be added to the base language to be picked up by Weblate.
 
 When a string key needs to be changed, it must be mass-changed for all languages into which the string has already been translated, so that existing translations aren't lost.
 
-When a string needs to be deleted, it should only be deleted for the base language. Weblate will delete strings for other languages after the PR is merged.
+When an unused string needs to be deleted, it should be only deleted for the base language to avoid merge conflicts. The string will disappear from all translations automatically after the PR is merged.
 
 ## Localization style
 
