@@ -4,11 +4,20 @@ license: 'Apache-2.0'
 origin_url: 'https://github.com/go-gitea/gitea/blob/e865de1e9d65dc09797d165a51c8e705d2a86030/docs/content/usage/authentication.en-us.md'
 ---
 
-Forgejo serve itself without a reverse proxy with HTTP and HTTPS.
+Forgejo can live standalone, or behind a [reverse proxy](https://en.wikipedia.org/wiki/Reverse_proxy).  
+You may want this for scenarios like:
 
-HTTP transport is used by default, to turn on HTTPS transport set in `SERVER` section of the configuration `PROTOCOL=https` and either set `CERT_FILE` and `KEY_FILE` or let Forgejo manage the certificates with `ENABLE_ACME=true`
+- Subpath mapping.
+  If you want Forgejo at something like `https://example.com/code/` or `https://example.com/repositories/` instead of the default `https://example.com`.
+- Port mapping.
+  If you want to run Forgejo on the standard port, and that port is already taken by another web server.  
+  I.e. as `https://example.com` instead of as `https://example.com:3000`.
+- Proxy authentication.  
+  Using an external login service.  
+  _Forgejo usually does not need a proxy for this, as it can be configured to talk to many login services directly._
 
-You may wish to place your Forgejo instance behind a reverse proxy. A reverse proxy is a server that accepts requests from the outside and routes them to internal services, like Forgejo.
+Forgejo does not need the help of a proxy to do HTTPS, it can do it directly.  
+Set in `SERVER` section of the configuration `PROTOCOL=https` and either set `CERT_FILE` and `KEY_FILE` or let Forgejo manage the certificates with `ENABLE_ACME=true`
 
 ## nginx
 
@@ -42,7 +51,7 @@ Make sure to reload/restart nginx after changing the configuration.
 
 ### HTTP with a subpath
 
-If you want to serve Forgejo on a subpath, e.g. on `http://example.com/forgejo`, use the following configuration:
+If you want to serve Forgejo on a subpath, e.g. on `http://example.com/code`, use the following configuration:
 
 ```nginx
 server {
@@ -51,9 +60,9 @@ server {
 
     server_name example.com; # Change this to the server domain name.
 
-    location /forgejo/ { # Replace forgejo here with your subpath
+    location /code/ { # Replace /code here with your subpath
         rewrite ^ $request_uri;
-        rewrite ^/forgejo(/.*) $1 break;
+        rewrite ^/code(/.*) $1 break;
         return 400;
         proxy_pass http://127.0.0.1:3000$uri;
 
@@ -145,7 +154,7 @@ Next, enable the site with `a2ensite 100-forgejo.conf` and enable the proxy modu
 
 ### HTTP with a subpath
 
-If you want to serve Forgejo on a subpath, e.g. on `http://example.com/forgejo`, use the following configuration:
+If you want to serve Forgejo on a subpath, e.g. on `http://example.com/code`, use the following configuration:
 
 ```apache
 <VirtualHost *:80>
@@ -154,7 +163,7 @@ If you want to serve Forgejo on a subpath, e.g. on `http://example.com/forgejo`,
     ProxyPreserveHost On
     ProxyRequests off
     AllowEncodedSlashes NoDecode
-    ProxyPass /forgejo http://127.0.0.1:3000/ nocanon # Change /forgejo here to your desired subpath.
+    ProxyPass /code http://127.0.0.1:3000/ nocanon # Change /code here to your desired subpath.
 </VirtualHost>
 ```
 
@@ -216,11 +225,11 @@ Caddy will automatically get certificates for the domain.
 
 ### HTTPS with a subpath
 
-If you want to serve Forgejo on a subpath, e.g. on https://example.com/forgejo, use the following configuration:
+If you want to serve Forgejo on a subpath, e.g. on https://example.com/code, use the following configuration:
 
 ```Caddyfile
 example.com {
-  reverse_proxy /forgejo* 127.0.0.1:3000
+  reverse_proxy /code* 127.0.0.1:3000
 }
 ```
 
