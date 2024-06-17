@@ -24,7 +24,7 @@ You can switch between issues that are still open, and those that are already re
 Some projects define milestones **(4)**, to which issues can be assigned. They are good for
 visualizing the progress of a project's development.
 
-You can create an issue by clicking on the green "New Issue" button **(5)** at the top left
+You can create an issue by clicking on the orange "New Issue" button **(5)** at the top right
 of the issues list.
 
 Issues in the issue tracker are public, and everyone is able to read and answer them.
