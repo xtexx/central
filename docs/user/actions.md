@@ -166,8 +166,11 @@ by using the https://code.forgejo.org/actions/cache action.
 There is no guarantee that the cache is populated, even when two `jobs`
 run in sequence. It is not a substitute for `artifacts`.
 
-Note that [actions/cache](https://code.forgejo.org/actions/cache) has `zstd`
-as a dependency for creating tar archives in the runner.
+See also the [set of examples](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-cache/.forgejo/workflows/).
+
+> **NOTE:** [actions/cache](https://code.forgejo.org/actions/cache) will us `zstd` if present when compressing files to be sent to the cache. It is faster than the default compression.
+
+> **NOTE:** if the runner is not configured to provide a cache, [actions/cache](https://code.forgejo.org/actions/cache) will fail with the following error: `Cache action is only supported on GHES version >= 3.5`.
 
 ## Auto cancellation of workflows
 
