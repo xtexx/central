@@ -3,7 +3,7 @@ title: Blocking a user
 license: 'CC-BY-SA-4.0'
 ---
 
-Blocking another user is desirable if they are acting maliciously or are spamming your repository. For such cases, Forgejo provides the functionality to block other users. When you block a user, Forgejo does not explicitly notify them, but they may learn through an interaction with you that is blocked.
+Blocking another user is desirable if they are acting maliciously or are spamming your repository (for instance by adding unsolicited comments in issues). For such cases, Forgejo provides the functionality to block other users. When you block a user, Forgejo does not explicitly notify them, but they may learn through an interaction with you that is blocked.
 
 ## How to block someone
 
