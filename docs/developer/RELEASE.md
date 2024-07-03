@@ -7,18 +7,18 @@ license: 'CC-BY-SA-4.0'
 
 Forgejo stable releases are published on a fixed schedule, every quarter.
 
-| **Date** | **Version**              | **Release date** | **End Of Life**  |
-| -------- | ------------------------ | ---------------- | ---------------- |
-| 2024 Q1  | 7.0.0+gitea-1.22.0 (LTS) | 23 April 2024    | **16 July 2025** |
-| 2024 Q2  | 8.0.0+gitea-A.B.C        | 17 July 2024     | 16 October 2024  |
-| 2024 Q3  | X.Y.Z+gitea-A.B.C        | 16 October 2024  | 15 January 2025  |
-| 2024 Q4  | X.Y.Z+gitea-A.B.C        | 15 January 2025  | 16 April 2025    |
-| 2025 Q1  | X.Y.Z+gitea-A.B.C (LTS)  | 16 April 2025    | **14 July 2026** |
-| 2025 Q2  | X.Y.Z+gitea-A.B.C        | 16 July 2025     | 15 October 2025  |
-| 2025 Q3  | X.Y.Z+gitea-A.B.C        | 15 October 2025  | 14 January 2026  |
-| 2025 Q4  | X.Y.Z+gitea-A.B.C        | 14 January 2026  | 15 April 2026    |
-| 2026 Q1  | X.Y.Z+gitea-A.B.C (LTS)  | 15 April 2026    | **14 July 2027** |
-| 2026 Q2  | X.Y.Z+gitea-A.B.C        | 15 July 2026     | 14 October 2026  |
+| **Date** | **Version**          | **Feature freeze** | **Release date** | **End Of Life**  |
+| -------- | -------------------- | ------------------ | ---------------- | ---------------- |
+| 2024 Q1  | 7.0+gitea-1.21 (LTS) |                    | 23 April 2024    | **16 July 2025** |
+| 2024 Q2  | 8.0+gitea-1.22       | 1 July 2024        | 17 July 2024     | 16 October 2024  |
+| 2024 Q3  | 9.0+gitea-A.B        | 25 September 2024  | 16 October 2024  | 15 January 2025  |
+| 2024 Q4  | X.Y+gitea-A.B        | 25 December 2024   | 15 January 2025  | 16 April 2025    |
+| 2025 Q1  | X.Y+gitea-A.B (LTS)  | 26 March 2025      | 16 April 2025    | **14 July 2026** |
+| 2025 Q2  | X.Y+gitea-A.B        | 25 June 2025       | 16 July 2025     | 15 October 2025  |
+| 2025 Q3  | X.Y+gitea-A.B        | 24 September 2025  | 15 October 2025  | 14 January 2026  |
+| 2025 Q4  | X.Y+gitea-A.B        | 24 December 2025   | 14 January 2026  | 15 April 2026    |
+| 2026 Q1  | X.Y+gitea-A.B (LTS)  | 25 March 2026      | 15 April 2026    | **14 July 2027** |
+| 2026 Q2  | X.Y+gitea-A.B        | 24 June 2026       | 15 July 2026     | 14 October 2026  |
 
 ### Stable release support
 
@@ -40,7 +40,7 @@ Experimental releases are published daily in [forgejo-experimental](https://code
 
 The Forgejo release numbers are compliant with [Semantic Versioning](https://semver.org/). They are followed by the Gitea release number with which it is compatible. For instance:
 
-- Forgejo **v7.1.0+gitea-1.22.0** is compatible with Gitea **v1.22.0**.
+- Forgejo **v7.0.5+gitea-1.21.0** is compatible with Gitea **v1.21.0**.
 
 The release candidates are built of the stable branch and published with the **-test** suffix:
 
@@ -66,41 +66,11 @@ The TL;DR: to publish a vX.Y.Z release is to:
 
 ### Feature freeze
 
-- Two weeks before the release date only bug fixes can be merged
+- Three weeks before the release date only bug fixes can be merged
 
 ### Cutting a release
 
-When a new `vX.Y.Z` release is ready to enter the release candidate stages:
-
-- Verify in the Makefile that the variable GITEA_COMPATIBILITY is set to the right version.
-- Create a new `vX.Y/forgejo` branch from the `forgejo` branch.
-- Add a `backport/vX.Y` label in the [issue tracker](https://codeberg.org/forgejo/forgejo/issues).
-- Set a `v(X+1).0.0-dev` tag on the forgejo branch and make sure it is at least one commit ahead of the `vX.Y/forgejo` branch so they do not conflict.
-- Push the `v(X+1).0.0-dev` tag to the https://codeberg.org/forgejo/forgejo repository
-- Push the `v(X+1).0.0-dev` tag to the https://codeberg.org/forgejo-integration/forgejo repository and cancel the build release job
-- Add add a `vX.Y/forgejo` branch protection rule https://codeberg.org/forgejo/forgejo/settings/branches
-- Trigger a mirror workflow in https://codeberg.org/forgejo/forgejo and verify the `X.Y-test` and `(X+1).0-test` releases are published in https://codeberg.org/forgejo-experimental
-- Update end-to-end to [know about the new release](https://code.forgejo.org/forgejo/end-to-end/pulls/139). It must be done after the first `(X+1).0-test` release is available in experimental otherwise it will fail to find it and will block the automated release process in the forgejo-integration repository
-- Documentation
-  - In [the documentation](https://codeberg.org/forgejo/docs)
-    - Create the `vX.Y` branch from next
-    - Create the `backport/vX.Y` label
-  - In [the website](https://codeberg.org/forgejo/website) add a submodule similar to [this commit](https://codeberg.org/forgejo/website/commit/3f1e62be22f96d048309157e8779cbfcf204eb90)
-
-### Release Notes
-
-- Add an entry in RELEASE-NOTES.md
-
-The dependencies where user visible changes should be harvested when they are upgraded are:
-
-- [Alpine](https://www.alpinelinux.org/)
-- [git](https://pkgs.alpinelinux.org/packages?name=git)
-- [gnupg](https://pkgs.alpinelinux.org/packages?name=gnupg)
-- [sqlite](https://pkgs.alpinelinux.org/packages?name=sqlite)
-- [openssh](https://pkgs.alpinelinux.org/packages?name=openssh)
-- [Gitea](https://github.com/go-gitea/gitea)
-- [chroma](https://github.com/alecthomas/chroma/) - syntax highlight
-- [go-enry](https://github.com/go-enry/go-enry) & [linguist](https://github.com/github-linguist/linguist) - language detection
+Create a new issue based on the checklist of the previous release ([for instance v8.0.0](https://codeberg.org/forgejo/forgejo/issues/4153)).
 
 ### Forgejo release building and testing
 
@@ -138,13 +108,47 @@ It will trigger a workflow to:
 - Download Binaries from https://codeberg.org/forgejo-experimental, sign them and copy them to https://codeberg.org/forgejo
 - Copy container images from https://codeberg.org/forgejo-experimental to https://codeberg.org/forgejo
 
-### Forgejo release mirror
+### Website update
+
+- Restart the last CI build at https://codeberg.org/forgejo/website/src/branch/main/
+- Verify [https://forgejo.org/download/](/download/) points to the expected release
+- Manually try the instructions to work
+
+### DNS update
+
+- Update the `release.forgejo.org` TXT record that starts with `forgejo_versions=` to be `forgejo_versions=vX.Y.Z`
+
+## LTS toolchain upgrades
+
+The Forgejo toolchain relies on Go OCI images based on
+Alpine. Only the [last two Alpine versions are
+supported](https://github.com/docker-library/golang/commit/cf7a37dedf1fd5a25ca72075645368d1e3c30c4a)
+and will be EOL before the Forgejo LTS. In order to receive security
+updates the toolchain needs to be upgraded to a supported Alpine and
+Go version because it goes EOL.
+
+## Automated experimental releases
+
+The Forgejo development and stable branches are [pushed daily to the
+forgejo-integration](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/.forgejo/workflows/mirror.yml).
+It triggers the [release build
+workflow](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/.forgejo/workflows/build-release.yml)
+which creates a new release for each updated branch, based on their latest commit:
+
+- the `forgejo` branch creates the `X.Y-test` release where `X.Y` is based on the most recent tag. For instance:
+  - the tag `v8.0.0-dev` will create the `8.0-test` release
+  - the tag `v8.1.0-dev` will create the `8.1-test` release
+- the `v*/forgejo` branches create `X.Y-test` releases where `X.Y` is based on their name. For instance:
+  - the branch `v7.0/forgejo` will create the `7.0-test` release
+  - the branch `v7.1/forgejo` will create the `7.1-test` release
+
+## Forgejo release mirror
 
 The https://code.forgejo.org/forgejo/forgejo repository is a read-only
 mirror [updated daily](https://code.forgejo.org/forgejo/forgejo/src/branch/main/.forgejo/workflows) with the release assets
 and the branches from https://codeberg.org/forgejo/forgejo.
 
-### Forgejo runner publication
+## Forgejo runner publication
 
 - Push the vX.Y.Z tag to https://code.forgejo.org/forgejo/runner
 
@@ -169,46 +173,13 @@ If publishing the release needs debug, it can be done manually:
 It can also be done from the CLI with `forgejo-runner exec` and
 providing the secrets from the command line.
 
-### Securing the release token and cryptographic keys
-
-For both the Forgejo runner and Forgejo itself, copying and signing the release artifacts (container images and binaries) happen on a Forgejo instance [not publicly accessible](../infrastructure/#octopuce) to safeguard the token that has write access to the Forgejo repository as well as the cryptographic key used to sign the releases.
-
-### Website update
-
-- Restart the last CI build at https://codeberg.org/forgejo/website/src/branch/main/
-- Verify [https://forgejo.org/download/](/download/) points to the expected release
-- Manually try the instructions to work
-
-### DNS update
-
-- Update the `release.forgejo.org` TXT record that starts with `forgejo_versions=` to be `forgejo_versions=vX.Y.Z`
-
-### Standard toot
-
-The following toot can be re-used to announce a minor release at `https://floss.social/@forgejo`. For more significant releases it is best to consider a dedicated and non-standard toot.
-
-```
-#Forgejo vX.Y.Z was just released! This is a minor patch. Check out the release notes and download it at https://forgejo.org/releases/. If you experience any issues with this release, please report to https://codeberg.org/forgejo/forgejo/issues.
-```
-
-## Experimental releases
-
-The Forgejo development and stable branches are [pushed daily to the
-forgejo-integration](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/.forgejo/workflows/mirror.yml).
-It triggers the [release build
-workflow](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/.forgejo/workflows/build-release.yml)
-which creates a new release for each updated branch, based on their latest commit:
-
-- the `forgejo` branch creates the `X.Y-test` release where `X.Y` is based on the most recent tag. For instance:
-  - the tag `v8.0.0-dev` will create the `8.0-test` release
-  - the tag `v8.1.0-dev` will create the `8.1-test` release
-- the `v*/forgejo` branches create `X.Y-test` releases where `X.Y` is based on their name. For instance:
-  - the branch `v7.0/forgejo` will create the `7.0-test` release
-  - the branch `v7.1/forgejo` will create the `7.1-test` release
-
 ## Release signing keys management
 
 A GPG master key with no expiration date is created and shared with members of the Owners team via encrypted email. A subkey with a one year expiration date is created and stored in the secrets repository (`openpgp/20??-release-team.gpg`), to be used by the release pipeline. The public master key is stored in the secrets repository and published where relevant (keys.openpgp.org for instance).
+
+### Securing the release token and cryptographic keys
+
+For both the Forgejo runner and Forgejo itself, copying and signing the release artifacts (container images and binaries) happen on a Forgejo instance [not publicly accessible](../infrastructure/#octopuce) to safeguard the token that has write access to the Forgejo repository as well as the cryptographic key used to sign the releases.
 
 ### Master key creation
 
