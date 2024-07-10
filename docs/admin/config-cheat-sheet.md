@@ -1287,13 +1287,21 @@ The settings for all these sections are [explained in detail in the storage docu
 - `PROXY_URL`: **\<empty\>**: Proxy server URL, support http://, https//, socks5://, blank will follow environment http_proxy/https_proxy
 - `PROXY_HOSTS`: **\<empty\>**: Comma separated list of host names requiring proxy. Glob patterns (\*) are accepted; use \*\* to match all hosts.
 
-i.e.
+For example, the following configuration can be used to proxy connections GitHub subdomains, such as api.github.com:
 
 ```ini
 PROXY_ENABLED = true
 PROXY_URL = socks5://127.0.0.1:1080
 PROXY_HOSTS = *.github.com
 ```
+
+If you intend to proxy all connections to github.com, specify it's second-level domain too:
+
+```
+PROXY_HOSTS = github.com,*.github.com
+```
+
+Note that you may need to set `[migrations].ALLOW_LOCALNETWORKS` option to `true` in order to allow performing migrations via proxy.
 
 ## Actions (`actions`)
 
