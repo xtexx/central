@@ -766,6 +766,7 @@ Define allowed algorithms and their minimum key length (use -1 to disable a type
 ## Cache (`cache`)
 
 - `ADAPTER`: **memory**: Cache engine adapter, either `memory`, `redis`, `redis-cluster`, `twoqueue` or `memcache`. (`twoqueue` represents a size limited LRU cache.)
+  - Refer to the [Recommended Settings](../recommendations/#cacheadapter) for more information about cache adapters.
 - `INTERVAL`: **60**: Garbage Collection interval (sec), for memory and twoqueue cache only.
 - `HOST`: **\<empty\>**: Connection string for `redis`, `redis-cluster` and `memcache`. For `twoqueue` sets configuration for the queue.
   - Redis: `redis://:macaron@127.0.0.1:6379/0?pool_size=100&idle_timeout=180s`

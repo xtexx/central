@@ -42,6 +42,13 @@ If your instance does not see much activity, it is recommended to change this va
 
 If your instance sees a lot of activity, it is recommended to change this value to **redis** or **memcache**. In that case, caching is outsourced to third-party software designed to cache items. Keep in mind that you will probably also need to modify `[cache].HOST` to configure the use of this software.
 
+The **redis** adapter should support most software that works with a limited subset of the [Redis Go Client](https://github.com/redis/go-redis) APIs. In particular, Forgejo has integration tests against:
+
+- [Redis](https://redis.io/) v7.2; higher versions will not be officially supported due to licensing concerns,
+- [Redict](https://redict.io/), a fork of Redis v7.2 licensed under the Lesser GNU General Public license (`LGPL-3.0-only`),
+- [Valkey](https://valkey.io/), a fork of Redis v7.2 stewarded by the Linux Foundation, and
+- [Garnet](https://microsoft.github.io/garnet), an independently implemented cache-store using [Redis's RESP](https://redis.io/docs/latest/develop/reference/protocol-spec/).
+
 ### `[repository.signing].DEFAULT_TRUST_MODEL`
 
 When Forgejo needs to verify a GPG or SSH signed commit on a repository, it checks who it can trust to have a verified commit on that repository. The default value for this setting is that Forgejo trusts only contributors to that repository to have signed commits, this can cause unexpected behavior for those used to GitHub when hosting repositories that anyone can contribute to, because non-collaborators with signed commits on that repository are shown as unverified.
