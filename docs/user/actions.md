@@ -556,6 +556,28 @@ on:
 
 > **NOTE:** combining `tags` with `paths` or `branches` is unspecified.
 
+### `on.issues`
+
+Trigger the workflow when an event happens on an issue or a pull request, as
+specified with the `types` event parameter. It defaults to `[opened, edited]` if not specified.
+
+- `opened` the issue or pull request was created.
+- `reopened` the closed issue or pull request was reopened.
+- `closed` the issue or pull request was closed or merged.
+- `labeled` a label was added.
+- `unlabeled` a label was removed.
+- `assigned` an assignee was added.
+- `unassigned` an assignee was removed.
+- `edited` the body, title or comments of the issue or pull request were modified.
+
+```yaml
+on:
+  issues:
+    types: [opened, edited]
+```
+
+[Check out the example](https://code.forgejo.org/forgejo/end-to-end/src/branch/main/actions/example-issue/.forgejo/workflows/test.yml).
+
 ### `on.pull_request`
 
 Trigger the workflow when an event happens on a pull request, as
