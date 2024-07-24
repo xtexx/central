@@ -339,6 +339,26 @@ The `Forgejo runner` needs to connect to a `Forgejo` instance and must be regist
   		 --secret 7c31591e8b67225a116d4a4519ea8e507e08f71f
   ```
 
+  The secret must be a 40-character long string of hexadecimal numbers.
+  The first 16 characters will be used as an identifier for the runner, while
+  the rest is the actual secret. It is possible to update the secret of an
+  existing runner by running the command again on the Forgejo machine, with
+  the last 24 characters updated.
+
+  For instance, the command below would change the secret set by the previous
+  command:
+
+  ```sh
+  $ forgejo forgejo-cli actions register --name runner-name --scope myorganization \
+  	  --secret 7c31591e8b67225a84e8e06633b9578e793664c3
+  #              ^^^^^^^^^^^^^^^^ This part is identical
+  ```
+
+  The registration command on the Forgejo side is mostly idempotent, with the
+  exception of the runner labels. If the command is run without `--labels`, they
+  will be reset, and the runner won't set them back until it is restarted. The
+  `--keep-labels` option can be used to preserve the existing labels.
+
 ### Configuration
 
 The default configuration for the runner can be
