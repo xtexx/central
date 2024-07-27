@@ -159,7 +159,7 @@ The following changes are recommended if dealing with many large files:
   ...
   ```
 
-  Similar restrictions restrictions exist for attachments to issues/pull requests, configured
+  Similar restrictions exist for attachments to issues/pull requests, configured
   in the [`[attachment]` sections](../config-cheat-sheet/#issue-and-pull-request-attachments-attachment)
   `MAX_SIZE` (default 4MB) and `MAX_FILES` (default 5) settings.
 
