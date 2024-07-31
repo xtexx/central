@@ -20,8 +20,10 @@ binary.
 
 Application settings can be found in file `CustomConf` which is by default,
 `$FORGEJO_CUSTOM/conf/app.ini` but may be different if your build has set this differently.
-Again `forgejo help` will allow you review this variable and you can override it using the
-`--config` option on the `forgejo` binary.
+
+If you are having difficulty with finding the `CustomConf` directory, you can identify
+the variable using `forgejo help` or in the logs. This variable can be overridden using
+the `--config` option on the `forgejo` binary.
 
 **Note:** Forgejo must perform a full restart to see configuration changes.
 
