@@ -27,13 +27,12 @@ When you create a repository (or an organization), you can ensure certain labels
 ## Archiving Labels
 
 When a label is no longer useful but needs to be kept around because
-it is still associated with existing pull requests or issues, it can
-be archived.
+it is still associated with existing pull requests or issues, it can be archived.
 
 - The label won't show up as a suggestion when you're adding/editing labels.
 - The label cannot be assigned to a new issues or pull requests.
 
-To archive a label, edit the label an click the `Archive` checkbox.
+To archive a label, edit the label and click the `Archive` checkbox.
 
 ![archive a label](../_images/user/labels/label-archive.png)
 
@@ -45,10 +44,14 @@ Scoped labels are used to ensure at most a single label with the same scope is a
 
 A scoped label must contain `/` in its name (not at either end of the name). The scope of a label is determined based on the **last** `/`, so for example the scope of label `scope/subscope/item` is `scope/subscope`.
 
+## Applying labels
+
+Labels can be applied to issues or pull requests on their pages by clicking on `Labels`. In the dropdown menu, labels can be added or removed. Of a set of scoped labels with the same scope, only one can be selected. Archived labels are disabled for addition.
+
+![apply labels](../_images/user/labels/label-apply.png)
+
 ## Filtering by Label
 
 Issue and pull request lists can be filtered by label. Selecting multiple labels shows issues and pull requests that have all selected labels assigned.
 
 By holding alt to click the label, issues and pull requests with the chosen label are excluded from the list.
-
-![list of labels](../_images/user/labels/label-apply.png)
