@@ -663,7 +663,7 @@ And the following unique queues:
 - `DEFAULT_ALLOW_CREATE_ORGANIZATION`: **true**: Allow new users to create organizations by default.
 - `DEFAULT_USER_IS_RESTRICTED`: **false**: Give new users restricted permissions by default
 - `DEFAULT_ENABLE_DEPENDENCIES`: **true**: Enable this to have dependencies enabled by default.
-- `USER_LOCATION_MAP_URL`: **""**: A map service URL to show user's location on a map. The location will be appended to the URL as escaped query parameter.
+- `USER_LOCATION_MAP_URL`: **""**: A map service URL to show user's location on a map. The location will be appended to the URL as escaped query parameter. In Forgejo, [OpenStreetMap](https://openstreetmap.org) is used by default.
 - `ALLOW_CROSS_REPOSITORY_DEPENDENCIES` : **true** Enable this to allow dependencies on issues from any repository where the user is granted access.
 - `ENABLE_USER_HEATMAP`: **true**: Enable this to display the heatmap on users profiles.
 - `ENABLE_TIMETRACKING`: **true**: Enable Timetracking feature.
