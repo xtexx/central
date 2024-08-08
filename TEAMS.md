@@ -4,6 +4,22 @@ A team is a group of people who work together on a specific area to further Forg
 
 Some of the teams are trusted with access to exclusive resources that require credentials. To participate in such a team someone can open a pull request to add their name and their membership will be decided by the Forgejo community (see the [decision making document](DECISION-MAKING.md) for more information).
 
+- [Accessibility](#accessibility)
+- [User Interface](#user-interface)
+- [Helm](#helm)
+- [Devops](#devops)
+- [Contributors](#contributors)
+- [Mergers](#mergers)
+- [Localization](#localization)
+- [User Research](#user-research)
+- [Releases](#releases)
+- [Security](#security)
+- [Social account](#social-account)
+- [Moderation](#moderation)
+- [Liberapay team members](#liberapay-team-members)
+- [GitHub organisation owners](#github-organisation-owners)
+- [GitLab.com organisation owners](#gitlab-com-organisation-owners)
+
 ## Accessibility
 
 Purpose: Work on improving Forgejo accessibility.
@@ -235,9 +251,10 @@ Team members:
 * @algernon ([July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/151))
 
 
-## [GitHub organisation](https://github.com/forgejo) owners as of 2024-01-09
+## GitHub organisation owners
+Up to date as of 2024-08-08.
 
-This organisation is only use to prevent squatting. Its information must be kept up-to-date (website, forge and social links).
+[The Forgejo organisation on GitHub](https://github.com/forgejo) is only used to prevent squatting. Its information must be kept up to date (website, forge and social links).
 
 - [caesar](https://github.com/caesar)
 - [crystal](https://github.com/crystalcommunication)
@@ -245,9 +262,10 @@ This organisation is only use to prevent squatting. Its information must be kept
 - [gusted](https://github.com/Gusted)
 - [oliverpool](https://github.com/oliverpool)
 
-## [GitLab.com organisation](https://gitlab.com/forgejo) owners as of 2024-02-04
+## GitLab.com organisation owners
+Up to date as of 2024-08-08.
 
-This organisation is only used to prevent squatting.
+[The Forgejo organisation on GitLab.com](https://gitlab.com/forgejo) is only used to prevent squatting.
 
 - [crystal](https://gitlab.com/crystalcommunication)
 - [oliverpool](https://gitlab.com/oliverpool)
