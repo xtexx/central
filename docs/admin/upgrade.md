@@ -49,7 +49,6 @@ It is **critical** to verify that Forgejo works very carefully. Restoring the ba
 - Manually analyze (reading the patches to the sources of the template directory) and update the customized CSS / content.
 - Do not use `forgejo help` to figure out the location of `CustomPath`, look at the configuration tab of the `Site administration` panel when logged in as an admin.
 - `forgejo manager flush-queues`. If it times out, run it again with a more generous `--timeout` argument. It is important because the queues contain serialized data that is not guaranteed to be backward compatible between versions.
-- Go to the `Site administration` panel and pause all queues
 
 Note: Forgejo requires [docker >= 20.10.6](https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_3.14.0) otherwise mysterious problems will happen (mysterious in the sense that the problem will about something unrelated to the Docker version").
 
