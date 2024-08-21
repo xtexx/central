@@ -15,6 +15,7 @@ The **7** tag is set to be the latest minor release, starting with **7.0.x**. Th
 
 Upgrading from **X** to **X+1** (for instance from **7** to **8**) requires a [manual operation and human verification](../upgrade/). However it is possible to use the **X** tag (for instance **7**) to get the latest minor release automatically.
 
+### Docker:
 Here is a sample [docker-compose](https://docs.docker.com/compose/install/) file:
 
 ```yaml
@@ -45,6 +46,51 @@ services:
 
 Note that the volume should be owned by the user/group with the UID/GID specified in the config file.
 If you don't give the volume correct permissions, the container may not start.
+
+### Podman:
+Save the following files in /etc/containers/systemd, as port 222 requires elevated privileges:
+
+```
+# forgejo.container
+[Container]
+ContainerName=forgejo
+Environment=USER_UID=1000
+Environment=USER_GID=1000
+Image=codeberg.org/forgejo/forgejo:7
+Network=forgejo.network
+PublishPort=3000:3000
+PublishPort=222:22
+Volume=forgejo-data:/data
+Volume=/etc/timezone:/etc/timezone:ro
+Volume=/etc/localtime:/etc/localtime:ro
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target
+
+---
+
+# forgejo.network
+[Network]
+NetworkName=forgejo
+
+---
+
+#forgejo-data.volume
+[Volume]
+VolumeName=forgejo-data
+```
+
+Once saved, run:
+
+```bash
+sudo systemctl daemon-reload
+
+sudo systemctl start forgejo
+```
+
 
 ## Configuration
 
