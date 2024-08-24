@@ -976,35 +976,35 @@ Additional settings can be included in this section to specify where the data is
 - `ENABLED`: **false**: Enable service.
 - `RUN_AT_START`: **false**: Run tasks at start up time (if ENABLED).
 - `NOTICE_ON_SUCCESS`: **false**: Set to true to switch on success notices.
-- `SCHEDULE`: **@every 72h**: Cron syntax for scheduling repository archive cleanup, e.g. `@every 1h`.
+- `SCHEDULE`: **@every 72h**: Cron syntax for scheduling '.ssh/authorized_keys' synchronization, e.g. `@every 1h`.
 
 #### Cron - Resynchronize pre-receive, update and post-receive hooks of all repositories (`cron.resync_all_hooks`)
 
 - `ENABLED`: **false**: Enable service.
 - `RUN_AT_START`: **false**: Run tasks at start up time (if ENABLED).
 - `NOTICE_ON_SUCCESS`: **false**: Set to true to switch on success notices.
-- `SCHEDULE`: **@every 72h**: Cron syntax for scheduling repository archive cleanup, e.g. `@every 1h`.
+- `SCHEDULE`: **@every 72h**: Cron syntax for scheduling Git hooks synchronization for all repositories, e.g. `@every 1h`.
 
 #### Cron - Reinitialize all missing Git repositories for which records exist (`cron.reinit_missing_repos`)
 
 - `ENABLED`: **false**: Enable service.
 - `RUN_AT_START`: **false**: Run tasks at start up time (if ENABLED).
 - `NOTICE_ON_SUCCESS`: **false**: Set to true to switch on success notices.
-- `SCHEDULE`: **@every 72h**: Cron syntax for scheduling repository archive cleanup, e.g. `@every 1h`.
+- `SCHEDULE`: **@every 72h**: Cron syntax for scheduling initialization of repositories missing their Git files, e.g. `@every 1h`.
 
 #### Cron - Delete all repositories missing their Git files (`cron.delete_missing_repos`)
 
 - `ENABLED`: **false**: Enable service.
 - `RUN_AT_START`: **false**: Run tasks at start up time (if ENABLED).
 - `NOTICE_ON_SUCCESS`: **false**: Set to true to switch on success notices.
-- `SCHEDULE`: **@every 72h**: Cron syntax for scheduling repository archive cleanup, e.g. `@every 1h`.
+- `SCHEDULE`: **@every 72h**: Cron syntax for scheduling deletion of repositories missing their Git files, e.g. `@every 1h`.
 
 #### Cron - Delete generated repository avatars (`cron.delete_generated_repository_avatars`)
 
 - `ENABLED`: **false**: Enable service.
 - `RUN_AT_START`: **false**: Run tasks at start up time (if ENABLED).
 - `NOTICE_ON_SUCCESS`: **false**: Set to true to switch on success notices.
-- `SCHEDULE`: **@every 72h**: Cron syntax for scheduling repository archive cleanup, e.g. `@every 1h`.
+- `SCHEDULE`: **@every 72h**: Cron syntax for scheduling generated repository avatars cleanup, e.g. `@every 1h`.
 
 #### Cron - Delete all old actions from database (`cron.delete_old_actions`)
 
