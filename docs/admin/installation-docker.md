@@ -16,6 +16,7 @@ The **7** tag is set to be the latest minor release, starting with **7.0.x**. Th
 Upgrading from **X** to **X+1** (for instance from **7** to **8**) requires a [manual operation and human verification](../upgrade/). However it is possible to use the **X** tag (for instance **7**) to get the latest minor release automatically.
 
 ### Docker:
+
 Here is a sample [docker-compose](https://docs.docker.com/compose/install/) file:
 
 ```yaml
@@ -48,6 +49,12 @@ Note that the volume should be owned by the user/group with the UID/GID specifie
 If you don't give the volume correct permissions, the container may not start.
 
 ### Podman:
+
+Currently tested on the following specifications:
+
+- Podman v5.2.1
+- Fedora 40, Alma Linux 9.4, Rocky Linux 9
+
 Save the following files in /etc/containers/systemd, as port 222 requires elevated privileges:
 
 ```
@@ -61,8 +68,6 @@ Network=forgejo.network
 PublishPort=3000:3000
 PublishPort=222:22
 Volume=forgejo-data:/data
-Volume=/etc/timezone:/etc/timezone:ro
-Volume=/etc/localtime:/etc/localtime:ro
 
 [Service]
 Restart=always
@@ -91,6 +96,13 @@ sudo systemctl daemon-reload
 sudo systemctl start forgejo
 ```
 
+On a browser, go to `http://localhost:3000` to initialize Onboarding
+
+Note: SSH will be accessible to the container via port 222 on `localhost`. Once SSH keys have been verified on Forgejo, to confirm functionality, run:
+
+```bash
+ssh -F /dev/null git@<address> -p 222
+```
 
 ## Configuration
 
