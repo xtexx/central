@@ -57,7 +57,7 @@ If your instance expects users to contribute to other repositories within your i
 
 ### `[security].LOGIN_REMEMBER_DAYS`
 
-When a user logs in with the remember option enabled, they receive a long-term authentication cookie that is remembered for a number of days, determined by this setting. The default value is one month, which much may be less than other services and could be frustrating for the user to log in every month.
+When a user logs in with the remember option enabled, they receive a long-term authentication cookie that is remembered for a number of days, determined by this setting. The default value is one month, which may be less than other services and could be frustrating for the user to log in every month.
 
 If your instance does not need to adhere to a security policy that mandates a different value, it is recommended that you change this value to **365**. In that case, the long-term authentication cookie will be stored on the user's device for one year.
 

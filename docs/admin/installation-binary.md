@@ -11,16 +11,21 @@ origin_url: 'https://github.com/DanielGibson/DanielGibson.github.io/blob/5836269
 First, download the Forgejo binary for your CPU architecture and maybe verify the GPG signature,
 as described on [the Forgejo download page](/download/).
 
-Next, copy the downloaded Forgejo binary to `/usr/local/bin/` (renaming it to just "forgejo")
+Next, copy the downloaded Forgejo binary to `/usr/local/bin/` (renaming it to "forgejo")
 and make it executable:
 
 > **NOTE:** when a line starts with #, it means the command 'foo --bar' must be run as root (or with sudo).
 
-`# cp forgejo-7.0.0-linux-amd64 /usr/local/bin/forgejo`
-`# chmod 755 /usr/local/bin/forgejo`
+```
+# cp forgejo-7.0.0-linux-amd64 /usr/local/bin/forgejo
+# chmod 755 /usr/local/bin/forgejo
+```
 
 Make sure `git` and `git-lfs` are installed:
-`# apt install git git-lfs`
+
+```
+# apt install git git-lfs
+```
 
 Create a user `git` on the system. Forgejo will run as that user, and when accessing git through SSH
 (which is the default), this user is part of the URL _(for example in
@@ -93,10 +98,14 @@ You should now be able to access Forgejo in your local web browser, so open http
 
 If it doesn't work:
 
-- Make sure the forgejo service started successfully by checking the output of
-  `# systemctl status forgejo.service`
+- Make sure the forgejo service started successfully by checking the output of:
+  ```
+  # systemctl status forgejo.service
+  ```
   If that indicates an error but the log lines underneath are too incomplete to tell what caused it,
-  `# journalctl -n 100 --unit forgejo.service`
+  ```
+  # journalctl -n 100 --unit forgejo.service
+  ```
   will print the last 100 lines logged by Forgejo.
 
 You should be greeted by Forgejo's "Initial Configuration" screen.
@@ -105,7 +114,7 @@ The settings should be mostly self-explanatory, some hints:
 - Select the correct database (SQLite3, or if you configured something else in the
   "Set up database" step above, select that and set the corresponding options)
 - **Server Domain** should be `git.example.com` (or whatever you're actually using),
-  **Forgejo Base URL** should be `http://git.example.com:3000` (assuming you won't change HTTP_PORT a different value than 3000)
+  **Forgejo Base URL** should be `http://git.example.com:3000` (assuming you won't change `HTTP_PORT` to a different value than 3000)
 - Check the **Server and Third-Party Service Settings** settings for settings that look relevant
   for you.
 - It may make sense to create the administrator account right now (**Administrator Account Settings**),
@@ -121,11 +130,17 @@ So far, so good, but we're not quite done yet - some manual configuration in the
 ## Further configuration in Forgejo's app.ini
 
 Stop the forgejo service:
-`# systemctl stop forgejo.service`
+
+```
+# systemctl stop forgejo.service
+```
 
 While at it, make `/etc/forgejo/` and the `app.ini` read-only for the git user (Forgejo doesn't
 write to it after the initial configuration):
-`# chmod 750 /etc/forgejo && chmod 640 /etc/forgejo/app.ini`
+
+```
+# chmod 750 /etc/forgejo && chmod 640 /etc/forgejo/app.ini
+```
 
 Now (as root) edit `/etc/forgejo/app.ini`
 
@@ -196,14 +211,17 @@ The following changes are recommended if dealing with many large files:
   PROTOCOL = sendmail
   FROM = "Forgejo Git" <noreply@yourdomain.com>
   ```
-- By default Forgejo will listen to the port 3000 but that can be [changed to 80 with HTTP_PORT](../config-cheat-sheet/) like this:
+- By default Forgejo will listen to the port 3000 but that can be [changed to 80 with `HTTP_PORT`](../config-cheat-sheet/) like this:
   ```ini
   [server]
   HTTP_PORT = 80
   ```
 
 When you're done editing the app.ini, save it and start the forgejo service again:
-`# systemctl start forgejo.service`
+
+```
+# systemctl start forgejo.service
+```
 
 You can test sending a mail by clicking the user button on the upper right of the Forgejo page
 ("Profile and Settings"), then `Site Administration`, then `Configuration` and under
@@ -215,15 +233,23 @@ Sometimes you may want/need to use the Forgejo
 [command line interface](../command-line/).
 Keep in mind that:
 
-- You need to **run it as `git` user**, for example with `$ sudo -u git forgejo command --argument`
+- You need to **run it as the `git` user**, for example with:
+  ```
+  $ sudo -u git forgejo command --argument
+  ```
 - You need to specify the **Forgejo work path**, either with the `--work-path /var/lib/forgejo`
-  (or `-w /var/lib/forgejo`) commandline option or by setting the `FORGEJO_WORK_DIR` environment variable
-  (`$ export FORGEJO_WORK_DIR=/var/lib/forgejo`) before calling `forgejo`
+  (or `-w /var/lib/forgejo`) commandline option or by setting the `FORGEJO_WORK_DIR` environment variable before calling `forgejo`:
+  ```
+  $ export FORGEJO_WORK_DIR=/var/lib/forgejo
+  ```
 - You need to specify the path to the config (app.ini) with `--config /etc/forgejo/app.ini`
   (or `-c /etc/forgejo/app.ini`).
 
 So all in all your command might look like:
-`$ sudo -u git forgejo -w /var/lib/forgejo -c /etc/forgejo/app.ini admin user list`
+
+```
+$ sudo -u git forgejo -w /var/lib/forgejo -c /etc/forgejo/app.ini admin user list
+```
 
 > **_For convenience_**, you could create a `/usr/local/bin/forgejo.sh` with the following contents:
 >
@@ -233,13 +259,22 @@ So all in all your command might look like:
 > ```
 >
 > and make it executable:
-> `# chmod 755  /usr/local/bin/forgejo.sh`
+>
+> ```
+> # chmod 755  /usr/local/bin/forgejo.sh
+> ```
 >
 > Now if you want to call `forgejo` on the commandline (for the default system-wide installation
-> in `/var/lib/forgejo`), just use e.g. `$ forgejo.sh admin user list` instead of the long
-> line shown above.
+> in `/var/lib/forgejo`), instead of the long line shown above, use:
+>
+> ```
+> $ forgejo.sh admin user list
+> ```
 
 You can always call forgejo and its subcommands with `-h` or `--help` to make it output usage
-information like available options and (sub)commands, for example
-`$ forgejo admin user -h`
-to show available subcommands to administrate users on the commandline.
+information like available options and (sub)commands, for example to show available subcommands
+to administrate users on the commandline:
+
+```
+$ forgejo admin user -h
+```
