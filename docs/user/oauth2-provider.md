@@ -55,7 +55,7 @@ to authenticate on https://code.forgejo.org:
 - [download the binary tarball](https://github.com/hickford/git-credential-oauth/releases/download/v0.11.0/git-credential-oauth_0.11.0_linux_amd64.tar.gz)
 - extract the binary in `/usr/local/bin/git-credential-oauth`
 - verify it is found with `git credential-oauth`
-- add the following to `~/gitconfig` (note that `a4792ccc-144e-407e-86c9-5e7d8d9c3269` is a hardcoded value that is identical for all Forgejo instances)
+- add the following to `~/.gitconfig` (note that `a4792ccc-144e-407e-86c9-5e7d8d9c3269` is a hardcoded value that is identical for all Forgejo instances)
   ```ini
   [credential]
     helper = cache --timeout 7200
@@ -72,7 +72,7 @@ to authenticate on https://code.forgejo.org:
 
 > **NOTE:** Scopes are not implemented for OAuth2 tokens and they can be used to execute any actions on behalf the user, not just git related actions. Scoped applications tokens or SSH keys limited to interactions with the repository should be preferred in environments where security is a concern.
 
-It is possible for any user to manually register a new OAuth2 application in the `/user/settings/applications` page for the purpose of using a Git [credential helpers](https://git-scm.com/docs/gitcredentials#_custom_helpers) different from the pre-registered ones. In that case the `~/gitconfig` setting (`oauthClientId` etc.) needs to be adapted accordingly
+It is possible for any user to manually register a new OAuth2 application in the `/user/settings/applications` page for the purpose of using a Git [credential helpers](https://git-scm.com/docs/gitcredentials#_custom_helpers) different from the pre-registered ones. In that case the `~/.gitconfig` setting (`oauthClientId` etc.) needs to be adapted accordingly
 
 ## Examples
 
