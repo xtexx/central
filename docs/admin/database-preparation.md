@@ -4,21 +4,44 @@ license: 'Apache-2.0'
 origin_url: 'https://github.com/go-gitea/gitea/blob/e865de1e9d65dc09797d165a51c8e705d2a86030/docs/content/installation/database-preparation.en-us.md'
 ---
 
-You need a database to use Forgejo. Forgejo supports PostgreSQL (>=12), MySQL (>=8.0) or MariaDB (>=10.0), and SQLite (builtin). This page will guide into preparing the database. Only PostgreSQL and MySQL/MariaDB will be covered here since those database engines are widely-used in production. If you plan to use SQLite, you can ignore this chapter.
+You need a database to use Forgejo. The easiest option is SQLite which managed files next to Forgejo and does not require setting up a database server. However, if you plan to use Forgejo with several hundreds of users, or if you already run a databse server, you might want to choose another option.
+
+Forgejo supports:
+
+- MariaDB (>=10.0)
+- MySQL (>=8.0)
+- PostgreSQL (>=12)
+- SQLite3
+
+This page will guide into preparing the database. Also take a look at the [database section of the config cheat sheet](https://forgejo.org/docs/latest/admin/config-cheat-sheet/#database-database) for a detailed list of options in Forgejo.
 
 Database instance can be on same machine as Forgejo (local database setup), or on different machine (remote database).
 
-Note: All steps below requires that the database engine of your choice is installed on your system. For remote database setup, install the server application on database instance and client program on your Forgejo server. The client program is used to test connection to the database from Forgejo server, while Forgejo itself use database driver provided by Go to accomplish the same thing. In addition, make sure you use same engine version for both server and client for some engine features to work. For security reason, protect `root` (MySQL/MariaDB) or `postgres` (PostgreSQL) database superuser with secure password. The steps assumes that you run Linux for both database and Forgejo servers.
+## SQLite
+
+Forgejo distributes binaries that come with SQLite support and you don't need to install additional dependencies on your system.
+
+> **Note:** If you build Forgejo from source, build with `make TAGS="sqlite sqlite_unlock_notify" build` to include SQLite support.
+
+Choosing SQLite only requires setting the database type and optionally the path to a database file:
+
+```
+[database]
+DB_TYPE = sqlite3
+# optional if you want to specify another location
+# by default, the database file will be stored relative to other data
+PATH = data/forgejo.db
+```
+
+If you want to maximize performance, you might want to take a look at the `[database].SQLITE_JOURNAL_MODE` setting and consider using the [WAL mode](https://www.sqlite.org/wal.html).
 
 ## MySQL/MariaDB
 
-1. For remote database setup, you will need to make MySQL/MariaDB listen to your IP address. Edit `bind-address` option on `/etc/mysql/my.cnf` on database instance to:
+1. Install the MariaDB or MySQL server component on the system you would like to store the database on.
 
-   ```ini
-   bind-address = 203.0.113.3
-   ```
+2. Protect the `root` user with a secure password or disable the login.
 
-2. On database instance, login to database console as root:
+3. On the database instance, login to database console as root:
 
    ```
    mysql -u root -p
@@ -26,16 +49,16 @@ Note: All steps below requires that the database engine of your choice is instal
 
    Enter the password as prompted.
 
-3. Create database user which will be used by Forgejo, authenticated by password. This example uses `'passw0rd'` as password. _Please use a secure password for your instance._
+4. Create a new database user which will be used by Forgejo, authenticated by password. This example uses `'passw0rd'` as password. **Please use a secure password for your instance.**
 
-   For local database:
+   For a local database:
 
    ```sql
    SET old_passwords=0;
    CREATE USER 'forgejo'@'%' IDENTIFIED BY 'passw0rd';
    ```
 
-   For remote database:
+   If your database is hosted on another system than Forgejo (includes some containerized deployments):
 
    ```sql
    SET old_passwords=0;
@@ -46,7 +69,7 @@ Note: All steps below requires that the database engine of your choice is instal
 
    Replace username and password above as appropriate.
 
-4. Create database with UTF-8 charset and case-sensitive collation.
+5. Create database with UTF-8 charset and case-sensitive collation.
 
    `utf8mb4_bin` is a common collation for both MySQL/MariaDB.
    When Forgejo starts, it will try to find a better collation (`utf8mb4_0900_as_cs` or `uca1400_as_cs`) and alter the database if it is possible.
@@ -58,9 +81,9 @@ Note: All steps below requires that the database engine of your choice is instal
 
    Replace database name as appropriate.
 
-   Using an accent- and case sensitive collation such as `utf8mb4_bin` is important, because Forgejo often relies on these sensitivities, and if those assumptions are broken, that may lead to internal server errors or other unexpected results.
+   **Using an accent- and case sensitive collation such as `utf8mb4_bin` is important**, because Forgejo often relies on these sensitivities, and if those assumptions are broken, that may lead to internal server errors or other unexpected results.
 
-5. Grant all privileges on the database to database user created above.
+6. Grant all privileges on the database to the database user created above.
 
    For local database:
 
@@ -76,9 +99,9 @@ Note: All steps below requires that the database engine of your choice is instal
    FLUSH PRIVILEGES;
    ```
 
-6. Quit from database console by `exit`.
+7. Quit from database console by typing `exit`.
 
-7. On your Forgejo server, test connection to the database:
+8. Optional: On your Forgejo server, test connection to the database (requires that you have a client library installed. The client is not necessary for Forgejo itself):
 
    ```
    mysql -u forgejo -h 203.0.113.3 -p forgejodb
@@ -90,13 +113,11 @@ Note: All steps below requires that the database engine of your choice is instal
 
 ## PostgreSQL
 
-1. For remote database setup, configure PostgreSQL on database instance to listen to your IP address by editing `listen_addresses` on `postgresql.conf` to:
+1. Install the PostgreSQL server component on the system you would like to store the database on.
 
-   ```ini
-   listen_addresses = 'localhost, 203.0.113.3'
-   ```
+2. Protect the `root` user with a secure password or disable the login.
 
-2. PostgreSQL uses `md5` challenge-response encryption scheme for password authentication by default. Nowadays this scheme is not considered secure anymore. Use SCRAM-SHA-256 scheme instead by editing the `postgresql.conf` configuration file on the database server to:
+3. If you use a PostgreSQL version lower than 14, the `md5` challenge-response encryption scheme for password authentication is used by default. Nowadays this scheme is not considered secure anymore. Use SCRAM-SHA-256 scheme instead by editing the `postgresql.conf` configuration file on the database server to:
 
    ```ini
    password_encryption = scram-sha-256
@@ -104,13 +125,13 @@ Note: All steps below requires that the database engine of your choice is instal
 
    Restart PostgreSQL to apply the setting.
 
-3. On the database server, login to the database console as superuser:
+4. On the database server, login to the database console as superuser:
 
    ```
    su -c "psql" - postgres
    ```
 
-4. Create database user (role in PostgreSQL terms) with login privilege and password. _Please use a secure, strong password instead of `'passw0rd'` below:_
+5. Create database user (role in PostgreSQL terms) with login privilege and password. _Please use a secure, strong password instead of `'passw0rd'` below:_
 
    ```sql
    CREATE ROLE forgejo WITH LOGIN PASSWORD 'passw0rd';
@@ -118,7 +139,7 @@ Note: All steps below requires that the database engine of your choice is instal
 
    Replace username and password as appropriate.
 
-5. Create database with UTF-8 charset and owned by the database user created earlier. Any `libc` collations can be specified with `LC_COLLATE` and `LC_CTYPE` parameter, depending on expected content:
+6. Create database with UTF-8 charset and owned by the database user created earlier. Any `libc` collations can be specified with `LC_COLLATE` and `LC_CTYPE` parameter, depending on expected content:
 
    ```sql
    CREATE DATABASE forgejodb WITH OWNER forgejo TEMPLATE template0 ENCODING UTF8 LC_COLLATE 'en_US.UTF-8' LC_CTYPE 'en_US.UTF-8';
@@ -126,7 +147,7 @@ Note: All steps below requires that the database engine of your choice is instal
 
    Replace database name as appropriate.
 
-6. Allow the database user to access the database created above by adding the following authentication rules to `pg_hba.conf`.
+7. Allow the database user to access the database created above by adding the following authentication rules to `pg_hba.conf`.
 
    For local database:
 
@@ -148,7 +169,7 @@ Note: All steps below requires that the database engine of your choice is instal
 
    Restart PostgreSQL to apply new authentication rules.
 
-7. On your Forgejo server, test connection to the database.
+8. Optional: Test connection to the database from the Forgejo container.
 
    For local database:
 
