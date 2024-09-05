@@ -6,9 +6,10 @@ origin_url: 'https://github.com/DanielGibson/DanielGibson.github.io/blob/5836269
 
 ## Install Forgejo and Git, create git user
 
-> **NOTE:** this guide assumes that you'll host on the server with the domain git.example.com.
+> **NOTE:** this guide uses git.example.com and x.y.z for illustrative purpose.
+> Replace with your domain and the used Forgejo version as appropriate.
 
-First, download the Forgejo binary for your CPU architecture and maybe verify the GPG signature,
+First, download the Forgejo binary for your CPU architecture and verify the GPG signature,
 as described on [the Forgejo download page](/download/).
 
 Next, copy the downloaded Forgejo binary to `/usr/local/bin/` (renaming it to "forgejo")
@@ -17,11 +18,11 @@ and make it executable:
 > **NOTE:** when a line starts with #, it means the command 'foo --bar' must be run as root (or with sudo).
 
 ```
-# cp forgejo-7.0.0-linux-amd64 /usr/local/bin/forgejo
+# cp forgejo-x.y.z-linux-amd64 /usr/local/bin/forgejo
 # chmod 755 /usr/local/bin/forgejo
 ```
 
-Make sure `git` and `git-lfs` are installed:
+Make sure `git` and `git-lfs` are installed on your system. On Debian GNU/Linux you can use:
 
 ```
 # apt install git git-lfs
@@ -34,7 +35,7 @@ On **Debian, Ubuntu** and their derivatives that's done with:
 
 ```
 # adduser --system --shell /bin/bash --gecos 'Git Version Control' \
-  --group --disabled-password --home /home/git  git
+  --group --disabled-password --home /home/git git
 ```
 
 On **Linux distributions not based on Debian/Ubuntu** (this should at least work with Red Hat derivatives
@@ -49,7 +50,7 @@ like Fedora, CentOS etc.), run this instead:
 
 ## Create directories Forgejo will use
 
-Now create the directories Forgejo will use and set access rights appropriately:
+Now create the directories Forgejo will use and set access permissions appropriately:
 
 ```
 # mkdir /var/lib/forgejo
@@ -63,8 +64,8 @@ This is the directory Forgejo will store its data in, including your Git reposit
 # chown root:git /etc/forgejo && chmod 770 /etc/forgejo
 ```
 
-This is the directory Forgejo's config, called `app.ini`, is stored in. Initially it needs to
-be writable by Forgejo, but after the installation you can make it read-only for Forgejo because
+This is the directory Forgejo's config, called `app.ini`, is stored in. **Initially it needs to
+be writable by Forgejo**, but after the installation you can make it read-only for Forgejo because
 then it shouldn't modify it anymore.
 
 ## Optional: Set up database
