@@ -11,23 +11,15 @@ also the
 [Forgejo versioning scheme](../../user/versions) documentation for further
 information.
 
-This guide covers the installation of Forgejo [with
-Docker](../installation-docker/) or [from
-binary](../installation-binary/). Both of these methods are created
-and extensively tested to work on every release. They consist of three
-steps:
+Get started in a few simple steps:
 
-- Download and run the release,
-- connect to the web interface and complete the configuration, and,
-- finally register the first user which will be granted administrative permissions.
+1. set up Forgejo on your system ...
+   - [from binary](../installation-binary/)
+   - [with Docker](../installation-docker/)
+   - with third-party packaging for various platforms [(see the "Delightful Forgejo" list)](https://codeberg.org/forgejo-contrib/delightful-forgejo#packaging). Unlike the two official installation methods, these resources are not extensively tested to work on every release.
+2. connect to the web interface and complete the configuration, and,
+3. register the first user which will be granted administrative permissions.
 
 If you already have Gitea installed through your package manager, look at the [Gitea
 migration](../gitea-migration/) guide for information on how to install Forgejo, while
 preserving your data from your Gitea installation.
-
-Forgejo is also available for installation using package managers on many platforms. At this
-time, Forgejo has been successfully adapted for use on various platforms, including Alpine Linux, Arch
-Linux, Debian, Fedora, Gentoo, Manjaro, and the Nix ecosystem. These
-platform-specific packages are under the care of distribution packagers, and specific packages are
-currently undergoing testing. For a curated inventory, please refer to
-[the "Delightful Forgejo" list](https://codeberg.org/forgejo-contrib/delightful-forgejo#packaging).
