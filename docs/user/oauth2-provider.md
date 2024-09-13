@@ -76,7 +76,7 @@ It is possible for any user to manually register a new OAuth2 application in the
 
 ## Examples
 
-### Using a Codeberg as an authentication source
+### Using Codeberg as an authentication source
 
 In this example https://v7.next.forgejo.org will be configured to add the option to delegate user registration to https://codeberg.org.
 
