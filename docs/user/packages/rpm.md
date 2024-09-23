@@ -82,7 +82,7 @@ The server responds with the following HTTP Status codes.
 
 ## Delete a package
 
-To delete a Debian package perform a HTTP DELETE operation. This will delete the package version too if there is no file left.
+To delete a RPM package perform a HTTP DELETE operation. This will delete the package version too if there is no file left.
 
 ```
 DELETE https://forgejo.example.com/api/packages/{owner}/rpm/{group}/package/{package_name}/{package_version}/{architecture}
