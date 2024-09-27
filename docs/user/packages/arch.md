@@ -7,7 +7,7 @@ Forgejo has a Arch Linux package registry, which can act as a fully working [Arc
 
 ## Upload packages
 
-When uploading the package to Forgejo, you have to prepare package file with the `.pkg.tar.zst` extension 。You can use [curl](https://curl.se/) or any other HTTP client, Forgejo supports multiple [authentication schemes](https://docs.Forgejo.com/usage/authentication). The upload command will create 3 files: package, signature and desc file for the pacman database (which will be created automatically on request).
+When uploading the package to Forgejo, you have to prepare package file with the `.pkg.tar.zst` extension. You can use [curl](https://curl.se/) or any other HTTP client, Forgejo supports multiple [authentication schemes](https://docs.Forgejo.com/usage/authentication). The upload command will create 3 files: package, signature and desc file for the pacman database (which will be created automatically on request).
 
 The following command will upload arch package and related signature to Forgejo with basic authentification:
 
@@ -72,7 +72,7 @@ The `DELETE` method will remove specific package version, and all package files 
 
 ```sh
 curl -X DELETE \
-  https://{domain}/api/packages/{owner}/arch/{group}/{package}/{version} \
+  https://{domain}/api/packages/{owner}/arch/{group}/{package}/{version}/{arch} \
   --user your_username:your_token_or_password
 ```
 
@@ -82,6 +82,7 @@ curl -X DELETE \
 | `group`     | [Repository](https://wiki.archlinux.org/title/Official_repositories), e.g. `os`, `extras` |
 | `package`   | Package name                                                                              |
 | `version`   | Package version                                                                           |
+| `arch`      | Package arch                                                                              |
 
 ## Clients
 
