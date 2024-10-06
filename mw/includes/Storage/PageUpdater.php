@@ -130,8 +130,9 @@ class PageUpdater implements PageUpdateCauses {
 	private $titleFormatter;
 
 	/**
-	 * @var bool see $wgUseAutomaticEditSummaries
+	 * @var bool see $wgUseAutomaticEditSummaries and $wgNamespacesWithoutAutoSummaries
 	 * @see $wgUseAutomaticEditSummaries
+	 * @see $wgNamespacesWithoutAutoSummaries
 	 */
 	private $useAutomaticEditSummaries = true;
 

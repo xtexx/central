@@ -759,6 +759,8 @@ return [
 				13 => true,
 				15 => true,
 			],
+			'NamespacesWithoutAutoSummaries' => [
+			],
 			'ContentNamespaces' => [
 				0,
 			],
@@ -2959,6 +2961,7 @@ return [
 			'NamespaceAliases' => 'object',
 			'CapitalLinkOverrides' => 'object',
 			'NamespacesWithSubpages' => 'object',
+			'NamespacesWithoutAutoSummaries' => 'array',
 			'ContentNamespaces' => 'array',
 			'ShortPagesNamespaceExclusions' => 'array',
 			'ExtraSignatureNamespaces' => 'array',
