@@ -15,17 +15,15 @@ as described on [the Forgejo download page](/download/).
 Next, copy the downloaded Forgejo binary to `/usr/local/bin/` (renaming it to "forgejo")
 and make it executable:
 
-> **NOTE:** when a line starts with #, it means the command 'foo --bar' must be run as root (or with sudo).
-
-```
-# cp forgejo-x.y.z-linux-amd64 /usr/local/bin/forgejo
-# chmod 755 /usr/local/bin/forgejo
+```sh
+sudo cp forgejo-x.y.z-linux-amd64 /usr/local/bin/forgejo
+sudo chmod 755 /usr/local/bin/forgejo
 ```
 
 Make sure `git` and `git-lfs` are installed on your system. On Debian GNU/Linux you can use:
 
-```
-# apt install git git-lfs
+```sh
+sudo apt install git git-lfs
 ```
 
 Create a user `git` on the system. Forgejo will run as that user, and when accessing git through SSH
@@ -33,17 +31,17 @@ Create a user `git` on the system. Forgejo will run as that user, and when acces
 `git clone git@git.example.com:YourOrg/YourRepo.git` the `git` before the `@` is the user you'll create now)._
 On **Debian, Ubuntu** and their derivatives that's done with:
 
-```
-# adduser --system --shell /bin/bash --gecos 'Git Version Control' \
+```sh
+sudo adduser --system --shell /bin/bash --gecos 'Git Version Control' \
   --group --disabled-password --home /home/git git
 ```
 
 On **Linux distributions not based on Debian/Ubuntu** (this should at least work with Red Hat derivatives
 like Fedora, CentOS etc.), run this instead:
 
-```
-# groupadd --system git
-# useradd --system --shell /bin/bash --comment 'Git Version Control' \
+```sh
+sudo groupadd --system git
+sudo useradd --system --shell /bin/bash --comment 'Git Version Control' \
    --gid git --home-dir /home/git --create-home git
 ```
 
@@ -51,16 +49,16 @@ like Fedora, CentOS etc.), run this instead:
 
 Now create the directories Forgejo will use and set access permissions appropriately:
 
-```
-# mkdir /var/lib/forgejo
-# chown git:git /var/lib/forgejo && chmod 750 /var/lib/forgejo
+```sh
+sudo mkdir /var/lib/forgejo
+sudo chown git:git /var/lib/forgejo && chmod 750 /var/lib/forgejo
 ```
 
 This is the directory Forgejo will store its data in, including your Git repositories.
 
-```
-# mkdir /etc/forgejo
-# chown root:git /etc/forgejo && chmod 770 /etc/forgejo
+```sh
+sudo mkdir /etc/forgejo
+sudo chown root:git /etc/forgejo && chmod 770 /etc/forgejo
 ```
 
 This is the directory Forgejo's config, called `app.ini`, is stored in. **Initially it needs to
@@ -83,8 +81,8 @@ Forgejo provides a
 [systemd service script](https://codeberg.org/forgejo/forgejo/src/branch/forgejo/contrib/systemd/forgejo.service).
 Download it to the correct location:
 
-```
-# wget -O /etc/systemd/system/forgejo.service https://codeberg.org/forgejo/forgejo/raw/branch/forgejo/contrib/systemd/forgejo.service
+```sh
+sudo wget -O /etc/systemd/system/forgejo.service https://codeberg.org/forgejo/forgejo/raw/branch/forgejo/contrib/systemd/forgejo.service
 ```
 
 If you're _not_ using sqlite, but MySQL or MariaDB or PostgreSQL, you'll have to edit that file
@@ -93,9 +91,9 @@ Otherwise it _should_ work as it is.
 
 Now enable and start the Forgejo service, so you can go on with the installation:
 
-```
-# systemctl enable forgejo.service
-# systemctl start forgejo.service
+```sh
+sudo systemctl enable forgejo.service
+sudo systemctl start forgejo.service
 ```
 
 ## Forgejo's web-based configuration
@@ -105,12 +103,12 @@ You should now be able to access Forgejo in your local web browser, so open http
 If it doesn't work:
 
 - Make sure the forgejo service started successfully by checking the output of:
-  ```
-  # systemctl status forgejo.service
+  ```sh
+  sudo systemctl status forgejo.service
   ```
   If that indicates an error but the log lines underneath are too incomplete to tell what caused it,
-  ```
-  # journalctl -n 100 --unit forgejo.service
+  ```sh
+  sudo journalctl -n 100 --unit forgejo.service
   ```
   will print the last 100 lines logged by Forgejo.
 
@@ -137,15 +135,15 @@ So far, so good, but we're not quite done yet - some manual configuration in the
 
 Stop the forgejo service:
 
-```
-# systemctl stop forgejo.service
+```sh
+sudo systemctl stop forgejo.service
 ```
 
 While at it, make `/etc/forgejo/` and the `app.ini` read-only for the git user (Forgejo doesn't
 write to it after the initial configuration):
 
-```
-# chmod 750 /etc/forgejo && chmod 640 /etc/forgejo/app.ini
+```sh
+sudo chmod 750 /etc/forgejo && chmod 640 /etc/forgejo/app.ini
 ```
 
 Now (as root) edit `/etc/forgejo/app.ini`
@@ -225,8 +223,8 @@ The following changes are recommended if dealing with many large files:
 
 When you're done editing the app.ini, save it and start the forgejo service again:
 
-```
-# systemctl start forgejo.service
+```sh
+sudo systemctl start forgejo.service
 ```
 
 You can test sending a mail by clicking the user button on the upper right of the Forgejo page
@@ -240,12 +238,12 @@ Sometimes you may want/need to use the Forgejo
 Keep in mind that:
 
 - You need to **run it as the `git` user**, for example with:
-  ```
+  ```sh
   $ sudo -u git forgejo command --argument
   ```
 - You need to specify the **Forgejo work path**, either with the `--work-path /var/lib/forgejo`
   (or `-w /var/lib/forgejo`) commandline option or by setting the `FORGEJO_WORK_DIR` environment variable before calling `forgejo`:
-  ```
+  ```sh
   $ export FORGEJO_WORK_DIR=/var/lib/forgejo
   ```
 - You need to specify the path to the config (app.ini) with `--config /etc/forgejo/app.ini`
@@ -253,7 +251,7 @@ Keep in mind that:
 
 So all in all your command might look like:
 
-```
+```sh
 $ sudo -u git forgejo -w /var/lib/forgejo -c /etc/forgejo/app.ini admin user list
 ```
 
@@ -266,14 +264,14 @@ $ sudo -u git forgejo -w /var/lib/forgejo -c /etc/forgejo/app.ini admin user lis
 >
 > and make it executable:
 >
-> ```
-> # chmod 755  /usr/local/bin/forgejo.sh
+> ```sh
+> sudo chmod 755  /usr/local/bin/forgejo.sh
 > ```
 >
 > Now if you want to call `forgejo` on the commandline (for the default system-wide installation
 > in `/var/lib/forgejo`), instead of the long line shown above, use:
 >
-> ```
+> ```sh
 > $ forgejo.sh admin user list
 > ```
 
@@ -281,6 +279,6 @@ You can always call forgejo and its subcommands with `-h` or `--help` to make it
 information like available options and (sub)commands, for example to show available subcommands
 to administrate users on the commandline:
 
-```
+```sh
 $ forgejo admin user -h
 ```
