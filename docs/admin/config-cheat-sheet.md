@@ -1288,6 +1288,35 @@ Settings can be included in this section to specify where the actions artifacts 
 
 The settings for all these sections are [explained in detail in the storage documentation](../storage/).
 
+## Quota (`quota`)
+
+Also see the [dedicated docs about the quota feature](../quota/).
+
+- `ENABLED`: **false**: Enable quota feature.
+- `DEFAULT_GROUPS`: **\<empty\>**: Comma-separated list of groups that apply by default to users. These groups can be configured via the API.
+
+### Default Quota (`quota.default`)
+
+- `TOTAL`: **-1**: Size for the default quota group. `-1` means unlimited storage. Can be suffixed with units, e.g. `500M` or `2G`.
+
+### Quota subjects (list)
+
+The available subjects for the quota feature are:
+
+- `size:all`: The total size of everything Forgejo tracks.
+- `size:git:all`: The total size of all Git data (including all repositories, and LFS).
+  - `size:git:lfs`: The size of all Git LFS data (either in private or public repos).
+  - `size:repos:all`: The total size of all repositories (not including LFS).
+    - **NOT YET AVAILABLE** `size:repos:public`: The total size of all public repositories (not including LFS).
+    - **NOT YET AVAILABLE** `size:repos:private`: The total size of all private repositories (not including LFS).
+- `size:assets:all`: The size of all assets tracked by Forgejo.
+  - `size:assets:attachments:all`: The size of all kinds of attachments tracked by Forgejo.
+    - `size:assets:attachments:issues`: Size of all attachments attached to issues, including issue comments.
+    - `size:assets:attachments:releases`: Size of all attachments attached to releases. This does _not_ include automatically generated archives.
+  - `size:assets:artifacts`: Size of all Action artifacts.
+  - `size:assets:packages:all`: Size of all Packages.
+- `size:wiki`: Wiki size
+
 ## Proxy (`proxy`)
 
 - `PROXY_ENABLED`: **false**: Enable the proxy if true, all requests to external via HTTP will be affected, if false, no proxy will be used even environment http_proxy/https_proxy

@@ -27,3 +27,4 @@ These documents are targeted to people who run Forgejo on their machines.
 - [Adopt existing git directories](./adopt/)
 - [Interface customization](./customization/)
 - [OAuth2 provider](./oauth2-provider/)
+- [Soft-Quota](./quota/)
