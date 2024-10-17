@@ -303,7 +303,8 @@ services:
       - /etc/localtime:/etc/localtime:ro
     ports:
       - "3000:3000"
-      - "222:22"
+-      - "222"22"
++      - "222:2222"
 ```
 
 This will write the configuration into our created `conf` folder and all other data into the `data` folder.
