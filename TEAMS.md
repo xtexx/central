@@ -49,6 +49,7 @@ Team members:
 
 * https://codeberg.org/crystal [April 2023 Agreement](https://codeberg.org/forgejo/governance/issues/18)
 * https://codeberg.org/earl-warren [July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/140)
+* https://codeberg.org/viceice [November 2024 Agreement](https://codeberg.org/forgejo/governance/issues/187) (limited to case by case assistance)
 
 ## Contributors
 
