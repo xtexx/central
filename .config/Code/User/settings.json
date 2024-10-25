@@ -82,4 +82,9 @@
     "verilog.linting.linter": "verilator",
     "verilog.linting.path": "verilator",
     "verilog.languageServer.svls.enabled": true,
+    "cmake.pinnedCommands": [
+        "workbench.action.tasks.configureTaskRunner",
+        "workbench.action.tasks.runTask"
+    ],
+    "phpTools.suppressPremiumFeatures": true,
 }
