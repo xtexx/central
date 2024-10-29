@@ -41,7 +41,7 @@ You should now be able to test the runner by running `forgejo-runner -v`:
 
 ```
 $ forgejo-runner -v
-forgejo-runner version v3.5.1
+forgejo-runner version v4.0.0
 ```
 
 ### Setting up the runner user
@@ -94,7 +94,7 @@ The `Forgejo runner` relies on application containers (Docker, Podman, etc.) or 
   ```shell
   $ lxc-helpers.sh lxc_container_run forgejo-runners -- sudo --user debian bash
   $ sudo apt-get install docker.io wget gnupg2
-  $ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v3.4.1/forgejo-runner-amd64
+  $ wget -O forgejo-runner https://code.forgejo.org/forgejo/runner/releases/download/v4.0.0/forgejo-runner-amd64
   ...
   ```
 
@@ -133,6 +133,9 @@ displayed with `forgejo-runner generate-config`, stored in a
 $ forgejo-runner generate-config > config.yml
 # Example configuration file, it's safe to copy this as the default config file without any modification.
 
+# You don't have to copy this file to your instance,
+# just run `forgejo-runner generate-config > config.yaml` to generate a config file.
+
 log:
   # The level of logging, can be trace, debug, info, warn, error, fatal
   level: info
@@ -153,16 +156,24 @@ runner:
   # Please note that the Forgejo instance also has a timeout (3h by default) for the job.
   # So the job could be stopped by the Forgejo instance if it's timeout is shorter than this.
   timeout: 3h
-  # Whether skip verifying the TLS certificate of the Forgejo instance.
+  # The timeout for the runner to wait for running jobs to finish when
+  # shutting down because a TERM or INT signal has been received.  Any
+  # running jobs that haven't finished after this timeout will be
+  # cancelled.
+  # If unset or zero the jobs will be cancelled immediately.
+  shutdown_timeout: 3h
+  # Whether skip verifying the TLS certificate of the instance.
   insecure: false
   # The timeout for fetching the job from the Forgejo instance.
   fetch_timeout: 5s
   # The interval for fetching the job from the Forgejo instance.
   fetch_interval: 2s
+  # The interval for reporting the job status and logs to the Forgejo instance.
+  report_interval: 1s
   # The labels of a runner are used to determine which jobs the runner can run, and how to run them.
-  # Like: ["macos-arm64:host", "ubuntu-latest:docker://node:16-bullseye", "ubuntu-22.04:docker://node:16-bullseye"]
+  # Like: ["macos-arm64:host", "ubuntu-latest:docker://node:20-bookworm", "ubuntu-22.04:docker://node:20-bookworm"]
   # If it's empty when registering, it will ask for inputting labels.
-  # If it's empty when execute `daemon`, will use labels in `.runner` file.
+  # If it's empty when executing the `daemon`, it will use labels in the `.runner` file.
   labels: []
 
 cache:
@@ -178,6 +189,10 @@ cache:
   # The port of the cache server.
   # 0 means to use a random available port.
   port: 0
+  # The external cache server URL. Valid only when enable is true.
+  # If it's specified, it will be used to set the ACTIONS_CACHE_URL environment variable. The URL should generally end with "/".
+  # Otherwise it will be set to the the URL of the internal cache server.
+  external_server: ""
 
 container:
   # Specifies the network to which the container will connect.
@@ -205,10 +220,12 @@ container:
   #   - '**'
   valid_volumes: []
   # overrides the docker client host with the specified one.
-  # If it's empty, act_runner will find an available docker host automatically.
-  # If it's "-", act_runner will find an available docker host automatically, but the docker host won't be mounted to the job containers and service containers.
-  # If it's not empty or "-", the specified docker host will be used. An error will be returned if it doesn't work.
-  docker_host: ""
+  # If "-", an available docker host will automatically be found.
+  # If empty, an available docker host will automatically be found and mounted in the job container (e.g. /var/run/docker.sock).
+  # Otherwise the specified docker host will be used and an error will be returned if it doesn't work.
+  docker_host: "-"
+  # Pull docker image(s) even if already present
+  force_pull: false
 
 host:
   # The parent directory of a job's working directory.
@@ -259,14 +276,14 @@ The [OCI images](https://code.forgejo.org/forgejo/-/packages/container/runner/ve
 are built from the Dockerfile which is [found in the source directory](https://code.forgejo.org/forgejo/runner/src/branch/main/Dockerfile). It contains the `forgejo-runner` binary.
 
 ```shell
-$ docker run --rm code.forgejo.org/forgejo/runner:3.4.1 forgejo-runner --version
-forgejo-runner version v3.4.1
+$ docker run --rm code.forgejo.org/forgejo/runner:4.0.0 forgejo-runner --version
+forgejo-runner version v4.0.0
 ```
 
 It does not run as root:
 
 ```shell
-$ docker run --rm code.forgejo.org/forgejo/runner:3.4.1 id
+$ docker run --rm code.forgejo.org/forgejo/runner:4.0.0 id
 uid=1000 gid=1000 groups=1000
 ```
 
@@ -303,7 +320,7 @@ services:
     restart: 'unless-stopped'
 
   gitea:
-    image: 'code.forgejo.org/forgejo/runner:3.4.1'
+    image: 'code.forgejo.org/forgejo/runner:4.0.0'
     links:
       - docker-in-docker
     depends_on:
@@ -356,7 +373,7 @@ To register the runner, excecute `forgejo-runner register` and fill in the promp
 
 ```shell
 $ forgejo-runner register
-INFO Registering runner, arch=arm64, os=linux, version=v3.5.1.
+INFO Registering runner, arch=arm64, os=linux, version=v4.0.0.
 WARN Runner in user-mode.
 INFO Enter the Forgejo instance URL (for example, https://next.forgejo.org/):
 https://code.forgejo.org/
