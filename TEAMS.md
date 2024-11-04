@@ -135,6 +135,7 @@ Team members:
 * Filipino https://codeberg.org/kita - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/105)
 * French https://codeberg.org/earl-warren - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/71) (admin)
 * French https://codeberg.org/KaKi87 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/123)
+* German (Low) https://codeberg.org/Nordfriese - [October 2024 Agreement](https://codeberg.org/forgejo/governance/issues/186)
 * German https://codeberg.org/fnetX - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/85) (admin)
 * German https://codeberg.org/nmmr - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/86)
 * German https://codeberg.org/Wuzzy - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/93)
