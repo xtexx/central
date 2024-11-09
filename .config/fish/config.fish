@@ -8,6 +8,7 @@ export PATH="$PATH:$HOME/.zvm/bin"
 export PATH="$PATH:$ZVM_INSTALL/"
 
 alias g=git
+alias c=clear
 
 if command -q zoxide
 	zoxide init fish | source
