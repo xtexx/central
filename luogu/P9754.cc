@@ -1,4 +1,3 @@
-// 2023/11/26 调，+15pts
 #include <algorithm>
 #include <bits/stdc++.h>
 #include <map>
@@ -129,10 +128,12 @@ INLINE void layoutTyp(Typ *t) {
     size += msize;
     ++m;
   }
+  if (size % align != 0)
+    size += align - (size % align);
   t->size = size;
 }
 
-INLINE void do1() { // 定义类型
+INLINE void do1() { // ��������
   STR n;
   U k;
   n = readStr();
@@ -155,14 +156,12 @@ INLINE void do1() { // 定义类型
   printf("%llu %llu\n", t->size, t->align);
 }
 
-INLINE void do2() { // 定义元素
+INLINE void do2() { // ����Ԫ��
   STR t, n;
   t = frStr(0);
   n = readStr();
   Typ *typ = typs[t];
   El *el = (El *)malloc(sizeof(El));
-  if (addralloc % typ->align != 0)
-    addralloc += typ->align - (addralloc % typ->align);
   el->name = n;
   el->addr = addralloc;
   el->typ = typ;
@@ -171,7 +170,7 @@ INLINE void do2() { // 定义元素
   printf("%llu\n", el->addr);
 }
 
-INLINE void do3() { // 元素到地址
+INLINE void do3() { // Ԫ�ص���ַ
   char lastCh;
   STR e = frStr1('.', &lastCh);
   El *el;
@@ -206,7 +205,7 @@ INLINE void do3() { // 元素到地址
   printf("%llu\n", addr);
 }
 
-INLINE void do4() { // 地址到元素
+INLINE void do4() { // ��ַ��Ԫ��
   ULL addr;
   scanf("%llu", &addr);
   if (els.empty()) {

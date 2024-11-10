@@ -1,0 +1,23 @@
+Metadata-Version: 1
+Problem-Id: P11205
+Record-Id: 183796586
+Timestamp: 1729506510
+Status: Accepted
+Score: 100/400
+Language: C++14 (GCC 9)
+
+Test-Result:
+	Subtask: 0
+		Case: 0 AC 3 ms 556 KiB ok accepted
+		Case: 1 AC 3 ms 564 KiB ok accepted
+	Subtask: 2
+		Case: 4 AC 25 ms 1.11 MiB ok accepted
+		Case: 5 AC 3 ms 564 KiB ok accepted
+	Subtask: 1
+		Case: 2 AC 75 ms 1.11 MiB ok accepted
+		Case: 3 AC 63 ms 1.11 MiB ok accepted
+	Subtask: 3
+		Case: 6 AC 53 ms 1.11 MiB ok accepted
+		Case: 7 AC 3 ms 604 KiB ok accepted
+		Case: 8 AC 75 ms 1.21 MiB ok accepted
+		Case: 9 AC 63 ms 1.12 MiB ok accepted

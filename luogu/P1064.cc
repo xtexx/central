@@ -11,9 +11,6 @@ u v[MAXM][3], p[MAXM][3], f[MAXN];
 
 int main() {
   using namespace std;
-  ios::sync_with_stdio(false);
-  cin.tie(0);
-
   scanf("%u%u", &n, &m);
   for (u i = 1; i <= m; ++i) {
     u V, P, Q;
@@ -33,17 +30,16 @@ int main() {
   }
   for (u i = 1; i <= m; ++i) {
     u *vi = v[i], *pi = p[i];
-    for (int j = n; j >= 0; --j) {
-      u *fj = f + j;
+    for (u j = n; j >= 0; --j) {
       if (j >= vi[0])
-        *fj = max(*fj, f[j - vi[0]] + vi[0] * pi[0]);
+        f[j] = max(f[j], f[j - vi[0]] + vi[0] * pi[0]);
       if (j >= vi[0] + vi[1])
-        *fj = max(*fj, f[j - vi[0] - vi[1]] + vi[0] * pi[0] + vi[1] * pi[1]);
+        f[j] = max(f[j], f[j - vi[0] - vi[1]] + vi[0] * pi[0] + vi[1] * pi[1]);
       if (j >= vi[0] + vi[2])
-        *fj = max(*fj, f[j - vi[0] - vi[2]] + vi[0] * pi[0] + vi[2] * pi[2]);
+        f[j] = max(f[j], f[j - vi[0] - vi[2]] + vi[0] * pi[0] + vi[2] * pi[2]);
       if (j >= vi[0] + vi[1] + vi[2])
-        *fj = max(*fj, f[j - vi[0] - vi[1] - vi[2]] + vi[0] * pi[0] +
-                           vi[1] * pi[1] + vi[2] * pi[2]);
+        f[j] = max(f[j], f[j - vi[0] - vi[1] - vi[2]] + vi[0] * pi[0] +
+                             vi[1] * pi[1] + vi[2] * pi[2]);
     }
   }
   printf("%u\n", f[n]);

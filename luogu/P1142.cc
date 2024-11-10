@@ -17,7 +17,7 @@ int main() {
   for (int i = 0; i < n; ++i)
     scanf("%d%d", &p[i].x, &p[i].y);
   for (int i = 0; i < n; ++i)
-    for (int j = 0; j < n; ++j) {
+    for (int j = i; j < n; ++j) {
       if (__builtin_expect(i == j, 0))
         continue;
       double dx = p[i].x - p[j].x;

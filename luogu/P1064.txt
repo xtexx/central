@@ -1,22 +1,22 @@
 Metadata-Version: 1
 Problem-Id: P1064
-Record-Id: 133929529
-Timestamp: 1699409485
-Status: Accepted
-Score: 100/100
+Record-Id: 133840819
+Timestamp: 1699353690
+Status: Unaccepted
+Score: 0/100
 Language: C++14 (GCC 9)
 
 Test-Result:
 	Subtask: 1
-		Case: 10 AC 3 ms 724 KiB ok accepted
+		Case: 10 RE 0 ms 0 KiB 
 	Subtask: 0
-		Case: 0 AC 4 ms 680 KiB ok accepted
-		Case: 1 AC 3 ms 724 KiB ok accepted
-		Case: 2 AC 4 ms 788 KiB ok accepted
-		Case: 3 AC 4 ms 680 KiB ok accepted
-		Case: 4 AC 4 ms 680 KiB ok accepted
-		Case: 5 AC 5 ms 808 KiB ok accepted
-		Case: 6 AC 6 ms 680 KiB ok accepted
-		Case: 7 AC 7 ms 788 KiB ok accepted
-		Case: 8 AC 9 ms 684 KiB ok accepted
-		Case: 9 AC 3 ms 696 KiB ok accepted
+		Case: 0 RE 0 ms 0 KiB 
+		Case: 1 RE 0 ms 0 KiB 
+		Case: 2 RE 0 ms 0 KiB 
+		Case: 3 RE 0 ms 0 KiB 
+		Case: 4 RE 0 ms 0 KiB 
+		Case: 5 RE 0 ms 0 KiB 
+		Case: 6 RE 0 ms 0 KiB 
+		Case: 7 RE 0 ms 0 KiB 
+		Case: 8 RE 0 ms 0 KiB 
+		Case: 9 RE 0 ms 0 KiB 

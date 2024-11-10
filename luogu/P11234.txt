@@ -1,0 +1,35 @@
+Metadata-Version: 1
+Problem-Id: P11234
+Record-Id: 187827362
+Timestamp: 1731201208
+Status: Unaccepted
+Score: 8/100
+Language: C++14 (GCC 9)
+
+Test-Result:
+	Subtask: 0
+		Case: 0 TLE 1.2 s 2.59 MiB 
+		Case: 1 TLE 1.2 s 2.37 MiB 
+		Case: 2 TLE 1.2 s 2.41 MiB 
+		Case: 3 AC 5 ms 6.49 MiB 
+		Case: 4 AC 5 ms 6.49 MiB 
+		Case: 5 WA 5 ms 6.42 MiB 
+		Case: 6 WA 5 ms 6.38 MiB 
+		Case: 7 WA 5 ms 6.48 MiB 
+		Case: 8 WA 18 ms 8.52 MiB 
+		Case: 9 WA 17 ms 8.53 MiB 
+		Case: 10 TLE 1.2 s 9.24 MiB 
+		Case: 11 TLE 1.2 s 9.21 MiB 
+		Case: 12 TLE 1.2 s 9.23 MiB 
+		Case: 13 TLE 1.2 s 9.21 MiB 
+		Case: 14 TLE 1.2 s 9.13 MiB 
+		Case: 15 TLE 1.2 s 9.23 MiB 
+		Case: 16 TLE 1.2 s 9.24 MiB 
+		Case: 17 TLE 1.2 s 9.23 MiB 
+		Case: 18 TLE 1.2 s 9.23 MiB 
+		Case: 19 TLE 1.2 s 9.13 MiB 
+		Case: 20 TLE 1.2 s 9.24 MiB 
+		Case: 21 TLE 1.2 s 9.21 MiB 
+		Case: 22 TLE 1.2 s 9.24 MiB 
+		Case: 23 TLE 1.2 s 9.12 MiB 
+		Case: 24 TLE 1.2 s 9.12 MiB 

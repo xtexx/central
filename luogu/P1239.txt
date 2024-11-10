@@ -1,0 +1,24 @@
+Metadata-Version: 1
+Problem-Id: P1239
+Record-Id: 171851482
+Timestamp: 1723283181
+Status: Unaccepted
+Score: 10/100
+Language: C++14 (GCC 9)
+
+Test-Result:
+	Subtask: 0
+		Case: 0 WA 3 ms 556 KiB wrong answer On line 3 column 1, read 1, expected 0.
+		Case: 1 WA 3 ms 556 KiB wrong answer On line 1 column 2, read 1, expected 8.
+		Case: 2 AC 3 ms 564 KiB ok accepted
+		Case: 3 WA 3 ms 556 KiB wrong answer On line 1 column 1, read 4, expected 3.
+		Case: 4 WA 3 ms 564 KiB wrong answer On line 1 column 1, read 1, expected 9.
+		Case: 5 WA 3 ms 564 KiB wrong answer On line 1 column 2, read 3, expected 1.
+		Case: 6 WA 3 ms 564 KiB wrong answer On line 1 column 1, read 1, expected 4.
+		Case: 7 WA 3 ms 564 KiB wrong answer On line 1 column 1, read 4, expected 2.
+		Case: 8 WA 3 ms 596 KiB wrong answer On line 1 column 1, read 2, expected 1.
+		Case: 9 WA 3 ms 564 KiB wrong answer On line 1 column 1, read 1, expected 5.
+	Subtask: 1
+		Case: 10 WA 3 ms 556 KiB wrong answer On line 1 column 1, read 1, expected 7.
+		Case: 11 WA 3 ms 552 KiB wrong answer On line 1 column 1, read 1, expected 7.
+		Case: 12 WA 3 ms 576 KiB wrong answer On line 1 column 1, read 1, expected 7.
