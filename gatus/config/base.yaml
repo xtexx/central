@@ -16,3 +16,8 @@ ui:
       link: https://xtexx.eu.org
     - name: "Xensor V"
       link: https://xvnet.eu.org
+
+connectivity:
+  checker:
+    target: 1.1.1.1:53
+    interval: 60s
