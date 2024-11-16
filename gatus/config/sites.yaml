@@ -1,1 +1,14 @@
-endpoints: []
+endpoints:
+  - name: "xtex's Home"
+    url: "https://xtexx.eu.org/nodeinfo/2.1.json"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[RESPONSE_TIME] < 700"
+      - "[BODY].software.name == xtex-home"
+  - name: "xtex's Blog"
+    url: "https://blog.xtexx.eu.org/"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[RESPONSE_TIME] < 700"
