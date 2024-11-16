@@ -1,0 +1,18 @@
+storage:
+  type: sqlite
+  path: /data/data.db
+
+skip-invalid-config-update: true
+
+web:
+  port: 8080
+
+ui:
+  title: "xtex's Uptime"
+  description: "Status monitoring for some services"
+  header: Status
+  buttons:
+    - name: "xtex's Home"
+      link: https://xtexx.eu.org
+    - name: "Xensor V"
+      link: https://xvnet.eu.org
