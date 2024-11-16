@@ -16,3 +16,19 @@ endpoints:
       - "[STATUS] == 200"
       - "[RESPONSE_TIME] < 1500"
       - "[CERTIFICATE_EXPIRATION] > 72h"
+  - name: "xtex's Uptime"
+    group: xtex
+    url: "https://uptime.xtexx.eu.org/"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[RESPONSE_TIME] < 1500"
+      - "[CERTIFICATE_EXPIRATION] > 72h"
+  - name: "xtex's Upptime"
+    group: xtex
+    url: "https://upptime.xtexx.eu.org/"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[RESPONSE_TIME] < 1000"
+      - "[CERTIFICATE_EXPIRATION] > 72h"
