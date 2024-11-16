@@ -6,9 +6,11 @@ endpoints:
       - "[STATUS] == 200"
       - "[RESPONSE_TIME] < 1500"
       - "[BODY].software.name == xtex-home"
+      - "[CERTIFICATE_EXPIRATION] > 72h"
   - name: "xtex's Blog"
     url: "https://blog.xtexx.eu.org/"
     interval: 5m
     conditions:
       - "[STATUS] == 200"
       - "[RESPONSE_TIME] < 1500"
+      - "[CERTIFICATE_EXPIRATION] > 72h"
