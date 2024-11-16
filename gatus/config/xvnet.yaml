@@ -1,5 +1,5 @@
 endpoints:
-  - name: "(xvnet) Xensor V Network IdM"
+  - name: "Xensor V Network IdM"
     group: xvnet
     url: "https://id.xvnet.eu.org/auth/v1/health"
     interval: 5m
@@ -9,7 +9,7 @@ endpoints:
       - "[BODY].db_healthy == true"
       - "[BODY].cache_healthy == true"
       - "[CERTIFICATE_EXPIRATION] > 48h"
-  - name: "(xvnet) Xensor V Wiki"
+  - name: "Xensor V Wiki"
     group: xvnet
     url: "https://w.xvnet.eu.org"
     interval: 5m
@@ -17,7 +17,7 @@ endpoints:
       - "[STATUS] == 200"
       - "[RESPONSE_TIME] < 1000"
       - "[CERTIFICATE_EXPIRATION] > 48h"
-  - name: "(xvnet) Xens Meta Wiki"
+  - name: "Xens Meta Wiki"
     group: xvnet
     url: "https://meta.w.xvnet.eu.org"
     interval: 5m
@@ -25,7 +25,7 @@ endpoints:
       - "[STATUS] == 200"
       - "[RESPONSE_TIME] < 1000"
       - "[CERTIFICATE_EXPIRATION] > 48h"
-  - name: "(xvnet) FLCC Wiki"
+  - name: "FLCC Wiki"
     group: xvnet
     url: "https://hgdns.ren"
     interval: 5m
@@ -33,7 +33,7 @@ endpoints:
       - "[STATUS] == 200"
       - "[RESPONSE_TIME] < 1500"
       - "[CERTIFICATE_EXPIRATION] > 48h"
-  - name: "(xvnet) Xensor V Ntfy"
+  - name: "Xensor V Ntfy"
     group: xvnet
     url: "https://ntfy.xvnet.eu.org/v1/health"
     interval: 5m
