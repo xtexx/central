@@ -102,6 +102,7 @@
 	smtpUser = xtex@envs.net
 	from = xtex <xtex@envs.net>
 	smtpDomain = xtexx.eu.org
+	confirm = auto
 [am]
 	threeWay = true
 [gitreview]
