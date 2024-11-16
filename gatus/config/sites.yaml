@@ -1,5 +1,5 @@
 endpoints:
-  - name: "xtex's Home"
+  - name: "(xtex) xtex's Home"
     url: "https://xtexx.eu.org/nodeinfo/2.1.json"
     interval: 5m
     conditions:
@@ -7,7 +7,7 @@ endpoints:
       - "[RESPONSE_TIME] < 1500"
       - "[BODY].software.name == xtex-home"
       - "[CERTIFICATE_EXPIRATION] > 72h"
-  - name: "xtex's Blog"
+  - name: "(xtex) xtex's Blog"
     url: "https://blog.xtexx.eu.org/"
     interval: 5m
     conditions:
