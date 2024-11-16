@@ -136,3 +136,5 @@
 	path = .config/git/local.conf
 [bulkworkspaces]
 	mw = /home/xtex/src/wm/mediawiki
+[includeIf "hasconfig:remote.*.url:https://git.kernel.org/**"]
+	path = ~/.config/git/linux.conf
