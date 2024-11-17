@@ -7,17 +7,15 @@ tiang::target vern ssh://vern.cc
 tiang::target tfdev ssh://dev.toolforge.org
 tiang::target koit ssh://koit.local
 
-tiang::defineCommand atremis::customCommands
+tiang::defineCommand infra::customCommands
 tiangCommandsUsage+="""
-    -ss --syncsec  [FILE]       Copy a secret file to targets
-    -pull                       Run atremis pull
-    -upd                        Run atremis update
+    -infra --infra  [COMMAND]   Run a infra command
 """
-atremis::customCommands() {
+infra::customCommands() {
 	if [[ "$1" == "-infra" || "$1" == "--infra" ]]; then
 		[ $# -lt 2 ] && tiang::error "1 parameter is required for --infra"
 		# shellcheck disable=SC2086
-		tiang::runParallelOnTargets tiang::runSSH "./.infra" $1
+		tiang::runParallelOnTargets tiang::runSSH "./.infra" $2
 		tiangHandledParams=2
 	else
 		tiangHandledParams=0
