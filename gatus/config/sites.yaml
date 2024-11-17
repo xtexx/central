@@ -1,12 +1,12 @@
 preset-xtex-domains: &domains
-  group: xtex-domain
+  group: 01-domains
   interval: 1h
   conditions:
     - "[DOMAIN_EXPIRATION] > 720h"
 
 endpoints:
   - name: "xtex's Home"
-    group: xtex-site
+    group: 00-sites
     url: "https://xtexx.eu.org/nodeinfo/2.1.json"
     interval: 5m
     conditions:
@@ -14,32 +14,32 @@ endpoints:
       - "[BODY].software.name == xtex-home"
       - "[CERTIFICATE_EXPIRATION] > 72h"
   - name: "xtex's Blog"
-    group: xtex-site
+    group: 00-sites
     url: "https://blog.xtexx.eu.org/"
     interval: 5m
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 72h"
   - name: "xtex's Uptime"
-    group: xtex-site
+    group: 00-sites
     url: "https://uptime.xtexx.eu.org/"
     interval: 5m
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 72h"
   - name: "xtex's Upptime"
-    group: xtex-site
+    group: 00-sites
     url: "https://upptime.xtexx.eu.org/"
     interval: 5m
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 72h"
-  - name: xtexx.eu.org
-    <<: *domains
-    url: "https://xtexx.eu.org"
-  - name: xtexx.us.kg
-    <<: *domains
-    url: "https://xtexx.us.kg"
+  # - name: xtexx.eu.org
+  #   <<: *domains
+  #   url: "https://xtexx.eu.org"
+  # - name: xtexx.us.kg
+  #   <<: *domains
+  #   url: "https://xtexx.us.kg"
   - name: hgdns.ren
     <<: *domains
     url: "https://hgdns.ren"
@@ -50,7 +50,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 72h"
-  - name: yjyz.us.kg
-    <<: *domains
-    group: yjyz-tools
-    url: "https://yjyz.us.kg"
+  # - name: yjyz.us.kg
+  #   <<: *domains
+  #   group: yjyz-tools
+  #   url: "https://yjyz.us.kg"
