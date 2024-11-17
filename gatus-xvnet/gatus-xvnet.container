@@ -1,0 +1,17 @@
+[Unit]
+Description="Gatus (Xensor V Network)"
+
+[Container]
+ContainerName=gatus-xvnet
+Image=docker.io/twinproduction/gatus:stable
+AutoUpdate=registry
+Mount=type=bind,source=/home/xtex/infra/gatus-xvnet/config,destination=/config
+Mount=type=bind,source=/home/xtex/apps/gatus-xvnet,destination=/data
+PublishPort=17784:8080
+Environment=GATUS_CONFIG_PATH=/config
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target default.target

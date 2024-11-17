@@ -1,0 +1,15 @@
+endpoints:
+  - name: "Uptime"
+    group: external
+    url: "https://xvnetstatus.us.kg/health"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == UP"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "hgdns.ren"
+    group: external
+    url: "https://hgdns.ren"
+    interval: 1h
+    conditions:
+      - "[DOMAIN_EXPIRATION] > 720h"

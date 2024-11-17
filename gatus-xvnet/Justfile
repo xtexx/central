@@ -1,0 +1,11 @@
+[group('gatus-xvnet'), doc('Deploy Gatus configuration')]
+gatus-xvnet-deploy: (infra-sync "psf")
+
+[group('gatus-xvnet'), doc('Deploy Gatus container')]
+gatus-xvnet-deploy-container: (infra-sync "psf")
+	./tiang -o psf -c '\
+		mkdir -p ~/apps/gatus-xvnet; \
+		cp ~/infra/gatus-xvnet/gatus-xvnet.container ~/.config/containers/systemd/gatus-xvnet.container; \
+		systemctl --user daemon-reload; \
+		systemctl --user restart gatus-xvnet.service;\
+		'

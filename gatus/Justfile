@@ -3,6 +3,9 @@ gatus-deploy: (infra-sync "psf")
 
 [group('gatus'), doc('Deploy Gatus container')]
 gatus-deploy-container: (infra-sync "psf")
-	./tiang -o psf -c 'cp ~/infra/gatus/gatus.container ~/.config/containers/systemd/gatus.container; \
+	./tiang -o psf -c '\
+		mkdir -p ~/apps/gatus;\
+		cp ~/infra/gatus/gatus.container ~/.config/containers/systemd/gatus.container; \
 		systemctl --user daemon-reload; \
-		systemctl --user restart gatus.service'
+		systemctl --user restart gatus.service;\
+		'

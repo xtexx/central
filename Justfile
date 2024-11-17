@@ -3,3 +3,4 @@ default:
 
 import 'infra/Justfile'
 import 'gatus/Justfile'
+import 'gatus-xvnet/Justfile'

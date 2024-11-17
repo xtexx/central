@@ -22,10 +22,11 @@ endpoints:
       - "[CERTIFICATE_EXPIRATION] > 72h"
   - name: "xtex's Uptime"
     group: 00-sites
-    url: "https://uptime.xtexx.eu.org/"
+    url: "https://uptime.xtexx.eu.org/health"
     interval: 5m
     conditions:
       - "[STATUS] == 200"
+      - "[BODY].status == UP"
       - "[CERTIFICATE_EXPIRATION] > 72h"
   - name: "xtex's Upptime"
     group: 00-sites
