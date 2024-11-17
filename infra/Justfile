@@ -1,2 +1,16 @@
+import 'psf.just'
+
 infra-sync host:
-	./tiang -o "{{host}}" -infra fetch
+	./tiang -o '{{host}}' -infra fetch
+
+infra-sync-all:
+	./tiang -infra fetch
+
+sd-user-daemon-reload host:
+	./tiang -o '{{host}}' -c 'systemctl --user daemon-reload'
+
+sd-user-restart host service:
+	./tiang -o '{{host}}' -c 'systemctl --user restart {{service}}'
+
+sd-user-reload host service:
+	./tiang -o '{{host}}' -c 'systemctl --user reload {{service}}'

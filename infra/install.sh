@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Usage: curl -sSL 'https://codeberg.org/xtex/infra/raw/branch/main/infra/install.sh' | bash -
+set -euxo pipefail
 
 git clone \
 	--depth 1 \
