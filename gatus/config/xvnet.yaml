@@ -1,3 +1,9 @@
+preset-domains: &domains
+  group: xvnet-domain
+  interval: 1h
+  conditions:
+    - "[DOMAIN_EXPIRATION] > 720h"
+
 endpoints:
   - name: "Xensor V Network IdM"
     group: xvnet-service
@@ -37,3 +43,12 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "xvnet.eu.org"
+    <<: *domains
+    url: "https://xvnet.eu.org"
+  - name: "xvnet0.eu.org"
+    <<: *domains
+    url: "https://xvnet0.eu.org"
+  - name: "xvnet.net.eu.org"
+    <<: *domains
+    url: "https://xvnet.net.eu.org"

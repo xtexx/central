@@ -1,0 +1,109 @@
+endpoints:
+  - name: "OSDev Wiki"
+    group: extra
+    url: "https://osdev.wiki/w/api.php?action=query&format=json&meta=siteinfo&formatversion=2&siprop=general"
+    interval: 15m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].query.general.sitename == OSDev.wiki"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "osdev.wiki"
+    group: extra
+    url: "https://osdev.wiki/"
+    interval: 1h
+    conditions:
+      - "[DOMAIN_EXPIRATION] > 720h"
+  - name: "Project Archive"
+    group: extra
+    url: "https://lakeus.xyz/w/api.php?action=query&format=json&meta=siteinfo&formatversion=2&siprop=general"
+    interval: 15m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].query.general.sitename == 存档计划"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "Minecraft Wiki"
+    group: extra
+    url: "https://meta.minecraft.wiki/api.php?action=query&format=json&meta=siteinfo&formatversion=2&siprop=general"
+    interval: 15m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].query.general.sitename == Meta Wiki"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "Wikitech"
+    group: extra
+    url: "https://wikitech.wikimedia.org/w/api.php?action=query&format=json&meta=siteinfo&formatversion=2&siprop=general"
+    interval: 30m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].query.general.sitename == Wikitech"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "Wikimedia Gerrit"
+    group: extra
+    url: "https://gerrit.wikimedia.org/r/config/server/info"
+    interval: 30m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "Wikimedia GitLab"
+    group: extra
+    url: "https://gitlab.wikimedia.org/"
+    interval: 30m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "Wikimedia Phabricator"
+    group: extra
+    url: "https://phabricator.wikimedia.org/"
+    interval: 30m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "exozyme"
+    group: extra
+    url: "https://exozy.me/"
+    interval: 15m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "molyuu.cyou"
+    group: extra
+    url: "https://molyuu.cyou"
+    interval: 30m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "blog.molyuu.cyou"
+    group: extra
+    url: "https://blog.molyuu.cyou"
+    interval: 30m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "blog.sugarmgp.icu"
+    group: extra
+    url: "https://blog.sugarmgp.icu/"
+    interval: 30m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "dn42.dev"
+    group: extra
+    url: "https://dn42.dev/Home"
+    interval: 30m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "chitang.dev"
+    group: extra
+    url: "https://chitang.dev"
+    interval: 1h
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "uptime.chitang.dev"
+    group: extra
+    url: "https://uptime.chitang.dev"
+    interval: 1h
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
