@@ -1,3 +1,8 @@
+preset-extra-alerts: &alerts
+  alerts:
+    - type: telegram
+    - type: discord
+
 endpoints:
   - name: "OSDev Wiki"
     group: 02-extra
@@ -8,6 +13,7 @@ endpoints:
       - "[BODY].query.general.sitename == OSDev.wiki"
       - "[CERTIFICATE_EXPIRATION] > 48h"
       - "[DOMAIN_EXPIRATION] > 720h"
+    <<: *alerts
   - name: "Project Archive"
     group: 02-extra
     url: "https://lakeus.xyz/w/api.php?action=query&format=json&meta=siteinfo&formatversion=2&siprop=general"
@@ -16,6 +22,7 @@ endpoints:
       - "[STATUS] == 200"
       - "[BODY].query.general.sitename == 存档计划"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "Minecraft Wiki"
     group: 02-extra
     url: "https://meta.minecraft.wiki/api.php?action=query&format=json&meta=siteinfo&formatversion=2&siprop=general"
@@ -24,6 +31,7 @@ endpoints:
       - "[STATUS] == 200"
       - "[BODY].query.general.sitename == Meta Wiki"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "Wikitech"
     group: 02-extra
     url: "https://wikitech.wikimedia.org/w/api.php?action=query&format=json&meta=siteinfo&formatversion=2&siprop=general"
@@ -32,6 +40,7 @@ endpoints:
       - "[STATUS] == 200"
       - "[BODY].query.general.sitename == Wikitech"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "Wikimedia Gerrit"
     group: 02-extra
     url: "https://gerrit.wikimedia.org/r/config/server/info"
@@ -39,6 +48,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "Wikimedia GitLab"
     group: 02-extra
     url: "https://gitlab.wikimedia.org/"
@@ -46,6 +56,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "Wikimedia Phabricator"
     group: 02-extra
     url: "https://phabricator.wikimedia.org/"
@@ -53,6 +64,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "exozyme"
     group: 02-extra
     url: "https://exozy.me/"
@@ -60,6 +72,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "molyuu.cyou"
     group: 02-extra
     url: "https://molyuu.cyou"
@@ -67,6 +80,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "blog.molyuu.cyou"
     group: 02-extra
     url: "https://blog.molyuu.cyou"
@@ -74,6 +88,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "blog.sugarmgp.icu"
     group: 02-extra
     url: "https://blog.sugarmgp.icu/"
@@ -81,6 +96,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "dn42.dev"
     group: 02-extra
     url: "https://dn42.dev/Home"
@@ -88,6 +104,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "chitang.dev"
     group: 02-extra
     url: "https://chitang.dev"
@@ -95,6 +112,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "uptime.chitang.dev"
     group: 02-extra
     url: "https://uptime.chitang.dev"
@@ -102,3 +120,4 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts

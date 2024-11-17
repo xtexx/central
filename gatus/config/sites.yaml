@@ -1,8 +1,14 @@
+preset-xtex-alerts: &alerts
+  alerts:
+    - type: telegram
+    - type: discord
+
 preset-xtex-domains: &domains
   group: 01-domains
   interval: 1h
   conditions:
     - "[DOMAIN_EXPIRATION] > 720h"
+  <<: *alerts
 
 endpoints:
   - name: "xtex's Home"
@@ -13,6 +19,7 @@ endpoints:
       - "[STATUS] == 200"
       - "[BODY].software.name == xtex-home"
       - "[CERTIFICATE_EXPIRATION] > 72h"
+    <<: *alerts
   - name: "xtex's Blog"
     group: 00-sites
     url: "https://blog.xtexx.eu.org/"
@@ -20,6 +27,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 72h"
+    <<: *alerts
   - name: "xtex's Uptime"
     group: 00-sites
     url: "https://uptime.xtexx.eu.org/health"
@@ -28,6 +36,7 @@ endpoints:
       - "[STATUS] == 200"
       - "[BODY].status == UP"
       - "[CERTIFICATE_EXPIRATION] > 72h"
+    <<: *alerts
   - name: "xtex's Upptime"
     group: 00-sites
     url: "https://upptime.xtexx.eu.org/"
@@ -35,6 +44,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 72h"
+    <<: *alerts
   # - name: xtexx.eu.org
   #   <<: *domains
   #   url: "https://xtexx.eu.org"
@@ -52,6 +62,7 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 72h"
+    <<: *alerts
   # - name: yjyz.us.kg
   #   <<: *domains
   #   group: yjyz-tools

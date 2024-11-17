@@ -9,3 +9,8 @@ gatus-deploy-container: (infra-sync "psf")
 		systemctl --user daemon-reload; \
 		systemctl --user restart gatus.service;\
 		'
+
+[group('gatus'), doc('Deploy Gatus local.yaml')]
+gatus-deploy-local: (infra-sync "psf")
+	./tiang -o psf \
+		-t ./gatus/config/local.yaml /home/xtex/infra/gatus/config/local.yaml
