@@ -1,3 +1,7 @@
+preset-ext-alerts: &alerts
+  alerts:
+    - type: ntfy
+
 endpoints:
   - name: "Xensor V Network IdM"
     group: service
@@ -8,6 +12,7 @@ endpoints:
       - "[BODY].db_healthy == true"
       - "[BODY].cache_healthy == true"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "Xensor V Ntfy"
     group: service
     url: "https://ntfy.xvnet.eu.org/v1/health"
@@ -16,3 +21,4 @@ endpoints:
       - "[STATUS] == 200"
       - "[BODY].healthy == true"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts

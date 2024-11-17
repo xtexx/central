@@ -3,6 +3,8 @@ preset-domains: &domains
   interval: 1h
   conditions:
     - "[DOMAIN_EXPIRATION] > 720h"
+  alerts:
+    - type: ntfy
 
 endpoints:
 #   - name: "xvnet.eu.org"

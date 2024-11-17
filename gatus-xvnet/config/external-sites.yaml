@@ -1,3 +1,7 @@
+preset-ext-alerts: &alerts
+  alerts:
+    - type: ntfy
+
 endpoints:
   - name: "Uptime"
     group: external
@@ -7,9 +11,11 @@ endpoints:
       - "[STATUS] == 200"
       - "[BODY].status == UP"
       - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
   - name: "hgdns.ren"
     group: external
     url: "https://hgdns.ren"
     interval: 1h
     conditions:
       - "[DOMAIN_EXPIRATION] > 720h"
+    <<: *alerts
