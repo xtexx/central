@@ -1,0 +1,18 @@
+endpoints:
+  - name: "Xensor V Network IdM"
+    group: service
+    url: "https://id.xvnet.eu.org/auth/v1/health"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].db_healthy == true"
+      - "[BODY].cache_healthy == true"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "Xensor V Ntfy"
+    group: service
+    url: "https://ntfy.xvnet.eu.org/v1/health"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].healthy == true"
+      - "[CERTIFICATE_EXPIRATION] > 48h"

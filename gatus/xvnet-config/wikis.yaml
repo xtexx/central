@@ -1,0 +1,25 @@
+endpoints:
+  - name: "Xensor V Wiki"
+    group: wiki
+    url: "https://w.xvnet.eu.org/api.php?action=query&format=json&meta=siteinfo&formatversion=2&siprop=general"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].query.general.sitename == Xensor V Wiki"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "Xens Meta Wiki"
+    group: wiki
+    url: "https://meta.w.xvnet.eu.org/api.php?action=query&format=json&meta=siteinfo&formatversion=2&siprop=general"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].query.general.sitename == Xens Meta"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+  - name: "FLCC Wiki"
+    group: wiki
+    url: "https://hgdns.ren/api.php?action=query&format=json&meta=siteinfo&formatversion=2&siprop=general"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].query.general.sitename == 幻光电脑社"
+      - "[CERTIFICATE_EXPIRATION] > 48h"

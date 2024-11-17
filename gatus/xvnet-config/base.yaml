@@ -1,0 +1,21 @@
+storage:
+  type: sqlite
+  path: /data/data.db
+
+skip-invalid-config-update: true
+
+web:
+  port: 8080
+
+ui:
+  title: "Xensor V Status"
+  description: "Status monitoring for Xensor V Network services"
+  header: Xensor V Network Status
+  buttons:
+    - name: "Xensor V"
+      link: https://xvnet.eu.org
+
+connectivity:
+  checker:
+    target: 1.1.1.1:53
+    interval: 60s

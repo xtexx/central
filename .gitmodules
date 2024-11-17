@@ -1,0 +1,3 @@
+[submodule "tianguan"]
+	path = external/tianguan
+	url = https://codeberg.org/xens/tianguan.git
