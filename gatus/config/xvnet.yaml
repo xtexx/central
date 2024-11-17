@@ -1,4 +1,4 @@
-preset-domains: &domains
+preset-xvnet-domains: &domains
   group: xvnet-domain
   interval: 1h
   conditions:

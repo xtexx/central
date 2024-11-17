@@ -1,4 +1,4 @@
-preset-domains: &domains
+preset-xtex-domains: &domains
   group: xtex-domain
   interval: 1h
   conditions:
