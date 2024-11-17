@@ -1,9 +1,13 @@
 import 'psf.just'
 
-infra-sync host:
+[private]
+infra-push:
+	git diff --quiet main origin/main || git push
+
+infra-sync host: infra-push
 	./tiang -o '{{host}}' -infra pull
 
-infra-sync-all:
+infra-sync-all: infra-push
 	./tiang -infra pull
 
 [private]
