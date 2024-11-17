@@ -55,4 +55,5 @@ infra::pull() {
 		-c gc.pruneExpire=now gc --quiet
 }
 
-exec infra::main "$@"
+infra::main "$@"
+exit "$?"
