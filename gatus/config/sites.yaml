@@ -1,6 +1,5 @@
 preset-xtex-alerts: &alerts
   alerts:
-    - type: telegram
     - type: discord
 
 preset-xtex-domains: &domains

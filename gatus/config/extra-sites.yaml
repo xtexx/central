@@ -1,6 +1,5 @@
 preset-extra-alerts: &alerts
   alerts:
-    - type: telegram
     - type: discord
 
 endpoints:
