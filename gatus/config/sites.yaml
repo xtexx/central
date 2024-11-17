@@ -42,9 +42,10 @@ endpoints:
   #   url: "https://xtexx.us.kg"
   - name: hgdns.ren
     <<: *domains
+    group: 03-flcc
     url: "https://hgdns.ren"
   - name: "yjyz-tools"
-    group: yjyz-tools
+    group: 03-yjyz-tools
     url: "https://yjyz.us.kg/"
     interval: 5m
     conditions:
