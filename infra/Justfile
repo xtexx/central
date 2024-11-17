@@ -6,11 +6,14 @@ infra-sync host:
 infra-sync-all:
 	./tiang -infra pull
 
+[private]
 sd-user-daemon-reload host:
 	./tiang -o '{{host}}' -c 'systemctl --user daemon-reload'
 
+[private]
 sd-user-restart host service:
 	./tiang -o '{{host}}' -c 'systemctl --user restart {{service}}'
 
+[private]
 sd-user-reload host service:
 	./tiang -o '{{host}}' -c 'systemctl --user reload {{service}}'
