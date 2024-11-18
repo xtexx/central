@@ -160,6 +160,7 @@ Team members:
 * Italian https://codeberg.org/Zughy - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/103)
 * Japanese https://codeberg.org/ledyba - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/74)
 * Korean https://codeberg.org/kdh8219 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/121)
+* Latvian https://codeberg.org/Edgarsons - [November 2024 Agreement](https://codeberg.org/forgejo/governance/issues/190)
 * Russian https://codeberg.org/0ko - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/70) (admin)
 * Russian https://codeberg.org/Werenter - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/76)
 * Spanish https://codeberg.org/maletil - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/88)
