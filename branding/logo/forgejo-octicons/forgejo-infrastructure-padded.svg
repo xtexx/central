@@ -17,9 +17,9 @@
 			stroke:#d40000;
 		}
 	</style>
-	<g transform="translate(10,28)"	>
-		<path class="orange" d="m58 168v-98a50 50 0 0 1 50-50h20"/>
-		<path class="red" d="m58 168v-30a50 50 0 0 1 50-50h20"/>
+	<g transform="translate(15.804645,28)">
+		<path class="orange" d="M 58,168 V 70 a 50,50 0 0 1 50,-50 h 20"/>
+		<path class="red" d="m 58,168 v -30 a 50,50 0 0 1 50,-50 h 20"/>
 		<circle class="orange" cx="142" cy="20" r="18"/>
 		<circle class="red" cx="142" cy="88" r="18"/>
 		<circle class="red" cx="58" cy="180" r="18"/>
