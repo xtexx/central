@@ -137,4 +137,6 @@
 [bulkworkspaces]
 	mw = /home/xtex/src/wm/mediawiki
 [includeIf "hasconfig:remote.*.url:https://git.kernel.org/**"]
-	path = ~/.config/git/linux.conf
+	path = ~/.config/git/realname.conf
+[includeIf "hasconfig:remote.*.url:https://android.googlesource.com/**"]
+	path = ~/.config/git/realname.conf
