@@ -7,7 +7,6 @@
 !/.gdbinit
 
 !/.ssh/
-!/.ssh/authorized_keys
 !/.ssh/config
 
 !/.config/
