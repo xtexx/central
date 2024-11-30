@@ -140,5 +140,5 @@
 	path = ~/.config/git/realname.conf
 [includeIf "hasconfig:remote.*.url:https://android.googlesource.com/**"]
 	path = ~/.config/git/realname.conf
-[includeIf "gitdir:/home/xtex/deploy/*"]
+[includeIf "gitdir:~/deploy/**"]
 	path = ~/.config/git/deployment.conf
