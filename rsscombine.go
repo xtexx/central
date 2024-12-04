@@ -166,7 +166,7 @@ func main() {
 			log.Fatal(err)
 		}
 	} else {
-		fmt.Println(atom);
+		fmt.Println(atom)
 	}
 	return
 }
