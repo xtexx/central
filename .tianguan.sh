@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 tiang::target psf ssh://p.projectsegfau.lt
-tiang::target exozyme ssh://exozy.me
 tiang::target envs ssh://envs.net
 tiang::target vern ssh://vern.cc
 tiang::target tfdev ssh://dev.toolforge.org
