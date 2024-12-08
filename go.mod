@@ -1,4 +1,4 @@
-module git.sr.ht/~fd/rsscombine
+module codeberg.org/exozyme/rsscombine
 
 go 1.21
 
