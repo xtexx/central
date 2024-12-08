@@ -11,7 +11,8 @@ runs:
     - uses: "https://code.forgejo.org/actions/checkout@v4"
 
     - name: "Generate Combined RSS Feed"
-      uses: "https://codeberg.org/exozyme/rsscombine@latest"
+      using: "docker"
+      image: "Dockerfile"
 
     - name: "Commit Changes"
       run: |
