@@ -55,7 +55,9 @@ are private. It is available:
 - in the environment of each step as `GITHUB_TOKEN`
 - as `github.token`
 - as `env.GITHUB_TOKEN`
+- as `secrets.FORGEJO_TOKEN`
 - as `secrets.GITHUB_TOKEN`
+- as `secrets.GITEA_TOKEN`
 
 This token can only be used for interactions with the repository of
 the project and any attempt to use it on other repositories, even
