@@ -1,27 +1,5 @@
 name: "RSSCombine"
-description: "Combine multiple RSS feeds into a single feed, as a service."
-inputs:
-  output-branch:
-    description: "What branch to write the generated files to"
-    required: true
-    default: "pages"
+description: "Combine multiple RSS feeds into a single feed."
 runs:
-  using: "composite"
-  steps:
-    - uses: "https://code.forgejo.org/actions/checkout@v4"
-
-    - name: "Generate Combined RSS Feed"
-      using: "docker"
-      image: "codeberg.org/exozyme/rsscombine:latest"
-
-    - name: "Commit Changes"
-      run: |
-        git config --global user.name 'RSSCombine Automated Commit'
-        git config --global user.email 'noreply@exozy.me'
-        git add --all
-        git stash
-        git pull
-        git checkout '${{ inputs.output-branch }}' # FIXME: Unsafe?
-        git stash pop
-        git commit -am "RSS Combine $(date -Is -u)"
-        git push
+  using: "docker"
+  image: "Dockerfile"
