@@ -20,7 +20,8 @@ runs:
       run: |
         git config --global user.name 'RSSCombine Automated Commit'
         git config --global user.email 'noreply@exozy.me'
-        git stash --include-untracked
+        git add --all
+        git stash
         git pull
         git checkout '${{ inputs.output-branch }}' # FIXME: Unsafe?
         git stash pop
