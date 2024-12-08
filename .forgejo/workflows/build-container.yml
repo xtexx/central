@@ -28,6 +28,41 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
+      - name: Create the insecure and buildx-config variables for the container registry
+        id: registry
+        run: |
+          ${{ steps.verbose.outputs.shell }}
+          url="${{ inputs.forgejo }}"
+          hostport=${url##http*://}
+          hostport=${hostport%%/}
+          echo "host-port=${hostport}" >> "$GITHUB_OUTPUT"
+          if ! [[ $url =~ ^http:// ]] ; then
+             exit 0
+          fi
+          cat >> "$GITHUB_OUTPUT" <<EOF
+          insecure=true
+          buildx-config<<ENDVAR
+          [registry."${hostport}"]
+            http = true
+          ENDVAR
+          EOF
+
+      - name: Allow docker pull/push to forgejo
+        if: ${{ steps.registry.outputs.insecure }}
+        run: |-
+          mkdir -p /etc/docker
+          cat > /etc/docker/daemon.json <<EOF
+            {
+              "insecure-registries" : ["${{ steps.registry.outputs.host-port }}"],
+              "bip": "172.26.0.1/16"
+            }
+          EOF
+
+      - name: Install docker
+        run: |
+          echo deb http://deb.debian.org/debian bullseye-backports main | tee /etc/apt/sources.list.d/backports.list && apt-get -qq update
+          DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -qq -y -t bullseye-backports docker.io
+
       - uses: https://code.forgejo.org/docker/setup-buildx-action@v2
         name: "Setup Buildx"
 
