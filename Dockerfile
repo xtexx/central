@@ -8,5 +8,5 @@ RUN go build
 
 FROM scratch
 COPY --from=builder /app/rsscombine /rsscombine
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 ENTRYPOINT ["/rsscombine"]
