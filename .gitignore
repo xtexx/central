@@ -1,2 +1,4 @@
 /gatus/config/local.yaml
 /gatus-xvnet/config/local.yaml
+/secrets/
+/secrets.sh

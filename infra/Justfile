@@ -10,6 +10,9 @@ infra-sync host: infra-push
 infra-sync-all: infra-push
 	./tiang -infra pull
 
+secrets-sync host:
+	./tiang -o '{{host}}' -t secrets/psf.sh /home/xtex/infra/secrets.sh
+
 [private]
 sd-user-daemon-reload host:
 	./tiang -o '{{host}}' -c 'systemctl --user daemon-reload'

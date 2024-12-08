@@ -39,6 +39,10 @@ infra::main() {
 		infra::pull "$@"
 		return
 		;;
+	secret)
+		infra::secret "$@"
+		return
+		;;
 	*)
 		infra::error "unknown option: $cmd"
 		;;
@@ -53,6 +57,14 @@ infra::pull() {
 	git -C "$infraDir" -c gc.reflogExpire=1 -c gc.reflogExpireUnreachable=0 \
 		-c gc.rerereResolved=0 -c gc.rerereUnresolved=0 \
 		-c gc.pruneExpire=now gc --quiet
+}
+
+infra::secret() {
+	(
+		# shellcheck disable=SC1090
+		source ~/infra/secrets.sh
+		exec echo -n "${!1:?}"
+	)
 }
 
 infra::main "$@"
