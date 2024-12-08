@@ -20,9 +20,7 @@ runs:
       run: |
         git config --global user.name 'RSSCombine Automated Commit'
         git config --global user.email 'noreply@exozy.me'
-        git stash
         git pull
         git checkout '${{ inputs.output-branch }}' # FIXME: Unsafe?
-        git stash pop
         git commit -am "RSS Combine $(date -Is -u)"
         git push
