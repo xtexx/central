@@ -1,0 +1,15 @@
+[Unit]
+Description=xtex's Home
+
+[Container]
+ContainerName=home
+Image=codeberg.org/xtex/home:latest
+AutoUpdate=registry
+Mount=type=bind,source=/home/xtex/run,destination=/srv/run
+Mount=type=bind,source=/home/xtex/apps/blog,destination=/srv/blog
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target default.target

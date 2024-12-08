@@ -1,0 +1,8 @@
+[group('home'), doc("Deploy xtex's Home")]
+home-deploy: (infra-sync "psf")
+	./tiang -o psf -c '\
+		mkdir -p ~/run ~/apps/blog; \
+		cp ~/infra/home/xtex-home.container ~/.config/containers/systemd/xtex-home.container; \
+		systemctl --user daemon-reload; \
+		systemctl --user restart xtex-home.service;\
+		'
