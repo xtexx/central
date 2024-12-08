@@ -22,6 +22,7 @@ usage: $0 <COMMAND>
 COMMAND:
     help                        Print usage
     pull                        Fetch changes from the infra repository
+	secret <NAME>               Get secret value
 XXX
 }
 
