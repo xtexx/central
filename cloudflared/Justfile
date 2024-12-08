@@ -1,0 +1,9 @@
+[group('cloudflared'), doc('Deploy cloudflared')]
+cfd-psf-deploy: (infra-sync "psf") (secrets-sync "psf")
+	./tiang -o psf -c '\
+		mkdir -p ~/run; \
+		sed -e "s/__PSF_CLOUDFLARED_TOKEN__/$(./.infra secret PSF_CLOUDFLARED_TOKEN)/" \
+			~/infra/cloudflared/psf.container >~/.config/containers/systemd/cloudflared.container; \
+		systemctl --user daemon-reload; \
+		systemctl --user restart cloudflared.service;\
+		'

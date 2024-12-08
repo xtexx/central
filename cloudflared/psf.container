@@ -1,0 +1,15 @@
+[Unit]
+Description=xtex's Cloudflared Container
+
+[Container]
+ContainerName=cloudflared
+Image=docker.io/cloudflare/cloudflared:latest
+AutoUpdate=registry
+Exec=tunnel --no-autoupdate run --token __PSF_CLOUDFLARED_TOKEN__
+Mount=type=bind,source=/home/xtex/run,destination=/srv/run
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target default.target
