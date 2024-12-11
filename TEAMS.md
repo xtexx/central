@@ -186,6 +186,7 @@ Accountability:
 
 Team members:
 
+* https://codeberg.org/0ko [November 2024 Agreement](https://codeberg.org/forgejo/governance/issues/192)
 * https://codeberg.org/crystal [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/80)
 * https://codeberg.org/earl-warren [July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/141)
 
