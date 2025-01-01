@@ -30,3 +30,12 @@ endpoints:
       - "[BODY].query.general.sitename == 幻光电脑社"
       - "[CERTIFICATE_EXPIRATION] > 48h"
     <<: *alerts
+  - name: "xtex's K Wiki"
+    group: wiki
+    url: "https://k.xtexx.eu.org/api.php?action=query&format=json&meta=siteinfo&formatversion=2&siprop=general"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].query.general.sitename == \"xtex's K\""
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+    <<: *alerts
