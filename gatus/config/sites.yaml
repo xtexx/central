@@ -44,6 +44,14 @@ endpoints:
       - "[STATUS] == 200"
       - "[CERTIFICATE_EXPIRATION] > 72h"
     <<: *alerts
+  - name: "xtex's K"
+    group: 00-sites
+    url: "https://k.xtexx.eu.org/"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 72h"
+    <<: *alerts
   # - name: xtexx.eu.org
   #   <<: *domains
   #   url: "https://xtexx.eu.org"
