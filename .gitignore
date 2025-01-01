@@ -2,3 +2,4 @@
 /gatus-xvnet/config/local.yaml
 /secrets/
 /secrets.sh
+/dns/creds.json
