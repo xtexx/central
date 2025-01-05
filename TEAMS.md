@@ -244,11 +244,11 @@ Observer (access to team discussions and history of actions, without any moderat
 
 ## Liberapay team members
 
-Purpose: Receive a share of donations distributed via the [liberapay team](https://liberapay.com/forgejo).
+Purpose: Receive a share of donations distributed via the [Forgejo Liberapay account](https://liberapay.com/forgejo).
 
 Accountability:
 
-* Manage the Forgejo liberapay team account, which was created by the Codeberg account (@fnetx has access)
+* Manage the Forgejo Liberapay team account, which was created by the Codeberg account (@fnetx has access)
 * Decide on a fair distribution of the incoming funds among the team members
 
 Team members:
