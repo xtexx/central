@@ -78,16 +78,16 @@ The team has access to most Forgejo repositories:
 
 The permissions of the team are:
 
-| Unit | 	Permission |
-| -- | -- |
-| Code | 	Read |
-| Issues | 	Write |
-| Pull | Requests 	Write |
-| Releases | 	Read |
-| Wiki | 	Write |
-| Projects | 	Write |
-| Packages | 	Read |
-| Actions | 	Write |
+| Unit          | Permission |
+|---------------|------------|
+| Code          | Read       |
+| Issues        | Write      |
+| Pull requests | Write      |
+| Releases      | Read       |
+| Wiki          | Write      |
+| Projects      | Write      |
+| Packages      | Read       |
+| Actions       | Write      |
 
 Team members:
 
