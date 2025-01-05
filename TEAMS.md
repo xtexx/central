@@ -217,8 +217,8 @@ Accountability:
 
 Team members:
 
-* All members of the release team.
-* All members of the moderation team.
+* All members of the [releases team](#releases).
+* All members of the [moderation team](#moderation).
 
 ## Moderation
 
