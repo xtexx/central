@@ -120,7 +120,7 @@ Team members:
 * https://codeberg.org/wetneb [January 2024 Agreement](https://codeberg.org/forgejo/governance/issues/54)
 * https://codeberg.org/0ko [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/106)
 * https://codeberg.org/viceice [August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/156)
-* Members of the Security, Devops & Releases teams
+* Members of the [Security](#security), [Devops](#devops) & [Releases](#releases) teams
 
 ## Localization
 
