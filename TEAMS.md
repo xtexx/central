@@ -147,6 +147,7 @@ Team members:
 * Chinese (Simplified) https://codeberg.org/xtex - [September 2024 Agreement](https://codeberg.org/forgejo/governance/issues/176)
 * Chinese (Traditional) https://codeberg.org/leana8959 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/117)
 * Czech https://codeberg.org/Fjuro - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/97)
+* Danish https://codeberg.org/tacaly - [December 2024 Agreement](https://codeberg.org/forgejo/governance/issues/201)
 * Dutch https://codeberg.org/gusted - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/69) (admin)
 * Esperanto https://codeberg.org/jadedctrl - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/77)
 * Filipino https://codeberg.org/kita - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/105)
