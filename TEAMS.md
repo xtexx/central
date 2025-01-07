@@ -17,6 +17,7 @@ Some of the teams are trusted with access to exclusive resources that require cr
 - [Social account](#social-account)
 - [Moderation](#moderation)
 - [Liberapay team members](#liberapay-team-members)
+- [Sustainability Team](#sustainability-team)
 - [GitHub organisation owners](#github-organisation-owners)
 - [GitLab.com organisation owners](#gitlab-com-organisation-owners)
 
@@ -262,7 +263,7 @@ Team members:
     * @patdyn
 
 
-## Sustainability Team 
+## Sustainability Team
 
 Purpose: The team focuses on concerted efforts to make Forgejo a durable endeavour. This includes taking a lead on fundraising, work out propositions on strategic planning, and coordinating related activities within the community. The team also monitors the distribution of funding, and acts as a mediator in the event of a disagreement.
 
