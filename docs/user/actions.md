@@ -72,8 +72,13 @@ as a side effect of a change authored with this token. For instance,
 if a branch is pushed to the repository and there exists a workflow that
 is triggered on push events, it will not fire.
 
+This token can also write to packages that are linked to the same repository as
+tasks, which can be used to publish new versions of packages automatically.
+Note that this token can only upload to existing packages, unable to create
+new packages.
+
 A `workflow` triggered by a `pull_request` event is an exception: in
-that case the token does not have write permissions to the repository.
+that case the token does not have write permissions to the repository and to the packages.
 The pull request could contain an untested or malicious workflow.
 
 ## Expressions
