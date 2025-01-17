@@ -90,7 +90,8 @@ The permissions of the team are:
 | Packages      | Read       |
 | Actions       | Write      |
 
-The [list of team members](https://codeberg.org/org/forgejo/teams/contributors) is visible by other contributors.
+The [list of team members](https://codeberg.org/org/forgejo/teams/contributors) is visible to other contributors.
+Non-team members can view the members who have not hidden themselves in the [organization's member list](https://codeberg.org/org/forgejo/members).
 
 ## Mergers
 
