@@ -201,6 +201,7 @@ Team members:
 
 * All members of the [releases team](#releases).
 * All members of the [moderation team](#moderation).
+* https://codeberg.org/fnetX [September 2024 Agreement](https://codeberg.org/forgejo/governance/issues/173)
 
 ## Moderation
 
