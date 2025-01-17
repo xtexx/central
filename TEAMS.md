@@ -74,7 +74,7 @@ Purpose: Improve Forgejo. Anyone can become a member of the team, as long as the
 
 The team has access to most Forgejo repositories:
 
-* On codeberg.org: ([discussions](https://codeberg.org/forgejo/discussions), [docs](https://codeberg.org/forgejo/docs), [forgejo](https://codeberg.org/forgejo/forgejo), [governance](https://codeberg.org/forgejo/governance), [pages](https://codeberg.org/forgejo/pages), [sustainability](https://codeberg.org/forgejo/sustainability), [test](https://codeberg.org/forgejo/test-env), [website](https://codeberg.org/forgejo/website)).
+* On codeberg.org: ([discussions](https://codeberg.org/forgejo/discussions), [docs](https://codeberg.org/forgejo/docs), [forgejo](https://codeberg.org/forgejo/forgejo), [governance](https://codeberg.org/forgejo/governance), [sustainability](https://codeberg.org/forgejo/sustainability), [website](https://codeberg.org/forgejo/website), [user-research](https://codeberg.org/forgejo/user-research)).
 * On code.forgejo.org: all repositories in the https://code.forgejo.org/forgejo and https://code.forgejo.org/actions organizations.
 
 The permissions of the team are:
@@ -90,27 +90,7 @@ The permissions of the team are:
 | Packages      | Read       |
 | Actions       | Write      |
 
-Team members:
-
-* https://codeberg.org/0ko
-* https://codeberg.org/algernon
-* https://codeberg.org/dachary
-* https://codeberg.org/DanielGibson
-* https://codeberg.org/fluzz
-* https://codeberg.org/gmem
-* https://codeberg.org/JakobDev
-* https://codeberg.org/jerger
-* https://codeberg.org/KaKi87
-* https://codeberg.org/maltejur
-* https://codeberg.org/n0toose
-* https://codeberg.org/patdyn
-* https://codeberg.org/realaravinth
-* https://codeberg.org/rome-user
-* https://codeberg.org/snematoda
-* https://codeberg.org/viceice
-* https://codeberg.org/wetneb
-* https://codeberg.org/Xinayder
-* https://codeberg.org/zareck
+The [list of team members](https://codeberg.org/org/forgejo/teams/contributors) is visible by other contributors.
 
 ## Mergers
 
