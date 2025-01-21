@@ -59,8 +59,9 @@ Purpose: The team cares of all the technical resources that Forgejo depends on (
 
 Accountability:
 
+* Answer calls from other team members when help is needed.
 * Fix problems that prevent the resources that Forgejo depends on from running.
-* Keep the [credentials to access the resources](https://forgejo.org/docs/next/developer/secrets/) in a safe place and share them with the teams that need them.
+* Keep the [credentials to access the resources](https://forgejo.org/docs/next/contributor/secrets/) in a safe place and share them with the teams that need them.
 
 Team members:
 
