@@ -96,6 +96,7 @@
 	stp = stash pop
 	mwbulk = "!f() { find -L . -name '.git' ! -path '*/vendor/*' -execdir git \"$@\" ';'; }; f"
 	nosign = "!git -c commit.gpgSign=false"
+	fixes = log -1 --pretty=fixes
 [sendemail]
 	smtpServer = mail.envs.net
 	smtpEncryption = ssl
