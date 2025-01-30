@@ -99,6 +99,9 @@
 	fixes = log -1 --pretty=fixes
 	fix = commit --fixup
 	fixx = "!f() { git commit --fixup \"$1\"; git stash; git rebase --autosquash \"$1\"^; git stash pop; }; f"
+	acapp = "!f() { git add .; git commit --amend --no-edit; git push --force; }; f"
+	acar = "!f() { git add .; git commit --amend --no-edit; git review; }; f"
+	aca = "!f() { git add .; git commit --amend --no-edit; }; f"
 [sendemail]
 	smtpServer = mail.envs.net
 	smtpEncryption = ssl
