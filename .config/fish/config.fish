@@ -21,3 +21,7 @@ end
 if command -q rustup && test -e /opt/rust/bin/env.fish
     . /opt/rust/bin/env.fish
 end
+
+if test -e /home/xtex/src/aosc/ciel-rs/target/debug/ciel
+    alias ciel='sudo /home/xtex/src/aosc/ciel-rs/target/debug/ciel'
+end
