@@ -147,5 +147,11 @@
 	path = ~/.config/git/realname.conf
 [includeIf "hasconfig:remote.*.url:https://android.googlesource.com/**"]
 	path = ~/.config/git/realname.conf
+[includeIf "hasconfig:remote.*.url:git@github.com:xtexChooser/llvm-project.git"]
+	path = ~/.config/git/realname.conf
+[includeIf "hasconfig:remote.*.url:git@github.com:AOSC-Tracking/jdk.git"]
+	path = ~/.config/git/realname.conf
+[includeIf "hasconfig:remote.*.url:git@github.com:openjdk/jdk.git"]
+	path = ~/.config/git/realname.conf
 [includeIf "gitdir:~/deploy/**"]
 	path = ~/.config/git/deployment.conf
