@@ -21,3 +21,6 @@
 !/.config/tmux/tmux.conf
 !/.config/git/*.conf
 /.config/git/local.conf
+
+# To fix ripgrep
+!/src/*
