@@ -97,6 +97,8 @@
 	mwbulk = "!f() { find -L . -name '.git' ! -path '*/vendor/*' -execdir git \"$@\" ';'; }; f"
 	nosign = "!git -c commit.gpgSign=false"
 	fixes = log -1 --pretty=fixes
+	fix = commit --fixup
+	fixx = "!f() { git commit --fixup \"$1\"; git stash; git rebase --autosquash \"$1\"^; git stash pop; }; f"
 [sendemail]
 	smtpServer = mail.envs.net
 	smtpEncryption = ssl
