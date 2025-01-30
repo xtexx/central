@@ -75,7 +75,7 @@
 	pks = cherry-pick --skip
 	pp = push --force
 	pt = push --tags
-	r = review
+	r = "!grr"
 	rb = rebase
 	rbi = rebase --interactive
 	rbo = rebase HEAD --onto
