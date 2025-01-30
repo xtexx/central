@@ -1,4 +1,8 @@
 {
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
     "[css]": {
         "editor.defaultFormatter": "vscode.css-language-features"
     },
@@ -26,10 +30,16 @@
     "[yaml]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
-    "C_Cpp.intelliSenseEngine": "disabled",
+    "betterGitLineBlame.showInlineAnnotations": false,
     "cmake.allowUnsupportedPresetsVersions": true,
     "cmake.generator": "Ninja",
+    "cmake.pinnedCommands": [
+        "workbench.action.tasks.configureTaskRunner",
+        "workbench.action.tasks.runTask"
+    ],
     "cmake.showOptionsMovedNotification": false,
+    "ctags.disable": true,
+    "diffEditor.ignoreTrimWhitespace": false,
     "editor.fontFamily": "'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', 'Noto Sans CJK SC', monospace",
     "editor.fontLigatures": true,
     "editor.formatOnPaste": true,
@@ -42,6 +52,10 @@
     "editor.unicodeHighlight.ambiguousCharacters": false,
     "editor.unicodeHighlight.invisibleCharacters": true,
     "editor.unicodeHighlight.nonBasicASCII": false,
+    "extensions.ignoreRecommendations": true,
+    "files.associations": {
+        "CODEGROUPS": "plaintext"
+    },
     "files.autoSave": "afterDelay",
     "files.autoSaveDelay": 5000,
     "git.autofetch": true,
@@ -55,36 +69,29 @@
     "github.gitProtocol": "ssh",
     "go.toolsManagement.autoUpdate": true,
     "kerneldev.experimental.newDtsEngine": true,
+    "makefile.configureAfterCommand": false,
+    "makefile.configureOnEdit": false,
+    "makefile.configureOnOpen": false,
+    "phpTools.suppressPremiumFeatures": true,
     "python.analysis.autoImportCompletions": true,
     "redhat.telemetry.enabled": false,
+    "rust-analyzer.server.path": "rust-analyzer",
     "rust-analyzer.showUnlinkedFileNotification": false,
     "security.workspace.trust.untrustedFiles": "open",
     "telemetry.telemetryLevel": "off",
     "update.mode": "manual",
-    "workbench.colorTheme": "Material Theme Ocean High Contrast",
-    "workbench.editor.empty.hint": "hidden",
-    "workbench.iconTheme": "ayu",
-    "zig.checkForUpdate": false,
-    "zig.initialSetupDone": true,
-    "zig.zls.checkForUpdate": false,
-    "zig.zls.zigLibPath": "/opt/zig/bin/lib/",
-    "diffEditor.ignoreTrimWhitespace": false,
-    "zig.path": "zig",
-    "zig.zls.path": "zls",
-    "rust-analyzer.server.path": "rust-analyzer",
-    "makefile.configureOnOpen": false,
-    "makefile.configureOnEdit": false,
-    "makefile.configureAfterCommand": false,
-    "workbench.startupEditor": "none",
-    "extensions.ignoreRecommendations": true,
-    "ctags.disable": true,
     "verilog.ctags.path": "ctags",
+    "verilog.languageServer.svls.enabled": true,
     "verilog.linting.linter": "verilator",
     "verilog.linting.path": "verilator",
-    "verilog.languageServer.svls.enabled": true,
-    "cmake.pinnedCommands": [
-        "workbench.action.tasks.configureTaskRunner",
-        "workbench.action.tasks.runTask"
-    ],
-    "phpTools.suppressPremiumFeatures": true,
+    "workbench.colorTheme": "Ayu Dark Bordered",
+    "workbench.editor.empty.hint": "hidden",
+    "workbench.iconTheme": "ayu",
+    "workbench.startupEditor": "none",
+    "zig.checkForUpdate": false,
+    "zig.path": "zig",
+    "zig.zls.checkForUpdate": false,
+    "zig.zls.path": "zls",
+    "zig.zls.warnStyle": true,
+    "zig.zls.zigLibPath": "/opt/zig/bin/lib/"
 }
