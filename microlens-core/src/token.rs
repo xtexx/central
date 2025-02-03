@@ -34,6 +34,9 @@ pub struct TokenInfo {
 
 impl TokenStore for Microlens {
 	fn touch_token(&mut self, token: Token) -> Result<()> {
+		if token == self.config.su_token {
+			return Ok(());
+		}
 		let result = update(dsl::token)
 			.filter(dsl::id.eq(XUuidVal(token)))
 			.set(dsl::used_at.eq(NowUtc))
@@ -145,6 +148,11 @@ mod test {
 			.get_token_info(uuid!("0976cdf0b68641fa933b7909ff0131c6"))
 			.unwrap();
 		assert_ne!(token.used_at, t1);
+
+		env.touch_token(uuid!("0976cdf0b68641fa933b7909ff0131c7"))
+			.unwrap_err();
+		env.touch_token(uuid!("b5858974-db59-4440-8b2f-28aa734f8104"))
+			.unwrap();
 	}
 
 	#[test]

@@ -7,7 +7,7 @@ use diesel_migrations::{
 use event::EventError;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use token::TokenStoreError;
+use token::{Token, TokenStoreError};
 use uuid::Uuid;
 
 pub mod bucket;
@@ -38,6 +38,7 @@ pub struct MicrolensConfig {
 	pub id: Uuid,
 	pub hostname: String,
 	pub database: String,
+	pub su_token: Token,
 }
 
 impl Microlens {
@@ -165,6 +166,7 @@ pub(crate) mod test {
 			id: uuid!("12f9792f-aedf-41ab-a027-308e6d4a1727"),
 			hostname: "Test".to_string(),
 			database: ":memory:".to_string(),
+			su_token: uuid!("b5858974-db59-4440-8b2f-28aa734f8104"),
 		})
 		.unwrap();
 		service
