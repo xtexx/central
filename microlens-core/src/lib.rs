@@ -34,6 +34,7 @@ pub struct Microlens {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct MicrolensConfig {
 	pub id: Uuid,
 	pub hostname: String,
