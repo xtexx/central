@@ -29,8 +29,7 @@ diesel::table! {
 }
 
 diesel::joinable!(bucket -> event (last_event));
-
-diesel::allow_tables_to_appear_in_same_query!(bucket, event,);
+diesel::allow_tables_to_appear_in_same_query!(bucket, event);
 
 diesel::table! {
 	use diesel::sql_types::*;

@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
 	Microlens, SqlBackend,
-	bucket::BucketRef,
+	bucket::{BucketAccess, BucketRef},
 	db::{
 		schema::{self, bucket::dsl as bucket_dsl, event::dsl},
 		utils::{XJsonVal, XUuidVal, convert_time_to_utc},
@@ -56,12 +56,12 @@ impl Event {
 		}
 		if self.started_at > self.ended_at
 			|| next.started_at > next.ended_at
-			|| self.ended_at > next.started_at
+			|| self.ended_at < next.started_at
 		{
 			return Err(self);
 		}
-		if next.started_at - self.ended_at > *pulse {
-			// return Err(self);
+		if (next.started_at - self.ended_at) > *pulse {
+			return Err(self);
 		}
 		self.ended_at = next.ended_at;
 		Ok(self)
@@ -126,10 +126,17 @@ impl From<SqlEvent> for Event {
 
 impl EventAccess for Microlens {
 	fn add_event(&mut self, event: Event) -> Result<()> {
-		insert_into(dsl::event)
-			.values(SqlEvent::from(event))
-			.execute(&mut self.db)?;
-		Ok(())
+		self.db_transaction(|service| {
+			let id = event.id;
+			let bucket = event.bucket;
+			insert_into(dsl::event)
+				.values(SqlEvent::from(event))
+				.execute(&mut service.db)?;
+			service
+				.set_bucket_last_event(bucket.into(), id)
+				.map_err(|_| EventError::SetLastEventError)?;
+			Ok(())
+		})
 	}
 
 	fn record(&mut self, event: Event, pulse: Duration) -> Result<()> {
@@ -298,6 +305,9 @@ pub enum EventError {
 	#[error("event not found: {0:?}")]
 	EventNotFound(EventFilter),
 
+	#[error("failed to update last event reference")]
+	SetLastEventError,
+
 	#[error("pulse duration overflow: {0:?}")]
 	PulseDurationOverflow(TryFromIntError),
 }
@@ -339,7 +349,10 @@ mod test {
 
 		// test not merged
 		let id = Uuid::now_v7();
-		let t1 = OffsetDateTime::now_utc();
+		let t1 = OffsetDateTime::new_utc(
+			Date::from_calendar_date(2025, Month::February, 3).unwrap(),
+			Time::from_hms(02, 42, 52).unwrap(),
+		);
 		env.record(
 			Event {
 				id,
@@ -376,7 +389,7 @@ mod test {
 		let id = Uuid::now_v7();
 		let t1 = OffsetDateTime::new_utc(
 			Date::from_calendar_date(2025, Month::February, 3).unwrap(),
-			Time::from_hms(02, 42, 52).unwrap(),
+			Time::from_hms(02, 52, 52).unwrap(),
 		);
 		env.record(
 			Event {

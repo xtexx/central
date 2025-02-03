@@ -22,6 +22,7 @@ pub use microlens_core as core;
 use thiserror::Error;
 
 mod aw;
+mod sleepy;
 
 pub fn create_router(microlens: Microlens) -> Router {
 	let state = Arc::new(Mutex::new(microlens));
@@ -29,6 +30,7 @@ pub fn create_router(microlens: Microlens) -> Router {
 	Router::new()
 		.route("/", get(handle_root))
 		.nest("/aw/{token}/{hostname}/api/0", aw::router(state.clone()))
+		.nest("/sleepy", sleepy::router())
 		.with_state(state)
 }
 
@@ -126,8 +128,10 @@ impl DerefMut for ServiceRef {
 pub enum ApiError {
 	#[error(transparent)]
 	ServiceError(Error),
-	#[error("activity-watch API authorization failed")]
-	AwInvalidToken,
+	#[error("authorization failed")]
+	InvalidToken,
+	#[error("JSON error: {0}")]
+	JsonError(serde_json::Error),
 }
 
 impl IntoResponse for ApiError {
@@ -165,7 +169,8 @@ impl IntoResponse for ApiError {
 				},
 				_ => {}
 			},
-			ApiError::AwInvalidToken => status = StatusCode::UNAUTHORIZED,
+			ApiError::InvalidToken => status = StatusCode::UNAUTHORIZED,
+			_ => {}
 		}
 
 		(status, self.to_string()).into_response()

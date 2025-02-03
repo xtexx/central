@@ -25,13 +25,14 @@ pub trait BucketAccess {
 	fn create_bucket(
 		&mut self,
 		id: GlobalBucketName,
-		kind: KString,
-		client: KString,
+		kind: &str,
+		client: &str,
 	) -> Result<BucketRef>;
 	fn delete_bucket(&mut self, bucket: BucketSelector) -> Result<()>;
 	fn resolve_bucket(&mut self, bucket: BucketSelector) -> Result<BucketRef>;
 	fn get_bucket(&mut self, bucket: BucketSelector) -> Result<Bucket>;
 	fn get_buckets(&mut self) -> Result<Vec<Bucket>>;
+	fn get_buckets_of_kind(&mut self, kind: &str) -> Result<Vec<Bucket>>;
 
 	fn set_bucket_last_event(
 		&mut self,
@@ -90,8 +91,8 @@ impl BucketAccess for Microlens {
 	fn create_bucket(
 		&mut self,
 		id: GlobalBucketName,
-		kind: KString,
-		client: KString,
+		kind: &str,
+		client: &str,
 	) -> Result<BucketRef> {
 		let (hostname, bucket_name) = id;
 
@@ -99,8 +100,8 @@ impl BucketAccess for Microlens {
 			.values((
 				dsl::id.eq(bucket_name.as_str()),
 				dsl::hostname.eq(hostname.as_str()),
-				dsl::kind.eq(kind.as_str()),
-				dsl::client.eq(client.as_str()),
+				dsl::kind.eq(kind),
+				dsl::client.eq(client),
 			))
 			.returning(dsl::bid)
 			.get_result::<i32>(&mut self.db)?;
@@ -149,6 +150,17 @@ impl BucketAccess for Microlens {
 		Ok(data)
 	}
 
+	fn get_buckets_of_kind(&mut self, kind: &str) -> Result<Vec<Bucket>> {
+		let data: Vec<Bucket> = dsl::bucket
+			.filter(dsl::kind.eq(kind))
+			.select(SqlBucket::as_select())
+			.get_results(&mut self.db)?
+			.into_iter()
+			.map(Bucket::from)
+			.collect();
+		Ok(data)
+	}
+
 	fn set_bucket_last_event(
 		&mut self,
 		bucket: BucketSelector,
@@ -156,6 +168,7 @@ impl BucketAccess for Microlens {
 	) -> Result<()> {
 		let time = convert_time_to_utc(OffsetDateTime::now_utc());
 		let result = update(dsl::bucket)
+			.filter(bucket.make_filter())
 			.set((
 				dsl::updated_at.eq(time),
 				dsl::last_event.eq(Some(XUuidVal(event))),

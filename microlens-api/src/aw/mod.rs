@@ -86,13 +86,13 @@ async fn aw_auth(
 									.into_response();
 							}
 							TokenStoreError::TokenNotFound(_) => {
-								return ApiError::AwInvalidToken
+								return ApiError::InvalidToken
 									.into_response();
 							}
 						}
 					}
 				}
-				Err(_) => return ApiError::AwInvalidToken.into_response(),
+				Err(_) => return ApiError::InvalidToken.into_response(),
 			}
 			authed = true;
 			break;
