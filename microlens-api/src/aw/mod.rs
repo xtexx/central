@@ -34,6 +34,15 @@ pub fn router(state: ServiceState) -> Router<ServiceState> {
 				)
 				.route("/{bucket}/heartbeat", get(buckets::heartbeat)),
 		)
+		.nest(
+			"/settings",
+			Router::new().route("/", get(settings::get_all)).route(
+				"/{key}",
+				get(settings::get_kv)
+					.post(settings::put_kv)
+					.delete(settings::delete_kv),
+			),
+		)
 }
 
 async fn handle_root(Service(service): Service) -> Json<AwSiteInfo> {

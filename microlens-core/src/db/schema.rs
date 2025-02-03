@@ -38,7 +38,7 @@ diesel::table! {
 
 	config_kv (key) {
 		key -> VarChar,
-		value -> Text,
+		value -> XJson,
 		updated_at -> Timestamp,
 	}
 }

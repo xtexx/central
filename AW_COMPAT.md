@@ -1,0 +1,12 @@
+- events import/export try vec
+- event cannot be replaced
+- bucket/event data can be other than object
+- bucket creation/modified time cannot be specified
+- bucket export is not supported
+- event counting is not supported
+- event ID is stubbed
+- get event is impossible
+- bucket creation hostname is ignored
+- query API not available
+- import API not available
+- export API not available

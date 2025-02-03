@@ -29,7 +29,7 @@ CREATE INDEX `event_ended` ON `event` (`ended_at`);
 -- Configuration K-V Storage
 CREATE TABLE `config_kv` (
 	`key` VARCHAR(128) PRIMARY KEY,
-	`value` TEXT NOT NULL,
+	`value` JSON NOT NULL,
 	`updated_at` TIMESTAMP NOT NULL DEFAULT (datetime())
 );
 CREATE UNIQUE INDEX `config_kv_key` ON `config_kv` (`key`);

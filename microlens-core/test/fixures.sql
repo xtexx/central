@@ -4,6 +4,6 @@ INSERT INTO `event` (`id`, `bucket`, `started_at`, `ended_at`) VALUES (x'90f5528
 INSERT INTO `event` (`id`, `bucket`, `started_at`, `ended_at`) VALUES (x'0965324bfb9c45faaa3d051999530903', 1, datetime('2025-02-03 02:39:54'), datetime('2025-02-03 02:40:54'));
 UPDATE `bucket` SET `last_event` = x'0965324bfb9c45faaa3d051999530903' WHERE `bid` == 1;
 
-INSERT INTO `config_kv` (`key`, `value`, `updated_at`) VALUES ('testing', 'yes', datetime('2025-02-03 02:50:54'));
+INSERT INTO `config_kv` (`key`, `value`, `updated_at`) VALUES ('testing', '"yes"', datetime('2025-02-03 02:50:54'));
 
 INSERT INTO `token` (`id`, `name`, `created_at`, `used_at`) VALUES (x'0976cdf0b68641fa933b7909ff0131c6', 'fixures', datetime('2025-02-03 02:50:54'), datetime('2025-02-03 02:55:54'));

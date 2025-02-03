@@ -12,8 +12,8 @@ use axum::{
 	routing::get,
 };
 use microlens_core::{
-	Error, Microlens, bucket::BucketError, event::EventError,
-	token::TokenStoreError,
+	Error, Microlens, bucket::BucketError, config_store::ConfigStoreError,
+	event::EventError, token::TokenStoreError,
 };
 use ouroboros::self_referencing;
 
@@ -134,8 +134,8 @@ impl IntoResponse for ApiError {
 	fn into_response(self) -> Response {
 		let mut status = StatusCode::INTERNAL_SERVER_ERROR;
 
-		if let ApiError::ServiceError(error) = &self {
-			match &error {
+		match &self {
+			ApiError::ServiceError(error) => match &error {
 				Error::BucketError(error) => match &error {
 					BucketError::BucketNotFound(_) => {
 						status = StatusCode::NOT_FOUND
@@ -148,6 +148,15 @@ impl IntoResponse for ApiError {
 					}
 					_ => {}
 				},
+				Error::ConfigStoreError(error) => match &error {
+					ConfigStoreError::JsonError(_) => {
+						status = StatusCode::BAD_REQUEST
+					}
+					ConfigStoreError::KeyNotFound(_) => {
+						status = StatusCode::NOT_FOUND
+					}
+					_ => {}
+				},
 				Error::TokenStoreError(error) => match &error {
 					TokenStoreError::TokenNotFound(_) => {
 						status = StatusCode::NOT_FOUND
@@ -155,7 +164,8 @@ impl IntoResponse for ApiError {
 					_ => {}
 				},
 				_ => {}
-			}
+			},
+			ApiError::AwInvalidToken => status = StatusCode::UNAUTHORIZED,
 		}
 
 		(status, self.to_string()).into_response()

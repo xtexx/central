@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use axum::{
-	Json,
-	extract::{Path, Query},
+	extract::{Path, Query}, http::StatusCode, Json
 };
 use kstring::KString;
 use microlens_core::{
@@ -121,9 +120,9 @@ pub async fn create_bucket(
 	Service(mut service): Service,
 	Path((_, hostname, id)): Path<(Uuid, KString, KString)>,
 	Json(bucket): Json<AwBucket>,
-) -> ApiResult<()> {
+) -> ApiResult<StatusCode> {
 	service.create_bucket((hostname, id), bucket.kind, bucket.client)?;
-	Ok(())
+	Ok(StatusCode::CREATED)
 }
 
 pub async fn delete_bucket(
