@@ -29,7 +29,9 @@ pub trait BucketAccess {
 		client: KString,
 	) -> Result<BucketRef>;
 	fn delete_bucket(&mut self, bucket: BucketSelector) -> Result<()>;
+	fn resolve_bucket(&mut self, bucket: BucketSelector) -> Result<BucketRef>;
 	fn get_bucket(&mut self, bucket: BucketSelector) -> Result<Bucket>;
+	fn get_buckets(&mut self) -> Result<Vec<Bucket>>;
 
 	fn set_bucket_last_event(
 		&mut self,
@@ -115,41 +117,36 @@ impl BucketAccess for Microlens {
 		Ok(())
 	}
 
-	fn get_bucket(&mut self, bucket: BucketSelector) -> Result<Bucket> {
-		#[derive(Debug, Queryable, Selectable)]
-		#[diesel(table_name = schema::bucket)]
-		#[diesel(check_for_backend(SqlBackend))]
-		struct BucketData {
-			bid: i32,
-			hostname: String,
-			id: String,
-			kind: String,
-			client: String,
-			data: XJsonVal,
-			created_at: PrimitiveDateTime,
-			updated_at: PrimitiveDateTime,
-			last_event: Option<XUuidVal>,
-		}
-		let data: BucketData = dsl::bucket
+	fn resolve_bucket(&mut self, bucket: BucketSelector) -> Result<BucketRef> {
+		let data: BucketRef = dsl::bucket
 			.filter(bucket.make_filter())
 			.limit(1)
-			.select(BucketData::as_select())
+			.select(dsl::bid)
 			.get_result(&mut self.db)
 			.optional()?
 			.ok_or_else(|| BucketError::BucketNotFound(bucket))?;
-		Ok(Bucket {
-			id: data.bid,
-			name: (
-				KString::from_string(data.hostname),
-				KString::from_string(data.id),
-			),
-			kind: KString::from_string(data.kind),
-			client: KString::from_string(data.client),
-			data: data.data.0,
-			created_at: data.created_at.assume_utc(),
-			updated_at: data.updated_at.assume_utc(),
-			last_event_id: data.last_event.map(|id| id.0),
-		})
+		Ok(data.into())
+	}
+
+	fn get_bucket(&mut self, bucket: BucketSelector) -> Result<Bucket> {
+		let data: SqlBucket = dsl::bucket
+			.filter(bucket.make_filter())
+			.limit(1)
+			.select(SqlBucket::as_select())
+			.get_result(&mut self.db)
+			.optional()?
+			.ok_or_else(|| BucketError::BucketNotFound(bucket))?;
+		Ok(data.into())
+	}
+
+	fn get_buckets(&mut self) -> Result<Vec<Bucket>> {
+		let data: Vec<Bucket> = dsl::bucket
+			.select(SqlBucket::as_select())
+			.get_results(&mut self.db)?
+			.into_iter()
+			.map(Bucket::from)
+			.collect();
+		Ok(data)
 	}
 
 	fn set_bucket_last_event(
@@ -182,6 +179,39 @@ impl BucketAccess for Microlens {
 			.optional()?
 			.ok_or_else(|| BucketError::BucketNotFound(bucket))?
 			.map(|val| val.0))
+	}
+}
+
+#[derive(Debug, Queryable, Selectable)]
+#[diesel(table_name = schema::bucket)]
+#[diesel(check_for_backend(SqlBackend))]
+struct SqlBucket {
+	bid: i32,
+	hostname: String,
+	id: String,
+	kind: String,
+	client: String,
+	data: XJsonVal,
+	created_at: PrimitiveDateTime,
+	updated_at: PrimitiveDateTime,
+	last_event: Option<XUuidVal>,
+}
+
+impl From<SqlBucket> for Bucket {
+	fn from(value: SqlBucket) -> Self {
+		Bucket {
+			id: value.bid,
+			name: (
+				KString::from_string(value.hostname),
+				KString::from_string(value.id),
+			),
+			kind: KString::from_string(value.kind),
+			client: KString::from_string(value.client),
+			data: value.data.0,
+			created_at: value.created_at.assume_utc(),
+			updated_at: value.updated_at.assume_utc(),
+			last_event_id: value.last_event.map(|id| id.0),
+		}
 	}
 }
 
@@ -236,6 +266,12 @@ mod test {
 	}
 
 	#[test]
+	fn test_resolve_bucket() {
+		let mut env = test_env();
+		assert_eq!(env.resolve_bucket(1.into()).unwrap(), 1);
+	}
+
+	#[test]
 	fn test_get_bucket() {
 		let mut env = test_env();
 		let bucket = env.get_bucket(1.into()).unwrap();
@@ -248,5 +284,13 @@ mod test {
 			bucket.last_event_id,
 			Some(uuid!("0965324bfb9c45faaa3d051999530903"))
 		);
+	}
+
+	#[test]
+	fn test_get_buckets() {
+		let mut env = test_env();
+		let bucket = env.get_buckets().unwrap();
+		assert_eq!(bucket.len(), 1);
+		assert_eq!(bucket[0].id, 1);
 	}
 }

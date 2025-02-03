@@ -7,22 +7,29 @@ use std::{
 use axum::{
 	Router,
 	extract::{FromRef, FromRequestParts},
-	http::request::Parts,
+	http::{StatusCode, request::Parts},
+	response::{IntoResponse, Response},
 	routing::get,
 };
-use microlens_core::Microlens;
+use microlens_core::{
+	Error, Microlens, bucket::BucketError, event::EventError,
+	token::TokenStoreError,
+};
 use ouroboros::self_referencing;
 
 /// Re-exports of core.
 pub use microlens_core as core;
+use thiserror::Error;
 
 mod aw;
 
 pub fn create_router(microlens: Microlens) -> Router {
+	let state = Arc::new(Mutex::new(microlens));
+
 	Router::new()
 		.route("/", get(handle_root))
-		.nest("/aw/{token}", aw::create_router())
-		.with_state(Arc::new(Mutex::new(microlens)))
+		.nest("/aw/{token}/{hostname}/api/0", aw::router(state.clone()))
+		.with_state(state)
 }
 
 async fn handle_root(Service(service): Service) -> String {
@@ -114,3 +121,51 @@ impl DerefMut for ServiceRef {
 		self.as_mut()
 	}
 }
+
+#[derive(Debug, Error)]
+pub enum ApiError {
+	#[error(transparent)]
+	ServiceError(Error),
+	#[error("activity-watch API authorization failed")]
+	AwInvalidToken,
+}
+
+impl IntoResponse for ApiError {
+	fn into_response(self) -> Response {
+		let mut status = StatusCode::INTERNAL_SERVER_ERROR;
+
+		if let ApiError::ServiceError(error) = &self {
+			match &error {
+				Error::BucketError(error) => match &error {
+					BucketError::BucketNotFound(_) => {
+						status = StatusCode::NOT_FOUND
+					}
+					_ => {}
+				},
+				Error::EventError(error) => match &error {
+					EventError::EventNotFound(_) => {
+						status = StatusCode::NOT_FOUND
+					}
+					_ => {}
+				},
+				Error::TokenStoreError(error) => match &error {
+					TokenStoreError::TokenNotFound(_) => {
+						status = StatusCode::NOT_FOUND
+					}
+					_ => {}
+				},
+				_ => {}
+			}
+		}
+
+		(status, self.to_string()).into_response()
+	}
+}
+
+impl<T: Into<Error>> From<T> for ApiError {
+	fn from(value: T) -> Self {
+		Self::ServiceError(value.into())
+	}
+}
+
+pub(crate) type ApiResult<T> = Result<T, ApiError>;

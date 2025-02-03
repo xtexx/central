@@ -177,6 +177,7 @@ fn serialize_response(response: CgiResponse) -> Vec<u8> {
 		if send_content_type {
 			// some CGI server requires a content-type header
 			output.push_str("Content-Type: text/plain\n");
+			output.push_str("X-Microlens-Debug-Gen-Content-Type: 1\n");
 		}
 	}
 	output.push_str("\n");

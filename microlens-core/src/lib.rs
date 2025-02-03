@@ -7,6 +7,7 @@ use diesel_migrations::{
 use event::EventError;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use token::TokenStoreError;
 use uuid::Uuid;
 
 pub mod bucket;
@@ -141,6 +142,8 @@ pub enum Error {
 	EventError(#[from] EventError),
 	#[error(transparent)]
 	ConfigStoreError(#[from] ConfigStoreError),
+	#[error(transparent)]
+	TokenStoreError(#[from] TokenStoreError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
