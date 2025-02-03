@@ -1,11 +1,15 @@
+use bucket::BucketError;
+use config_store::ConfigStoreError;
 use diesel::{Connection, connection::TransactionManager};
 use diesel_migrations::{
 	EmbeddedMigrations, MigrationHarness, embed_migrations,
 };
+use event::EventError;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub mod bucket;
+pub mod config_store;
 mod db;
 pub mod event;
 
@@ -125,6 +129,13 @@ pub enum Error {
 	MigrationError(Box<dyn std::error::Error + Send + Sync>),
 	#[error("database connection error: {0}")]
 	DatabaseConnectionError(#[from] diesel::result::ConnectionError),
+
+	#[error(transparent)]
+	BucketError(#[from] BucketError),
+	#[error(transparent)]
+	EventError(#[from] EventError),
+	#[error(transparent)]
+	ConfigStoreError(#[from] ConfigStoreError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

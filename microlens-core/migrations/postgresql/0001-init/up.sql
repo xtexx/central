@@ -32,7 +32,7 @@ CREATE TABLE `config_kv` (
 	`value` TEXT NOT NULL,
 	`updated_at` TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'UTC')
 );
-CREATE UNIQUE INDEX `config_kv_key` ON `event` (`id`);
+CREATE UNIQUE INDEX `config_kv_key` ON `config_kv` (`key`);
 -- Tokens
 CREATE TABLE `tokens` (
 	`id` UUID PRIMARY KEY,
