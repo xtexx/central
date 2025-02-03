@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS `bucket`;
+DROP TABLE IF EXISTS `event`;
+DROP TABLE IF EXISTS `config_kv`;
+DROP TABLE IF EXISTS `tokens`;

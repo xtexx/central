@@ -1,7 +1,4 @@
-use diesel::{
-	Connection, SqliteConnection,
-	connection::{SimpleConnection, TransactionManager},
-};
+use diesel::{Connection, connection::TransactionManager};
 use diesel_migrations::{
 	EmbeddedMigrations, MigrationHarness, embed_migrations,
 };
@@ -12,8 +9,20 @@ pub mod bucket;
 mod db;
 pub mod event;
 
+#[cfg(all(feature = "sqlite", feature = "pg"))]
+compile_error!("multiple database backend has been enabled at the same time");
+
+#[cfg(feature = "sqlite")]
+pub(crate) type SqlConnection = diesel::SqliteConnection;
+#[cfg(feature = "pg")]
+pub(crate) type SqlConnection = diesel::PgConnection;
+
+pub(crate) type SqlBackend = <SqlConnection as Connection>::Backend;
+pub(crate) type SqlTransactionManager =
+	<SqlConnection as Connection>::TransactionManager;
+
 pub struct Microlens {
-	db: SqliteConnection,
+	db: SqlConnection,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
@@ -23,12 +32,20 @@ pub struct MicrolensConfig {
 
 impl Microlens {
 	pub fn from_config(config: MicrolensConfig) -> Result<Self> {
-		let mut db = SqliteConnection::establish(&config.database)?;
+		let mut db = SqlConnection::establish(&config.database)?;
+
+		#[cfg(feature = "sqlite")]
+		use diesel::connection::SimpleConnection;
+		#[cfg(feature = "sqlite")]
 		db.batch_execute(DATABASE_PRAGMA).unwrap();
 
 		{
+			#[cfg(feature = "sqlite")]
 			const MIGRATIONS: EmbeddedMigrations =
-				embed_migrations!("migrations");
+				embed_migrations!("migrations/sqlite");
+			#[cfg(feature = "pg")]
+			const MIGRATIONS: EmbeddedMigrations =
+				embed_migrations!("migrations/postgresql");
 			db.run_pending_migrations(MIGRATIONS)
 				.map_err(Error::MigrationError)?;
 		}
@@ -44,17 +61,16 @@ impl Microlens {
 		F: FnOnce(&mut Self) -> std::result::Result<R, E>,
 		E: From<diesel::result::Error>,
 	{
-		SqliteTransactionManager::begin_transaction(&mut self.db)?;
+		SqlTransactionManager::begin_transaction(&mut self.db)?;
 
 		match callback(self) {
 			Ok(value) => {
-				SqliteTransactionManager::commit_transaction(&mut self.db)?;
+				SqlTransactionManager::commit_transaction(&mut self.db)?;
 				Ok(value)
 			}
 			Err(user_error) => {
-				let result = SqliteTransactionManager::rollback_transaction(
-					&mut self.db,
-				);
+				let result =
+					SqlTransactionManager::rollback_transaction(&mut self.db);
 				match result {
 					Ok(())
 					| Err(diesel::result::Error::BrokenTransactionManager) => Err(user_error),
@@ -72,20 +88,22 @@ impl Microlens {
 		F: FnOnce(&mut Self) -> std::result::Result<R, E>,
 		E: From<diesel::result::Error>,
 	{
-		SqliteTransactionManager::begin_transaction_sql(
+		#[cfg(feature = "sqlite")]
+		SqlTransactionManager::begin_transaction_sql(
 			&mut self.db,
 			"BEGIN EXCLUSIVE",
 		)?;
+		#[cfg(feature = "pg")]
+		SqlTransactionManager::begin_transaction(&mut self.db)?;
 
 		match callback(self) {
 			Ok(value) => {
-				SqliteTransactionManager::commit_transaction(&mut self.db)?;
+				SqlTransactionManager::commit_transaction(&mut self.db)?;
 				Ok(value)
 			}
 			Err(user_error) => {
-				let result = SqliteTransactionManager::rollback_transaction(
-					&mut self.db,
-				);
+				let result =
+					SqlTransactionManager::rollback_transaction(&mut self.db);
 				match result {
 					Ok(())
 					| Err(diesel::result::Error::BrokenTransactionManager) => Err(user_error),
@@ -96,10 +114,8 @@ impl Microlens {
 	}
 }
 
+#[cfg(feature = "sqlite")]
 const DATABASE_PRAGMA: &str = "PRAGMA foreign_keys = ON;";
-
-type SqliteTransactionManager =
-	<SqliteConnection as Connection>::TransactionManager;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -115,15 +131,16 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(test)]
 pub(crate) mod test {
-	use diesel::{Connection, SqliteConnection, connection::SimpleConnection};
-	use diesel_migrations::{
-		EmbeddedMigrations, MigrationHarness, embed_migrations,
-	};
+	use diesel::connection::SimpleConnection;
 
-	use crate::{DATABASE_PRAGMA, Microlens, MicrolensConfig};
+	use crate::{Microlens, MicrolensConfig};
 
 	#[must_use]
 	pub fn test_env() -> Microlens {
+		assert!(
+			cfg!(feature = "sqlite"),
+			"running tests with PG are not supported"
+		);
 		let mut service = Microlens::from_config(MicrolensConfig {
 			database: ":memory:".to_string(),
 		})
@@ -136,11 +153,18 @@ pub(crate) mod test {
 	}
 
 	#[test]
+	#[cfg(feature = "sqlite")]
 	fn test_db_migration() {
-		const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+		use diesel::{Connection, SqliteConnection};
+		use diesel_migrations::{
+			EmbeddedMigrations, MigrationHarness, embed_migrations,
+		};
+
+		const MIGRATIONS: EmbeddedMigrations =
+			embed_migrations!("migrations/sqlite");
 
 		let mut db = SqliteConnection::establish(":memory:").unwrap();
-		db.batch_execute(DATABASE_PRAGMA).unwrap();
+		db.batch_execute(super::DATABASE_PRAGMA).unwrap();
 		db.run_pending_migrations(MIGRATIONS).unwrap();
 		db.batch_execute("PRAGMA integrity_check;").unwrap();
 		db.batch_execute("PRAGMA foreign_key_check;").unwrap();

@@ -1,15 +1,14 @@
 use diesel::{
 	BoolExpressionMethods, BoxableExpression, ExpressionMethods,
 	OptionalExtension, QueryDsl, Queryable, RunQueryDsl, Selectable,
-	SelectableHelper, delete, insert_into, sql_types::Bool, sqlite::Sqlite,
-	update,
+	SelectableHelper, delete, insert_into, sql_types::Bool, update,
 };
 use kstring::KString;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, PrimitiveDateTime};
 
 use crate::{
-	Error, Microlens,
+	Error, Microlens, SqlBackend,
 	db::{
 		schema::{self, bucket::dsl},
 		utils::{XJsonVal, XUuidVal, convert_time_to_utc},
@@ -119,7 +118,7 @@ impl BucketAccess for Microlens {
 	fn get_bucket(&mut self, bucket: BucketSelector) -> Result<Bucket> {
 		#[derive(Debug, Queryable, Selectable)]
 		#[diesel(table_name = schema::bucket)]
-		#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+		#[diesel(check_for_backend(SqlBackend))]
 		struct BucketData {
 			bid: i32,
 			hostname: String,
@@ -189,7 +188,8 @@ impl BucketAccess for Microlens {
 impl BucketSelector {
 	pub fn make_filter(
 		&self,
-	) -> Box<dyn BoxableExpression<dsl::bucket, Sqlite, SqlType = Bool> + '_> {
+	) -> Box<dyn BoxableExpression<dsl::bucket, SqlBackend, SqlType = Bool> + '_>
+	{
 		match self {
 			BucketSelector::Id(id) => Box::new(dsl::bid.eq(*id)),
 			BucketSelector::Name((hostname, name)) => Box::new(
