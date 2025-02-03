@@ -4,3 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+axum = { version = "0.8.1", default-features = false, features = [
+	"original-uri",
+	"matched-path",
+	"query",
+	"json",
+	"form",
+	"macros",
+] }
+futures = "0.3.31"
+microlens-core = { version = "0.1.0", path = "../microlens-core" }
+ouroboros = "0.18.5"
+serde = { version = "1.0.217", features = ["derive"] }

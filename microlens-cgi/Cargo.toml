@@ -4,3 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.95"
+axum = { version = "0.8.1", default-features = false }
+bytes = "1.9.0"
+futures = "0.3.31"
+http = "1.2.0"
+microlens-api = { version = "0.1.0", path = "../microlens-api" }
+serde = { version = "1.0.217", features = ["derive"] }
+toml = "0.8.19"
+tower-service = "0.3.3"

@@ -7,6 +7,7 @@ use diesel_migrations::{
 use event::EventError;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use uuid::Uuid;
 
 pub mod bucket;
 pub mod config_store;
@@ -27,12 +28,15 @@ pub(crate) type SqlTransactionManager =
 	<SqlConnection as Connection>::TransactionManager;
 
 pub struct Microlens {
+	pub config: MicrolensConfig,
 	db: SqlConnection,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 pub struct MicrolensConfig {
-	database: String,
+	pub id: Uuid,
+	pub hostname: String,
+	pub database: String,
 }
 
 impl Microlens {
@@ -55,7 +59,7 @@ impl Microlens {
 				.map_err(Error::MigrationError)?;
 		}
 
-		Ok(Self { db })
+		Ok(Self { config, db })
 	}
 
 	pub fn db_transaction<R, E, F>(
@@ -144,6 +148,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[cfg(test)]
 pub(crate) mod test {
 	use diesel::connection::SimpleConnection;
+	use uuid::uuid;
 
 	use crate::{Microlens, MicrolensConfig};
 
@@ -154,6 +159,8 @@ pub(crate) mod test {
 			"running tests with PG are not supported"
 		);
 		let mut service = Microlens::from_config(MicrolensConfig {
+			id: uuid!("12f9792f-aedf-41ab-a027-308e6d4a1727"),
+			hostname: "Test".to_string(),
 			database: ":memory:".to_string(),
 		})
 		.unwrap();
