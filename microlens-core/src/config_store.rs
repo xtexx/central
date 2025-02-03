@@ -9,12 +9,12 @@ use crate::{
 	db::{schema::config_kv::dsl as kv_dsl, utils::convert_time_to_utc},
 };
 
-pub trait ConfigStoreAccess {
+pub trait ConfigStore {
 	fn kv_put(&mut self, key: &str, value: &str) -> Result<()>;
 	fn kv_get(&mut self, key: &str) -> Result<Option<String>>;
 }
 
-impl ConfigStoreAccess for Microlens {
+impl ConfigStore for Microlens {
 	fn kv_put(&mut self, key: &str, value: &str) -> Result<()> {
 		let time = OffsetDateTime::now_utc();
 		insert_into(kv_dsl::config_kv)
@@ -52,7 +52,7 @@ pub type Result<T> = std::result::Result<T, ConfigStoreError>;
 mod test {
 	use crate::test::test_env;
 
-	use super::ConfigStoreAccess;
+	use super::*;
 
 	#[test]
 	fn test_kv_put() {

@@ -4,11 +4,12 @@ use std::{
 };
 
 use diesel::{
+	Expression, QueryResult,
 	deserialize::{self, FromSql, FromSqlRow},
-	expression::AsExpression,
-	query_builder::QueryId,
+	expression::{AsExpression, ValidGrouping},
+	query_builder::{AstPass, QueryFragment, QueryId},
 	serialize::{self, Output, ToSql},
-	sql_types::SqlType,
+	sql_types::{SqlType, Timestamp},
 };
 use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
 use uuid::Uuid;
@@ -176,10 +177,40 @@ impl Display for XJsonVal {
 }
 
 #[cfg(feature = "sqlite")]
-diesel::define_sql_function! { fn unixepoch(x: diesel::sql_types::Timestamp) -> Integer; }
+diesel::define_sql_function! { fn unixepoch(x: Timestamp) -> Integer; }
 
 pub fn convert_time_to_utc(time: OffsetDateTime) -> PrimitiveDateTime {
 	let time = time.to_offset(UtcOffset::UTC);
 	let time = PrimitiveDateTime::new(time.date(), time.time());
 	time
+}
+
+#[derive(Debug, Copy, Clone, QueryId, ValidGrouping)]
+pub struct NowUtc;
+
+impl Expression for NowUtc {
+	type SqlType = Timestamp;
+}
+
+diesel::impl_selectable_expression!(NowUtc);
+diesel::operator_allowed!(NowUtc, Add, add);
+diesel::operator_allowed!(NowUtc, Sub, sub);
+
+#[cfg(feature = "sqlite")]
+impl QueryFragment<Sqlite> for NowUtc {
+	fn walk_ast<'b>(
+		&'b self,
+		mut out: AstPass<'_, 'b, Sqlite>,
+	) -> QueryResult<()> {
+		out.push_sql("datetime()");
+		Ok(())
+	}
+}
+
+#[cfg(feature = "pg")]
+impl QueryFragment<Pg> for NowUtc {
+	fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
+		out.push_sql("(NOW() AT TIME ZONE 'UTC')");
+		Ok(())
+	}
 }

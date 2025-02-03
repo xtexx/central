@@ -34,9 +34,10 @@ CREATE TABLE `config_kv` (
 );
 CREATE UNIQUE INDEX `config_kv_key` ON `config_kv` (`key`);
 -- Tokens
-CREATE TABLE `tokens` (
+CREATE TABLE `token` (
 	`id` UUID PRIMARY KEY,
+	`name` VARCHAR(64) NOT NULL DEFAULT '',
 	`created_at` TIMESTAMP NOT NULL DEFAULT (datetime()),
 	`used_at` TIMESTAMP NOT NULL DEFAULT (datetime())
 );
-CREATE UNIQUE INDEX `tokens_id` ON `tokens` (`id`);
+CREATE UNIQUE INDEX `token_id` ON `token` (`id`);

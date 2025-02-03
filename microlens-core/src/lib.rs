@@ -12,6 +12,7 @@ pub mod bucket;
 pub mod config_store;
 mod db;
 pub mod event;
+pub mod token;
 
 #[cfg(all(feature = "sqlite", feature = "pg"))]
 compile_error!("multiple database backend has been enabled at the same time");

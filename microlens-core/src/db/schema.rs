@@ -47,8 +47,9 @@ diesel::table! {
 	use diesel::sql_types::*;
 	use crate::db::utils::*;
 
-	tokens (id) {
+	token (id) {
 		id -> XUuid,
+		name -> VarChar,
 		created_at -> Timestamp,
 		used_at -> Timestamp,
 	}
