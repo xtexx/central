@@ -4,6 +4,7 @@ use diesel::{
 	BoolExpressionMethods, BoxableExpression, ExpressionMethods, Insertable,
 	OptionalExtension, QueryDsl, Queryable, RunQueryDsl, Selectable,
 	SelectableHelper, delete, insert_into, sql_types::Bool, sqlite::Sqlite,
+	update,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -45,9 +46,21 @@ pub struct Event {
 }
 
 impl Event {
-	pub fn merge(mut self, other: Event) -> Option<Self> {
-
-		None
+	pub(crate) fn merge(
+		mut self,
+		next: &Event,
+	) -> std::result::Result<Self, Self> {
+		if self.bucket != next.bucket || self.data != next.data {
+			return Err(self);
+		}
+		if self.started_at > self.ended_at
+			|| next.started_at > next.ended_at
+			|| self.ended_at > next.started_at
+		{
+			return Err(self);
+		}
+		self.ended_at = next.ended_at;
+		Ok(self)
 	}
 }
 
@@ -133,11 +146,24 @@ impl EventAccess for Microlens {
 				.select(SqlEvent::as_select())
 				.first(&mut service.db)
 				.optional()?;
-			if let Some(mut last_event) = last_event {
+
+			if let Some(last_event) = last_event {
 				// attempt to merge events
 				let last_event = Event::from(last_event);
+				if let Ok(event) = last_event.merge(&event) {
+					// merge succeeded
+					let event = SqlEvent::from(event);
+					let result = update(dsl::event)
+						.filter(dsl::id.eq(event.id))
+						.set((dsl::ended_at.eq(event.ended_at),))
+						.execute(&mut service.db)?;
+					if result == 1 {
+						return Ok(());
+					}
+				}
 			}
-			Ok(())
+
+			service.add_event(event)
 		})
 	}
 
