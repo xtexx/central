@@ -40,6 +40,7 @@ pub struct MicrolensConfig {
 	pub hostname: String,
 	pub database: String,
 	pub su_token: Token,
+	pub base_url: String,
 }
 
 impl Microlens {
@@ -168,6 +169,7 @@ pub(crate) mod test {
 			hostname: "Test".to_string(),
 			database: ":memory:".to_string(),
 			su_token: uuid!("b5858974-db59-4440-8b2f-28aa734f8104"),
+			base_url: "".to_string(),
 		})
 		.unwrap();
 		service

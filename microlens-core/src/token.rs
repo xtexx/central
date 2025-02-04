@@ -19,6 +19,7 @@ pub type Token = Uuid;
 
 pub trait TokenStore {
 	fn touch_token(&mut self, token: Token) -> Result<()>;
+	fn get_all_token_info(&mut self) -> Result<Vec<TokenInfo>>;
 	fn get_token_info(&mut self, token: Token) -> Result<TokenInfo>;
 	fn revoke_token(&mut self, token: Token) -> Result<()>;
 	fn create_token(&mut self) -> Result<Token>;
@@ -45,6 +46,16 @@ impl TokenStore for Microlens {
 			return Err(TokenStoreError::TokenNotFound(token));
 		}
 		Ok(())
+	}
+
+	fn get_all_token_info(&mut self) -> Result<Vec<TokenInfo>> {
+		let result = dsl::token
+			.select(SqlTokenInfo::as_select())
+			.get_results(&mut self.db)?
+			.into_iter()
+			.map(TokenInfo::from)
+			.collect();
+		Ok(result)
 	}
 
 	fn get_token_info(&mut self, token: Token) -> Result<TokenInfo> {

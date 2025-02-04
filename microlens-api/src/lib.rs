@@ -12,17 +12,22 @@ use axum::{
 	routing::get,
 };
 use microlens_core::{
-	Error, Microlens, bucket::BucketError, config_store::ConfigStoreError,
-	event::EventError, token::TokenStoreError,
+	Error, Microlens,
+	bucket::BucketError,
+	config_store::ConfigStoreError,
+	event::EventError,
+	token::{Token, TokenStore, TokenStoreError},
 };
 use ouroboros::self_referencing;
 
 /// Re-exports of core.
 pub use microlens_core as core;
 use thiserror::Error;
+use uuid::Uuid;
 
 mod aw;
 mod sleepy;
+mod token;
 
 pub fn create_router(microlens: Microlens) -> Router {
 	let state = Arc::new(Mutex::new(microlens));
@@ -31,6 +36,11 @@ pub fn create_router(microlens: Microlens) -> Router {
 		.route("/", get(handle_root))
 		.nest("/aw/{token}/{hostname}/api/0", aw::router(state.clone()))
 		.nest("/sleepy", sleepy::router())
+		.route("/token", get(token::list_tokens).post(token::create_token))
+		.route(
+			"/token/{token}",
+			get(token::get_token).delete(token::delete_token),
+		)
 		.with_state(state)
 }
 
@@ -128,10 +138,14 @@ impl DerefMut for ServiceRef {
 pub enum ApiError {
 	#[error(transparent)]
 	ServiceError(Error),
-	#[error("authorization failed")]
-	InvalidToken,
 	#[error("JSON error: {0}")]
 	JsonError(serde_json::Error),
+	#[error("authorization failed")]
+	InvalidToken,
+	#[error("invalid token: {0}")]
+	InvalidTokenUuid(uuid::Error),
+	#[error("your request requires sudoer access")]
+	SudoRequired,
 }
 
 impl IntoResponse for ApiError {
@@ -184,3 +198,75 @@ impl<T: Into<Error>> From<T> for ApiError {
 }
 
 pub(crate) type ApiResult<T> = Result<T, ApiError>;
+
+pub(crate) struct ApiAuth(pub Token);
+
+impl<S> FromRequestParts<S> for ApiAuth
+where
+	ServiceState: FromRef<S>,
+	S: Send + Sync,
+{
+	type Rejection = ApiError;
+
+	async fn from_request_parts(
+		parts: &mut Parts,
+		state: &S,
+	) -> Result<Self, Self::Rejection> {
+		if let Some(token) = parts
+			.headers
+			.get("x-microlens-token")
+			.and_then(|token| token.to_str().ok())
+		{
+			let token =
+				Uuid::try_parse(token).map_err(ApiError::InvalidTokenUuid)?;
+			ServiceState::from_ref(state)
+				.lock()
+				.unwrap()
+				.touch_token(token)?;
+			return Ok(Self(token));
+		} else if let Some(auth) = parts
+			.headers
+			.get("authorization")
+			.and_then(|token| token.to_str().ok())
+		{
+			if let Some(token) = auth.strip_prefix("Bearer ") {
+				let token = Uuid::try_parse(token)
+					.map_err(ApiError::InvalidTokenUuid)?;
+				ServiceState::from_ref(state)
+					.lock()
+					.unwrap()
+					.touch_token(token)?;
+				return Ok(Self(token));
+			}
+		}
+
+		Err(ApiError::InvalidToken)
+	}
+}
+
+pub(crate) struct SuApiAuth;
+
+impl<S> FromRequestParts<S> for SuApiAuth
+where
+	ServiceState: FromRef<S>,
+	S: Send + Sync,
+{
+	type Rejection = ApiError;
+
+	async fn from_request_parts(
+		parts: &mut Parts,
+		state: &S,
+	) -> Result<Self, Self::Rejection> {
+		let ApiAuth(token) = ApiAuth::from_request_parts(parts, state).await?;
+		let su_token = ServiceState::from_ref(state)
+			.lock()
+			.unwrap()
+			.config
+			.su_token;
+		if token == su_token {
+			Ok(Self)
+		} else {
+			Err(ApiError::SudoRequired)
+		}
+	}
+}
