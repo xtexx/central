@@ -21,7 +21,7 @@ fn main() {
 }
 
 fn find_config() -> PathBuf {
-	let path = std::env::current_exe().unwrap();
+	let path = std::env::current_exe().unwrap().canonicalize().unwrap();
 	let mut path = path.as_path();
 	while let Some(parent) = path.parent() {
 		let file = parent.join("microlens.toml");
