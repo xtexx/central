@@ -65,7 +65,7 @@ Accountability:
 
 Team members:
 
-* https://codeberg.org/crystal [April 2023 Agreement](https://codeberg.org/forgejo/governance/issues/18)
+* https://codeberg.org/crystal [January 2025 Agreement](https://codeberg.org/forgejo/governance/issues/213)
 * https://codeberg.org/earl-warren [July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/140)
 * https://codeberg.org/viceice [December 2024 Agreement](https://codeberg.org/forgejo/governance/issues/199)
 
@@ -171,7 +171,7 @@ Accountability:
 Team members:
 
 * https://codeberg.org/0ko [November 2024 Agreement](https://codeberg.org/forgejo/governance/issues/192)
-* https://codeberg.org/crystal [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/80)
+* https://codeberg.org/crystal [January 2025 Agreement](https://codeberg.org/forgejo/governance/issues/212)
 * https://codeberg.org/earl-warren [July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/141)
 
 ## Security
@@ -240,6 +240,7 @@ Team members:
 
 * Fallback: Codeberg e.V. receives part of the share to make use of leftover budget (@fnetx can manage the account)
 * @algernon ([July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/151))
+* @crystal ([January 2025 Agreement](https://codeberg.org/forgejo/governance/issues/214))
 * @viceice ([August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/157))
 * [@meissa](https://codeberg.org/meissa) ([August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/158))
     * @jerger
