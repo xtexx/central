@@ -20,7 +20,10 @@ use crate::{
 pub trait ConfigStore {
 	fn kv_put<V: Serialize>(&mut self, key: &str, value: V) -> Result<()>;
 	fn kv_get<V: DeserializeOwned>(&mut self, key: &str) -> Result<Option<V>>;
-	fn kv_dump(&mut self) -> Result<HashMap<KString, serde_json::Value>>;
+	fn kv_dump(
+		&mut self,
+		prefix: Option<&str>,
+	) -> Result<HashMap<KString, serde_json::Value>>;
 	fn kv_delete(&mut self, key: &str) -> Result<()>;
 }
 
@@ -59,13 +62,22 @@ impl ConfigStore for Microlens {
 		}
 	}
 
-	fn kv_dump(&mut self) -> Result<HashMap<KString, serde_json::Value>> {
+	fn kv_dump(
+		&mut self,
+		prefix: Option<&str>,
+	) -> Result<HashMap<KString, serde_json::Value>> {
 		let value = kv_dsl::config_kv
 			.select((kv_dsl::key, kv_dsl::value))
 			.get_results::<(String, XJsonVal)>(&mut self.db)?;
 		let mut result = HashMap::new();
 		for (key, val) in value {
-			result.insert(KString::from_string(key), val.0);
+			if let Some(prefix) = prefix {
+				if let Some(key) = key.strip_prefix(prefix) {
+					result.insert(KString::from_ref(key), val.0);
+				}
+			} else {
+				result.insert(KString::from_string(key), val.0);
+			}
 		}
 		Ok(result)
 	}
@@ -119,7 +131,16 @@ mod test {
 	fn test_kv_dump() {
 		let mut env = test_env();
 		assert_eq!(
-			env.kv_dump().unwrap(),
+			env.kv_dump(None).unwrap(),
+			HashMap::from([("testing".into(), json!("yes"))])
+		);
+		assert_eq!(
+			env.kv_dump(Some("")).unwrap(),
+			HashMap::from([("testing".into(), json!("yes"))])
+		);
+		assert_eq!(env.kv_dump(Some("teeee")).unwrap(), HashMap::from([]));
+		assert_eq!(
+			env.kv_dump(Some("t")).unwrap(),
 			HashMap::from([("testing".into(), json!("yes"))])
 		);
 	}
