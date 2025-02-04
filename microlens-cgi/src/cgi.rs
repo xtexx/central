@@ -50,7 +50,7 @@ fn parse_request(
 		.method(env_vars.get("REQUEST_METHOD").map_or("GET", String::as_str));
 
 	let mut uri = if let Some(uri_split) = &config.uri_split {
-		let uri = env_vars.get("SCRIPT_URI").unwrap();
+		let uri = env_vars.get("REQUEST_URI").unwrap();
 		if let Some((_, uri)) = uri.split_once(uri_split) {
 			uri.to_string()
 		} else {
