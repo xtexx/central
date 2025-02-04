@@ -11,4 +11,7 @@ zig-x86-musl:
 	cargo zigbuild --release --target x86_64-unknown-linux-musl
 
 deploy-xtex: zig-x86-musl
-	rsync -vcp target/x86_64-unknown-linux-musl/release/microlens-cgi envs.net:lens/lens
+	rsync -vcp target/x86_64-unknown-linux-musl/release/microlens-cgi p.projectsegfau.lt:apps/microlens/lens
+
+deploy-xtex-vec:
+	rsync -rvcp microlens-vector/xtex/ p.projectsegfau.lt:apps/microlens/vector/

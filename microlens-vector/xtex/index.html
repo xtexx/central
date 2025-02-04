@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>~xtex/lens</title>
+		<link rel="stylesheet" href="app.css" />
+		<link
+			rel="icon"
+			href="https://xtexx.eu.org/favicon.ico"
+			type="image/x-icon"
+		/>
+	</head>
+
+	<body>
+		<div class="container">
+			<div class="card">
+				<h1>诶！</h1>
+
+				<div class="setting-card">
+					<div class="left">
+						<h3 class="text">~xtex 的状态</h3>
+						<a id="additional-info">你好呀！</a>
+					</div>
+					<div class="right">
+						<a id="status" class="status-sleeping"></a>
+					</div>
+				</div>
+
+				<div id="device-status"></div>
+				<p id="last-updated"></p>
+
+				<div id="updating-message" class="updating">
+					[镜片校准中……]ヾ(≧▽≦*)o<br />
+					长时间无反应? 试试<a
+						href="javascript:location.reload();"
+						target="_self"
+						style="color: rgb(0, 149, 255)"
+						>刷新页面</a
+					>
+				</div>
+			</div>
+
+			<div style="height: 15px"></div>
+
+			<div class="card" id="test">
+				<div class="setting-card">
+					<div class="left">
+						<h3>你可以通过这个页面视奸 xtex</h3>
+						<p>Σ(っ °Д °;)っ</p>
+					</div>
+					<div class="right">
+						<a
+							href="https://k.xtexx.eu.org/w/User:Xtex"
+							target="_blank"
+							class="link"
+						>
+							<img src="images/goto.svg" />
+							xtex
+						</a>
+					</div>
+				</div>
+				<div class="setting-card">
+					<div class="left">
+						<h3>要不看看 MicroLens？</h3>
+						<p>自豪地采用.webp</p>
+					</div>
+					<div class="right">
+						<a
+							href="https://codeberg.org/xtex/microlens"
+							target="_blank"
+							class="link"
+						>
+							<img src="images/goto.svg" />
+							microlens.git
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
+		<script src="app.js" defer></script>
+	</body>
+</html>
