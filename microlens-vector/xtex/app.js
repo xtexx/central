@@ -10,13 +10,16 @@ function sliceText(text, maxLength) {
 	return text.slice(0, maxLength) + '...';
 }
 
+let firstLoad = true;
+
 async function update() {
 	let refresh_time = 5000;
 	// let url = 'https://xtex.envs.net/lens/l.cgi?/sleepy/query';
 	let url = 'https://lens.xtexx.eu.org/l/sleepy/query';
 	while (true) {
-		if (document.visibilityState == 'visible') {
+		if (document.visibilityState == 'visible' || firstLoad) {
 			console.log('tab visible, updating...');
+			firstLoad = false;
 			let success_flag = true;
 			let errorinfo = '';
 			const statusElement = document.getElementById('status');
