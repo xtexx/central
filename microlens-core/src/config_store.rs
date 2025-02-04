@@ -141,7 +141,7 @@ mod test {
 		assert_eq!(env.kv_dump(Some("teeee")).unwrap(), HashMap::from([]));
 		assert_eq!(
 			env.kv_dump(Some("t")).unwrap(),
-			HashMap::from([("testing".into(), json!("yes"))])
+			HashMap::from([("esting".into(), json!("yes"))])
 		);
 	}
 
