@@ -26,6 +26,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 mod aw;
+mod config_kv;
 mod sleepy;
 mod token;
 
@@ -40,6 +41,13 @@ pub fn create_router(microlens: Microlens) -> Router {
 		.route(
 			"/token/{token}",
 			get(token::get_token).delete(token::delete_token),
+		)
+		.route("/kv", get(config_kv::get_all))
+		.route(
+			"/kv/{key}",
+			get(config_kv::get_kv)
+				.put(config_kv::put_kv)
+				.delete(config_kv::delete_kv),
 		)
 		.with_state(state)
 }
