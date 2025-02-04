@@ -89,7 +89,7 @@ async fn query(Service(mut service): Service) -> ApiResult<Json<QueryResult>> {
 	let time_str = format!(
 		"{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
 		time.year(),
-		time.month(),
+		time.month() as u8,
 		time.day(),
 		time.hour(),
 		time.minute(),
