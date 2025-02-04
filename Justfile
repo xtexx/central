@@ -9,3 +9,6 @@ cross-x86-musl:
 
 zig-x86-musl:
 	cargo zigbuild --release --target x86_64-unknown-linux-musl
+
+deploy-xtex: zig-x86-musl
+	rsync -vcp target/x86_64-unknown-linux-musl/release/microlens-cgi envs.net:lens/lens
