@@ -1,4 +1,4 @@
-use std::{cmp::min, collections::HashMap};
+use std::collections::HashMap;
 
 use axum::{
 	Json, Router,
@@ -131,9 +131,12 @@ async fn query(Service(mut service): Service) -> ApiResult<Json<QueryResult>> {
 			let show_name = service
 				.kv_get(&format!("sleepy:device-name:{}", bucket.name.0))?
 				.unwrap_or_default();
-			let app_name = event_data.content
-				[0..min(device_status_slice, event_data.content.len())]
-				.to_string();
+			let mut app_name = String::new();
+			event_data
+				.content
+				.chars()
+				.take(device_status_slice)
+				.for_each(|c| app_name.push(c));
 			let info = DeviceResult {
 				show_name,
 				using: event_data.using,
