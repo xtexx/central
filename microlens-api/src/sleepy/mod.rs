@@ -86,7 +86,7 @@ struct DeviceResult {
 
 async fn query(Service(mut service): Service) -> ApiResult<Json<QueryResult>> {
 	let time = OffsetDateTime::now_utc();
-	let time = format!(
+	let time_str = format!(
 		"{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
 		time.year(),
 		time.month(),
@@ -122,6 +122,9 @@ async fn query(Service(mut service): Service) -> ApiResult<Json<QueryResult>> {
 				..Default::default()
 			};
 			let event = service.get_event(&filter)?;
+			if event.ended_at < time {
+				continue;
+			}
 			let event_data = serde_json::from_value::<SleepyEvent>(event.data)
 				.map_err(ApiError::JsonError)?;
 
@@ -141,8 +144,8 @@ async fn query(Service(mut service): Service) -> ApiResult<Json<QueryResult>> {
 	}
 
 	let result = QueryResult {
-		last_updated: time.clone(),
-		time,
+		last_updated: time_str.clone(),
+		time: time_str,
 		success: true,
 		status,
 		info,
