@@ -70,7 +70,7 @@ hr {
 	box-shadow: 0 16px 32px rgba(0, 0, 0, 0.1876);
 	backdrop-filter: blur(60px);
 
-	transition: all 0.15s;
+	transition: all 0.15s ease-in-out;
 }
 
 .card:hover {
