@@ -3,3 +3,9 @@ dev-server:
 
 build-x86-gnu:
 	cargo build --release --target x86_64-unknown-linux-gnu
+
+cross-x86-musl:
+	cross build --release --target x86_64-unknown-linux-musl
+
+zig-x86-musl:
+	cargo zigbuild --release --target x86_64-unknown-linux-musl

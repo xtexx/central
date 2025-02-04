@@ -6,3 +6,6 @@ members = [
 	"microlens-core",
 	"microlens-vercel",
 ]
+
+[workspace.metadata.cross.build]
+default-target = "x86_64-unknown-linux-musl"
