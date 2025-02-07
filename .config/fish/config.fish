@@ -25,3 +25,14 @@ end
 if test -e /home/xtex/src/aosc/ciel-rs/target/debug/ciel
     alias ciel='sudo /home/xtex/src/aosc/ciel-rs/target/debug/ciel'
 end
+
+if test -e /home/xtex/src/aosc/oma/target/debug/oma
+    alias oma='sudo /home/xtex/src/aosc/oma/target/debug/oma'
+end
+
+# pnpm
+set -gx PNPM_HOME "/opt/pnpm"
+if not string match -q -- $PNPM_HOME $PATH
+  set -gx PATH "$PNPM_HOME" $PATH
+end
+
