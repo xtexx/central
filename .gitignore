@@ -24,3 +24,4 @@
 
 # To fix ripgrep
 !/src/*
+!/backup/*
