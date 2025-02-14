@@ -27,8 +27,8 @@ Purpose: Work on improving Forgejo accessibility.
 
 Team members:
 
-* https://codeberg.org/Ryuno-Ki [March 2023 Agreement](https://codeberg.org/forgejo/meta/issues/181)
-* https://codeberg.org/fnetX [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/101)
+* @Ryuno-Ki - [March 2023 Agreement](https://codeberg.org/forgejo/meta/issues/181)
+* @fnetX - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/101)
 
 ## User Interface
 
@@ -36,9 +36,9 @@ Purpose: Improve Forgejo's UI. Responsible for decision-making of frontend techn
 
 Team members:
 
-* https://codeberg.org/Mai-Lapyst - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/131)
-* https://codeberg.org/0ko - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/132)
-* https://codeberg.org/caesar - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/134)
+* @Mai-Lapyst - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/131)
+* @0ko - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/132)
+* @caesar - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/134)
 
 ## Helm
 
@@ -50,8 +50,8 @@ The team has access to the following Forgejo repositories:
 
 Team members:
 
-* https://codeberg.org/viceice [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/145)
-* https://codeberg.org/earl-warren [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/146)
+* @viceice - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/145)
+* @earl-warren - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/146)
 
 ## Devops
 
@@ -65,9 +65,9 @@ Accountability:
 
 Team members:
 
-* https://codeberg.org/crystal [January 2025 Agreement](https://codeberg.org/forgejo/governance/issues/213)
-* https://codeberg.org/earl-warren [July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/140)
-* https://codeberg.org/viceice [December 2024 Agreement](https://codeberg.org/forgejo/governance/issues/199)
+* @crystal - [January 2025 Agreement](https://codeberg.org/forgejo/governance/issues/213)
+* @earl-warren - [July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/140)
+* @viceice - [December 2024 Agreement](https://codeberg.org/forgejo/governance/issues/199)
 
 ## Contributors
 
@@ -100,9 +100,9 @@ Purpose: Review and merge pull requests in Forgejo repositories in accordance to
 
 Team members:
 
-* https://codeberg.org/wetneb [January 2024 Agreement](https://codeberg.org/forgejo/governance/issues/54)
-* https://codeberg.org/0ko [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/106)
-* https://codeberg.org/viceice [August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/156)
+* @wetneb - [January 2024 Agreement](https://codeberg.org/forgejo/governance/issues/54)
+* @0ko - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/106)
+* @viceice - [August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/156)
 * Members of the [Security](#security), [Devops](#devops) & [Releases](#releases) teams
 
 ## Localization
@@ -124,31 +124,35 @@ Admins accountability:
 
 Team members:
 
-* Arabic https://codeberg.org/oatbiscuits - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/72) (admin)
-* Brazilian Portuguese https://codeberg.org/rmorettibr - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/73)
-* Brazilian Portuguese https://codeberg.org/Xinayder - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/90)
-* Chinese (Simplified) https://codeberg.org/xtex - [September 2024 Agreement](https://codeberg.org/forgejo/governance/issues/176)
-* Chinese (Traditional) https://codeberg.org/leana8959 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/117)
-* Czech https://codeberg.org/Fjuro - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/97)
-* Danish https://codeberg.org/tacaly - [December 2024 Agreement](https://codeberg.org/forgejo/governance/issues/201)
-* Dutch https://codeberg.org/gusted - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/69) (admin)
-* Esperanto https://codeberg.org/jadedctrl - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/77)
-* Filipino https://codeberg.org/kita - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/105)
-* French https://codeberg.org/earl-warren - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/71) (admin)
-* French https://codeberg.org/KaKi87 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/123)
-* German (Low) https://codeberg.org/Nordfriese - [October 2024 Agreement](https://codeberg.org/forgejo/governance/issues/186)
-* German https://codeberg.org/fnetX - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/85) (admin)
-* German https://codeberg.org/nmmr - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/86)
-* German https://codeberg.org/Wuzzy - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/93)
-* Greek https://codeberg.org/n0toose - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/84)
-* Italian https://codeberg.org/Zughy - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/103)
-* Japanese https://codeberg.org/ledyba - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/74)
-* Korean https://codeberg.org/kdh8219 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/121)
-* Latvian https://codeberg.org/Edgarsons - [November 2024 Agreement](https://codeberg.org/forgejo/governance/issues/190)
-* Russian https://codeberg.org/0ko - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/70) (admin)
-* Russian https://codeberg.org/Werenter - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/76)
-* Spanish https://codeberg.org/maletil - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/88)
-* Ukrainian https://codeberg.org/nykula - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/75)
+* Arabic: @oatbiscuits - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/72) (admin)
+* Brazilian Portuguese:
+    * @rmorettibr - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/73)
+    * @Xinayder - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/90)
+* Chinese (Simplified): @xtex - [September 2024 Agreement](https://codeberg.org/forgejo/governance/issues/176)
+* Chinese (Traditional): @leana8959 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/117)
+* Czech: @Fjuro - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/97)
+* Danish: @tacaly - [December 2024 Agreement](https://codeberg.org/forgejo/governance/issues/201)
+* Dutch: @gusted - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/69) (admin)
+* Esperanto: @jadedctrl - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/77)
+* Filipino: @kita - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/105)
+* French:
+    * @earl-warren - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/71) (admin)
+    * @KaKi87 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/123)
+* German:
+    * @fnetX - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/85) (admin)
+    * @nmmr - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/86)
+    * @Wuzzy - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/93)
+* German (Low): @Nordfriese - [October 2024 Agreement](https://codeberg.org/forgejo/governance/issues/186)
+* Greek: @n0toose - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/84)
+* Italian: @Zughy - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/103)
+* Japanese: @ledyba - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/74)
+* Korean: @kdh8219 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/121)
+* Latvian: @Edgarsons - [November 2024 Agreement](https://codeberg.org/forgejo/governance/issues/190)
+* Russian:
+    * @0ko - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/70) (admin)
+    * @Werenter - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/76)
+* Spanish: @maletil - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/88)
+* Ukrainian: @nykula - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/75)
 
 ## User Research
 
@@ -156,9 +160,9 @@ Purpose: Conduct User Research in the context of Forgejo. Anyone can become a me
 
 Team members:
 
-* https://codeberg.org/ei8fdb
-* https://codeberg.org/caesar
-* https://codeberg.org/fnetX
+* @ei8fdb
+* @caesar
+* @fnetX
 
 ## Releases
 
@@ -170,9 +174,9 @@ Accountability:
 
 Team members:
 
-* https://codeberg.org/0ko [November 2024 Agreement](https://codeberg.org/forgejo/governance/issues/192)
-* https://codeberg.org/crystal [January 2025 Agreement](https://codeberg.org/forgejo/governance/issues/212)
-* https://codeberg.org/earl-warren [July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/141)
+* @0ko - [November 2024 Agreement](https://codeberg.org/forgejo/governance/issues/192)
+* @crystal - [January 2025 Agreement](https://codeberg.org/forgejo/governance/issues/212)
+* @earl-warren - [July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/141)
 
 ## Security
 
@@ -184,10 +188,10 @@ Accountability:
 
 Team members:
 
-* https://codeberg.org/Gusted [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/96)
-* https://codeberg.org/fnetX [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/95)
-* https://codeberg.org/earl-warren [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/208)
-* https://codeberg.org/viceice [October 2024 Agreement](https://codeberg.org/forgejo/governance/issues/174) (limited to case by case assistance)
+* @Gusted - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/96)
+* @fnetX - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/95)
+* @earl-warren - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/208)
+* @viceice - [October 2024 Agreement](https://codeberg.org/forgejo/governance/issues/174) (limited to case by case assistance)
 
 ## Social account
 
@@ -203,8 +207,8 @@ Team members:
 
 * All members of the [releases team](#releases).
 * All members of the [moderation team](#moderation).
-* https://codeberg.org/fnetX [September 2024 Agreement](https://codeberg.org/forgejo/governance/issues/173)
-* https://codeberg.org/mahlzahn [January 2025 Agreement](https://codeberg.org/forgejo/governance/issues/205)
+* @fnetX - [September 2024 Agreement](https://codeberg.org/forgejo/governance/issues/173)
+* @mahlzahn - [January 2025 Agreement](https://codeberg.org/forgejo/governance/issues/205)
 
 ## Moderation
 
@@ -217,15 +221,15 @@ Accountability:
 
 Team members:
 
-* https://codeberg.org/caesar ([Oct 2023 Agreement](https://codeberg.org/forgejo/governance/issues/35))
+* @caesar - [October 2023 Agreement](https://codeberg.org/forgejo/governance/issues/35)
 
 Enforcer (only for the purpose of enforcing moderation decisions):
 
-* https://codeberg.org/crystal ([Feb 2024 Agreement](https://codeberg.org/forgejo/governance/issues/78))
+* @crystal - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/78)
 
 Observer (access to team discussions and history of actions, without any moderation rights):
 
-* https://codeberg.org/oliverpool ([Jan 2024 Agreement](https://codeberg.org/forgejo/governance/issues/55))
+* @oliverpool - [January 2024 Agreement](https://codeberg.org/forgejo/governance/issues/55)
 
 
 ## Liberapay team members
@@ -240,10 +244,10 @@ Accountability:
 Team members:
 
 * Fallback: Codeberg e.V. receives part of the share to make use of leftover budget (@fnetx can manage the account)
-* @algernon ([July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/151))
-* @crystal ([January 2025 Agreement](https://codeberg.org/forgejo/governance/issues/214))
-* @viceice ([August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/157))
-* [@meissa](https://codeberg.org/meissa) ([August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/158))
+* @algernon - [July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/151)
+* @crystal - [January 2025 Agreement](https://codeberg.org/forgejo/governance/issues/214)
+* @viceice - [August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/157)
+* @meissa - [August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/158)
     * @jerger
     * @patdyn
 
@@ -256,7 +260,7 @@ Accountability: The administrative aspects of grant applications from start to f
 
 Team members:
 
-- [avobs](https://codeberg.org/avobs) ([September 2024 Agreement](https://codeberg.org/forgejo/governance/issues/179))
+- @avobs - [September 2024 Agreement](https://codeberg.org/forgejo/governance/issues/179)
 
 
 ## GitHub organisation owners
