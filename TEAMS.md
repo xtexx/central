@@ -221,6 +221,7 @@ Accountability:
 
 Team members:
 
+* @Beowulf - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/219)
 * @caesar - [October 2023 Agreement](https://codeberg.org/forgejo/governance/issues/35)
 
 Enforcer (only for the purpose of enforcing moderation decisions):
