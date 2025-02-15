@@ -144,6 +144,7 @@ Team members:
     * @Wuzzy - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/93)
 * German (Low): @Nordfriese - [October 2024 Agreement](https://codeberg.org/forgejo/governance/issues/186)
 * Greek: @n0toose - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/84)
+* Hebrew: @Laxystem - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/220)
 * Italian: @Zughy - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/103)
 * Japanese: @ledyba - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/74)
 * Korean: @kdh8219 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/121)
