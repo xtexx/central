@@ -40,3 +40,13 @@ body:
       I am engaged in other projects for a similar role...
   validations:
     required: true
+- type: textarea
+  id: previous-elections
+  attributes:
+    label: Previous elections
+    description: |
+      If you have previously applied to this team, please link all previous elections (accepted and denied).
+    placeholder: |
+      - January 2023: #10
+  validations:
+    required: false
