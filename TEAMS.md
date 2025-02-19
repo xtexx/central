@@ -136,7 +136,7 @@ Team members:
 * Esperanto: @jadedctrl - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/77)
 * Filipino: @kita - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/105)
 * French:
-    * @earl-warren - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/71) (admin)
+    * @earl-warren - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/224) (admin)
     * @KaKi87 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/123)
 * German:
     * @fnetX - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/85) (admin)
@@ -150,7 +150,7 @@ Team members:
 * Korean: @kdh8219 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/121)
 * Latvian: @Edgarsons - [November 2024 Agreement](https://codeberg.org/forgejo/governance/issues/190)
 * Russian:
-    * @0ko - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/70) (admin)
+    * @0ko - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/221) (admin)
     * @Werenter - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/76)
 * Spanish: @maletil - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/88)
 * Ukrainian: @nykula - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/75)
