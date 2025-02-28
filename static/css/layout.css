@@ -58,3 +58,12 @@ main {
 .pager li:not(:last-child)::after {
     content: "  " !important;
 }
+
+@media screen and (max-width:650px) {
+
+    ul,
+    ol {
+        padding-left: 1em;
+    }
+
+}
