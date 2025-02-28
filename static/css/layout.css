@@ -31,7 +31,6 @@ main {
 
 .hlist li {
     display: inline;
-    word-break: keep-all;
 }
 
 .hlist li:not(:last-child)::after {
