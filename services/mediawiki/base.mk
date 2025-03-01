@@ -14,7 +14,7 @@ V_ARGS		+= --mount=type=bind,src=/var/lib/mediawiki,dst=/var/lib/mediawiki
 V_ARGS		+= --mount=type=bind,src=/var/log/atremis,dst=/var/log/mediawiki
 V_ARGS		+= --mount=type=image,source=codeberg.org/xens/x-mediawiki:latest,destination=/opt/mediawiki
 V_ARGS		+= --label=org.eu.xvnet.x.depimgs=codeberg.org/xens/x-mediawiki:latest
-V_ARGS		+= --memory=128M
+V_ARGS		+= --memory=256M
 V_ARGS 		+= codeberg.org/xens/x-mediawiki-php:latest
 $(call end)
 
