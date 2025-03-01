@@ -72,6 +72,7 @@ if ($xvUseEmailConfirmed) {
 	if ($xvRequireEmailConfirmedToEdit) {
 		xvRemovePermission('edit', ['*', 'user']);
 		$wgGroupPermissions['emailconfirmed']['edit'] = true;
+		$wgGroupPermissions['bot']['edit'] = true;
 	}
 }
 
