@@ -31,7 +31,7 @@ Some use `git-submodule(1)` for managing their forks. It is a bit weird. I would
 
 ### git-subtree
 
-`git-subtree(1)` is a relatively little-used feature. It is in the official repository of Git, but in `contrib/`. It can create a merge committing pulling a repo into your super-repo, while keeping all commit histories. An example if [how I manage the WMGMC fork of Phorge](https://git.cnuser.wiki/wmgmc/phorge/commit/c61314105933dfe5293aeca0e51cc84488444ce5) and the Xensor V fork of MediaWiki.
+`git-subtree(1)` is a relatively little-used feature. It is in the official repository of Git, but in `contrib/`. It can create a merge committing pulling a repo into your super-repo, while keeping all commit histories. An example is [how I manage the WMGMC fork of Phorge](https://git.cnuser.wiki/wmgmc/phorge/commit/c61314105933dfe5293aeca0e51cc84488444ce5) and the Xensor V fork of MediaWiki.
 
 Pros are that history is kept and we can merge future changes easily (by `git subtree merge` or `git merge -Xsubtree=`). We can also overview changes across all sub-repos when running `git log`.
 
