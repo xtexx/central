@@ -45,6 +45,7 @@ article header .tags span::before {
 .content {
     padding-top: 2rem;
     line-height: 140%;
+    cursor: auto;
 }
 
 .content h1,
