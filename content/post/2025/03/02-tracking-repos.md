@@ -3,7 +3,7 @@ title: "Managing a troop of repositories"
 date: 2025-03-02T10:17:16+08:00
 ---
 
-When I am getting deeper and deeper in the open-source community, I find software bugs or need new features more and more frequently. Generally, I will make a issue, submit a PR, or maintain a fork if I think those code are not suitable for being upstreamed. 
+When I am getting deeper and deeper in the open-source community, I find software bugs or need new features more and more frequently. Generally, I will make a issue, submit a PR, or maintain a fork if I think those code are not suitable for being upstreamed.
 
 What if we also want to fork some extensions? It can happen in the real world. In my MediaWiki setup, I have to patch extensions frequently to address deprecation warnings and compatibility bugs.
 
