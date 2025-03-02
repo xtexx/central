@@ -34,9 +34,7 @@ or `mailto:xtex_AT_xtexx.eu.org` or `acct:xtex@wikis.world` or `matrix: @xtex:en
 - [exozyme](https://exozy.me/)
 - [molyuu](https://molyuu.cyou/)
 - [sugarmgp](https://blog.sugarmgp.icu/)
-- [chitang](https://chitang.dev/)
-- [dn42](https://dn42.dev/)
-- [minecraft wiki](https://zh.minecraft.wiki/)
+- [xvnet](https://w.xvnet.eu.org/)
 
 {{</hlist>}}
 
