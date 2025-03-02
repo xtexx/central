@@ -25,7 +25,7 @@ There is no self-introduction for myself, see https://xtexx.eu.org/ pls.
 
 Look at [there](https://xtexx.eu.org/about#contact)
 
-or `mailto:xtex_AT_xtexx.eu.org` or `acct:xtex@fe.disroot.org` or `matrix: @xtex:envs.net`
+or `mailto:xtex_AT_xtexx.eu.org` or `acct:xtex@wikis.world` or `matrix: @xtex:envs.net`
 
 ## Some Links
 
