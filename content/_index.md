@@ -5,7 +5,7 @@
 
 这是 [xtex](https://xtexx.eu.org) 的博客
 
-什么你不认识我？你可以：[[了解更多] ](https://xtexx.eu.org) [[阅读文章]]({{< relref "post" >}}) [[文章列表]]({{< relref "archives" >}})
+什么你不认识我？你可以：[[了解更多]](https://xtexx.eu.org) [[阅读文章]]({{< relref "post" >}}) [[文章列表]]({{< relref "archives" >}})
 
 这算是我的博客[v....3](/2023/06/11-new-blog)？
 
