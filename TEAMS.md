@@ -124,22 +124,19 @@ Admins accountability:
 
 Team members:
 
-* Arabic: @oatbiscuits - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/72) (admin)
-* Brazilian Portuguese:
-    * @rmorettibr - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/73)
-    * @Xinayder - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/90)
+* Brazilian Portuguese: @Xinayder - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/90)
 * Chinese (Simplified): @xtex - [September 2024 Agreement](https://codeberg.org/forgejo/governance/issues/176)
 * Chinese (Traditional): @leana8959 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/117)
 * Czech: @Fjuro - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/97)
 * Danish: @tacaly - [December 2024 Agreement](https://codeberg.org/forgejo/governance/issues/201)
 * Dutch: @gusted - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/230) (admin)
-* Esperanto: @jadedctrl - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/77)
+* Esperanto: @jadedctrl - [March 2025 Agreement](https://codeberg.org/forgejo/governance/issues/236)
 * Filipino: @kita - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/105)
 * French:
     * @earl-warren - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/224) (admin)
     * @KaKi87 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/123)
 * German:
-    * @fnetX - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/85) (admin)
+    * @fnetX - [March 2025 Agreement](https://codeberg.org/forgejo/governance/issues/235) (admin)
     * @nmmr - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/86)
     * @Wuzzy - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/93)
 * German (Low): @Nordfriese - [October 2024 Agreement](https://codeberg.org/forgejo/governance/issues/186)
@@ -151,7 +148,7 @@ Team members:
 * Latvian: @Edgarsons - [November 2024 Agreement](https://codeberg.org/forgejo/governance/issues/190)
 * Russian: @0ko - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/221) (admin)
 * Spanish: @maletil - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/88)
-* Ukrainian: @nykula - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/75)
+* Ukrainian: @nykula - [March 2025 Agreement](https://codeberg.org/forgejo/governance/issues/238)
 
 ## User Research
 
