@@ -20,6 +20,7 @@ use crate::{licenser, mythware, sec};
 pub struct WorkerState {
     pub always_on_top: Option<usize>,
 
+    #[educe(Default = true)]
     pub mythware_auto_unlock_keyboard: bool,
 }
 
