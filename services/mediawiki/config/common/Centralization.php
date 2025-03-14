@@ -15,8 +15,8 @@ $wgSharedTables = [
 // Shared Cookies
 if (str_ends_with($xvHttpHost, 'w.xvnet.eu.org'))
 	$wgCookieDomain = '.w.xvnet.eu.org';
-else if (str_ends_with($xvHttpHost, 'w.xvnet0.eu.org'))
-	$wgCookieDomain = '.w.xvnet0.eu.org';
+else if (str_ends_with($xvHttpHost, 'wiki.xvnet0.eu.org'))
+	$wgCookieDomain = '.wiki.xvnet0.eu.org';
 
 // Resource Loaders
 $wgResourceLoaderSources['metawiki'] = [
