@@ -39,3 +39,13 @@ All logo files are in the [`logo`](./logo) directory of this repo. [#23](https:/
 [krita](./mascot/2022-11-27_Forgejo.kra) and [jpg](./mascot/2022-11-27_Forgejo_by-David-Revoy.jpg) files are in the [`mascot`](./mascot) directory of this repo. [#56](https://codeberg.org/forgejo/meta/issues/56)
 
 Made by [David Revoy](https://www.peppercarrot.com/en/viewer/misc__2022-11-27_Forgejo_by-David-Revoy.html), licensed under [Creative Commons Attribution 4.0 International license](https://creativecommons.org/licenses/by/4.0/).
+
+### 88x31 Badge
+
+![forgejo 88x31 badge](./88x31/forgejo.gif)
+
+[gif](./88x31/forgejo.gif) and [blend](./88x31/forgejo8831.blend) files are available in the [`88x31`](./88x31) folder of this repository.
+
+Made by [Kwonunn](https://codeberg.org/Kwonunn), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). When using the badge on a website, the attribution may be placed in an HTML comment and does not necessarily need to be visible on the page.
+
+Based on the Forgejo logo by Caesar Schinas, also licensed under CC BY-SA 4.0.
