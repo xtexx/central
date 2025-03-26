@@ -100,7 +100,6 @@ Purpose: Review and merge pull requests in Forgejo repositories in accordance to
 
 Team members:
 
-* @wetneb - [January 2024 Agreement](https://codeberg.org/forgejo/governance/issues/54)
 * @0ko - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/106)
 * @viceice - [August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/156)
 * Members of the [Security](#security), [Devops](#devops) & [Releases](#releases) teams
