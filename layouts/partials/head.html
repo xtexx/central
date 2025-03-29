@@ -26,6 +26,7 @@
 {{ end }}
 
 <link rel="stylesheet" href='{{ "css/arc.css" | absURL }}' />
-<link rel="stylesheet" href='{{ "css/custom.css" | absURL }}' />
 
 {{ with .Site.Params.ext_head }} {{ . }} {{ end }} {{ partial "x-head.html" . }}
+
+<link rel="stylesheet" href='{{ "css/custom.css" | absURL }}' />
