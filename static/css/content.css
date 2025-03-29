@@ -109,10 +109,15 @@ video {
 table {
     border-collapse: collapse;
     width: 80%;
+    margin: 5pt;
 }
 
 table tbody tr:nth-child(2n + 1) {
     background-color: var(--color-table-tr-odd-bg);
+}
+
+table td {
+    border: 3pt solid rgba(0, 0, 0, 0);
 }
 
 blockquote {
