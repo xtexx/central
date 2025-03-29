@@ -134,3 +134,7 @@ blockquote::after {
     content: "”";
     font-size: 15pt;
 }
+
+math {
+    font-family: "Fira Math", "Cambria Math", 'STIXTwoMath-Regular', 'NotoSansMath-Regular';
+}
