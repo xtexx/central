@@ -27,8 +27,8 @@ Purpose: Work on improving Forgejo accessibility.
 
 Team members:
 
-* @Ryuno-Ki - [March 2023 Agreement](https://codeberg.org/forgejo/meta/issues/181)
-* @fnetX - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/101)
+* @Ryuno-Ki - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/252)
+* @fnetX - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/251)
 
 ## User Interface
 
@@ -102,6 +102,7 @@ Team members:
 
 * @0ko - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/106)
 * @viceice - [August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/156)
+* @Kwonunn - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/244)
 * Members of the [Security](#security), [Devops](#devops) & [Releases](#releases) teams
 
 ## Localization
@@ -126,7 +127,7 @@ Team members:
 * Brazilian Portuguese: @Xinayder - [March 2025 Agreement](https://codeberg.org/forgejo/governance/issues/243)
 * Chinese (Simplified): @xtex - [September 2024 Agreement](https://codeberg.org/forgejo/governance/issues/176)
 * Chinese (Traditional): @leana8959 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/117)
-* Czech: @Fjuro - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/97)
+* Czech: @Fjuro - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/247)
 * Danish: @tacaly - [December 2024 Agreement](https://codeberg.org/forgejo/governance/issues/201)
 * Dutch: @gusted - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/230) (admin)
 * Esperanto: @jadedctrl - [March 2025 Agreement](https://codeberg.org/forgejo/governance/issues/236)
@@ -137,27 +138,27 @@ Team members:
 * German:
     * @fnetX - [March 2025 Agreement](https://codeberg.org/forgejo/governance/issues/235) (admin)
     * @nmmr - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/86)
-    * @Wuzzy - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/93)
+    * @Wuzzy - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/253)
 * German (Low): @Nordfriese - [October 2024 Agreement](https://codeberg.org/forgejo/governance/issues/186)
 * Greek: @n0toose - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/231)
 * Hebrew: @Laxystem - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/220)
-* Italian: @Zughy - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/103)
+* Italian: @Zughy - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/248)
 * Japanese: @ledyba - [March 2025 Agreement](https://codeberg.org/forgejo/governance/issues/233)
 * Korean: @kdh8219 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/121)
 * Latvian: @Edgarsons - [November 2024 Agreement](https://codeberg.org/forgejo/governance/issues/190)
 * Russian: @0ko - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/221) (admin)
-* Spanish: @maletil - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/88)
+* Spanish:
+    * @maletil - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/88)
+    * @Miguel_PL - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/249)
 * Ukrainian: @nykula - [March 2025 Agreement](https://codeberg.org/forgejo/governance/issues/238)
 
 ## User Research
 
-Purpose: Conduct User Research in the context of Forgejo. Anyone can become a member of the team, as long as they need the associated permissions to contribute to work on the [User Research repository](https://codeberg.org/forgejo/user-research). Anyone can ask that an existing member confirms their membership in accordance to the [decision making process](DECISION-MAKING.md).
+Purpose: Conduct User Research in the context of Forgejo. Anyone can become a member of the team, as long as they need the associated permissions to contribute to work on the [User Research repository](https://codeberg.org/forgejo/user-research).
 
 Team members:
 
-* @ei8fdb
-* @caesar
-* @fnetX
+* @fnetX - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/250)
 
 ## Releases
 
