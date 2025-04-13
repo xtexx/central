@@ -137,7 +137,6 @@ Team members:
     * @KaKi87 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/123)
 * German:
     * @fnetX - [March 2025 Agreement](https://codeberg.org/forgejo/governance/issues/235) (admin)
-    * @nmmr - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/86)
     * @Wuzzy - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/253)
 * German (Low): @Nordfriese - [October 2024 Agreement](https://codeberg.org/forgejo/governance/issues/186)
 * Greek: @n0toose - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/231)
