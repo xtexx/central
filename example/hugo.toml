@@ -3,7 +3,6 @@ languageCode = 'en-us'
 title = 'Example'
 theme = "hugo-theme-arc"
 themesDir = "../.."
-paginate = 10
 enableRobotsTXT = true
 copyright = 'CC'
 
@@ -35,3 +34,6 @@ url = "/archives"
 changefreq = 'weekly'
 filename = 'sitemap.xml'
 priority = 0.5
+
+[pagination]
+pagerSize = 10

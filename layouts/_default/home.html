@@ -1,0 +1,12 @@
+{{ define "main" }} 
+{{ if .Site.Params.index_list }}
+
+{{ partial "post.html" . }}
+{{ partial "list.html" . }}
+
+{{ else }}
+
+{{ partial "post.html" . }}
+
+{{ end }}
+{{ end }}
