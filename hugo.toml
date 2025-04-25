@@ -48,7 +48,7 @@ filename = 'sitemap.xml'
 priority = 0.5
 
 [permalinks]
-post = '/:year/:month/:slugorfilename'
+post = '/:year/:month/:slugorcontentbasename'
 
 [minify]
 minifyOutput = true
