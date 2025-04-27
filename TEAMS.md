@@ -131,7 +131,8 @@ Team members:
 * Danish: @tacaly - [December 2024 Agreement](https://codeberg.org/forgejo/governance/issues/201)
 * Dutch: @gusted - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/230) (admin)
 * Esperanto: @jadedctrl - [March 2025 Agreement](https://codeberg.org/forgejo/governance/issues/236)
-* Filipino: @kita - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/105)
+* Filipino: @kita - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/254)
+* Finnish: @artnay - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/256)
 * French:
     * @earl-warren - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/224) (admin)
     * @KaKi87 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/123)
