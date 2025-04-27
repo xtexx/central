@@ -8,7 +8,9 @@ Members of the moderation team are expected to recuse themselves from decision-m
 
 ## Moderation contact
 
-The moderation team can be contacted at any time by sending a mail to moderation@forgejo.org or a message to [@forgejo-moderation:matrix.org](https://matrix.to/#/@forgejo-moderation:matrix.org). These discussions are private and will only be disclosed in accordance with the moderation process.
+The moderation team can be contacted at any time by sending a mail to moderation@forgejo.org or a message to [@forgejo-moderation:matrix.org](https://matrix.to/#/@forgejo-moderation:matrix.org).
+These discussions are private and will only be disclosed in accordance with the moderation process.
+The moderation team is also available for well-being reasons, such as if you feel uncomfortable or unsafe.
 
 ## Moderation process (mandatory)
 
@@ -29,6 +31,7 @@ It is unnecessary to follow that process when the accounts targeted by the moder
 
 It is suggested that moderation actions follow the following principles. Their application is at the discretion of the moderation team, depending on the circumstances. The detailed explanation of the moderation action and the discussions that follow are an opportunity for each member of the Forgejo community to ask the moderation team to justify why they deviated from this guide.
 
+* If inappropriate behavior is observed, the person should be informed privately through shared accounts (via mail or matrix) if possible. The moderation team should endeavor to clearly explain the situation and assist the person in successfully resolving the issue.
 * A person is excluded from Forgejo spaces after having been warned several times that his or her behavior is contrary to the Code of Conduct or the law.
 * A person is excluded from Forgejo spaces after behaving in a way contrary to the Code of Conduct or the law and declaring without any doubt her or his intention to repeat these behaviors.
 * When a person is removed from Forgejo spaces, their account is anonymized and the detailed explanation refers to their anonymized account, not their account before anonymization.
