@@ -185,7 +185,6 @@ Accountability:
 Team members:
 
 * @Gusted - [May 2025 Agreement](https://codeberg.org/forgejo/governance/issues/264)
-* @fnetX - [March 2024 Agreement](https://codeberg.org/forgejo/governance/issues/95)
 * @earl-warren - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/208)
 * @viceice - [October 2024 Agreement](https://codeberg.org/forgejo/governance/issues/174) (limited to case by case assistance)
 
