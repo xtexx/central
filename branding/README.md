@@ -36,7 +36,7 @@ All logo files are in the [`logo`](./logo) directory of this repo. [#23](https:/
 
 <img src="./mascot/2022-11-27_Forgejo_by-David-Revoy_small.jpg" alt="Logo" width="150" />
 
-[krita](./mascot/2022-11-27_Forgejo.kra) and [jpg](./mascot/2022-11-27_Forgejo_by-David-Revoy.jpg) files are in the [`mascot`](./mascot) directory of this repo. [#56](https://codeberg.org/forgejo/meta/issues/56)
+[krita](./mascot/2022-11-27_Forgejo.kra), [jpg](./mascot/2022-11-27_Forgejo_by-David-Revoy.jpg) and [dark version](./mascot/2022-11-27_Forgejo_by-David-Revoy_dark.png) files are in the [`mascot`](./mascot) directory of this repo. [#56](https://codeberg.org/forgejo/meta/issues/56)
 
 Made by [David Revoy](https://www.peppercarrot.com/en/viewer/misc__2022-11-27_Forgejo_by-David-Revoy.html), licensed under [Creative Commons Attribution 4.0 International license](https://creativecommons.org/licenses/by/4.0/).
 
