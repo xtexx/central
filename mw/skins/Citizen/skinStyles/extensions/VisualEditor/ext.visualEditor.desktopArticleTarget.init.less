@@ -1,0 +1,45 @@
+/*
+ * Citizen
+ *
+ * SkinStyles for Extension:VisualEditor
+ * Module: ext.visualEditor.desktopArticleTarget.init
+ * Version: REL1_43
+*/
+
+@import '../../../resources/variables.less';
+
+.ve-activated {
+	#citizen-page-header-sticky-sentinel {
+		display: none;
+	}
+
+	/*
+	 * Hide various unnessecary elements when VE is active
+	 * - Edit buttons (as you can switch them in VE)
+	 * - ToC button (does nothing in VE)
+	*/
+	#ca-ve-edit,
+	#ca-edit,
+	.citizen-toc__buttonCheckbox {
+		display: none;
+	}
+}
+
+// Fix page actions from going under the page
+.ve-init-mw-desktopArticleTarget {
+	.citizen-page-header {
+		z-index: @z-index-toolbar;
+	}
+}
+
+.ve-init-mw-desktopArticleTarget-toolbarPlaceholder {
+	&-bar {
+		border-bottom-color: var( --border-color-base );
+		box-shadow: none;
+	}
+}
+
+// Reset .oo-ui-widget 14px font size hack
+.ve-ui-surface.oo-ui-widget {
+	font-size: 1rem;
+}
