@@ -1,0 +1,20 @@
+{
+	"@metadata": {
+		"authors": [
+			"Aristorkle",
+			"Noooote"
+		]
+	},
+	"cite_error": "Error de citada: $1",
+	"cite-reference-previews-reference": "Referencia",
+	"cite-reference-previews-book": "Libro de referencia",
+	"cite-reference-previews-journal": "Referencia del journal",
+	"cite-reference-previews-news": "Noticias de referencia",
+	"cite-reference-previews-note": "Nota",
+	"cite-reference-previews-web": "Web de referencia",
+	"cite-wikieditor-tool-reference": "Referencia",
+	"cite-wikieditor-help-page-references": "Maga referencias",
+	"cite-wikieditor-help-content-reference-description": "Referencia",
+	"communityconfiguration-cite-title": "Cita",
+	"cite-configuration-submit": "Man save con el maga cambio"
+}
