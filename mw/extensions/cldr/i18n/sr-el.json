@@ -1,0 +1,8 @@
+{
+	"@metadata": {
+		"authors": [
+			"Winston Sung"
+		]
+	},
+	"cldr-desc": "Proširenje koje omogućava lokalizovane nazive jezika iz [http://cldr.unicode.org/index/downloads CLDR baze]"
+}
