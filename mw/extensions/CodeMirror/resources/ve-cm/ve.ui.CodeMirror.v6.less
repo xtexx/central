@@ -1,0 +1,129 @@
+@import 'mediawiki.mixins.less';
+
+.ve-init-mw-desktopArticleTarget {
+	.cm-editor {
+		background: transparent;
+		border: 0;
+		box-sizing: border-box;
+		height: auto;
+		left: 0;
+		pointer-events: none;
+		// stylelint-disable-next-line declaration-no-important
+		position: absolute !important;
+		top: 0;
+		width: 100%;
+
+		// Core VE default padding
+		padding: 1.5em;
+
+		// Skin specific paddings
+		.skin-vector & {
+			padding: 0 1rem;
+
+			@media screen and ( min-width: 982px ) {
+				.skin-vector-legacy& {
+					padding: 0 1.5rem;
+				}
+			}
+		}
+
+		.skin-minerva &,
+		.skin-monobook & {
+			padding: 0;
+		}
+	}
+
+	.cm-gutterElement {
+		/* @noflip */
+		padding: 0 3px 0 4px !important; /* stylelint-disable-line declaration-no-important */
+	}
+
+	.cm-gutters {
+		background-color: transparent;
+		.padding-inline( 0, 8px );
+		/* @noflip */
+		border-right: 0;
+	}
+
+	.cm-focused {
+		outline: 0;
+	}
+
+	.cm-line {
+		padding: 0;
+	}
+
+	.cm-content {
+		padding: 0;
+		// T381714: Disable the automatic minimum size, so it can shrink
+		// See https://www.w3.org/TR/css-flexbox-1/#min-size-auto
+		min-width: 0;
+	}
+
+	.CodeMirror-selected {
+		display: none;
+	}
+
+	// Ensure surfaces are using identical font rules
+	.cm-scroller,
+	.cm-scroller *,
+	.ext-codemirror-wrapper .ve-ce-paragraphNode {
+		// The following are already set by mw-editfont-monospace on the parent: font-size, font-family
+		// T382006: Chromium browsers have rounding issues between 1.5 and 1.5em
+		// Site styles or user styles may also affect the result unintentionally, so override it anyway
+		line-height: 1.5;
+		word-wrap: break-word;
+		// Support: Chrome<76, Firefox<69
+		// Fallback for browsers which don't support break-spaces
+		white-space: pre-wrap;
+		// T347902
+		white-space: break-spaces;
+		word-break: normal;
+		-webkit-hyphens: manual;
+		-moz-hyphens: manual;
+		-ms-hyphens: manual;
+		hyphens: manual;
+		-webkit-font-variant-ligatures: contextual;
+		font-variant-ligatures: contextual;
+
+		// Monospace fonts can change width when bold
+		// stylelint-disable-next-line declaration-no-important
+		font-weight: normal !important;
+		// T252965
+		line-break: initial;
+		// T357482#10111614
+		font-style: normal;
+	}
+
+	.cm-mw-section-1,
+	.cm-mw-section-1 ~ *,
+	.cm-mw-section-2,
+	.cm-mw-section-2 ~ *,
+	/* TODO: remove overqualified `span` after CM6 upgrade */
+	span.cm-mw-section-3 ~ *,
+	span.cm-mw-section-4 ~ *,
+	span.cm-mw-section-5 ~ *,
+	span.cm-mw-section-6 ~ * {
+		font-size: inherit;
+		line-height: inherit;
+		font-weight: inherit;
+	}
+
+	.cm-activeLineGutter {
+		background-color: transparent;
+		border-right: 0;
+	}
+}
+
+.ext-codemirror-wrapper .ve-ce-documentNode-codeEditor-hide {
+	opacity: 0.4;
+
+	&::selection,
+	& *::selection {
+		background: #6da9f7 !important; /* stylelint-disable-line declaration-no-important */
+	}
+}
+
+.ext-codemirror-wrapper .ve-ce-documentNode-codeEditor-webkit-hide {
+	-webkit-text-fill-color: transparent;
+}
