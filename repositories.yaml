@@ -83,7 +83,7 @@
 - name: DynamicPageList3-Universal-Omega
   kind: extensions
   prefix: mw/extensions/DynamicPageList3
-  branch: master
+  branch: main
   git: https://github.com/Universal-Omega/DynamicPageList3
 - name: DynamicPageList3-WeirdGloop
   kind: extensions
