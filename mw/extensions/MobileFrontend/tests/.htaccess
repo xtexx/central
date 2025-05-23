@@ -1,0 +1,4 @@
+Require all denied
+<FilesMatch "\.js$">
+	Require all granted
+</FilesMatch>

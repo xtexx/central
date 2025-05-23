@@ -1,0 +1,17 @@
+{
+	"@metadata": {
+		"authors": [
+			"Menachem.Moreira",
+			"Universal Life",
+			"WikiiiTranslator"
+		]
+	},
+	"mobile-frontend-language-heading": "<strong>Lenguas</strong>",
+	"mobile-frontend-view": "Vista mobil",
+	"mobile-frontend-view-desktop": "Vista désktop",
+	"mobile-frontend-watchlist-filter-all": "Todos",
+	"mobile-frontend-watchlist-filter-articles": "Pajinas",
+	"mobile-frontend-watchlist-more": "mas",
+	"tag-mobile_edit": "Edisión desde móvil",
+	"tag-mobile_web_edit": "Edisión desde móvil en web"
+}
