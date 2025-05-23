@@ -1,0 +1,108 @@
+{
+	"name": "Chart",
+	"author": [
+		"Brooke Vibber",
+		"Katie Filbert",
+		"Roan Kattouw"
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:Chart",
+	"descriptionmsg": "chart-desc",
+	"license-name": "GPL-3.0-or-later",
+	"type": "parserhook",
+	"requires": {
+		"MediaWiki": ">= 1.44",
+		"extensions": {
+			"JsonConfig": "*"
+		}
+	},
+	"config": {
+		"ChartProgressiveEnhancement": {
+			"value": true,
+			"description": "Loads JavaScript on client."
+		},
+		"ChartServiceUrl": {
+			"value": null,
+			"description": "URL to the chart-renderer service. If both ChartCliPath and this setting are set, this setting is used."
+		},
+		"ChartCliPath": {
+			"value": null,
+			"description": "File path to the chart-renderer CLI script. Defaults to 'path/to/extensions/Chart/chart-renderer/cli.js'. If both ChartServiceUrl and this setting are set, this setting is ignored and ChartServiceUrl is used."
+		}
+	},
+	"callback": "MediaWiki\\Extension\\Chart\\Hooks::onRegistration",
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\Chart\\": "src/"
+	},
+	"ForeignResourcesDir": "lib",
+	"ServiceWiringFiles": [
+		"src/ServiceWiring.php"
+	],
+	"MessagesDirs": {
+		"Chart": [
+			"i18n"
+		]
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "",
+		"remoteExtPath": "Chart"
+	},
+	"ResourceModules": {
+		"ext.chart.styles": {
+			"styles": [
+				"resources/ext.chart/styles.less"
+			]
+		},
+		"ext.chart.bootstrap": {
+			"packageFiles": [
+				"resources/ext.chart/bootstrap.js"
+			],
+			"dependencies": [
+				"web2017-polyfills"
+			]
+		},
+		"ext.chart.render": {
+			"packageFiles": [
+				"resources/ext.chart/render.js",
+				"lib/echarts/echarts.common.js"
+			]
+		},
+		"ext.chart.visualEditor": {
+			"scripts": [
+				"resources/ext.chart.visualEditor/ve.dm.MWChartNode.js",
+				"resources/ext.chart.visualEditor/ve.ce.MWChartNode.js",
+				"resources/ext.chart.visualEditor/ve.ui.MWChartContextItem.js",
+				"resources/ext.chart.visualEditor/ve.ui.MWChartDialog.js",
+				"resources/ext.chart.visualEditor/ve.ui.MWChartDialogTool.js"
+			],
+			"dependencies": [
+				"ext.visualEditor.mwcore",
+				"ext.visualEditor.mwtransclusion"
+			],
+			"messages": [
+				"chart-visualeditor-mwchartdialog-title",
+				"chart-visualeditor-mwchartdialog-chart-label",
+				"chart-visualeditor-mwchartdialog-data-label"
+			]
+		}
+	},
+	"ExtensionMessagesFiles": {
+		"ChartMagic": "Chart.i18n.magic.php"
+	},
+	"HookHandlers": {
+		"main": {
+			"class": "MediaWiki\\Extension\\Chart\\Hooks",
+			"services": []
+		}
+	},
+	"Hooks": {
+		"ParserFirstCallInit": "main"
+	},
+	"attributes": {
+		"VisualEditor": {
+			"PluginModules": [
+				"ext.chart.visualEditor"
+			]
+		}
+	},
+	"manifest_version": 2
+}

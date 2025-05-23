@@ -1,0 +1,12 @@
+{
+	"root": true,
+	"extends": [
+		"../../resources/.eslintrc.json"
+	],
+	"globals": {
+		"global": "readonly"
+	},
+	"env": {
+		"jest": true
+	}
+}

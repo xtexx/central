@@ -1,0 +1,31 @@
+{
+	"@metadata": {
+		"authors": [
+			"Bjankuloski06"
+		]
+	},
+	"chart-desc": "Ја додава расчленувачката функција <code><nowiki>{{#chart:}}</nowiki></code> за прикажување на графикони",
+	"chart-error-chart-definition-not-found": "Не ја најдов страницата со одредби за графикон.",
+	"chart-error-chart-definition-invalid": "Страницата со одредби за графиконот е неважечка.",
+	"chart-error-data-source-invalid": "Укажан е неважечки извор на табеларни податоци.",
+	"chart-error-data-source-page-not-found": "Не ја најдов изворната страница со табеларни податоци за графиконот.",
+	"chart-error-default-source-not-specified": "Страницата со одредби за графикон не укажува стандарден извор на податоци.",
+	"chart-error-incompatible-chart-definition": "Страницата со одердби е нескладна со графиконите.",
+	"chart-error-incompatible-data-source": "Изворната страница со табеларни податоци е нескладна со графиконите.",
+	"chart-error-invalid-data-source": "Изворот на табеларни податоци е неважечки.",
+	"chart-error-invalid-height": "Висината мора да биде цел број поголем или еднаков на 100.",
+	"chart-error-invalid-width": "Ширината мора да биде цел број поголем или еднаков на 100.",
+	"chart-error-shell-disabled": "Графиконите не можат да се исцртаат бидејќи извршувањето на обвивката е оневозможено.",
+	"chart-error-rendering-error": "Се јави грешка при исцртувањето на графиконот.",
+	"chart-error-unexpected": "Се јави неочекувана грешка при исцртувањето на графиконот.",
+	"chart-error-category": "Страници што го користат додатокот Графикон со грешки во исписот",
+	"chart-render-category": "Страници што го користат додатокот Графикон",
+	"chart-visualeditor-mwchartdialog-title": "Графикон",
+	"chart-visualeditor-mwchartdialog-chart-label": "Страница за графиконска одредба",
+	"chart-visualeditor-mwchartdialog-data-label": "Извор на табеларни податоци за графиконот",
+	"chartjson-error-version": "$1 мора да биде цел број помеѓу $2 и $3 (заклучно со него).",
+	"chartjson-error-enum": "$1 мора да има една од следниве вредности: $2",
+	"chart-error-source-not-found": "Не ја најдов изворната страница со табеларни податоци.",
+	"chart-error-invalid-source-type": "Изворот на табеларни податоци е од неважечки тип.",
+	"chart-error-invalid-source-content": "Содржината на изворот на табеларни податоци е неважечка."
+}
