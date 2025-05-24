@@ -168,10 +168,12 @@ xvGrantPermissionsTo('staff', [
 	'createaccount',
 	'noratelimit',
 	'renameuser',
-	'renameuser-global',
 ]);
 $wgAddGroups['staff'] = true;
 $wgRemoveGroups['staff'] = true;
+if ($xvWikiID == 'meta') {
+	xvGrantPermission('renameuser-global', ['staff']);
+}
 
 // User rights - bureaucrat
 xvGrantPermissionsTo('bureaucrat', [
