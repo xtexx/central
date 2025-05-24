@@ -20,7 +20,7 @@ The stable versions are available at [Modrinth](https://modrinth.com/modpack/xte
 
 The staging version is the delayed version of the dev. It is hosted on [exogit](https://exozy.me) and will be synchronized with dev every 24h, so some temporary bugs may be fixed in time.
 
-[packwiz bootstrap URL](https://git.exozy.me/xtex/xtex-mp-pack-staging/raw/branch/main/pack.toml) | [MultiMC](https://cloud.exozy.me/s/2C8NamM8biP4QZz)
+[packwiz bootstrap URL](https://git.pub.solar/xtex/xtex-mp-pack-staging/raw/branch/main/pack.toml) | [MultiMC / PrismLauncher Pack](https://xtex.envs.net/xmpp/XMPP-staging.zip)
 
 ### Dev: packwiz installer
 
@@ -28,7 +28,7 @@ The staging version is the delayed version of the dev. It is hosted on [exogit](
 >
 > To keep your own customized configurations, disable custom pre-launch command after first launch.
 
-[packwiz bootstrap URL](https://codeberg.org/xtex/xtex-mp-pack/raw/branch/main/pack.toml) | [MultiMC](https://cloud.exozy.me/s/yWWfzxpSERF7roF)
+[packwiz bootstrap URL](https://codeberg.org/xtex/xtex-mp-pack/raw/branch/main/pack.toml) | [MultiMC / PrismLauncher Pack](https://xtex.envs.net/xmpp/XMPP-dev.zip)
 
 ## Credits
 
@@ -38,7 +38,7 @@ See the [CREDITS.md](https://codeberg.org/xtex/xtex-mp-pack/src/branch/main/CRED
 
 This modpack is released under the Apache-2.0 license.
 
-> Copyright 2023 xtex
+> Copyright 2023-2025 xtex
 >
 > Licensed under the Apache License, Version 2.0 (the "License");
 > you may not use this file except in compliance with the License.
