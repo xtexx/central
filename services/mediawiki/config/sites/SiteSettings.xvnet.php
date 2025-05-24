@@ -22,5 +22,6 @@ $wgLocalInterwikis[] = 'xvn';
 
 $xvUseEmailConfirmed = true;
 $xvRequireEmailConfirmedToEdit = true;
+$wgUsersNotifiedOnAllChanges = ['Xtex'];
 
 require_once "$xvConfigDirectory/common/GlobalSettings.php";

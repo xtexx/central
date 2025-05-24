@@ -16,4 +16,6 @@ $wgDefaultSkin = $wgDefaultMobileSkin = 'lakeus';
 
 $wgLocalInterwikis[] = 'meta';
 
+$wgUsersNotifiedOnAllChanges = ['Xtex'];
+
 require_once "$xvConfigDirectory/common/GlobalSettings.php";

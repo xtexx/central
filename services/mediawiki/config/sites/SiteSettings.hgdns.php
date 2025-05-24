@@ -75,6 +75,7 @@ $wgExtensionFunctions[] = function () {
 
 // Misc
 $wgUseSharedUploads = false;
+$wgUsersNotifiedOnAllChanges = ['Xtex'];
 
 // Namespaces
 const NS_MEMBER = 3000;

@@ -23,6 +23,7 @@ xvLoadSkin('Lakeus');
 $wgDefaultSkin = $wgDefaultMobileSkin = 'lakeus';
 
 $xvUseEmailConfirmed = true;
+$wgUsersNotifiedOnAllChanges = ['Xtex'];
 
 // User rights
 $xvRequireEmailConfirmedToEdit = true;
