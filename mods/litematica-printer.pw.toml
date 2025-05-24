@@ -1,13 +1,13 @@
-name = "Litematica-Printer-Easyplace-Extension"
-filename = "litematica-printer-mc1.21-7.2.0.jar"
+name = "Litematica Printer"
+filename = "litematica-printer-1.21.5-3.2.1-sakura.5.jar"
 side = "client"
 
 [download]
-url = "https://cdn.modrinth.com/data/ITCqumHN/versions/QdRNHpMc/litematica-printer-mc1.21-7.2.0.jar"
-hash-format = "sha1"
-hash = "f35c2981174d9f6a3b3fbf330d3ab88204474934"
+url = "https://cdn.modrinth.com/data/3llatzyE/versions/f9I6PpBA/litematica-printer-1.21.5-3.2.1-sakura.5.jar"
+hash-format = "sha512"
+hash = "68f3f8bab5784e46c460ad4a30a6da1bf67c5e09299b22bd503d0bbc4e271e5d5480ed6720af05d52faefdcc72a854c5e37d7a5974665d767cef9de7c19f4e49"
 
 [update]
 [update.modrinth]
-mod-id = "ITCqumHN"
-version = "QdRNHpMc"
+mod-id = "3llatzyE"
+version = "f9I6PpBA"

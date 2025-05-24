@@ -1,13 +1,13 @@
 name = "LAN World Plug-n-Play"
-filename = "mcwifipnp-1.7.0-1.20.6-fabric.jar"
+filename = "mcwifipnp-1.8.5-1.21-fabric.jar"
 side = "both"
 
 [download]
 hash-format = "sha1"
-hash = "f03484c9c86922c35db8bd57b5fc8bbacf86e29d"
+hash = "55c9f57fdc7e71c1a867623638811b639760e8bf"
 mode = "metadata:curseforge"
 
 [update]
 [update.curseforge]
-file-id = 5317645
+file-id = 6393910
 project-id = 450250

@@ -1,13 +1,13 @@
 name = "FastChest"
-filename = "fast-chest-1.5+1.20.2.jar"
+filename = "fast-chest-1.6+1.20.2.jar"
 side = "client"
 
 [download]
-url = "https://cdn.modrinth.com/data/WNcgffMw/versions/9TMPN7m0/fast-chest-1.5%2B1.20.2.jar"
-hash-format = "sha1"
-hash = "29920fb6786f39a5859244d29daeb7e5f4ec3972"
+url = "https://cdn.modrinth.com/data/WNcgffMw/versions/5qT5X9gO/fast-chest-1.6%2B1.20.2.jar"
+hash-format = "sha512"
+hash = "904c126753a2af2b9c427a05ec6849e4f835f87e94c3703fa09dd5799376841e283b09f757fd0028fe0483da6ae07e71947fc9bf6086efbbf1f47988700667f8"
 
 [update]
 [update.modrinth]
 mod-id = "WNcgffMw"
-version = "9TMPN7m0"
+version = "5qT5X9gO"

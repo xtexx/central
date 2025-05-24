@@ -3,11 +3,11 @@ filename = "key_language_pack.zip"
 side = "client"
 
 [download]
-url = "https://cdn.modrinth.com/data/QCLPvYpB/versions/cFYVmTXZ/key_language_pack.zip"
-hash-format = "sha1"
-hash = "9b2e394540a7f74327872aaf3ef0b34c78aa11b7"
+url = "https://cdn.modrinth.com/data/QCLPvYpB/versions/6ekTruDR/key_language_pack.zip"
+hash-format = "sha512"
+hash = "9d872240416ba80f23afcb0c2b5d733fb83562204bf7eab70e90aa19464dc2ca7570bb30c3cae6295fd3940f875f3869836aeabda0727a85df5ff0caf5b9d12d"
 
 [update]
 [update.modrinth]
 mod-id = "QCLPvYpB"
-version = "cFYVmTXZ"
+version = "6ekTruDR"
