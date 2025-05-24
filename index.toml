@@ -209,14 +209,6 @@ hash = "28d084c16fec640be379d39aebd2bf894a7d4a0bb1702d7fd171c053e9c0aae2"
 metafile = true
 
 [[files]]
-file = "mods/custom-splash-screen.toml"
-hash = "fb7f5a082df3146f0506933be8c2490b360aad05999ffa486b4b6ec864c87f51"
-
-[[files]]
-file = "mods/customsplashscreen-2.3.0.jar"
-hash = "d0483f28b7554a019ea7c387e694f1fbe60c3eac1c762378d46cc9f13f56c9bc"
-
-[[files]]
 file = "mods/debugify.pw.toml"
 hash = "847dce2251028733f139692907e89466896dc6ca35cfcc1bdaa0ec1f02aebefb"
 metafile = true
