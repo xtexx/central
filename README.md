@@ -22,6 +22,8 @@ The staging version is the delayed version of the dev. It is hosted on [exogit](
 
 [packwiz bootstrap URL](https://git.pub.solar/xtex/xtex-mp-pack-staging/raw/branch/main/pack.toml) | [MultiMC / PrismLauncher Pack](https://xtex.envs.net/xmpp/XMPP-staging.zip)
 
+> Note that you may need to restart the game twice to apply latest updates when using PrismLauncher 9.4+.
+
 ### Dev: packwiz installer
 
 > Using this bootstrap URL means your client will always be in sync with the latest development branch **at your own risk**.
@@ -29,6 +31,8 @@ The staging version is the delayed version of the dev. It is hosted on [exogit](
 > To keep your own customized configurations, disable custom pre-launch command after first launch.
 
 [packwiz bootstrap URL](https://codeberg.org/xtex/xtex-mp-pack/raw/branch/main/pack.toml) | [MultiMC / PrismLauncher Pack](https://xtex.envs.net/xmpp/XMPP-dev.zip)
+
+> Note that you may need to restart the game twice to apply latest updates when using PrismLauncher 9.4+.
 
 ## Credits
 
