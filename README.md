@@ -36,7 +36,9 @@ The staging version is the delayed version of the dev. It is hosted on [exogit](
 
 ## Credits
 
+<!--BEGIN CREDITS-->
 See the [CREDITS.md](https://codeberg.org/xtex/xtex-mp-pack/src/branch/main/CREDITS.md).
+<!--END CREDITS-->
 
 ## License
 
