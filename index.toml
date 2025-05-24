@@ -49,6 +49,10 @@ file = "config/iris.properties"
 hash = "fc273072f132ab4beba18bdee72e80cce7f82775d91219b39bbff41f9ac5158c"
 
 [[files]]
+file = "config/lambdynlights.toml"
+hash = "83b8c0bbd7c92d6e668155d49f5266a1537988d76866e16ff310e2faa07ad2e3"
+
+[[files]]
 file = "config/litematica.json"
 hash = "ad6fdf495f150d0090f237808fea75a6088a666951de9e88f8ce368e2ac0d33b"
 
@@ -71,10 +75,6 @@ hash = "4353e96331fed165dfd5dff9af6048eaa69393afe57167b66c162e5a29baddf5"
 [[files]]
 file = "config/roughlyenoughitems/config.json5"
 hash = "421613508ff033c031b0cc83ce8d57b53d51737036be4c695a2ad60b32fd7861"
-
-[[files]]
-file = "config/ryoamiclights.toml"
-hash = "83b8c0bbd7c92d6e668155d49f5266a1537988d76866e16ff310e2faa07ad2e3"
 
 [[files]]
 file = "config/seedcracker.json"
@@ -376,11 +376,6 @@ metafile = true
 [[files]]
 file = "mods/replaymod.pw.toml"
 hash = "f2754cfe6a8b3a2eaeb014b593b5366a76d6a8d9f78398d09aea54de6d243586"
-metafile = true
-
-[[files]]
-file = "mods/ryoamiclights.pw.toml"
-hash = "ea10b64e72890a0b0fac51f24c33c33ecee7e1fbe4c5d1ce7df053f65c004ba9"
 metafile = true
 
 [[files]]
