@@ -237,6 +237,11 @@ hash = "d1f561a89e7a4c5d98b6cbb25088ea2ad56ca1cff60118f2076912f49f8cfed3"
 metafile = true
 
 [[files]]
+file = "mods/ebe.pw.toml"
+hash = "61d64eadda8079ccd7c906a3b5143ab5b9b3716918c775dad2d3d59dfbe7bb41"
+metafile = true
+
+[[files]]
 file = "mods/entityculling.pw.toml"
 hash = "138e20f1257a5fed553a89c8701a5c15f22986a2e8b77c87bea3eafa59995920"
 metafile = true
@@ -249,11 +254,6 @@ metafile = true
 [[files]]
 file = "mods/fabric-language-kotlin.pw.toml"
 hash = "967a780be97bec40b8bca4945a053ee4fbd05d58e218c4fb803959ac0d0c7f08"
-metafile = true
-
-[[files]]
-file = "mods/fastchest.pw.toml"
-hash = "00a5222153fefe7343b9dc70b77898e48322f54a83f60e3dde57754f9c23a920"
 metafile = true
 
 [[files]]
