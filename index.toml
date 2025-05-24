@@ -2,7 +2,7 @@ hash-format = "sha256"
 
 [[files]]
 file = "CREDITS.md"
-hash = "6fbf0d7e68d123229881d1bb1c581b76bd3b0569c5182e5b629f4211f6058a36"
+hash = "cc2fbe77824878cd1ea8e4396923114ad2fc480f212a019f98221254bc41b20a"
 
 [[files]]
 file = "LICENSE"
@@ -10,7 +10,7 @@ hash = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 
 [[files]]
 file = "README.md"
-hash = "b96c20095e7b886778224c2007fca60e012d41c859d67c1a1af268950c84dd4d"
+hash = "6e7a27c28055acf66342ab5dc845aeef1ca8f3d504f3e9d20078c7081e178513"
 
 [[files]]
 file = "ViaFabricPlus/settings.json"
