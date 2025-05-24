@@ -359,11 +359,6 @@ hash = "7126cd639618c27482c768de8b77c23b22f19e7c9d41b4163c401ad2b4f46963"
 metafile = true
 
 [[files]]
-file = "mods/quit-or-not.pw.toml"
-hash = "42e8e2977afe9e4a25ea095dfa9e6fd2a420860bf2f298009d4abbba2b2d6142"
-metafile = true
-
-[[files]]
 file = "mods/reeses-sodium-options.pw.toml"
 hash = "55a727cabdd9d6e84fb0232b49d0dfa207751002e7f1f63b959baa35e2f29868"
 metafile = true
