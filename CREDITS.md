@@ -35,6 +35,7 @@ This is a complete list of all mods, resource packs and shaders included in this
 - Carpet Extra
 - Chat Heads
 - Chest Tracker
+- Chunky
 - ClickThrough Plus
 - Cloth Config API
 - Concurrent Chunk Management Engine (Fabric)
@@ -59,6 +60,7 @@ This is a complete list of all mods, resource packs and shaders included in this
 - Key Language Pack
 - Krypton
 - LambDynamicLights
+- Language Reload
 - LAN World Plug-n-Play
 - lazy-language-loader
 - libIPN
@@ -86,6 +88,7 @@ This is a complete list of all mods, resource packs and shaders included in this
 - spark
 - StackDeobfuscator
 - SuperMartijn642's Config Lib
+- ThreadTweak
 - TweakerMore
 - Tweakeroo
 - Twemojis In Minecraft
@@ -116,6 +119,7 @@ This is a complete list of all mods, resource packs and shaders included in this
 - [Carpet Extra](https://modrinth.com/mod/VX3TgwQh)
 - [Chat Heads](https://modrinth.com/mod/Wb5oqrBJ)
 - [Chest Tracker](https://modrinth.com/mod/ni4SrKmq)
+- [Chunky](https://modrinth.com/mod/fALzjamp)
 - [ClickThrough Plus](https://modrinth.com/mod/fJi8nm80)
 - [Cloth Config API](https://modrinth.com/mod/9s6osm5g)
 - [Custom Crosshair Mod](https://modrinth.com/mod/o1tyE5vJ)
@@ -135,6 +139,7 @@ This is a complete list of all mods, resource packs and shaders included in this
 - [Iris Shaders](https://modrinth.com/mod/YL57xq9U)
 - [Krypton](https://modrinth.com/mod/fQEb0iXm)
 - [LambDynamicLights](https://modrinth.com/mod/yBW8D80W)
+- [Language Reload](https://modrinth.com/mod/uLbm7CG6)
 - [lazy-language-loader](https://modrinth.com/mod/Nz0RSWrF)
 - [libIPN](https://modrinth.com/mod/onSQdWhM)
 - [Litematica Printer](https://modrinth.com/mod/3llatzyE)
@@ -156,6 +161,7 @@ This is a complete list of all mods, resource packs and shaders included in this
 - [spark](https://modrinth.com/mod/l6YH9Als)
 - [StackDeobfuscator](https://modrinth.com/mod/NusMqsjF)
 - [SuperMartijn642's Config Lib](https://modrinth.com/mod/LN9BxssP)
+- [ThreadTweak](https://modrinth.com/mod/vSEH1ERy)
 - [TweakerMore](https://modrinth.com/mod/GBeCx05I)
 - [Tweakeroo](https://modrinth.com/mod/t5wuYk45)
 - [ViaFabricPlus](https://modrinth.com/mod/rIC2XJV4)
