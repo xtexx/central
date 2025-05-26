@@ -194,6 +194,11 @@ hash = "978e95529499a5ce7408033af42e16126f3efc0266b9afba3106b04381dc654e"
 metafile = true
 
 [[files]]
+file = "mods/chunky.pw.toml"
+hash = "81ee90c41a92e68384f96e8fa4ab01dbf74dc09be1fc78f6cebf013e362a5123"
+metafile = true
+
+[[files]]
 file = "mods/clickthrough+.pw.toml"
 hash = "abb79cc31573b28526a5489ffa87ee5186bd5c0a7e592ab423a71242743be6b1"
 metafile = true
