@@ -103,6 +103,8 @@ Team members:
 * @0ko - [April 2024 Agreement](https://codeberg.org/forgejo/governance/issues/106)
 * @viceice - [August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/156)
 * @Kwonunn - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/244)
+* @fnetx - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/269)
+* @jerger - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/271)
 * Members of the [Security](#security), [Devops](#devops) & [Releases](#releases) teams
 
 ## Localization
@@ -187,6 +189,7 @@ Team members:
 * @Gusted - [May 2025 Agreement](https://codeberg.org/forgejo/governance/issues/264)
 * @earl-warren - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/208)
 * @viceice - [October 2024 Agreement](https://codeberg.org/forgejo/governance/issues/174) (limited to case by case assistance)
+* @jerger - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/270) (limited to case by case assistance)
 
 ## Social account
 
