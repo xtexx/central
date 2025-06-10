@@ -220,16 +220,6 @@ Accountability:
 Team members:
 
 * @Beowulf - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/219)
-* @caesar - [October 2023 Agreement](https://codeberg.org/forgejo/governance/issues/35)
-
-Enforcer (only for the purpose of enforcing moderation decisions):
-
-* @crystal - [February 2024 Agreement](https://codeberg.org/forgejo/governance/issues/78)
-
-Observer (access to team discussions and history of actions, without any moderation rights):
-
-* @oliverpool - [January 2024 Agreement](https://codeberg.org/forgejo/governance/issues/55)
-
 
 ## Liberapay team members
 
