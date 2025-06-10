@@ -220,6 +220,8 @@ Accountability:
 Team members:
 
 * @Beowulf - [February 2025 Agreement](https://codeberg.org/forgejo/governance/issues/219)
+* @mahlzahn - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/277)
+* @earl-warren - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/275)
 
 ## Liberapay team members
 
