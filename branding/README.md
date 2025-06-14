@@ -34,6 +34,8 @@ All logo files are in the [`logo`](./logo) directory of this repo. [#23](https:/
 
 ### Mascot
 
+Meet [Jo](https://framapiaf.org/@davidrevoy/114677073042311275), our mascot. She's forging together with us:
+
 <img src="./mascot/2022-11-27_Forgejo_by-David-Revoy_small.jpg" alt="Logo" width="150" />
 
 [krita](./mascot/2022-11-27_Forgejo.kra), [jpg](./mascot/2022-11-27_Forgejo_by-David-Revoy.jpg) and [dark version](./mascot/2022-11-27_Forgejo_by-David-Revoy_dark.png) files are in the [`mascot`](./mascot) directory of this repo. [#56](https://codeberg.org/forgejo/meta/issues/56)
