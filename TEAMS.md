@@ -105,6 +105,7 @@ Team members:
 * @Kwonunn - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/244)
 * @fnetx - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/269)
 * @jerger - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/271)
+* @Beowulf - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/292)
 * Members of the [Security](#security), [Devops](#devops) & [Releases](#releases) teams
 
 ## Localization
