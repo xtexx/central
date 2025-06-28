@@ -1732,6 +1732,7 @@ dependencies = [
  "log",
  "matrix-sdk",
  "serde",
+ "serde_json",
  "tokio",
  "toml",
 ]

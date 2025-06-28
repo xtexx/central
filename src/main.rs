@@ -15,6 +15,7 @@ use crate::{
 mod config;
 mod data;
 mod irc;
+mod matrix;
 mod processor;
 
 struct State {
@@ -35,6 +36,8 @@ impl Clone for State {
     }
 }
 
+const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), " ", env!("CARGO_PKG_VERSION"), " (", env!("CARGO_PKG_REPOSITORY"), ")");
+
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::builder()
@@ -46,6 +49,9 @@ async fn main() -> Result<()> {
         std::env::var("LITTLEBRIDGE_CONFIG").unwrap_or_else(|_| "config.toml".to_string());
     let config: Config = toml::from_str(&fs::read_to_string(config_path)?)?;
     let config = Arc::new(config);
+
+    info!("Starting littlebridge ...");
+    info!("User-agent: {USER_AGENT}");
 
     let (output_tx, output_rx) = broadcast::channel::<Message>(1024);
     let (input_tx, input_rx) = mpsc::channel(512);
@@ -65,6 +71,9 @@ async fn main() -> Result<()> {
         match config {
             ClientConfig::Irc(_) => {
                 jobs.spawn(irc::run_bridge(state.clone(), client_id.to_owned()))
+            }
+            ClientConfig::Matrix(_) => {
+                jobs.spawn(matrix::run_bridge(state.clone(), client_id.to_owned()))
             }
         };
         info!("Started client {client_id}");

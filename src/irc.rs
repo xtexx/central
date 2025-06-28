@@ -5,9 +5,7 @@ use kstring::KString;
 use log::{debug, info};
 
 use crate::{
-    State,
-    config::{ClientConfig, IRCClientConfig},
-    data::Message,
+    config::{ClientConfig, IRCClientConfig}, data::{Message, MessageBody}, State
 };
 
 pub async fn run_bridge(mut state: State, client_id: KString) -> Result<()> {
@@ -22,7 +20,7 @@ pub async fn run_bridge(mut state: State, client_id: KString) -> Result<()> {
             Some(concat!(env!("CARGO_PKG_NAME"), ":", env!("CARGO_PKG_VERSION")).to_string());
     }
     if irc_config.source.is_none() {
-        irc_config.source = Some("https://codeberg.org/xtex/littlebridge".to_string());
+        irc_config.source = Some(env!("CARGO_PKG_REPOSITORY").to_string());
     }
 
     let mut client = Client::from_config(irc_config).await?;
@@ -79,6 +77,8 @@ async fn handle_incoming_message(
     let (is_notice, target, text) = match message.command {
         Command::PRIVMSG(target, text) => (false, target, text),
         Command::NOTICE(target, text) => (true, target, text),
+        Command::PING(..) => return Ok(()),
+        Command::PONG(..) => return Ok(()),
         _ => {
             info!("{}: message: {}", client_id, message);
             return Ok(());
@@ -109,7 +109,7 @@ async fn handle_incoming_message(
                 room: room.room.clone(),
                 prefix: room.prefix.clone(),
                 sender: KString::from_string(sender),
-                text,
+                body: MessageBody::Text(text),
             };
             state.input_tx.send(msg).await?;
         } else {
@@ -124,7 +124,11 @@ async fn handle_incoming_message(
         // TODO
         client.send_privmsg(
             sender,
-            "Hi! Please see https://codeberg.org/xtex/littlebridge for more info.",
+            concat!(
+                "Hi! Please see ",
+                env!("CARGO_PKG_REPOSITORY"),
+                " for more info."
+            ),
         )?;
     }
 
@@ -158,7 +162,9 @@ fn handle_outgoing_message(
     }
     text.push_str(&message.sender);
     text.push_str("] ");
-    text.push_str(&message.text);
+    match message.body {
+        MessageBody::Text(txt) => text.push_str(&txt),
+    }
 
     debug!("{}: send: {}: {}", client_id, chan, text);
     client.send_privmsg(chan, text)?;

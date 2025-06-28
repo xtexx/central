@@ -1,2 +1,4 @@
 /target
 /config.toml
+*.db
+session.json
