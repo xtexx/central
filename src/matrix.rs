@@ -294,6 +294,9 @@ async fn handle_incoming_message(
     };
 
     let sender = event.sender();
+    if sender == client.user_id().unwrap() {
+        return Ok(());
+    }
     let mx_sender = match mx_room.get_member(sender).await? {
         Some(mx_sender) => mx_sender,
         None => return Ok(()),
@@ -576,7 +579,9 @@ fn format_media(
         },
         MediaSource::Encrypted(_) => format!("{kind}: {body}"),
     };
-    Ok(MessageBody::Text(format_text_content(room, &text, reply_to, edit_to)?))
+    Ok(MessageBody::Text(format_text_content(
+        room, &text, reply_to, edit_to,
+    )?))
 }
 
 fn format_text_content(
