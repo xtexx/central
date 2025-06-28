@@ -168,8 +168,10 @@ fn handle_outgoing_message(
         MessageBody::Text(txt) => text.push_str(&txt),
     }
 
-    debug!("{}: send: {}: {}", client_id, chan, text);
-    client.send_privmsg(chan, text)?;
+    for line in text.lines() {
+        debug!("{}: send: {}: {}", client_id, chan, line);
+        client.send_privmsg(chan, line)?;
+    }
 
     Ok(())
 }
