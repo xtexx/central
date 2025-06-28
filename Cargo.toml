@@ -1,0 +1,19 @@
+[package]
+name = "littlebridge"
+version = "0.1.0"
+edition = "2024"
+description = "Simple bridge between IRC and Matrix"
+authors = ["xtex"]
+repository = "https://codeberg.org/xtex/littlebridge"
+
+[dependencies]
+anyhow = "1.0.98"
+env_logger = "0.11.8"
+futures = "0.3.31"
+irc = { version = "1.1.0", default-features = false, features = ["tls-native", "serde", "encoding", "ctcp"] }
+kstring = { version = "2.0.2", features = ["serde"] }
+log = { version = "0.4.27", features = ["std", "max_level_debug", "release_max_level_info"] }
+matrix-sdk = { version = "0.12.0", default-features = false, features = ["anyhow", "bundled-sqlite", "e2e-encryption", "markdown", "native-tls"] }
+serde = { version = "1.0.219", features = ["derive"] }
+tokio = { version = "1.45.1", features = ["full"] }
+toml = "0.8.23"
