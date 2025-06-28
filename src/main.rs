@@ -23,6 +23,7 @@ struct State {
     output_rx: broadcast::Receiver<Message>,
     output_tx: broadcast::Sender<Message>,
     input_tx: mpsc::Sender<Message>,
+    http_client: reqwest::Client,
 }
 
 impl Clone for State {
@@ -32,11 +33,19 @@ impl Clone for State {
             output_rx: self.output_tx.subscribe(),
             output_tx: self.output_tx.clone(),
             input_tx: self.input_tx.clone(),
+            http_client: self.http_client.clone(),
         }
     }
 }
 
-const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), " ", env!("CARGO_PKG_VERSION"), " (", env!("CARGO_PKG_REPOSITORY"), ")");
+const USER_AGENT: &str = concat!(
+    env!("CARGO_PKG_NAME"),
+    " ",
+    env!("CARGO_PKG_VERSION"),
+    " (",
+    env!("CARGO_PKG_REPOSITORY"),
+    ")"
+);
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -56,12 +65,14 @@ async fn main() -> Result<()> {
     let (output_tx, output_rx) = broadcast::channel::<Message>(1024);
     let (input_tx, input_rx) = mpsc::channel(512);
     let mut jobs = JoinSet::<Result<()>>::new();
+    let http_client = reqwest::Client::builder().user_agent(USER_AGENT).build()?;
 
     let state = State {
         config: config.clone(),
         output_rx: output_rx,
         output_tx: output_tx,
         input_tx: input_tx,
+        http_client,
     };
 
     jobs.spawn(processor::run_processor(state.clone(), input_rx));
