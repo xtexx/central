@@ -5,6 +5,7 @@ $wgMetaNamespace = "K";
 $xvTesting = true;
 $xvCentralized = true;
 $xvUseSelfHostedImages = true;
+$wgPageLanguageUseDB = true;
 
 $xvUseLockdown = true;
 $xvUseTabberNeue = true;
