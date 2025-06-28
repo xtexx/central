@@ -28,10 +28,11 @@ $wgUsersNotifiedOnAllChanges = ['Xtex'];
 
 // User rights
 $xvRequireEmailConfirmedToEdit = true;
-$wgGroupPermissions['l-accessor'] = ['read' => true, 'autopatrol' => true];
-$wgGroupPermissions['m-accessor'] = ['read' => true, 'autopatrol' => true];
+$wgGroupPermissions['l-accessor'] = ['read' => true, 'autopatrol' => true, 'pagelang' => true];
+$wgGroupPermissions['m-accessor'] = ['read' => true, 'autopatrol' => true, 'pagelang' => true];
 $wgAddGroups['m-accessor'] = ['l-accessor'];
 $wgGroupsAddToSelf['m-accessor'] = ['l-accessor'];
+$wgGroupPermissions['sysop']['pagelang'] = true;
 
 // Namespaces
 const NS_L = 3000;
