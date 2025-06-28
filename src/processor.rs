@@ -10,14 +10,16 @@ use crate::{
 pub async fn run_processor(state: State, mut input_rx: mpsc::Receiver<Message>) -> Result<()> {
     loop {
         let msg = input_rx.recv().await.unwrap();
-        if let MessageBody::Text(text) = &msg.body
-            && text.contains("!NOFWD")
-        {
-            continue;
+        match &msg.body {
+            MessageBody::Text(text) => {
+                if text.contains("!NOFWD") {
+                    continue;
+                }
+            }
         }
 
         info!(
-            "{}: {}: [{}] {}: {:?}",
+            "{}: {}: [{}] {}: {}",
             &msg.origin,
             &msg.room,
             msg.prefix.clone().unwrap_or_default(),

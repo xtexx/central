@@ -5,7 +5,9 @@ use kstring::KString;
 use log::{debug, info};
 
 use crate::{
-    config::{ClientConfig, IRCClientConfig}, data::{Message, MessageBody}, State
+    State,
+    config::{ClientConfig, IRCClientConfig},
+    data::{Message, MessageBody},
 };
 
 pub async fn run_bridge(mut state: State, client_id: KString) -> Result<()> {
@@ -80,7 +82,7 @@ async fn handle_incoming_message(
         Command::PING(..) => return Ok(()),
         Command::PONG(..) => return Ok(()),
         _ => {
-            info!("{}: message: {}", client_id, message);
+            info!("{}: message: {}", client_id, message.to_string().trim());
             return Ok(());
         }
     };

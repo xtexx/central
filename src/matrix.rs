@@ -14,15 +14,17 @@ use matrix_sdk::{
         SasVerification, Verification, VerificationRequest, VerificationRequestState,
     },
     ruma::{
-        OwnedRoomId, OwnedUserId, UserId,
+        OwnedRoomId, OwnedUserId, RoomId, TransactionId, UserId,
         api::client::filter::FilterDefinition,
         events::{
             AnyMessageLikeEvent, AnySyncTimelineEvent, MessageLikeEventType,
             key::verification::{VerificationMethod, request::ToDeviceKeyVerificationRequestEvent},
             room::{
+                MediaSource,
                 member::StrippedRoomMemberEvent,
                 message::{
-                    MessageType, OriginalSyncRoomMessageEvent, Relation, SyncRoomMessageEvent,
+                    MessageType, OriginalSyncRoomMessageEvent, Relation, RoomMessageEventContent,
+                    SyncRoomMessageEvent,
                 },
             },
         },
@@ -205,7 +207,7 @@ pub async fn run_bridge(mut state: State, client_id: KString) -> Result<()> {
                     },
                     msg = state.output_rx.recv().fuse() => {
                         let msg = msg.unwrap();
-                        if let Err(error) = handle_outgoing_message(&client_id, &config, &client, msg)
+                        if let Err(error) = handle_outgoing_message(&client_id, &config, &client, msg).await
                         {
                             error!("{client_id}: failed to handle incoming message: {error}")
                         }
@@ -317,7 +319,7 @@ async fn handle_incoming_message(
     Ok(())
 }
 
-fn handle_outgoing_message(
+async fn handle_outgoing_message(
     client_id: &KString,
     config: &MatrixClientConfig,
     client: &Client,
@@ -325,6 +327,40 @@ fn handle_outgoing_message(
 ) -> Result<()> {
     if &message.origin == client_id {
         return Ok(());
+    }
+
+    let room = config
+        .rooms
+        .iter()
+        .find(|(_, room)| room.room == message.room);
+    let (mx_room_id, _) = match room {
+        Some(room) => room,
+        None => return Ok(()),
+    };
+    let mx_room = match client.get_room(<&RoomId>::try_from(mx_room_id.as_str())?) {
+        Some(room) => room,
+        None => return Ok(()),
+    };
+
+    let mut text = String::new();
+    text.push('[');
+    if let Some(prefix) = &message.prefix {
+        text.push_str(&prefix);
+        text.push_str(" - ");
+    }
+    text.push_str(&message.sender);
+    text.push_str("] ");
+
+    match message.body {
+        MessageBody::Text(txt) => {
+            text.push_str(&txt);
+            let resp = mx_room
+                .send(RoomMessageEventContent::text_markdown(text))
+                .with_transaction_id(TransactionId::new())
+                .await?
+                .event_id;
+            debug!("{client_id}: relayed message as event {resp}");
+        }
     }
 
     Ok(())
@@ -473,24 +509,74 @@ fn format_content(
             format_text_content(room, &content.body, reply_to, edit_to)?
         ))),
 
-        MessageType::Audio(content) => Ok(MessageBody::Text(format!(
-            "audio: {}",
-            format_text_content(room, &content.body, reply_to, edit_to)?
-        ))),
-        MessageType::File(content) => Ok(MessageBody::Text(format!(
-            "file: {}",
-            format_text_content(room, &content.body, reply_to, edit_to)?
-        ))),
-        MessageType::Image(content) => Ok(MessageBody::Text(format!(
-            "image: {}",
-            format_text_content(room, &content.body, reply_to, edit_to)?
-        ))),
-        MessageType::Video(content) => Ok(MessageBody::Text(format!(
-            "video: {}",
-            format_text_content(room, &content.body, reply_to, edit_to)?
-        ))),
+        MessageType::Audio(content) => Ok(format_media(
+            room,
+            "audio",
+            &content.body,
+            &content.source,
+            &content.filename,
+            reply_to,
+            edit_to,
+        )?),
+        MessageType::File(content) => Ok(format_media(
+            room,
+            "file",
+            &content.body,
+            &content.source,
+            &content.filename,
+            reply_to,
+            edit_to,
+        )?),
+        MessageType::Image(content) => Ok(format_media(
+            room,
+            "image",
+            &content.body,
+            &content.source,
+            &content.filename,
+            reply_to,
+            edit_to,
+        )?),
+        MessageType::Video(content) => Ok(format_media(
+            room,
+            "video",
+            &content.body,
+            &content.source,
+            &content.filename,
+            reply_to,
+            edit_to,
+        )?),
         _ => Ok(MessageBody::Text("(cannot display)".to_string())),
     }
+}
+
+fn format_media(
+    room: &Room,
+    kind: &'static str,
+    body: &String,
+    source: &MediaSource,
+    filename: &Option<String>,
+    reply_to: Option<TimelineEvent>,
+    edit_to: Option<TimelineEvent>,
+) -> Result<MessageBody> {
+    let text = match source {
+        MediaSource::Plain(uri) => match filename {
+            Some(filename) => format!(
+                "{kind}: {}/_matrix/client/v1/media/download/{}/{}/{} ({body})",
+                room.client().homeserver(),
+                uri.server_name()?,
+                uri.media_id()?,
+                filename
+            ),
+            None => format!(
+                "{kind}: {}/_matrix/client/v1/media/download/{}/{} ({body})",
+                room.client().homeserver(),
+                uri.server_name()?,
+                uri.media_id()?
+            ),
+        },
+        MediaSource::Encrypted(_) => format!("{kind}: {body}"),
+    };
+    Ok(MessageBody::Text(format_text_content(room, &text, reply_to, edit_to)?))
 }
 
 fn format_text_content(
