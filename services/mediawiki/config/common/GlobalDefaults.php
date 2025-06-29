@@ -73,6 +73,7 @@ $xvGlobalExtensions = [
 	'TemplateData',
 	'TemplateSandbox',
 	'TemplateStyles',
+	'TemplateStylesExtender',
 	'TemplateWizard',
 	'TextExtracts',
 	'ThrottleOverride',
