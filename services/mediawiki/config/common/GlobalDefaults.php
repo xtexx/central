@@ -302,3 +302,13 @@ $xvUseTabberNeue = false;
 
 // AbuseFilter
 $wgAbuseFilterEnableBlockedExternalDomain = true;
+
+// SpamBlacklist
+$wgBlacklistSettings = [
+	'spam' => [
+		'files' => [
+			"https://meta.wikimedia.org/w/index.php?title=Spam_blacklist&action=raw&sb_ver=1",
+			"https://meta.w.xvnet.eu.org/index.php?title=Spam_blacklist&action=raw&sb_ver=1"
+		],
+	],
+];
