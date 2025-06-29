@@ -299,3 +299,6 @@ $wgMathEnableFormulaLinks = true;
 
 // TabberNeue
 $xvUseTabberNeue = false;
+
+// AbuseFilter
+$wgAbuseFilterEnableBlockedExternalDomain = true;
