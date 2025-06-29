@@ -1,0 +1,13 @@
+[Unit]
+Description=Little Bridge
+
+[Service]
+Restart=always
+Type=simple
+ExecStart=/usr/bin/littlebridge
+WorkingDirectory=/home/someone/littlebridge
+StandardOutput=append:/home/someone/littlebridge/logs/stdout.txt
+StandardError=append:/home/someone/littlebridge/logs/stderr.txt
+
+[Install]
+WantedBy=default.target
