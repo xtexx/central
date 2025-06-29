@@ -73,6 +73,8 @@ Team members:
 
 Purpose: Improve Forgejo. Anyone can become a member of the team, as long as they need the associated permissions to contribute to Forgejo. Anyone can ask that an existing member confirms their membership in accordance to the [decision making process](DECISION-MAKING.md).
 
+Members of the [mergers team](#mergers) are responsible for managing the membership of the contributors team. They can add new members even when the contributor did not apply for it formally. If they remove members for any reason, they must do so after listing the contributors to be removed in a governance issue explaining the reasons. When contributors are removed after long periods of inactivity, the issue documenting their removal can be done simultaneously.
+
 The team has access to most Forgejo repositories:
 
 * On codeberg.org: ([discussions](https://codeberg.org/forgejo/discussions), [docs](https://codeberg.org/forgejo/docs), [forgejo](https://codeberg.org/forgejo/forgejo), [governance](https://codeberg.org/forgejo/governance), [sustainability](https://codeberg.org/forgejo/sustainability), [website](https://codeberg.org/forgejo/website), [user-research](https://codeberg.org/forgejo/user-research)).
@@ -96,7 +98,7 @@ Non-team members can view the members who have not hidden themselves in the [org
 
 ## Mergers
 
-Purpose: Review and merge pull requests in Forgejo repositories in accordance to the [pull request agreement](PullRequestsAgreement.md). The team is responsible for the same repositories as the contributors team.
+Purpose: Review and merge pull requests in Forgejo repositories in accordance to the [pull request agreement](PullRequestsAgreement.md). Manage the membership of the [contributors team](#contributors). The team is responsible for the same repositories as the [contributors team](#contributors).
 
 Team members:
 
