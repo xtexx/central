@@ -487,7 +487,7 @@ async fn format_body(room: &Room, message: &OriginalSyncRoomMessageEvent) -> Res
         None => None,
     };
 
-    format_content(room, content, reply_to, edit_to)
+    format_content(room, content, reply_to, edit_to, false)
 }
 
 fn format_content(
@@ -495,27 +495,38 @@ fn format_content(
     body: &MessageType,
     reply_to: Option<TimelineEvent>,
     edit_to: Option<TimelineEvent>,
+    short: bool,
 ) -> Result<MessageBody> {
     match body {
         MessageType::Text(content) => Ok(MessageBody::Text(format_text_content(
             room,
-            &content.body,
+            maybe_strip_body(&content.body, short),
             reply_to,
             edit_to,
         )?)),
         MessageType::Notice(content) => Ok(MessageBody::Text(format!(
             "({})",
-            format_text_content(room, &content.body, reply_to, edit_to)?
+            format_text_content(
+                room,
+                maybe_strip_body(&content.body, short),
+                reply_to,
+                edit_to
+            )?
         ))),
         MessageType::Emote(content) => Ok(MessageBody::Text(format!(
             "// {}",
-            format_text_content(room, &content.body, reply_to, edit_to)?
+            format_text_content(
+                room,
+                maybe_strip_body(&content.body, short),
+                reply_to,
+                edit_to
+            )?
         ))),
 
         MessageType::Audio(content) => Ok(format_media(
             room,
             "audio",
-            &content.body,
+            maybe_strip_body(&content.body, short),
             &content.source,
             &content.filename,
             reply_to,
@@ -524,7 +535,7 @@ fn format_content(
         MessageType::File(content) => Ok(format_media(
             room,
             "file",
-            &content.body,
+            maybe_strip_body(&content.body, short),
             &content.source,
             &content.filename,
             reply_to,
@@ -533,7 +544,7 @@ fn format_content(
         MessageType::Image(content) => Ok(format_media(
             room,
             "image",
-            &content.body,
+            maybe_strip_body(&content.body, short),
             &content.source,
             &content.filename,
             reply_to,
@@ -542,7 +553,7 @@ fn format_content(
         MessageType::Video(content) => Ok(format_media(
             room,
             "video",
-            &content.body,
+            maybe_strip_body(&content.body, short),
             &content.source,
             &content.filename,
             reply_to,
@@ -555,7 +566,7 @@ fn format_content(
 fn format_media(
     room: &Room,
     kind: &'static str,
-    body: &String,
+    body: &str,
     source: &MediaSource,
     filename: &Option<String>,
     reply_to: Option<TimelineEvent>,
@@ -586,24 +597,51 @@ fn format_media(
 
 fn format_text_content(
     room: &Room,
-    body: &String,
+    body: &str,
     reply_to: Option<TimelineEvent>,
     edit_to: Option<TimelineEvent>,
 ) -> Result<String> {
-    let mut text = body.to_owned();
+    let mut text = String::new();
 
-    if let Some(reply_to) = reply_to {
-        text = format!("Re: {}: {text}", format_tl_event(room, reply_to)?);
+    if let Some(reply_to) = &reply_to {
+        text.push_str(&format!("Re: {}: {text}", format_tl_event(room, reply_to)?));
     }
-    if let Some(edit_to) = edit_to {
-        text = format!("(edit: {}) {text}", format_tl_event(room, edit_to)?);
+    if let Some(edit_to) = &edit_to {
+        text.push_str(&format!(
+            "(edit: {}) {text}",
+            format_tl_event(room, edit_to)?
+        ));
+    }
+
+    if reply_to.is_some() {
+        text.push_str(strip_rich_reply_fallback(&body));
+    } else {
+        text.push_str(&body);
     }
 
     Ok(text)
 }
 
-fn format_tl_event(room: &Room, event: TimelineEvent) -> Result<String> {
-    let content = match event.kind {
+fn strip_rich_reply_fallback(mut text: &str) -> &str {
+    while text.starts_with("> ") {
+        match text.split_once('\n') {
+            Some((_, next)) => text = next,
+            None => break,
+        }
+    }
+    text.trim_ascii()
+}
+
+fn maybe_strip_body(text: &str, strip: bool) -> &str {
+    if strip {
+        strip_rich_reply_fallback(text)
+    } else {
+        text
+    }
+}
+
+fn format_tl_event(room: &Room, event: &TimelineEvent) -> Result<String> {
+    let content = match &event.kind {
         TimelineEventKind::Decrypted(event) => Some(event.event.deserialize()?),
         TimelineEventKind::PlainText { event } => match event.deserialize()? {
             AnySyncTimelineEvent::MessageLike(event) => {
@@ -619,7 +657,9 @@ fn format_tl_event(room: &Room, event: TimelineEvent) -> Result<String> {
         match content {
             AnyMessageLikeEvent::RoomMessage(event) => {
                 if let Some(orig) = event.as_original() {
-                    return Ok(format_content(room, &orig.content.msgtype, None, None)?.to_string());
+                    return Ok(
+                        format_content(room, &orig.content.msgtype, None, None, true)?.to_string(),
+                    );
                 }
             }
             _ => {}
