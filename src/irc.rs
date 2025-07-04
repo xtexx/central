@@ -169,6 +169,9 @@ fn handle_outgoing_message(
     }
 
     for line in text.lines() {
+        if line.is_empty() {
+            continue;
+        }
         debug!("{}: send: {}: {}", client_id, chan, line);
         client.send_privmsg(chan, line)?;
     }
