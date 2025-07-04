@@ -575,14 +575,14 @@ fn format_media(
     let text = match source {
         MediaSource::Plain(uri) => match filename {
             Some(filename) => format!(
-                "{kind}: {}/_matrix/client/v1/media/download/{}/{}/{} ({body})",
+                "{kind}: {}_matrix/client/v1/media/download/{}/{}/{} ({body})",
                 room.client().homeserver(),
                 uri.server_name()?,
                 uri.media_id()?,
                 filename
             ),
             None => format!(
-                "{kind}: {}/_matrix/client/v1/media/download/{}/{} ({body})",
+                "{kind}: {}_matrix/client/v1/media/download/{}/{} ({body})",
                 room.client().homeserver(),
                 uri.server_name()?,
                 uri.media_id()?
