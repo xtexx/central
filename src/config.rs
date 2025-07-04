@@ -51,6 +51,9 @@ pub struct MatrixBotConfig {
     #[serde(default)]
     pub store_passphrase: Option<String>,
     pub cache_path: PathBuf,
+
+    #[serde(default)]
+    pub reupload_media: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

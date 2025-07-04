@@ -1,7 +1,7 @@
-use std::{fs, sync::Arc};
+use std::{borrow::Cow, fs, sync::Arc};
 
 use anyhow::Result;
-use futures::{FutureExt, StreamExt, select};
+use futures::{FutureExt, StreamExt, executor::block_on, select};
 use kstring::KString;
 use log::{debug, error, info};
 use matrix_sdk::{
@@ -13,6 +13,7 @@ use matrix_sdk::{
     encryption::verification::{
         SasVerification, Verification, VerificationRequest, VerificationRequestState,
     },
+    media::{MediaFormat, MediaRequestParameters},
     ruma::{
         OwnedRoomId, OwnedUserId, RoomId, TransactionId, UserId,
         api::client::filter::FilterDefinition,
@@ -38,6 +39,7 @@ use crate::{
     State, USER_AGENT,
     config::{ClientConfig, MatrixClientConfig},
     data::{Message, MessageBody},
+    processor::upload_to_pastebin,
 };
 
 pub async fn run_bridge(mut state: State, client_id: KString) -> Result<()> {
@@ -315,7 +317,7 @@ async fn handle_incoming_message(
             room: room.room.clone(),
             prefix: room.prefix.clone(),
             sender,
-            body: format_body(&mx_room, original).await?,
+            body: format_body(state, &config, &mx_room, original).await?,
         })
         .await?;
 
@@ -462,7 +464,12 @@ async fn handle_sas_verification(client_id: KString, sas: SasVerification) {
     }
 }
 
-async fn format_body(room: &Room, message: &OriginalSyncRoomMessageEvent) -> Result<MessageBody> {
+async fn format_body(
+    state: &State,
+    config: &MatrixClientConfig,
+    room: &Room,
+    message: &OriginalSyncRoomMessageEvent,
+) -> Result<MessageBody> {
     let mut reply_to = None;
     let mut edit_to = None;
     let mut content = &message.content.msgtype;
@@ -487,18 +494,26 @@ async fn format_body(room: &Room, message: &OriginalSyncRoomMessageEvent) -> Res
         None => None,
     };
 
-    format_content(room, content, reply_to, edit_to, false)
+    format_content(state, config, room, content, reply_to, edit_to, false).await
 }
 
-fn format_content(
+/// Formats a body.
+/// No async/await is allowed in short mode.
+async fn format_content(
+    state: &State,
+    config: &MatrixClientConfig,
     room: &Room,
     body: &MessageType,
     reply_to: Option<TimelineEvent>,
     edit_to: Option<TimelineEvent>,
     short: bool,
 ) -> Result<MessageBody> {
+    debug_assert!(!short || reply_to.is_none());
+    debug_assert!(!short || edit_to.is_none());
     match body {
         MessageType::Text(content) => Ok(MessageBody::Text(format_text_content(
+            state,
+            config,
             room,
             maybe_strip_body(&content.body, short),
             reply_to,
@@ -507,6 +522,8 @@ fn format_content(
         MessageType::Notice(content) => Ok(MessageBody::Text(format!(
             "({})",
             format_text_content(
+                state,
+                config,
                 room,
                 maybe_strip_body(&content.body, short),
                 reply_to,
@@ -516,6 +533,8 @@ fn format_content(
         MessageType::Emote(content) => Ok(MessageBody::Text(format!(
             "// {}",
             format_text_content(
+                state,
+                config,
                 room,
                 maybe_strip_body(&content.body, short),
                 reply_to,
@@ -524,78 +543,159 @@ fn format_content(
         ))),
 
         MessageType::Audio(content) => Ok(format_media(
+            &state,
+            &config,
             room,
             "audio",
             maybe_strip_body(&content.body, short),
             &content.source,
             &content.filename,
+            content
+                .info
+                .as_ref()
+                .and_then(|info| info.mimetype.as_ref().map(|s| s.as_ref())),
             reply_to,
             edit_to,
-        )?),
+            short,
+        )
+        .await?),
         MessageType::File(content) => Ok(format_media(
+            &state,
+            &config,
             room,
             "file",
             maybe_strip_body(&content.body, short),
             &content.source,
             &content.filename,
+            content
+                .info
+                .as_ref()
+                .and_then(|info| info.mimetype.as_ref().map(|s| s.as_ref())),
             reply_to,
             edit_to,
-        )?),
+            short,
+        )
+        .await?),
         MessageType::Image(content) => Ok(format_media(
+            &state,
+            &config,
             room,
             "image",
             maybe_strip_body(&content.body, short),
             &content.source,
             &content.filename,
+            content
+                .info
+                .as_ref()
+                .and_then(|info| info.mimetype.as_ref().map(|s| s.as_ref())),
             reply_to,
             edit_to,
-        )?),
+            short,
+        )
+        .await?),
         MessageType::Video(content) => Ok(format_media(
+            &state,
+            &config,
             room,
             "video",
             maybe_strip_body(&content.body, short),
             &content.source,
             &content.filename,
+            content
+                .info
+                .as_ref()
+                .and_then(|info| info.mimetype.as_ref().map(|s| s.as_ref())),
             reply_to,
             edit_to,
-        )?),
+            short,
+        )
+        .await?),
         _ => Ok(MessageBody::Text("(cannot display)".to_string())),
     }
 }
 
-fn format_media(
+async fn format_media(
+    state: &State,
+    config: &MatrixClientConfig,
     room: &Room,
     kind: &'static str,
     body: &str,
     source: &MediaSource,
     filename: &Option<String>,
+    mimetype: Option<&str>,
     reply_to: Option<TimelineEvent>,
     edit_to: Option<TimelineEvent>,
+    short: bool,
 ) -> Result<MessageBody> {
-    let text = match source {
-        MediaSource::Plain(uri) => match filename {
-            Some(filename) => format!(
-                "{kind}: {}_matrix/client/v1/media/download/{}/{}/{} ({body})",
-                room.client().homeserver(),
-                uri.server_name()?,
-                uri.media_id()?,
-                filename
-            ),
-            None => format!(
-                "{kind}: {}_matrix/client/v1/media/download/{}/{} ({body})",
-                room.client().homeserver(),
-                uri.server_name()?,
-                uri.media_id()?
-            ),
-        },
-        MediaSource::Encrypted(_) => format!("{kind}: {body}"),
+    let text = 'text: {
+        if short {
+            format!("{kind}: {body}")
+        } else if !config.client.reupload_media {
+            match source {
+                MediaSource::Plain(uri) => match filename {
+                    Some(filename) => format!(
+                        "{kind}: {}_matrix/client/v1/media/download/{}/{}/{} ({body})",
+                        room.client().homeserver(),
+                        uri.server_name()?,
+                        uri.media_id()?,
+                        filename
+                    ),
+                    None => format!(
+                        "{kind}: {}_matrix/client/v1/media/download/{}/{} ({body})",
+                        room.client().homeserver(),
+                        uri.server_name()?,
+                        uri.media_id()?
+                    ),
+                },
+                MediaSource::Encrypted(_) => format!("{kind}: {body}"),
+            }
+        } else {
+            let result = room
+                .client()
+                .media()
+                .get_media_content(
+                    &MediaRequestParameters {
+                        source: source.clone(),
+                        format: MediaFormat::File,
+                    },
+                    false,
+                )
+                .await;
+            let data = match result {
+                Ok(data) => data,
+                Err(error) => {
+                    error!("failed to download Matrix media: {source:?}: {error}");
+                    break 'text format!("{kind}: {body} (failed to download)");
+                }
+            };
+            let result = upload_to_pastebin(
+                &state,
+                reqwest::multipart::Part::bytes(data)
+                    .mime_str(mimetype.unwrap_or("application/octet-stream"))?
+                    .file_name(
+                        filename
+                            .clone()
+                            .map(Cow::Owned)
+                            .unwrap_or(Cow::Borrowed(kind)),
+                    ),
+            )
+            .await;
+            match result {
+                Ok(data) => data,
+                Err(_) => {
+                    format!("{kind}: {body} (failed to reupload)")
+                }
+            }
+        }
     };
     Ok(MessageBody::Text(format_text_content(
-        room, &text, reply_to, edit_to,
+        state, config, room, &text, reply_to, edit_to,
     )?))
 }
 
 fn format_text_content(
+    state: &State,
+    config: &MatrixClientConfig,
     room: &Room,
     body: &str,
     reply_to: Option<TimelineEvent>,
@@ -604,12 +704,15 @@ fn format_text_content(
     let mut text = String::new();
 
     if let Some(reply_to) = &reply_to {
-        text.push_str(&format!("Re: {}: {text}", format_tl_event(room, reply_to)?));
+        text.push_str(&format!(
+            "Re: {}: {text}",
+            format_tl_event(state, config, room, reply_to)?
+        ));
     }
     if let Some(edit_to) = &edit_to {
         text.push_str(&format!(
             "(edit: {}) {text}",
-            format_tl_event(room, edit_to)?
+            format_tl_event(state, config, room, edit_to)?
         ));
     }
 
@@ -640,7 +743,12 @@ fn maybe_strip_body(text: &str, strip: bool) -> &str {
     }
 }
 
-fn format_tl_event(room: &Room, event: &TimelineEvent) -> Result<String> {
+fn format_tl_event(
+    state: &State,
+    config: &MatrixClientConfig,
+    room: &Room,
+    event: &TimelineEvent,
+) -> Result<String> {
     let content = match &event.kind {
         TimelineEventKind::Decrypted(event) => Some(event.event.deserialize()?),
         TimelineEventKind::PlainText { event } => match event.deserialize()? {
@@ -657,9 +765,16 @@ fn format_tl_event(room: &Room, event: &TimelineEvent) -> Result<String> {
         match content {
             AnyMessageLikeEvent::RoomMessage(event) => {
                 if let Some(orig) = event.as_original() {
-                    return Ok(
-                        format_content(room, &orig.content.msgtype, None, None, true)?.to_string(),
-                    );
+                    return Ok(block_on(format_content(
+                        state,
+                        config,
+                        room,
+                        &orig.content.msgtype,
+                        None,
+                        None,
+                        true,
+                    ))?
+                    .to_string());
                 }
             }
             _ => {}

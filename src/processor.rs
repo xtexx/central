@@ -35,7 +35,7 @@ pub async fn run_processor(state: State, mut input_rx: mpsc::Receiver<Message>) 
             )
             .await
             {
-                msg.body = body;
+                msg.body = MessageBody::Text(body);
             }
         }
 
@@ -51,7 +51,7 @@ pub async fn run_processor(state: State, mut input_rx: mpsc::Receiver<Message>) 
     }
 }
 
-async fn upload_to_pastebin(state: &State, part: Part) -> Result<MessageBody> {
+pub async fn upload_to_pastebin(state: &State, part: Part) -> Result<String> {
     let http_client = state.http_client.clone();
     let result = (async move {
         let form = Form::new()
@@ -73,7 +73,7 @@ async fn upload_to_pastebin(state: &State, part: Part) -> Result<MessageBody> {
             .to_string();
         let url = resp.text().await?.trim().to_string();
         info!("Uploaded message to pastebin: {url} (token: {token})");
-        Ok::<_, anyhow::Error>(MessageBody::Text(url))
+        Ok::<_, anyhow::Error>(url)
     })
     .await;
     match result {
