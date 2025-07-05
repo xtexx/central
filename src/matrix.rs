@@ -18,7 +18,7 @@ use matrix_sdk::{
         OwnedRoomId, OwnedUserId, RoomId, TransactionId, UserId,
         api::client::filter::FilterDefinition,
         events::{
-            AnyMessageLikeEvent, AnySyncTimelineEvent, MessageLikeEventType,
+            AnyMessageLikeEvent, AnySyncTimelineEvent,
             key::verification::{VerificationMethod, request::ToDeviceKeyVerificationRequestEvent},
             room::{
                 MediaSource,
@@ -28,6 +28,7 @@ use matrix_sdk::{
                     SyncRoomMessageEvent,
                 },
             },
+            sticker::{OriginalSyncStickerEvent, SyncStickerEvent},
         },
     },
     store::RoomLoadSettings,
@@ -133,9 +134,19 @@ pub async fn run_bridge(mut state: State, client_id: KString) -> Result<()> {
 
     let (input_tx, mut input_rx) = mpsc::unbounded_channel();
 
-    client.add_event_handler(async move |ev: SyncRoomMessageEvent, room: Room| {
-        input_tx.send((room.room_id().to_owned(), ev))
-    });
+    {
+        let input_tx = input_tx.clone();
+        client.add_event_handler(async move |ev: SyncRoomMessageEvent, room: Room| {
+            input_tx.send(SyncEvent::RoomMessage((room.room_id().to_owned(), ev)))
+        });
+    }
+    {
+        let input_tx = input_tx.clone();
+        client.add_event_handler(async move |ev: SyncStickerEvent, room: Room| {
+            input_tx.send(SyncEvent::Sticker((room.room_id().to_owned(), ev)))
+        });
+    }
+    drop(input_tx);
 
     {
         let client_id = client_id.clone();
@@ -193,14 +204,12 @@ pub async fn run_bridge(mut state: State, client_id: KString) -> Result<()> {
             loop {
                 select! {
                     ev = input_rx.recv().fuse() => {
-                        let (room_id, ev) = ev.unwrap();
                         if let Err(error) = handle_incoming_message(
                             &state,
                             &client_id,
                             &config,
                             &client,
-                            room_id,
-                            ev,
+                            ev.unwrap(),
                         )
                         .await
                         {
@@ -260,26 +269,25 @@ impl SessionData {
     }
 }
 
+#[derive(Debug)]
+enum SyncEvent {
+    RoomMessage((OwnedRoomId, SyncRoomMessageEvent)),
+    Sticker((OwnedRoomId, SyncStickerEvent)),
+}
+
 async fn handle_incoming_message(
     state: &State,
     client_id: &KString,
     config: &MatrixClientConfig,
     client: &Client,
-    mx_room_id: OwnedRoomId,
-    event: SyncRoomMessageEvent,
+    event: SyncEvent,
 ) -> Result<()> {
     debug!("{}: received message: {:?}", &client_id, event);
 
-    let original = match event.as_original() {
-        Some(orig) => orig,
-        None => return Ok(()),
+    let mx_room_id = match &event {
+        SyncEvent::RoomMessage((id, _)) => id,
+        SyncEvent::Sticker((id, _)) => id,
     };
-
-    if event.event_type() != MessageLikeEventType::RoomMessage {
-        info!("{}: received message: {:?}", &client_id, event.event_type());
-        return Ok(());
-    }
-
     let room = if let Some(room) = config.rooms.get(&KString::from_ref(mx_room_id.as_str())) {
         room
     } else {
@@ -295,7 +303,10 @@ async fn handle_incoming_message(
         None => return Ok(()),
     };
 
-    let sender = event.sender();
+    let sender = match &event {
+        SyncEvent::RoomMessage((_, ev)) => ev.sender(),
+        SyncEvent::Sticker((_, ev)) => ev.sender(),
+    };
     if sender == client.user_id().unwrap() {
         return Ok(());
     }
@@ -310,16 +321,40 @@ async fn handle_incoming_message(
         KString::from_ref(sender)
     };
 
-    state
-        .input_tx
-        .send(Message {
-            origin: client_id.clone(),
-            room: room.room.clone(),
-            prefix: room.prefix.clone(),
-            sender,
-            body: format_body(state, &config, &mx_room, original).await?,
-        })
-        .await?;
+    match event {
+        SyncEvent::RoomMessage((_, ev)) => {
+            let original = match ev.as_original() {
+                Some(orig) => orig,
+                None => return Ok(()),
+            };
+            state
+                .input_tx
+                .send(Message {
+                    origin: client_id.clone(),
+                    room: room.room.clone(),
+                    prefix: room.prefix.clone(),
+                    sender,
+                    body: format_body(state, &config, &mx_room, original).await?,
+                })
+                .await?;
+        }
+        SyncEvent::Sticker((_, ev)) => {
+            let original = match ev.as_original() {
+                Some(orig) => orig,
+                None => return Ok(()),
+            };
+            state
+                .input_tx
+                .send(Message {
+                    origin: client_id.clone(),
+                    room: room.room.clone(),
+                    prefix: room.prefix.clone(),
+                    sender,
+                    body: format_sticker(state, &config, &mx_room, original).await?,
+                })
+                .await?;
+        }
+    }
 
     Ok(())
 }
@@ -781,4 +816,28 @@ fn format_tl_event(
         }
     }
     Ok("(cannot display)".to_string())
+}
+
+async fn format_sticker(
+    state: &State,
+    config: &MatrixClientConfig,
+    room: &Room,
+    message: &OriginalSyncStickerEvent,
+) -> Result<MessageBody> {
+    let content = &message.content;
+
+    Ok(format_media(
+        &state,
+        &config,
+        room,
+        "sticker",
+        strip_rich_reply_fallback(&content.body),
+        &MediaSource::from(content.source.clone()),
+        &None,
+        content.info.mimetype.as_ref().map(|s| s.as_str()),
+        None,
+        None,
+        false,
+    )
+    .await?)
 }
