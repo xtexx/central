@@ -14,7 +14,7 @@ pub struct Config {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum ClientConfig {
-    Irc(IRCClientConfig),
+    Irc(Box<IRCClientConfig>),
     Matrix(MatrixClientConfig),
 }
 

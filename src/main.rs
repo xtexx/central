@@ -69,9 +69,9 @@ async fn main() -> Result<()> {
 
     let state = State {
         config: config.clone(),
-        output_rx: output_rx,
-        output_tx: output_tx,
-        input_tx: input_tx,
+        output_rx,
+        output_tx,
+        input_tx,
         http_client,
     };
 

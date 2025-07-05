@@ -19,13 +19,13 @@ pub struct Message {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MessageBody {
-    Text(String)
+    Text(String),
 }
 
 impl Display for MessageBody {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MessageBody::Text(text) => f.write_str(&text),
+            MessageBody::Text(text) => f.write_str(text),
         }
     }
 }

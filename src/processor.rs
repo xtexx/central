@@ -26,17 +26,16 @@ pub async fn run_processor(state: State, mut input_rx: mpsc::Receiver<Message>) 
             }
         }
 
-        if use_pastebin {
-            if let Ok(body) = upload_to_pastebin(
+        if use_pastebin
+            && let Ok(body) = upload_to_pastebin(
                 &state,
                 Part::bytes(msg.body.to_string().into_bytes())
                     .mime_str("text/plain")?
                     .file_name("message.txt"),
             )
             .await
-            {
-                msg.body = MessageBody::Text(body);
-            }
+        {
+            msg.body = MessageBody::Text(body);
         }
 
         info!(

@@ -59,7 +59,7 @@ pub async fn run_bridge(mut state: State, client_id: KString) -> Result<()> {
         .sqlite_store_with_config_and_cache_path(
             SqliteStoreConfig::new(&config.client.store_path)
                 .optimize(true)
-                .passphrase(config.client.store_passphrase.as_ref().map(String::as_str)),
+                .passphrase(config.client.store_passphrase.as_deref()),
             Some(&config.client.cache_path),
         )
         .user_agent(USER_AGENT)
@@ -165,12 +165,12 @@ pub async fn run_bridge(mut state: State, client_id: KString) -> Result<()> {
                         } else {
                             info!("{client_id}: joined room {room_id}");
                         }
+                    } else if let Err(error) = room.leave().await {
+                        error!(
+                            "{client_id}: failed to reject invitation for room {room_id}: {error}"
+                        );
                     } else {
-                        if let Err(error) = room.leave().await {
-                            error!("{client_id}: failed to reject invitation for room {room_id}: {error}");
-                        } else {
-                            info!("{client_id}: rejected invitation for room {room_id}");
-                        }
+                        info!("{client_id}: rejected invitation for room {room_id}");
                     }
                 }
             },
@@ -292,13 +292,13 @@ async fn handle_incoming_message(
         room
     } else {
         info!("{}: leaving unknown room {}", &client_id, mx_room_id);
-        if let Some(room) = client.get_room(&mx_room_id) {
+        if let Some(room) = client.get_room(mx_room_id) {
             room.leave().await?;
             info!("{}: left unknown room {}", &client_id, mx_room_id);
         }
         return Ok(());
     };
-    let mx_room = match client.get_room(&mx_room_id) {
+    let mx_room = match client.get_room(mx_room_id) {
         Some(mx_room) => mx_room,
         None => return Ok(()),
     };
@@ -334,7 +334,7 @@ async fn handle_incoming_message(
                     room: room.room.clone(),
                     prefix: room.prefix.clone(),
                     sender,
-                    body: format_body(state, &config, &mx_room, original).await?,
+                    body: format_body(state, config, &mx_room, original).await?,
                 })
                 .await?;
         }
@@ -350,7 +350,7 @@ async fn handle_incoming_message(
                     room: room.room.clone(),
                     prefix: room.prefix.clone(),
                     sender,
-                    body: format_sticker(state, &config, &mx_room, original).await?,
+                    body: format_sticker(state, config, &mx_room, original).await?,
                 })
                 .await?;
         }
@@ -385,7 +385,7 @@ async fn handle_outgoing_message(
     let mut text = String::new();
     text.push('[');
     if let Some(prefix) = &message.prefix {
-        text.push_str(&prefix);
+        text.push_str(prefix);
         text.push_str(" - ");
     }
     text.push_str(&message.sender);
@@ -578,8 +578,8 @@ async fn format_content(
         ))),
 
         MessageType::Audio(content) => Ok(format_media(
-            &state,
-            &config,
+            state,
+            config,
             room,
             "audio",
             maybe_strip_body(&content.body, short),
@@ -595,8 +595,8 @@ async fn format_content(
         )
         .await?),
         MessageType::File(content) => Ok(format_media(
-            &state,
-            &config,
+            state,
+            config,
             room,
             "file",
             maybe_strip_body(&content.body, short),
@@ -612,8 +612,8 @@ async fn format_content(
         )
         .await?),
         MessageType::Image(content) => Ok(format_media(
-            &state,
-            &config,
+            state,
+            config,
             room,
             "image",
             maybe_strip_body(&content.body, short),
@@ -629,8 +629,8 @@ async fn format_content(
         )
         .await?),
         MessageType::Video(content) => Ok(format_media(
-            &state,
-            &config,
+            state,
+            config,
             room,
             "video",
             maybe_strip_body(&content.body, short),
@@ -704,7 +704,7 @@ async fn format_media(
                 }
             };
             let result = upload_to_pastebin(
-                &state,
+                state,
                 reqwest::multipart::Part::bytes(data)
                     .mime_str(mimetype.unwrap_or("application/octet-stream"))?
                     .file_name(
@@ -752,9 +752,9 @@ fn format_text_content(
     }
 
     if reply_to.is_some() {
-        text.push_str(strip_rich_reply_fallback(&body));
+        text.push_str(strip_rich_reply_fallback(body));
     } else {
-        text.push_str(&body);
+        text.push_str(body);
     }
 
     Ok(text)
@@ -796,24 +796,19 @@ fn format_tl_event(
     };
     if let Some(content) = content
         && !content.is_redacted()
+        && let AnyMessageLikeEvent::RoomMessage(event) = content
+        && let Some(orig) = event.as_original()
     {
-        match content {
-            AnyMessageLikeEvent::RoomMessage(event) => {
-                if let Some(orig) = event.as_original() {
-                    return Ok(block_on(format_content(
-                        state,
-                        config,
-                        room,
-                        &orig.content.msgtype,
-                        None,
-                        None,
-                        true,
-                    ))?
-                    .to_string());
-                }
-            }
-            _ => {}
-        }
+        return Ok(block_on(format_content(
+            state,
+            config,
+            room,
+            &orig.content.msgtype,
+            None,
+            None,
+            true,
+        ))?
+        .to_string());
     }
     Ok("(cannot display)".to_string())
 }
@@ -826,18 +821,18 @@ async fn format_sticker(
 ) -> Result<MessageBody> {
     let content = &message.content;
 
-    Ok(format_media(
-        &state,
-        &config,
+    format_media(
+        state,
+        config,
         room,
         "sticker",
         strip_rich_reply_fallback(&content.body),
         &MediaSource::from(content.source.clone()),
         &None,
-        content.info.mimetype.as_ref().map(|s| s.as_str()),
+        content.info.mimetype.as_deref(),
         None,
         None,
         false,
     )
-    .await?)
+    .await
 }

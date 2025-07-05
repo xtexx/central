@@ -102,7 +102,7 @@ async fn handle_incoming_message(
     }
 
     if is_notice {
-        info!("{}: notice: {} -> {}: {}", client_id, sender, target, text);
+        info!("{client_id}: notice: {sender} -> {target}: {text}");
     } else if target.starts_with("#") {
         // channel message
         if let Some(room) = config.rooms.get(&KString::from_ref(&target)) {
@@ -115,14 +115,11 @@ async fn handle_incoming_message(
             };
             state.input_tx.send(msg).await?;
         } else {
-            info!(
-                "{}: message from unknown channel: {}: {}",
-                client_id, target, text
-            );
+            info!("{client_id}: message from unknown channel: {target}: {text}");
         }
     } else {
         // private message
-        info!("{}: private message: {}", client_id, text);
+        info!("{client_id}: private message: {text}");
         // TODO
         client.send_privmsg(
             sender,
@@ -159,7 +156,7 @@ fn handle_outgoing_message(
     let mut text = String::new();
     text.push('[');
     if let Some(prefix) = &message.prefix {
-        text.push_str(&prefix);
+        text.push_str(prefix);
         text.push_str(" - ");
     }
     text.push_str(&message.sender);
@@ -172,7 +169,7 @@ fn handle_outgoing_message(
         if line.is_empty() {
             continue;
         }
-        debug!("{}: send: {}: {}", client_id, chan, line);
+        debug!("{client_id}: send: {chan}: {line}");
         client.send_privmsg(chan, line)?;
     }
 
