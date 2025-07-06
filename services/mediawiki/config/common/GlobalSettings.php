@@ -97,6 +97,7 @@ if ($xvUseVisualEditor) {
 }
 
 if (xvIsExtensionLoaded('CodeMirror')) {
+	$wgCodeMirrorV6 = true;
 	$wgDefaultUserOptions['usecodemirror'] = true;
 }
 
