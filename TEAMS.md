@@ -122,9 +122,10 @@ Accountability:
 
 Admins accountability:
 
-* Avoid destructive actions (such as resetting the weblate repository)
-* Ensure the the weblate repository is in sync with the Forgejo repository
-* Manage team assignments of members
+* Keep the Weblate components in a working condition: unlocked and synced with the Forgejo repository
+* Perform maintenance tasks: merge Weblate PRs, create backports for released versions of Forgejo, clean up obsolete strings
+* Manage team assignments of team members and keep them in sync with Weblate
+    * Admins can renew team membership of active non-admin members ([forgejo/governance#298](https://codeberg.org/forgejo/governance/issues/298))
 * Block users performing destructive actions (such as vandalism or harassment in comments) and report these actions
 
 Team members:
