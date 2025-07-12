@@ -14,3 +14,5 @@ fi
 [ -e /usr/bin/go ] && export PATH="$HOME/go/bin:$PATH"
 
 [ -e /opt/rust/bin/bin ] && export PATH="/opt/rust/bin/bin:$PATH"
+
+[ -e /opt/elan ] && export PATH="/opt/elan/bin:$PATH"
