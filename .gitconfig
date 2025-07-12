@@ -25,7 +25,7 @@
 [pull]
 	rebase = true
 [merge]
-	conflictstyle = zdiff3
+	conflictStyle = diff3
 	guitool = meld
 [diff]
 	tool = difftastic
@@ -54,6 +54,8 @@
 	cq = -c commit.verbose=false commit
 	come = coauthor xtex xtexchooser@duck.com
 	ck = checkout
+	clo = clone
+	clf = clone --filter blob:none
 	d = diff
 	dt = difftool
 	f = fetch
@@ -66,6 +68,8 @@
 	g = pull
 	l = log
 	lt = logt
+	m = merge
+	msq = merge --squash
 	ol = "log --oneline"
 	p = push
 	pf = push --force
@@ -73,11 +77,12 @@
 	pk = cherry-pick
 	pkc = cherry-pick --continue
 	pks = cherry-pick --skip
+	pkx = cherry-pick -x
 	pp = push --force
 	pt = push --tags
 	r = "!grr"
 	rb = rebase
-	rbi = rebase --interactive
+	rbi = -c sequence.editor=interactive-rebase-tool rebase --interactive
 	rbo = rebase HEAD --onto
 	rbc = rebase --continue
 	rbs = rebase --skip
@@ -97,6 +102,7 @@
 	mwbulk = "!f() { find -L . -name '.git' ! -path '*/vendor/*' -execdir git \"$@\" ';'; }; f"
 	nosign = "!git -c commit.gpgSign=false"
 	fixes = log -1 --pretty=fixes
+	refc = log -1 --pretty=reference
 	fix = commit --fixup
 	fixx = "!f() { git commit --fixup \"$1\"; git stash; git rebase --autosquash \"$1\"^; git stash pop; }; f"
 	acapp = "!f() { git add .; git commit --amend --no-edit; git push --force; }; f"
@@ -131,11 +137,10 @@
 [log]
 	date = iso
 [rebase]
-	missingCommitsCheck = error
+	missingCommitsCheck = ignore
+	autoSquash = true
 [format]
 	useAutoBase = true
-[sequence]
-	editor = interactive-rebase-tool
 [fetch]
 	prune = true
 [include]
@@ -147,11 +152,23 @@
 	path = ~/.config/git/realname.conf
 [includeIf "hasconfig:remote.*.url:https://*.googlesource.com/**"]
 	path = ~/.config/git/realname.conf
-[includeIf "hasconfig:remote.*.url:git@github.com:xtexChooser/llvm-project.git"]
+[includeIf "hasconfig:remote.*.url:git@github.com:xtexx/llvm-project.git"]
 	path = ~/.config/git/realname.conf
 [includeIf "hasconfig:remote.*.url:git@github.com:AOSC-Tracking/jdk.git"]
 	path = ~/.config/git/realname.conf
-[includeIf "hasconfig:remote.*.url:git@github.com:openjdk/jdk.git"]
+[includeIf "hasconfig:remote.*.url:git@github.com:openjdk/*"]
 	path = ~/.config/git/realname.conf
+[includeIf "hasconfig:remote.*.url:git@github.com:ziglang/*"]
+	path = ~/.config/git/realname.conf
+[includeIf "hasconfig:remote.*.url:git@github.com:wikimedia/*"]
+	path = ~/.config/git/realname.conf
+[includeIf "hasconfig:remote.*.url:ssh://gerrit.wikimedia.org:29418/**"]
+	path = ~/.config/git/wikimedia.conf
+[includeIf "hasconfig:remote.*.url:https://gerrit.wikimedia.org/r/**"]
+	path = ~/.config/git/wikimedia.conf
+[includeIf "hasconfig:remote.*.url:*gerrit.wikimedia.org*"]
+	path = ~/.config/git/wikimedia.conf
 [includeIf "gitdir:~/deploy/**"]
 	path = ~/.config/git/deployment.conf
+[absorb]
+	autoStageIfNothingStaged = true
