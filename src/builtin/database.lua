@@ -21,11 +21,13 @@ type("npm", "npm", "package.json")
 buildfile("node_modules")
 rmrf("node_modules")
 
-type("zig", "Zig", "build.zig")
-buildfile("zig-out")
+type("zig-cache", "Zig (build cache)", "build.zig")
 buildfile("zig-cache")
-rmrf("zig-out")
 rmrf("zig-cache")
+
+type("zig-out", "Zig (build output)", "build.zig")
+buildfile("zig-out")
+rmrf("zig-out")
 
 type("linux-kernel", "Linux Kernel", "vmlinux")
 buildfile("vmlinux")
