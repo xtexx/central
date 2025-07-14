@@ -1,5 +1,4 @@
 #![feature(exact_size_is_empty)]
-#![feature(async_closure)]
 
 use std::{cell::OnceCell, cmp::max, collections::BTreeMap, env, path::PathBuf, sync::Arc};
 
@@ -165,7 +164,7 @@ async fn main() -> Result<()> {
 {}"#,
                         env!("CARGO_PKG_NAME"),
                         concat!("- ", env!("CARGO_PKG_VERSION")).fg::<Red>().bold(),
-                        format!("+ {}", version).fg::<Green>().bold(),
+                        format!("+ {version}").fg::<Green>().bold(),
                         r#"│ please update with your package manager or cargo.
 │ if you do not want to get update notifications anymore,
 │       set BUILD_CLEAN_NO_UPDATES environment variables.
@@ -179,7 +178,7 @@ async fn main() -> Result<()> {
         } else {
             println!(
                 "{}",
-                format!("CLEAN FAILED! {} errors occurred", error_count)
+                format!("CLEAN FAILED! {error_count} errors occurred")
                     .fg::<Red>()
                     .bold()
             );
