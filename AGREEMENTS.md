@@ -4,15 +4,15 @@ Agreements are ways of working, practices and methods that help us work
 together effectively to make Forgejo amazing and achieve its goals.
 
 These are the overall Forgejo Organization agreements; specific teams may have
-their own agreements about how they work. See <TEAMS.md> for more info.
+their own agreements about how they work. See [`TEAMS.md`](TEAMS.md) for more info.
 
 ## Decision Making
 
 - **Where to document agreements:** When a decision is made, and it includes an agreement about how we do things, the person who initiated the decision records the agreement as follows:
     - If it's within a specific team, it goes into that team's agreements file
-    - If it's a change in the roles of team members, update `TEAMS.md`
-    - If it's a conceptual agreement about our purpose and values, it goes into `MISSION.md`
-    - Otherwise, it goes into *this* file, i.e. `AGREEMENTS.md`
+    - If it's a change in the roles of team members, update [`TEAMS.md`](TEAMS.md)
+    - If it's a conceptual agreement about our purpose and values, it goes into [`MISSION.md`](MISSION.md)
+    - Otherwise, it goes into *this* file, i.e. [`AGREEMENTS.md`](AGREEMENTS.md)
 
 ### Responsibility distribution table
 
