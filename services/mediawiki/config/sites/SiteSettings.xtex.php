@@ -29,9 +29,7 @@ $wgUsersNotifiedOnAllChanges = ['Xtex'];
 // User rights
 $xvRequireEmailConfirmedToEdit = true;
 $wgGroupPermissions['l-accessor'] = ['read' => true, 'autopatrol' => true, 'pagelang' => true];
-$wgGroupPermissions['m-accessor'] = ['read' => true, 'autopatrol' => true, 'pagelang' => true];
-$wgAddGroups['m-accessor'] = ['l-accessor'];
-$wgGroupsAddToSelf['m-accessor'] = ['l-accessor'];
+$wgAddGroups['l-accessor'] = ['l-accessor'];
 $wgGroupPermissions['sysop']['pagelang'] = true;
 
 // Namespaces
@@ -44,19 +42,8 @@ xvSetAssocTrues('wgNamespacesWithSubpages', [NS_L, NS_L_TALK]);
 xvMergeInto('wgNonincludableNamespaces', [NS_L, NS_L_TALK]);
 $wgVisualEditorAvailableNamespaces['L'] = true;
 
-const NS_M = 3002;
-const NS_M_TALK = 3003;
-$wgExtraNamespaces[NS_L] = 'M';
-$wgExtraNamespaces[NS_L_TALK] = 'M讨论';
-$wgContentNamespaces[] = NS_M;
-xvSetAssocTrues('wgNamespacesWithSubpages', [NS_M, NS_L_TALK]);
-xvMergeInto('wgNonincludableNamespaces', [NS_M, NS_L_TALK]);
-$wgVisualEditorAvailableNamespaces['M'] = true;
-
 // Lockdown
 $wgNamespacePermissionLockdown[NS_L]['read'] = ['l-accessor'];
 $wgNamespacePermissionLockdown[NS_L]['edit'] = ['l-accessor'];
-$wgNamespacePermissionLockdown[NS_M]['read'] = ['m-accessor'];
-$wgNamespacePermissionLockdown[NS_M]['edit'] = ['m-accessor'];
 
 require_once "$xvConfigDirectory/common/GlobalSettings.php";
