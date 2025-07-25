@@ -28,8 +28,8 @@ $wgUsersNotifiedOnAllChanges = ['Xtex'];
 
 // User rights
 $xvRequireEmailConfirmedToEdit = true;
-$wgGroupPermissions['l-accessor'] = ['read' => true, 'autopatrol' => true, 'pagelang' => true];
-$wgAddGroups['l-accessor'] = ['l-accessor'];
+$wgGroupPermissions['cache-fetcher'] = ['read' => true, 'autopatrol' => true, 'pagelang' => true];
+$wgAddGroups['cache-fetcher'] = ['cache-fetcher'];
 $wgGroupPermissions['sysop']['pagelang'] = true;
 
 // Namespaces
@@ -43,7 +43,7 @@ xvMergeInto('wgNonincludableNamespaces', [NS_CACHE, NS_CACHE_TALK]);
 $wgVisualEditorAvailableNamespaces['Cache'] = true;
 
 // Lockdown
-$wgNamespacePermissionLockdown[NS_CACHE]['read'] = ['l-accessor'];
-$wgNamespacePermissionLockdown[NS_CACHE]['edit'] = ['l-accessor'];
+$wgNamespacePermissionLockdown[NS_CACHE]['read'] = ['cache-fetcher', 'sysop'];
+$wgNamespacePermissionLockdown[NS_CACHE]['edit'] = ['cache-fetcher', 'sysop'];
 
 require_once "$xvConfigDirectory/common/GlobalSettings.php";
