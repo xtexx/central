@@ -1,6 +1,6 @@
 <?php
-$wgSitename = "xtex's K";
-$wgMetaNamespace = "K";
+$wgSitename = "语义之瓶";
+$wgMetaNamespace = "Bottle";
 
 $xvTesting = true;
 $xvCentralized = true;
