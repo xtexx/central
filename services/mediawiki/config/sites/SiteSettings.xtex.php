@@ -33,17 +33,17 @@ $wgAddGroups['l-accessor'] = ['l-accessor'];
 $wgGroupPermissions['sysop']['pagelang'] = true;
 
 // Namespaces
-const NS_L = 3000;
-const NS_L_TALK = 3001;
-$wgExtraNamespaces[NS_L] = 'L';
-$wgExtraNamespaces[NS_L_TALK] = 'L讨论';
-$wgContentNamespaces[] = NS_L;
-xvSetAssocTrues('wgNamespacesWithSubpages', [NS_L, NS_L_TALK]);
-xvMergeInto('wgNonincludableNamespaces', [NS_L, NS_L_TALK]);
-$wgVisualEditorAvailableNamespaces['L'] = true;
+const NS_CACHE = 3000;
+const NS_CACHE_TALK = 3001;
+$wgExtraNamespaces[NS_CACHE] = 'Cache';
+$wgExtraNamespaces[NS_CACHE_TALK] = 'Cache讨论';
+$wgContentNamespaces[] = NS_CACHE;
+xvSetAssocTrues('wgNamespacesWithSubpages', [NS_CACHE, NS_CACHE_TALK]);
+xvMergeInto('wgNonincludableNamespaces', [NS_CACHE, NS_CACHE_TALK]);
+$wgVisualEditorAvailableNamespaces['Cache'] = true;
 
 // Lockdown
-$wgNamespacePermissionLockdown[NS_L]['read'] = ['l-accessor'];
-$wgNamespacePermissionLockdown[NS_L]['edit'] = ['l-accessor'];
+$wgNamespacePermissionLockdown[NS_CACHE]['read'] = ['l-accessor'];
+$wgNamespacePermissionLockdown[NS_CACHE]['edit'] = ['l-accessor'];
 
 require_once "$xvConfigDirectory/common/GlobalSettings.php";
