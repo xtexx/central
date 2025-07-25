@@ -153,6 +153,9 @@ if ($wgUseSharedUploads) {
 			'descriptionCacheExpiry' => 43200,
 			'apiMetadataExpiry' => 28800,
 			'apiThumbCacheExpiry' => 0,
+			// Avoid warning from https://github.com/wikimedia/mediawiki/blob/
+			// 11ffee65b52e02a786b57dc34f9f8e3d4be6ad6c/includes/filebackend/FileBackendGroup.php#L133
+			'directory' => '/dev/null,'
 		];
 	}
 	if ($xvUseMirahezeCommons) {
@@ -168,6 +171,9 @@ if ($wgUseSharedUploads) {
 			'descriptionCacheExpiry' => 43200,
 			'apiMetadataExpiry' => 28800,
 			'apiThumbCacheExpiry' => 0,
+			// Avoid warning from https://github.com/wikimedia/mediawiki/blob/
+			// 11ffee65b52e02a786b57dc34f9f8e3d4be6ad6c/includes/filebackend/FileBackendGroup.php#L133
+			'directory' => '/dev/null,'
 		];
 	}
 }
