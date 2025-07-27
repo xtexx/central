@@ -51,7 +51,7 @@ How to use:
   - More info in the [Onboarding and Mentorship](#7-onboarding-and-mentorship)
     section
 - Open an issue/PR on `forgejo` repo if it's about the codebase itself, on
-  `meta` repo if it's about governance/processes
+  `discussions` repo if it's about governance/processes
 
 General process to use in most cases:
 
@@ -178,7 +178,7 @@ decisions in this topic?**
   - Otherwise, the default is to open an issue
     - If it's a technical topic the Forgejo software itself, open the
       issue in the Forgejo repo
-    - Otherwise, open the issue in the meta repo
+    - Otherwise, open the issue in the discussions repo
 2. **Assign yourself** to the issue/PR
 3. Would you like **mentorship/support/co-holding** in facilitating the
    process?  If yes, mention that in the issue/PR description. You can also ask
