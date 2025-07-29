@@ -26,12 +26,8 @@ text = "posts"
 url = "/post"
 
 [[params.links]]
-text = "rss"
+text = "feed"
 url = "/post/index.xml"
-
-[[params.links]]
-text = "archives"
-url = "/archives"
 
 [[params.links]]
 text = "home"
