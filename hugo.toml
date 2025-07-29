@@ -9,9 +9,10 @@ rssLimit = 30
 timeZone = "Asia/Shanghai"
 buildDrafts = true
 defaultContentLanguage = 'zh'
+printPathWarnings = true
 
 [params]
-description = "xtex's personal blog"
+description = "xtex's Random Writings"
 index_list = false
 
 [params.author]
