@@ -6,6 +6,7 @@
     --color-article-tag: #535353;
     --color-code-block-bg: #393939;
     --color-code-block-border: #ffffff;
+    --color-code-block-default: #cccccc;
     --color-title-top: #222222;
     --color-hr-fg: #222222;
     --color-code-inline-border: #333333;
@@ -26,6 +27,7 @@
         --color-article-tag: #848484;
         --color-code-block-bg: #282828;
         --color-code-block-border: #101010;
+        --color-code-block-default: #cccccc;
         --color-title-top: #808080;
         --color-hr-fg: #a3a3a3;
         --color-code-inline-border: #333333;

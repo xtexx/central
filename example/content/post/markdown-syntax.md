@@ -157,6 +157,10 @@ s = "Python syntax highlighting"
 print s
 ```
 
+```text
+Some plain text
+```
+
 ## Footnotes
 
 Footnotes aren't part of the core Markdown spec, but they [supported by GFM](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#footnotes).

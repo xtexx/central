@@ -72,6 +72,7 @@ hr {
 .highlight,
 .highlight pre {
     background-color: var(--color-code-block-bg) !important;
+    color: var(--color-code-block-default);
 }
 
 .highlight code {
