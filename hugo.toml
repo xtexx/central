@@ -55,7 +55,7 @@ pagerSize = 30
 
 [languages]
 [languages.zh]
-languageCode = 'zh'
+languageCode = 'zh-hans'
 languageDirection = 'ltr'
 languageName = 'Simplified Chinese'
 weight = 1
