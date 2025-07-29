@@ -2,30 +2,16 @@
 ---
 
 诶，你好，欢迎，
+这是 [xtex](https://xtexx.eu.org) 随便写东西的地方（之一）。
 
-这是 [xtex](https://xtexx.eu.org) 的博客
-
-什么你不认识我？你可以：[[了解更多]](https://xtexx.eu.org) [[阅读文章]]({{< relref "post" >}}) [[文章列表]]({{< relref "archives" >}})
-
-这算是我的博客[v....3](/2023/06/11-new-blog)？
-
-这里没有自我介绍，`HTTP 303 See Other` `Location: https://xtexx.eu.org/`
+[[关于我]](https://k.xtexx.eu.org/w/User:Xtex) [[文章]]({{< relref "post" >}})
 
 ## Eng Ver.
 
 Hey, hello, welcome,
+this is one of the places where [xtex](https://xtexx.eu.org) writes things randomly.
 
-This is the blog of [xtex](https://xtexx.eu.org).
-
-You can: [[Learn about me]](https://xtexx.eu.org) [[Read posts]]({{< relref "post" >}}) [[All posts]]({{< relref "archives" >}})
-
-There is no self-introduction for myself, see https://xtexx.eu.org/ pls.
-
-## Contact
-
-Look at [there](https://xtexx.eu.org/about#contact)
-
-or `mailto:xtex_AT_xtexx.eu.org` or `acct:xtex@wikis.world` or `matrix: @xtex:envs.net`
+[[About Me]](https://k.xtexx.eu.org/w/User:Xtex) [[Posts]]({{< relref "post" >}})
 
 ## Some Links
 
