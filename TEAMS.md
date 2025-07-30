@@ -52,6 +52,7 @@ Team members:
 
 * @viceice - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/145)
 * @earl-warren - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/146)
+* @pat-s - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/306)
 
 ## Devops
 
