@@ -50,8 +50,8 @@ The team has access to the following Forgejo repositories:
 
 Team members:
 
-* @viceice - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/145)
-* @earl-warren - [June 2024 Agreement](https://codeberg.org/forgejo/governance/issues/146)
+* @viceice - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/307)
+* @earl-warren - [July 2024 Agreement](https://codeberg.org/forgejo/governance/issues/146)
 * @pat-s - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/306)
 
 ## Devops
