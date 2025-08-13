@@ -102,7 +102,7 @@ Purpose: Review and merge pull requests in Forgejo repositories in accordance to
 
 Team members:
 
-* @viceice - [August 2024 Agreement](https://codeberg.org/forgejo/governance/issues/156)
+* @viceice - [August 2025 Agreement](https://codeberg.org/forgejo/governance/issues/319)
 * @Kwonunn - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/244)
 * @fnetx - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/269)
 * @jerger - [June 2025 Agreement](https://codeberg.org/forgejo/governance/issues/271)
