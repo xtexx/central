@@ -10,9 +10,9 @@ This tool is able to classify HSDT extracted from Huawei system update package (
 
 To build this tools, run `make` with Zig tool-chain configured.
 
-There is also a pattern of ImHex editor available at [here](https://github.com/WerWolv/ImHex-Patterns/pull/280).
+There is also a pattern of ImHex editor available at [the content store](https://github.com/WerWolv/ImHex-Patterns/pull/280).
 
-To unpack Huawei's update pack, the `UPDATE.APP` file, checkout [this](https://github.com/echo-devim/huextract) or [this](https://github.com/Project-Satori/HuaweiUpdateExtractor) or [this](https://github.com/xjljian/huawei_UPDATE.APP_unpacktool).
+To unpack Huawei's update pack, the `UPDATE.APP` file, use [huextract](https://github.com/echo-devim/huextract), [HuaweiUpdateExtractor](https://github.com/Project-Satori/HuaweiUpdateExtractor) or [unpacktool by xjljian](https://github.com/xjljian/huawei_UPDATE.APP_unpacktool).
 
 > This is free and unencumbered software released into the public domain.
 >
