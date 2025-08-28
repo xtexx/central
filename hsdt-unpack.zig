@@ -17,14 +17,17 @@ pub fn main() !void {
         return;
     }
     const path = args[1];
-    log.info("reading HSDT file from: {s}", .{path});
+    log.info("Reading HSDT file from: {s}", .{path});
     const basename = std.fs.path.basename(path);
+
+    const reader_buffer = try allocator.alloc(u8, 1024);
+    defer allocator.free(reader_buffer);
 
     const file = try std.fs.cwd().openFile(path, .{ .mode = .read_only });
     defer file.close();
+    var file_reader = file.reader(reader_buffer);
 
-    try file.seekTo(0);
-    const offset: usize = if (try file.reader().readInt(u32, .little) != hsdt.DT_TABLE_MAGIC)
+    const offset: usize = if (try file_reader.interface.peekInt(u32, .little) != hsdt.DT_TABLE_MAGIC)
         // for DTS dumped from system update package (UPDATE.APP file)
         // there are 4096 bytes of junk at the head of file
         4096
@@ -39,14 +42,13 @@ pub fn main() !void {
         log.info("Detected DTS partition image dumped from device", .{});
     }
 
-    try file.seekTo(offset);
-    const header = try hsdt.DtTableHeader.read(file.reader().any());
+    try file_reader.interface.discardAll(offset);
+    const header = try hsdt.DtTableHeader.read(&file_reader.interface);
     log.info("Totally {} DTB entries", .{header.entry_count});
     const entries = try allocator.alloc(hsdt.DtEntry, header.entry_count);
     defer allocator.free(entries);
-    for (entries) |*entry| {
-        entry.* = try hsdt.DtEntry.read(file.reader().any());
-    }
+    for (entries) |*entry|
+        entry.* = try hsdt.DtEntry.read(&file_reader.interface);
     for (entries) |entry| {
         const board_id_str = try std.fmt.allocPrint(allocator, "<0x{x:02} 0x{x:02} 0x{x:02} 0x{x:02}>", .{
             entry.board_id[0], entry.board_id[1],
@@ -90,7 +92,13 @@ pub fn main() !void {
             defer dtb_file.close();
 
             try dtb_gz_file.seekTo(0);
-            try std.compress.gzip.decompress(dtb_gz_file.reader(), dtb_file.writer());
+            var dtb_gz_reader = dtb_gz_file.reader(reader_buffer);
+            var decompressor = std.compress.flate.Decompress.init(&dtb_gz_reader.interface, .gzip, &.{});
+
+            var dtb_buf: std.Io.Writer.Allocating = .init(allocator);
+            defer dtb_buf.deinit();
+            _ = try decompressor.reader.streamRemaining(&dtb_buf.writer);
+            try dtb_file.writeAll(dtb_buf.written());
         }
 
         if (entry.vrl) |vrl| {

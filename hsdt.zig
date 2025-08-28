@@ -19,8 +19,7 @@
 // For more information, please refer to <https://unlicense.org>
 
 const std = @import("std");
-const AnyReader = std.io.AnyReader;
-const AnyWriter = std.io.AnyWriter;
+const Io = std.Io;
 
 pub const DT_TABLE_MAGIC = @as(u32, 0x54445348);
 pub const DT_TABLE_VERSION = @as(u32, 1);
@@ -30,16 +29,16 @@ pub const DtTableHeader = struct {
     version: u32 = DT_TABLE_VERSION,
     entry_count: u32,
 
-    pub fn read(reader: AnyReader) !@This() {
-        const magic = try reader.readInt(u32, .little);
+    pub fn read(reader: *Io.Reader) !@This() {
+        const magic = try reader.takeInt(u32, .little);
         if (magic != DT_TABLE_MAGIC) {
             return error.InvalidHsdtMagic;
         }
-        const version = try reader.readInt(u32, .little);
+        const version = try reader.takeInt(u32, .little);
         if (version != DT_TABLE_VERSION) {
             return error.InvalidHsdtVersion;
         }
-        const entry_count = try reader.readInt(u32, .little);
+        const entry_count = try reader.takeInt(u32, .little);
         return .{
             .magic = magic,
             .version = version,
@@ -54,23 +53,22 @@ pub const DtEntry = struct {
     /// VRL is for verifying the DTB
     vrl: ?struct { offset: u32, len: u32 },
 
-    pub fn read(reader: AnyReader) !@This() {
-        var board_id: [4]u8 = undefined;
-        try reader.readNoEof(&board_id);
+    pub fn read(reader: *Io.Reader) !@This() {
+        const board_id: [4]u8 = (try reader.take(4))[0..4].*;
         // in my reverse project, the following four bytes are always zero
         // and are not used by the fastboot
         // maybe we can ignore this if not zero,
         // but the error is used as a notice
-        if (try reader.readInt(u32, .little) != 0) {
+        if (try reader.takeInt(u32, .little) != 0) {
             return error.NonZeroUnknown1;
         }
-        const dtb_len = try reader.readInt(u32, .little);
-        const vrl_len = try reader.readInt(u32, .little);
-        const dtb_offset = try reader.readInt(u32, .little);
-        const vrl_offset = try reader.readInt(u32, .little);
+        const dtb_len = try reader.takeInt(u32, .little);
+        const vrl_len = try reader.takeInt(u32, .little);
+        const dtb_offset = try reader.takeInt(u32, .little);
+        const vrl_offset = try reader.takeInt(u32, .little);
         // the following 16 bytes are for unknown use
         // they are not zero, but I did not see any usage in the fastboot
-        try reader.skipBytes(16, .{});
+        try reader.discardAll(16);
         // the real gzip DTB has an extra offset of 4096 bytes
         return .{
             .board_id = board_id,
