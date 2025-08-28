@@ -22,6 +22,8 @@ pub fn main() !void {
 
     const reader_buffer = try allocator.alloc(u8, 1024);
     defer allocator.free(reader_buffer);
+    const flate_buffer = try allocator.alloc(u8, std.compress.flate.max_window_len);
+    defer allocator.free(flate_buffer);
 
     const file = try std.fs.cwd().openFile(path, .{ .mode = .read_only });
     defer file.close();
@@ -95,10 +97,8 @@ pub fn main() !void {
             var dtb_gz_reader = dtb_gz_file.reader(reader_buffer);
             var decompressor = std.compress.flate.Decompress.init(&dtb_gz_reader.interface, .gzip, &.{});
 
-            var dtb_buf: std.Io.Writer.Allocating = .init(allocator);
-            defer dtb_buf.deinit();
-            _ = try decompressor.reader.streamRemaining(&dtb_buf.writer);
-            try dtb_file.writeAll(dtb_buf.written());
+            var dtb_writer = dtb_file.writerStreaming(flate_buffer);
+            _ = try decompressor.reader.streamRemaining(&dtb_writer.interface);
         }
 
         if (entry.vrl) |vrl| {
