@@ -1,6 +1,6 @@
 <?php
 $wgSitename = "无名书架";
-$wgMetaNamespace = "Unnamed Shelf";
+$wgMetaNamespace = "Unnamed_Shelf";
 
 $xvTesting = true;
 $xvCentralized = true;
