@@ -1,6 +1,6 @@
 <?php
-$wgSitename = "语义之瓶";
-$wgMetaNamespace = "Bottle";
+$wgSitename = "无名书架";
+$wgMetaNamespace = "Unnamed Shelf";
 
 $xvTesting = true;
 $xvCentralized = true;
@@ -33,17 +33,23 @@ $wgAddGroups['cache-fetcher'] = ['cache-fetcher'];
 $wgGroupPermissions['sysop']['pagelang'] = true;
 
 // Namespaces
-const NS_CACHE = 3000;
-const NS_CACHE_TALK = 3001;
-$wgExtraNamespaces[NS_CACHE] = 'Cache';
-$wgExtraNamespaces[NS_CACHE_TALK] = 'Cache讨论';
-$wgContentNamespaces[] = NS_CACHE;
-xvSetAssocTrues('wgNamespacesWithSubpages', [NS_CACHE, NS_CACHE_TALK]);
-xvMergeInto('wgNonincludableNamespaces', [NS_CACHE, NS_CACHE_TALK]);
-$wgVisualEditorAvailableNamespaces['Cache'] = true;
+const NS_SIDE = 3000;
+const NS_SIDE_TALK = 3001;
+$wgExtraNamespaces[NS_SIDE] = 'Side';
+$wgExtraNamespaces[NS_SIDE_TALK] = 'Side讨论';
+$wgContentNamespaces[] = NS_SIDE;
+xvSetAssocTrues('wgNamespacesWithSubpages', [NS_SIDE, NS_SIDE_TALK]);
+xvMergeInto('wgNonincludableNamespaces', [NS_SIDE, NS_SIDE_TALK]);
+$wgVisualEditorAvailableNamespaces['Side'] = true;
+
+$wgNamespaceAliases['US'] = NS_PROJECT;
+$wgNamespaceAliases['Shelf'] = NS_PROJECT;
+$wgNamespaceAliases['UST'] = NS_PROJECT_TALK;
+$wgNamespaceAliases['US_talk'] = NS_PROJECT_TALK;
+$wgNamespaceAliases['Shelf_talk'] = NS_PROJECT_TALK;
 
 // Lockdown
-$wgNamespacePermissionLockdown[NS_CACHE]['read'] = ['cache-fetcher', 'sysop'];
-$wgNamespacePermissionLockdown[NS_CACHE]['edit'] = ['cache-fetcher', 'sysop'];
+$wgNamespacePermissionLockdown[NS_SIDE]['read'] = ['cache-fetcher', 'sysop'];
+$wgNamespacePermissionLockdown[NS_SIDE]['edit'] = ['cache-fetcher', 'sysop'];
 
 require_once "$xvConfigDirectory/common/GlobalSettings.php";
