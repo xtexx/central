@@ -130,7 +130,7 @@ Admins accountability:
 Team members:
 
 * Brazilian Portuguese: @Xinayder - [March 2025 Agreement](https://codeberg.org/forgejo/governance/issues/243)
-* Chinese (Simplified): @xtex - [September 2024 Agreement](https://codeberg.org/forgejo/governance/issues/176)
+* Chinese (Simplified): @xtex - [September 2025 Agreement](https://codeberg.org/forgejo/governance/issues/329)
 * Chinese (Traditional): @leana8959 - [May 2024 Agreement](https://codeberg.org/forgejo/governance/issues/117)
 * Czech: @Fjuro - [April 2025 Agreement](https://codeberg.org/forgejo/governance/issues/247)
 * Danish: @tacaly - [December 2024 Agreement](https://codeberg.org/forgejo/governance/issues/201)
