@@ -7,21 +7,35 @@ pub fn main() !void {
     defer arena_instance.deinit();
     const arena = arena_instance.allocator();
 
-    var client: http.Client = .{ .allocator = arena };
-    defer client.deinit();
-
     var body: std.Io.Writer.Allocating = .init(arena);
     defer body.deinit();
     try body.ensureUnusedCapacity(64 * 1024);
 
-    std.debug.print("Fetching musl elf.h ...\n", .{});
-    const res = try client.fetch(.{
-        .location = .{ .url = "https://git.musl-libc.org/cgit/musl/tree/include/elf.h" },
-        .method = .GET,
-        .extra_headers = &.{.{ .name = "User-Agent", .value = "gen-elf-relocs-enum.zig" }},
-        .response_writer = &body.writer,
-    });
-    std.debug.assert(res.status == .ok);
+    var args = try std.process.argsWithAllocator(arena);
+    defer args.deinit();
+
+    _ = args.skip();
+    if (args.next()) |file_path| {
+        std.debug.print("Loading elf.h from {s} ...\n", .{file_path});
+        const elf_h = try std.fs.cwd().openFileZ(file_path, .{ .mode = .read_only });
+        defer elf_h.close();
+        const elf_h_buffer = try arena.alloc(u8, 4096);
+        defer arena.free(elf_h_buffer);
+        var elf_h_reader = elf_h.readerStreaming(elf_h_buffer);
+        _ = try elf_h_reader.interface.streamRemaining(&body.writer);
+    } else {
+        std.debug.print("Fetching musl elf.h ...\n", .{});
+        var client: http.Client = .{ .allocator = arena };
+        defer client.deinit();
+        const res = try client.fetch(.{
+            .location = .{ .url = "https://git.musl-libc.org/cgit/musl/tree/include/elf.h" },
+            .method = .GET,
+            .extra_headers = &.{.{ .name = "User-Agent", .value = "gen-elf-relocs-enum.zig" }},
+            .response_writer = &body.writer,
+        });
+        std.debug.assert(res.status == .ok);
+    }
+
     std.debug.print("Generating elf.zig ...\n", .{});
 
     const stdout_buffer = try arena.alloc(u8, 4096);
