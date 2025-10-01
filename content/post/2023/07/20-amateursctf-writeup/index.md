@@ -1,6 +1,7 @@
 ---
 title: "AmateursCTF Writeup"
 date: 2023-07-20T09:17:37+08:00
+aliases: ["/2023/07/20-amateursctf-writeup"]
 ---
 
 [AmateursCTF 2023](https://ctf.amateurs.team/)

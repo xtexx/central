@@ -1,7 +1,9 @@
 ---
 title: Some simply crackmes Writeup
-#excerpt: 2021-10-15
-date: 2021-10-15
+#excerpt: 2021-12-15
+date: 2021-12-15
+# The previous date was wrong so there has to be a alias with wrong date.
+aliases: ["/2021/10/17-crackme"]
 ---
 
 [文件链接](https://crackmes.one/crackme/6045838033c5d42c3d016d5e)

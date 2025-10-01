@@ -1,6 +1,7 @@
 ---
 title: "qy.yjzqy.net Filter Bypass Vulnerability Disclosure"
 date: 2024-04-13T18:21:28+08:00
+aliases: ["/2024/04/13-yjzqy-net-leak-disclosure"]
 ---
 
 As qy.yjzqy.net is only available in Chinese and only used in Mainland, China regions,

@@ -1,6 +1,7 @@
 ---
 title: "Passing integers on 64-bits machines"
 date: 2025-03-29T09:55:30+08:00
+aliases: ["/2025/03/29-int-promotion"]
 ---
 
 Now is the world of 64-bits architectures, x86-64, AArch64, RISC-V 64, everywhere is 64-bits architectures.

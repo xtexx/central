@@ -2,6 +2,7 @@
 title: Hackergame 2022 Writeup
 #excerpt: Hackergame 2022的解题思路（
 date: 2022-10-29
+aliases: ["/2022/10/29-ustc-hackergame2022"]
 ---
 
 ## 签到

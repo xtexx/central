@@ -1,6 +1,7 @@
 ---
 title: "The migration from neko.ci"
 date: 2024-06-22T19:14:49+08:00
+aliases: ["/2024/06/22-neko-ci-migration"]
 ---
 
 **TL; DR: I am migrating my account at @xtexchooser@neko.ci to [@xtex@fe.disroot.org](https://fe.disroot.org/@xtex). If you have once followed the old account, please follow the new one.**

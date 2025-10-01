@@ -1,6 +1,7 @@
 ---
 title: "New SSH & GPG keys enabled"
 date: 2023-06-29T08:32:24+08:00
+aliases: ["/2023/06/29-new-keys"]
 ---
 
 Hey, now 2023-06-29 08:32:24 CST.

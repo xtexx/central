@@ -3,6 +3,7 @@ title: 从零开始的Hexo主题
 #excerpt: 一个由忘写Front-Matter导致的主题
 description: 一个由忘写Front-Matter导致的主题
 date: 2021-08-23
+aliases: ["/2021/08/23-custom-theme"]
 ---
 
 <!-- **直到目前，本 Blog 还在使用这个主题** -->

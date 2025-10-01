@@ -1,6 +1,7 @@
 ---
 title: "Crew CTF 2023 Writeup"
 date: 2023-07-10T08:32:20+08:00
+aliases: ["/2023/07/10-crew-ctf-writeup"]
 ---
 
 [link to CrewCTF](https://crewc.tf/)

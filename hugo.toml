@@ -45,7 +45,7 @@ filename = 'sitemap.xml'
 priority = 0.5
 
 [permalinks]
-post = '/:year/:month/:slugorcontentbasename'
+post = '/:year/:month-:slugorcontentbasename'
 
 [minify]
 minifyOutput = true
@@ -58,10 +58,4 @@ pagerSize = 30
 languageCode = 'zh-hans'
 languageDirection = 'ltr'
 languageName = 'Simplified Chinese'
-weight = 1
-
-[languages.en]
-languageCode = 'en-us'
-languageDirection = 'ltr'
-languageName = 'English'
 weight = 1

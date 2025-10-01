@@ -2,6 +2,7 @@
 title: Burble DN42 Ping Challenge Writeup
 #excerpt: Burble Ping Challenge的解题思路（
 date: 2022-08-21
+aliases: ["/2022/08/21-burble-ping-challenge"]
 ---
 
 [Ping Challenge | burble.dn42 ](https://dn42.burble.com/services/ping/)的解题思路

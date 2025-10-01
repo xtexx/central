@@ -4,6 +4,7 @@ title: 中秋假期 & 电脑坏了
 description: 就上了七天课回家电脑就开不了了
 date: 2021-09-19
 hidden: true
+aliases: ["/2021/09/19-midautumn-and-pc-error"]
 ---
 
 # 中秋

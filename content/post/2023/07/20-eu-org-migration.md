@@ -1,6 +1,7 @@
 ---
 title: "XTEXX.ML to XTEXX.EU.ORG Migration"
 date: 2023-07-20T21:03:21+08:00
+aliases: ["/2023/07/20-eu-org-migration"]
 ---
 
 Today, ML. cTLD suddenly stopped responding NS records of most subdomains, without an announcement.

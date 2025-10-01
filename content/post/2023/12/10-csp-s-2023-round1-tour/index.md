@@ -1,6 +1,7 @@
 ---
 title: "CSP-S 2023 第一轮 游记"
 date: 2023-12-10T09:02:46+08:00
+aliases: ["/2023/12/10-csp-s-2023-round1-tour"]
 ---
 
 这是重写的游记，上一篇被我不小心 `git reset --hard` 没了

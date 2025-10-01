@@ -2,6 +2,7 @@
 title: 在不支持OpenGL3.2的设备上用软件渲染玩MC1.17
 #excerpt: 不支持OpenGL3.2又不是不能玩了嗷
 date: 2021-04-09
+aliases: ["/2021/04/09-software-renderer-for-opengl32"]
 ---
 
 **注意：**

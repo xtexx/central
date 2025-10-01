@@ -2,6 +2,7 @@
 title: Hello World
 #excerpt: Blog降临人间
 date: 2021-04-30
+aliases: ["/2021/04/30-hello-world"]
 ---
 
 Blog created!

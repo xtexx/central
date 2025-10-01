@@ -2,6 +2,7 @@
 title: "MSI、UEFI与0000424F"
 date: 2025-07-29T11:22:04+08:00
 tags: ["Computer", "zh", "Quirk"]
+aliases: ["/2025/07/29-msi-and-uefi"]
 ---
 
 你肯定要问，0000424F是什么东西。

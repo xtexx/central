@@ -2,6 +2,7 @@
 title: "线性代数"
 date: 2023-07-03T20:29:05+08:00
 hidden: true
+aliases: ["/2023/07/03-linear-algebra-quickstart"]
 ---
 
 > 列向量渲染效果不好可以看[codeberg](https://codeberg.org/xtex/blog/src/branch/main/content/post/2023/07/03-linear-algebra-quickstart.md)
