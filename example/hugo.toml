@@ -5,6 +5,7 @@ theme = "hugo-theme-arc"
 themesDir = "../.."
 enableRobotsTXT = true
 copyright = 'CC'
+printPathWarnings = true
 
 [params]
 description = "test site"
