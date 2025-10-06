@@ -265,6 +265,8 @@ $wgFileExtensions = array_merge($wgFileExtensions, [
 	'svg',
 	'ogg',
 	'ico',
+	'woff2',
+	'pdf',
 ]);
 $wgThumbLimits = [120, 250, 300];
 $wgDefaultUserOptions['thumbsize'] = 1;
