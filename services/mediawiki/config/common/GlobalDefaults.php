@@ -236,6 +236,7 @@ $wgScribuntoEngineConf['luasandbox']['cpuLimit'] = 10;
 $wgExtractsExtendOpenSearchXml = true;
 
 // Lakeus
+$wgLakeusWikiDefaultColorScheme = 'os';
 $wgLakeusShowStickyTOC = true;
 
 // MultimediaViewer
