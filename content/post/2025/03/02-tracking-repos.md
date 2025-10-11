@@ -2,6 +2,7 @@
 title: "Managing a troop of repositories"
 date: 2025-03-02T10:17:16+08:00
 aliases: ["/2025/03/02-tracking-repos"]
+params: { locale: en-us }
 ---
 
 When I am getting deeper and deeper in the open-source community, I find software bugs or need new features more and more frequently. Generally, I will make a issue, submit a PR, or maintain a fork if I think those code are not suitable for being upstreamed.

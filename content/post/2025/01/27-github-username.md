@@ -2,6 +2,7 @@
 title: "The rename of my GitHub account"
 date: 2025-01-27T11:31:59+08:00
 aliases: ["/2025/01/27-github-username"]
+params: { locale: en-us }
 ---
 
 Since many years ago, since my first meeting with smart phones and the Internet, I have been using the name "xtex".
