@@ -1,7 +1,7 @@
 <li>
-    <a href="{{ .Permalink }}">{{ .Title | markdownify }}</a>
-    {{ with .Date }} -
-    <span class="date">{{ .Format "2006-01-02" }}</span>{{end}}
+    <a href="{{ .Permalink }}">{{ .Title | markdownify }}<!--
+    -->{{ with .Params.subtitle }} {{ partial "hypen.html" . }} <span class="subtitle">{{ . }}</span>{{end}}</a>
+    {{ with .Date }} {{ partial "hypen.html" . }} <span class="date">{{ .Format "2006-01-02" }}</span>{{end}}
     <!-- -->
-    {{ with .Params.author }} <span class="author">({{ . }})</span>{{end}}
+    {{ with .Params.author }} <span class="author">{{ partial "parentheses.html" . }}</span>{{end}}
 </li>
