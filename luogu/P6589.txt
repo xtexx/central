@@ -3,7 +3,7 @@ Problem-Id: P6589
 Record-Id: 134394866
 Timestamp: 1699623422
 Status: Unaccepted
-Score: 0/400
+Score: 0/100
 Language: C++14 (GCC 9)
 
 Test-Result:

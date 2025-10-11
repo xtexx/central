@@ -8,48 +8,48 @@ Language: C++14 (GCC 9)
 
 Test-Result:
 	Subtask: 0
-		Case: 0 WA 3 ms 552 KiB 
-		Case: 1 WA 3 ms 608 KiB 
-		Case: 2 WA 3 ms 552 KiB 
-		Case: 3 WA 3 ms 552 KiB 
-		Case: 4 WA 4 ms 596 KiB 
-		Case: 5 WA 3 ms 552 KiB 
-		Case: 6 WA 3 ms 552 KiB 
-		Case: 7 WA 3 ms 644 KiB 
-		Case: 8 WA 3 ms 644 KiB 
-		Case: 9 WA 3 ms 552 KiB 
-		Case: 10 WA 3 ms 552 KiB 
-		Case: 11 WA 3 ms 580 KiB 
-		Case: 12 WA 3 ms 596 KiB 
-		Case: 13 WA 3 ms 552 KiB 
-		Case: 14 WA 3 ms 552 KiB 
-		Case: 15 WA 3 ms 552 KiB 
-		Case: 16 WA 3 ms 524 KiB 
-		Case: 17 WA 3 ms 568 KiB 
-		Case: 18 WA 3 ms 532 KiB 
-		Case: 19 WA 3 ms 584 KiB 
-		Case: 20 WA 3 ms 552 KiB 
-		Case: 21 WA 3 ms 568 KiB 
-		Case: 22 WA 3 ms 564 KiB 
-		Case: 23 WA 3 ms 556 KiB 
-		Case: 24 WA 3 ms 580 KiB 
-		Case: 25 WA 3 ms 680 KiB 
-		Case: 26 WA 3 ms 564 KiB 
-		Case: 27 WA 4 ms 564 KiB 
-		Case: 28 WA 3 ms 568 KiB 
-		Case: 29 WA 3 ms 564 KiB 
+		Case: 0 WA 3 ms 552 KiB wrong answer On line 1 column 1, read 1, expected i.
+		Case: 1 WA 3 ms 608 KiB wrong answer On line 1 column 1, read 1, expected f.
+		Case: 2 WA 3 ms 552 KiB wrong answer Too short on line 1.
+		Case: 3 WA 3 ms 552 KiB wrong answer Too short on line 1.
+		Case: 4 WA 4 ms 596 KiB wrong answer Too short on line 1.
+		Case: 5 WA 3 ms 552 KiB wrong answer Too short on line 1.
+		Case: 6 WA 3 ms 552 KiB wrong answer Too short on line 1.
+		Case: 7 WA 3 ms 644 KiB wrong answer Too short on line 1.
+		Case: 8 WA 3 ms 644 KiB wrong answer Too short on line 1.
+		Case: 9 WA 3 ms 552 KiB wrong answer Too short on line 1.
+		Case: 10 WA 3 ms 552 KiB wrong answer Too short on line 1.
+		Case: 11 WA 3 ms 580 KiB wrong answer Too short on line 1.
+		Case: 12 WA 3 ms 596 KiB wrong answer Too short on line 1.
+		Case: 13 WA 3 ms 552 KiB wrong answer Too short on line 1.
+		Case: 14 WA 3 ms 552 KiB wrong answer Too short on line 1.
+		Case: 15 WA 3 ms 552 KiB wrong answer Too short on line 1.
+		Case: 16 WA 3 ms 524 KiB wrong answer Too short on line 1.
+		Case: 17 WA 3 ms 568 KiB wrong answer Too short on line 1.
+		Case: 18 WA 3 ms 532 KiB wrong answer Too short on line 1.
+		Case: 19 WA 3 ms 584 KiB wrong answer Too short on line 1.
+		Case: 20 WA 3 ms 552 KiB wrong answer Too short on line 1.
+		Case: 21 WA 3 ms 568 KiB wrong answer Too short on line 1.
+		Case: 22 WA 3 ms 564 KiB wrong answer Too short on line 1.
+		Case: 23 WA 3 ms 556 KiB wrong answer Too short on line 1.
+		Case: 24 WA 3 ms 580 KiB wrong answer Too short on line 1.
+		Case: 25 WA 3 ms 680 KiB wrong answer Too short on line 1.
+		Case: 26 WA 3 ms 564 KiB wrong answer Too short on line 1.
+		Case: 27 WA 4 ms 564 KiB wrong answer Too short on line 1.
+		Case: 28 WA 3 ms 568 KiB wrong answer Too short on line 1.
+		Case: 29 WA 3 ms 564 KiB wrong answer Too short on line 1.
 	Subtask: 1
-		Case: 30 WA 3 ms 624 KiB 
-		Case: 31 WA 4 ms 552 KiB 
-		Case: 32 WA 4 ms 564 KiB 
-		Case: 33 WA 4 ms 552 KiB 
-		Case: 34 WA 5 ms 552 KiB 
-		Case: 35 WA 3 ms 668 KiB 
-		Case: 36 WA 3 ms 552 KiB 
-		Case: 37 WA 4 ms 552 KiB 
+		Case: 30 WA 3 ms 624 KiB wrong answer Too short on line 1.
+		Case: 31 WA 4 ms 552 KiB wrong answer On line 1 column 1, read h, expected /.
+		Case: 32 WA 4 ms 564 KiB wrong answer On line 1 column 1, read A, expected C.
+		Case: 33 WA 4 ms 552 KiB wrong answer On line 1 column 1, read H, expected U.
+		Case: 34 WA 5 ms 552 KiB wrong answer On line 1 column 1, read (ASCII -13), expected B.
+		Case: 35 WA 3 ms 668 KiB wrong answer Too short on line 1.
+		Case: 36 WA 3 ms 552 KiB wrong answer Too short on line 1.
+		Case: 37 WA 4 ms 552 KiB wrong answer Too short on line 1.
 		Case: 38 RE 0 ms 0 KiB 
 		Case: 39 RE 0 ms 0 KiB 
-		Case: 40 WA 3 ms 552 KiB 
+		Case: 40 WA 3 ms 552 KiB wrong answer Too short on line 1.
 		Case: 41 RE 0 ms 0 KiB 
-		Case: 42 WA 3 ms 564 KiB 
+		Case: 42 WA 3 ms 564 KiB wrong answer Too short on line 1.
 		Case: 43 RE 0 ms 0 KiB 

@@ -11,13 +11,13 @@ Test-Result:
 		Case: 0 TLE 1.2 s 2.59 MiB 
 		Case: 1 TLE 1.2 s 2.37 MiB 
 		Case: 2 TLE 1.2 s 2.41 MiB 
-		Case: 3 AC 5 ms 6.49 MiB 
-		Case: 4 AC 5 ms 6.49 MiB 
-		Case: 5 WA 5 ms 6.42 MiB 
-		Case: 6 WA 5 ms 6.38 MiB 
-		Case: 7 WA 5 ms 6.48 MiB 
-		Case: 8 WA 18 ms 8.52 MiB 
-		Case: 9 WA 17 ms 8.53 MiB 
+		Case: 3 AC 5 ms 6.49 MiB ok accepted
+		Case: 4 AC 5 ms 6.49 MiB ok accepted
+		Case: 5 WA 5 ms 6.42 MiB wrong answer On line 1 column 1, read 1, expected 2.
+		Case: 6 WA 5 ms 6.38 MiB wrong answer On line 1 column 1, read 8, expected 4.
+		Case: 7 WA 5 ms 6.48 MiB wrong answer On line 1 column 1, read 4, expected 2.
+		Case: 8 WA 18 ms 8.52 MiB wrong answer On line 1 column 1, read 7, expected 1.
+		Case: 9 WA 17 ms 8.53 MiB wrong answer On line 1 column 1, read 6, expected 3.
 		Case: 10 TLE 1.2 s 9.24 MiB 
 		Case: 11 TLE 1.2 s 9.21 MiB 
 		Case: 12 TLE 1.2 s 9.23 MiB 

@@ -1,0 +1,11 @@
+Metadata-Version: 1
+Problem-Id: T573673
+Record-Id: 212097132
+Timestamp: 1743863235
+Status: Unaccepted
+Score: 0/100
+Language: C++14 (GCC 9)
+
+Test-Result:
+	Subtask: 0
+		Case: 0 WA 4 ms 556 KiB wrong answer Not hacked

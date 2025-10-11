@@ -1,11 +1,11 @@
 Metadata-Version: 1
 Problem-Id: T431882
-Record-Id: 153517796
-Timestamp: 1711793144
+Record-Id: 154025357
+Timestamp: 1712051347
 Status: Accepted
-Score: 0/100
+Score: 100/100
 Language: C++14 (GCC 9)
 
 Test-Result:
 	Subtask: 0
-		Case: 0 AC 4 ms 556 KiB wrong answer On line 1 column 1, read 0, expected -.
+		Case: 0 TLE 300 ms 564 KiB 

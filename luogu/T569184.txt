@@ -1,0 +1,20 @@
+Metadata-Version: 1
+Problem-Id: T569184
+Record-Id: 212095243
+Timestamp: 1743862483
+Status: Unaccepted
+Score: 20/100
+Language: C++14 (GCC 9)
+
+Test-Result:
+	Subtask: 0
+		Case: 0 WA 4 ms 564 KiB wrong answer On line 1 column 1, read 0, expected 1.
+		Case: 1 AC 4 ms 680 KiB ok accepted
+		Case: 2 AC 4 ms 564 KiB ok accepted
+		Case: 3 WA 4 ms 556 KiB wrong answer On line 1 column 1, read 2, expected 3.
+		Case: 4 WA 4 ms 564 KiB wrong answer On line 1 column 1, read 2, expected 6.
+		Case: 5 WA 4 ms 680 KiB wrong answer On line 1 column 1, read 4, expected 2.
+		Case: 6 WA 4 ms 564 KiB wrong answer On line 1 column 2, read 7, expected 1.
+		Case: 7 WA 4 ms 556 KiB wrong answer On line 1 column 2, read 7, expected 0.
+		Case: 8 WA 3 ms 556 KiB wrong answer On line 1 column 1, read 2, expected 1.
+		Case: 9 WA 3 ms 556 KiB wrong answer On line 1 column 2, read 9, expected 6.

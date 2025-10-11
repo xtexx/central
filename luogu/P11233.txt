@@ -8,18 +8,18 @@ Language: C++14 (GCC 9)
 
 Test-Result:
 	Subtask: 0
-		Case: 0 AC 91 ms 684 KiB 
-		Case: 1 AC 92 ms 564 KiB 
-		Case: 2 AC 91 ms 564 KiB 
-		Case: 3 AC 92 ms 564 KiB 
-		Case: 4 WA 953 ms 552 KiB 
-		Case: 5 WA 953 ms 680 KiB 
-		Case: 6 WA 954 ms 552 KiB 
-		Case: 7 WA 957 ms 576 KiB 
-		Case: 8 WA 956 ms 580 KiB 
-		Case: 9 WA 955 ms 628 KiB 
-		Case: 10 WA 963 ms 1.76 MiB 
-		Case: 11 WA 961 ms 1.75 MiB 
+		Case: 0 AC 91 ms 684 KiB ok accepted
+		Case: 1 AC 92 ms 564 KiB ok accepted
+		Case: 2 AC 91 ms 564 KiB ok accepted
+		Case: 3 AC 92 ms 564 KiB ok accepted
+		Case: 4 WA 953 ms 552 KiB wrong answer On line 1 column 1, read 2, expected 4.
+		Case: 5 WA 953 ms 680 KiB wrong answer On line 1 column 1, read 1, expected 3.
+		Case: 6 WA 954 ms 552 KiB wrong answer On line 1 column 1, read 2, expected 4.
+		Case: 7 WA 957 ms 576 KiB wrong answer On line 1 column 1, read 3, expected 1.
+		Case: 8 WA 956 ms 580 KiB wrong answer On line 1 column 1, read 3, expected 1.
+		Case: 9 WA 955 ms 628 KiB wrong answer On line 1 column 1, read 2, expected 1.
+		Case: 10 WA 963 ms 1.76 MiB wrong answer On line 1 column 1, read 3, expected 1.
+		Case: 11 WA 961 ms 1.75 MiB wrong answer On line 1 column 1, read 2, expected 1.
 		Case: 12 TLE 1.024 s 13.62 MiB 
 		Case: 13 TLE 1.018 s 13.62 MiB 
 		Case: 14 TLE 1.024 s 13.61 MiB 

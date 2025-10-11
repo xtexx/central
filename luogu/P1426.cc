@@ -15,3 +15,4 @@ int main() {
   std::cout << ((m > s + x) ? 'n' : 'y') << '\n';
   return 0;
 }
+

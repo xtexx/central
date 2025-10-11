@@ -1,0 +1,11 @@
+Metadata-Version: 1
+Problem-Id: T575392
+Record-Id: 212101186
+Timestamp: 1743865007
+Status: Unaccepted
+Score: 0/100
+Language: C++14 (GCC 9)
+
+Test-Result:
+	Subtask: 0
+		Case: 0 WA 4 ms 564 KiB wrong answer On line 1 column 6, read t, expected m.

@@ -1,0 +1,16 @@
+Metadata-Version: 1
+Problem-Id: T575029
+Record-Id: 212098702
+Timestamp: 1743863859
+Status: Unaccepted
+Score: 0/100
+Language: C++14 (GCC 9)
+
+Test-Result:
+	Subtask: 0
+		Case: 0 WA 3 ms 564 KiB wrong answer On line 1 column 1, read e, expected a.
+		Case: 1 WA 4 ms 564 KiB wrong answer On line 1 column 1, read e, expected l.
+		Case: 2 WA 4 ms 680 KiB wrong answer On line 1 column 1, read e, expected r.
+		Case: 3 WA 4 ms 556 KiB wrong answer On line 1 column 1, read e, expected d.
+		Case: 4 WA 4 ms 568 KiB wrong answer On line 1 column 1, read e, expected l.
+		Case: 5 WA 4 ms 560 KiB wrong answer On line 1 column 1, read e, expected r.

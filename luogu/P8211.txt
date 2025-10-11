@@ -3,7 +3,7 @@ Problem-Id: P8211
 Record-Id: 134974310
 Timestamp: 1699884451
 Status: Unaccepted
-Score: null/100
+Score: null/2200
 Language: C++14 (GCC 9)
 
 Test-Result:

@@ -8,23 +8,23 @@ Language: C++14 (GCC 9)
 
 Test-Result:
 	Subtask: 0
-		Case: 0 AC 3 ms 564 KiB 
-		Case: 1 AC 3 ms 548 KiB 
-		Case: 2 AC 4 ms 552 KiB 
-		Case: 3 AC 3 ms 640 KiB 
-		Case: 4 AC 4 ms 568 KiB 
-		Case: 5 AC 4 ms 564 KiB 
-		Case: 6 AC 4 ms 680 KiB 
-		Case: 7 AC 4 ms 556 KiB 
-		Case: 8 AC 4 ms 568 KiB 
-		Case: 9 AC 4 ms 564 KiB 
-		Case: 10 AC 4 ms 680 KiB 
-		Case: 11 AC 3 ms 616 KiB 
-		Case: 12 AC 4 ms 556 KiB 
-		Case: 13 AC 3 ms 556 KiB 
-		Case: 14 AC 4 ms 680 KiB 
-		Case: 15 AC 5 ms 556 KiB 
-		Case: 16 AC 5 ms 560 KiB 
-		Case: 17 AC 5 ms 612 KiB 
-		Case: 18 AC 5 ms 564 KiB 
-		Case: 19 AC 5 ms 556 KiB 
+		Case: 0 AC 3 ms 564 KiB ok accepted
+		Case: 1 AC 3 ms 548 KiB ok accepted
+		Case: 2 AC 4 ms 552 KiB ok accepted
+		Case: 3 AC 3 ms 640 KiB ok accepted
+		Case: 4 AC 4 ms 568 KiB ok accepted
+		Case: 5 AC 4 ms 564 KiB ok accepted
+		Case: 6 AC 4 ms 680 KiB ok accepted
+		Case: 7 AC 4 ms 556 KiB ok accepted
+		Case: 8 AC 4 ms 568 KiB ok accepted
+		Case: 9 AC 4 ms 564 KiB ok accepted
+		Case: 10 AC 4 ms 680 KiB ok accepted
+		Case: 11 AC 3 ms 616 KiB ok accepted
+		Case: 12 AC 4 ms 556 KiB ok accepted
+		Case: 13 AC 3 ms 556 KiB ok accepted
+		Case: 14 AC 4 ms 680 KiB ok accepted
+		Case: 15 AC 5 ms 556 KiB ok accepted
+		Case: 16 AC 5 ms 560 KiB ok accepted
+		Case: 17 AC 5 ms 612 KiB ok accepted
+		Case: 18 AC 5 ms 564 KiB ok accepted
+		Case: 19 AC 5 ms 556 KiB ok accepted

@@ -43,3 +43,4 @@ int main() {
   printf("%lld\n", (a * x) % MOD);
   return 0;
 }
+
