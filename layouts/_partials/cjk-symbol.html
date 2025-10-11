@@ -1,0 +1,7 @@
+{{ $locale := or page.Params.locale site.Language.LanguageCode }}{{ $isCjk := false }}<!--
+-->{{ if (or page.Params.cjkSymbols
+    site.Params.cjkSymbols
+    (hasPrefix $locale "zh")
+    (hasPrefix $locale "ja")
+    (hasPrefix $locale "kr"))
+}}{{ $isCjk = true }}{{end}}{{ return $isCjk }}
