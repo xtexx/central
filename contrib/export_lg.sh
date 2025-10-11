@@ -199,7 +199,7 @@ fetchRecord() {
 		grep -E "^Record-Id: ${records["$1"]}$" "$OUT/$1.txt" &>/dev/null; } && return
 	echo Fetching "$1"
 
-	local record pid srcext srcfile metafile runfmt
+	local record pid srcext srcfile fmtsrcfile metafile runfmt
 	record="$(callLgApi "$(getLgApi "record.show" | sed -e "s/{id}/${records["$1"]}/")" | jq ".currentData.record")"
 	pid="$(jq -r ".problem.pid" <<<"$record")"
 
@@ -209,6 +209,7 @@ fetchRecord() {
 		runfmt=false
 	else
 		srcfile="$OUT/$pid.$srcext"
+		fmtsrcfile="$OUT/$pid.formatted.$srcext"
 		runfmt=true
 	fi
 	metafile="$OUT/$pid.txt"
@@ -220,7 +221,10 @@ fetchRecord() {
 		local fmt
 		fmt=$(eval echo "\${FORMATTER_${srcext}:-}")
 		# shellcheck disable=SC2086
-		[[ "${fmt}" == "" ]] || eval ${fmt} "$srcfile"
+		if [[ "${fmt}" != "" ]]; then
+			cp "$srcfile" "$fmtsrcfile"
+			eval ${fmt} "$fmtsrcfile"
+		fi
 	fi
 
 	cat >"$metafile.tmp" <<EOF
