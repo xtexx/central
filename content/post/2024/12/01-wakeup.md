@@ -1,5 +1,5 @@
 ---
-title: "OI 回忆录"
+title: "一只 OIer 的记忆碎片"
 date: 2024-12-01T10:13:53+08:00
 aliases: ["/2024/12/01-wakeup"]
 ---
