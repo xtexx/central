@@ -6,14 +6,14 @@
 
 [[关于我]](https://k.xtexx.eu.org/w/User:Xtex) [[文章]]({{< relref "post" >}})
 
-## Eng Ver.
+---
 
 Hey, hello, welcome,
 this is one of the places where [xtex](https://xtexx.eu.org) writes things randomly.
 
 [[About Me]](https://k.xtexx.eu.org/w/User:Xtex) [[Posts]]({{< relref "post" >}})
 
-## Some Links
+---
 
 {{<hlist>}}
 
