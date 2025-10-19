@@ -2,7 +2,8 @@
 title: 新头像
 #excerpt: （皇帝的）新头像v2
 date: 2021-10-15
-hidden: true
+build:
+  list: never
 aliases: ["/2021/10/15-new-avatar"]
 ---
 

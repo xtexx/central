@@ -1,7 +1,8 @@
 ---
 title: "Ankaa-01：第一个自己设计的能亮灯的硬件"
 date: 2023-07-06T11:18:13+08:00
-hidden: true
+build:
+  list: never
 aliases: ["/2023/07/06-ankaa-01"]
 ---
 
