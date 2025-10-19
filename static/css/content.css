@@ -46,6 +46,13 @@ article header .tags span::before {
     padding-top: 2rem;
     line-height: 140%;
     cursor: auto;
+    padding: 0 4em 0 4em;
+}
+
+@media screen and (max-width:650px) {
+    .content {
+        padding: 0 0 0 0;
+    }
 }
 
 .content h1,
