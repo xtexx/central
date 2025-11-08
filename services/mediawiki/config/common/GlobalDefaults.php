@@ -18,9 +18,6 @@ $wgMainPageIsDomainRoot = true;
 // Database
 $xvUseDatabaseMonto = true;
 
-// Disable PHP session
-$wgPHPSessionHandling = 'disable';
-
 // Default Language
 $wgLanguageCode = 'qqx';
 $wgLocaltimezone = 'UTC';
