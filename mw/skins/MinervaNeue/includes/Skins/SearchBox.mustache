@@ -1,0 +1,26 @@
+<form role="search" action="{{form-action}}" method="get" class="minerva-search-form">
+	<div class="search-box search-box--typeahead">
+		<div class="cdx-typeahead-search cdx-typeahead-search--show-thumbnail cdx-typeahead-search--auto-expand-width">
+			<div class="cdx-search-input">
+				<div class="cdx-search-input__input-wrapper">
+					<div class="cdx-text-input cdx-text-input--has-start-icon">
+						<input type="hidden" name="title" value="{{page-title}}"/>
+						<input class="search skin-minerva-search-trigger cdx-text-input__input" id="searchInput"
+						{{{html-input-attributes}}} autocomplete="off">
+						<span class="cdx-text-input__icon cdx-text-input__start-icon"></span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	{{!
+		A button when clicked will submit the form
+		This is used so that on tablet devices with JS disabled the search button
+		passes the value of input to the search
+		We avoid using input[type=submit] as these cannot be easily styled as mediawiki ui icons
+		which is problematic in Opera Mini (see T140490)
+	}}
+	{{#data-btn}}
+	{{>Button}}
+	{{/data-btn}}
+</form>
