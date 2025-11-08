@@ -1,0 +1,18 @@
+{
+	"@metadata": {
+		"authors": [
+			"Meno25",
+			"ديفيد",
+			"زكريا"
+		]
+	},
+	"globalcssjs-extensionname": "CSS/JS العالمي",
+	"globalcssjs-desc": "شغل نصوص سي إس إس وجافاسكربت شخصية في جميع مواقع ويكيميديا انطلاقا من ويكي مركزي",
+	"globalcssjs-custom-css-js": "مشاركة CSS/JavaScript لجميع الويكيات ([https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalCssJs المزيد من المعلومات]):",
+	"globalcssjs-warning-js": "سيتم تحميل أي JavaScript مضاف إلى هذه الصفحة على جميع الويكيات التي لديك حساب عليها (انظر [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalCssJs documentation]).",
+	"globalcssjs-warning-css": "سيتم تحميل أي CSS مضاف إلى هذه الصفحة على جميع الويكيات التي لديك حساب عليها (راجع [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalCssJs documentation]).",
+	"globalcssjs-custom-js": "جافاسكربت شخصي",
+	"globalcssjs-custom-css": "سي إس إس شخصي",
+	"globalcssjs-delete-css": "حذف صفحة CSS بناءً على طلب {{GENDER:$1|user}} بسبب نشر [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalCssJs Help:Extension:GlobalCssJs]",
+	"globalcssjs-delete-js": "حذف صفحة JavaScript بناءً على طلب {{GENDER:$1|user}} بسبب نشر [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalCssJs Help:Extension:GlobalCssJs]"
+}
