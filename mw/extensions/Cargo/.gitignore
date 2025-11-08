@@ -1,0 +1,9 @@
+node_modules
+/composer.lock
+/vendor
+/.eslintcache
+/.idea
+
+# E2E tests
+tests/selenium/log
+/.stylelintcache
