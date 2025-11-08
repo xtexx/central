@@ -1,0 +1,67 @@
+{
+	"name": "TemplateStylesExtender",
+	"version": "2.1.0",
+	"author": [
+		"[https://www.mediawiki.org/wiki/User:Octfx Octfx]",
+		"[https://www.mediawiki.org/wiki/User:Alistair3149 Alistair3149]"
+	],
+	"url": "https://github.com/octfx/mediawiki-extensions-TemplateStylesExtender",
+	"descriptionmsg": "ext-templatestylesextender-desc",
+	"license-name": "GPL-2.0-or-later",
+	"type": "parserhook",
+	"requires": {
+		"MediaWiki": ">= 1.43.0",
+		"platform": {
+			"php": ">=8.0"
+		},
+		"extensions": {
+			"TemplateStyles": ">= 1.0"
+		}
+	},
+	"config": {
+		"TemplateStylesExtenderCustomPropertiesDeclaration": {
+			"description": "Allow CSS custom properties (CSS variables) to be declared as properties",
+			"value": true
+		},
+		"TemplateStylesExtenderExtendCustomPropertiesValues": {
+			"description": "Allow the CSS custom properties (CSS variables) to be used as values in all properties",
+			"value": true
+		},
+		"TemplateStylesExtenderEnableUnscopingSupport": {
+			"description": "Allow to unscope css by changing '.mw-parser-output' to a custom class",
+			"value": false
+		},
+		"TemplateStylesExtenderUnscopingPermission": {
+			"description": "Specify the permission a user must have to use unscoping. Defaults to 'editinterface'.",
+			"value": "editinterface"
+		}
+	},
+	"ConfigRegistry": {
+		"TemplateStylesExtender": "MediaWiki\\Config\\GlobalVarConfig::newInstance"
+	},
+	"MessagesDirs": {
+		"TemplateStylesExtender": [
+			"i18n"
+		]
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\TemplateStylesExtender\\": "includes/"
+	},
+	"HookHandlers": {
+		"MainHooks": {
+			"class": "MediaWiki\\Extension\\TemplateStylesExtender\\Hooks\\MainHooks"
+		},
+		"PropertySanitizerHook": {
+			"class": "MediaWiki\\Extension\\TemplateStylesExtender\\Hooks\\PropertySanitizerHook"
+		},
+		"StylesheetSanitizerHook": {
+			"class": "MediaWiki\\Extension\\TemplateStylesExtender\\Hooks\\StylesheetSanitizerHook"
+		}
+	},
+	"Hooks": {
+		"TemplateStylesPropertySanitizer": "PropertySanitizerHook",
+		"TemplateStylesStylesheetSanitizer": "StylesheetSanitizerHook",
+		"ParserFirstCallInit": "MainHooks"
+	},
+	"manifest_version": 2
+}
