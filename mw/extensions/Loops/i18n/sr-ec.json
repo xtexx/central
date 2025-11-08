@@ -1,0 +1,10 @@
+{
+	"@metadata": {
+		"authors": [
+			"Aca",
+			"BadDog"
+		]
+	},
+	"loops-limitreport-count-limited": "Број ExtLoops-а",
+	"loops-limitreport-count-unlimited": "Број ExtLoops-а"
+}
