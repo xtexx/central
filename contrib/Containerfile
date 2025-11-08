@@ -1,0 +1,20 @@
+FROM codeberg.org/xens/x-mediawiki-php AS bld
+
+ENV COMPOSER_ALLOW_SUPERUSER=1
+RUN set -eux; \
+	apk add --no-cache bash git; \
+	php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"; \
+	php -r "if (hash_file('sha384', 'composer-setup.php') === 'ed0feb545ba87161262f2d45a633e34f591ebb3381f2e0063c345ebea4d228dd0043083717770234ec00c5a9f9593792') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"; \
+	php composer-setup.php; \
+	php -r "unlink('composer-setup.php');";
+
+ADD mw /mw
+ADD scripts/strip-for-build.sh /
+
+WORKDIR /mw
+RUN set -eux; \
+	php /opt/mediawiki/composer.phar install --no-dev --ignore-platform-reqs; \
+	/strip-for-build.sh;
+
+FROM scratch
+COPY --from=bld /mw /

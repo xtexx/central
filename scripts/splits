@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+while read -r repo; do
+	name="$(yq '.name' <<<"$repo")"
+	prefix="$(yq '.prefix // ""' <<<"$repo")"
+
+	if [[ -z "$(yq '.git // ""' <<<"$repo")" ]]; then
+		continue
+	fi
+
+	echo -n "$name "
+	git log \
+		--format="%(trailers:key=git-subtree-dir,valueonly,separator) %(trailers:key=git-subtree-split,valueonly,separator)" \
+		--merges -100 | grep -E "^$prefix " | head -n1
+done <<<"$(yq -o=json -I=0 '. | sort_by(.pri // 100) | .[]' repositories.yaml)"
