@@ -1,0 +1,151 @@
+{
+	"name": "Nuke",
+	"author": [
+		"Brion Vibber",
+		"Jeroen De Dauw"
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:Nuke",
+	"descriptionmsg": "nuke-desc",
+	"license-name": "GPL-2.0-or-later",
+	"requires": {
+		"MediaWiki": ">= 1.45"
+	},
+	"type": "specialpage",
+	"ExtensionMessagesFiles": {
+		"NukeAlias": "Nuke.alias.php"
+	},
+	"MessagesDirs": {
+		"Nuke": [
+			"i18n"
+		]
+	},
+	"HookHandlers": {
+		"main": {
+			"class": "MediaWiki\\Extension\\Nuke\\Hooks"
+		},
+		"nukeTagFix": {
+			"class": "MediaWiki\\Extension\\Nuke\\HookHandler\\NukeTagFix"
+		}
+	},
+	"Hooks": {
+		"ContributionsToolLinks": "main",
+		"ListDefinedTags": "MediaWiki\\Extension\\Nuke\\Hooks::onRegisterTags",
+		"ChangeTagsListActive": "MediaWiki\\Extension\\Nuke\\Hooks::onRegisterTags",
+		"LoadExtensionSchemaUpdates": "nukeTagFix"
+	},
+	"config": {
+		"NukeMaxAge": {
+			"value": 0,
+			"description": "The maximum age of a new page creation or file upload before it becomes ineligible for mass deletion. Defaults to the value of $wgRCMaxAge."
+		},
+		"NukeUIType": {
+			"value": "htmlform",
+			"description": "The UI type to use for Special:Nuke."
+		}
+	},
+	"ResourceModules": {
+		"ext.nuke.styles": {
+			"localBasePath": "modules/ext.nuke.styles",
+			"styles": [
+				"nuke.less"
+			]
+		},
+		"ext.nuke.fields.NukeDateTimeField": {
+			"localBasePath": "modules/ext.nuke.fields.NukeDateTimeField",
+			"packageFiles": [
+				"init.js"
+			],
+			"messages": [
+				"nuke-date-limited"
+			],
+			"dependencies": [
+				"moment",
+				"mediawiki.widgets.DateInputWidget"
+			]
+		},
+		"ext.nuke.codex.styles": {
+			"localBasePath": "modules/ext.nuke.codex.styles",
+			"styles": [
+				"nuke.less"
+			]
+		},
+		"ext.nuke.codex": {
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
+			"localBasePath": "modules/ext.nuke.codex",
+			"packageFiles": [
+				"init.js",
+				"components/NukeNamespaceLookup.vue",
+				"components/NukeTargetLookup.vue"
+			],
+			"messages": [
+				"blanknamespace",
+				"nuke-namespace",
+				"nuke-userorip",
+				"nuke-namespace-invalid",
+				"mw-widgets-titlesmultiselect-placeholder"
+			],
+			"dependencies": [
+				"mediawiki.api",
+				"mediawiki.util"
+			],
+			"codexComponents": [
+				"CdxField",
+				"CdxMultiselectLookup",
+				"CdxLookup"
+			]
+		}
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "modules",
+		"remoteExtPath": "Nuke/modules"
+	},
+	"GroupPermissions": {
+		"sysop": {
+			"nuke": true
+		}
+	},
+	"AvailableRights": [
+		"nuke"
+	],
+	"GrantPermissions": {
+		"delete": {
+			"nuke": true
+		}
+	},
+	"SpecialPages": {
+		"Nuke": {
+			"class": "MediaWiki\\Extension\\Nuke\\SpecialNuke",
+			"services": [
+				"JobQueueGroup",
+				"DBLoadBalancerFactory",
+				"PermissionManager",
+				"RepoGroup",
+				"UserOptionsLookup",
+				"UserNamePrefixSearch",
+				"UserNameUtils",
+				"NamespaceInfo",
+				"ContentLanguage",
+				"RedirectLookup",
+				"NukeIPLookup"
+			],
+			"styles": [
+				"mediawiki.special.special"
+			]
+		}
+	},
+	"load_composer_autoloader": true,
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\Nuke\\": "includes/"
+	},
+	"AutoloadClasses": {
+		"MediaWiki\\Extension\\Nuke\\Maintenance\\NormalizeNukeTags": "maintenance/normalizeNukeTags.php"
+	},
+	"TestAutoloadNamespaces": {
+		"MediaWiki\\Extension\\Nuke\\Test\\": "tests/phpunit/",
+		"MediaWiki\\Extension\\Nuke\\Test\\Integration\\": "tests/phpunit/integration/"
+	},
+	"ServiceWiringFiles": [
+		"includes/ServiceWiring.php"
+	],
+	"manifest_version": 2
+}
