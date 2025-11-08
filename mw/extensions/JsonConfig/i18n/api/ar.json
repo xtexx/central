@@ -1,0 +1,34 @@
+{
+	"@metadata": {
+		"authors": [
+			"Hubaishan",
+			"LaMagiaaa",
+			"Meno25",
+			"Mohammed Qays",
+			"ديفيد"
+		]
+	},
+	"apihelp-jsonconfig-summary": "يسمح بالوصول المباشر إلى النظام الفرعي لـJsonConfig.",
+	"apihelp-jsonconfig-param-command": "ما هو الإجراء الفرعي الذي يجب تنفيذه على JsonConfig:",
+	"apihelp-jsonconfig-paramvalue-command-status": "يظهر تكوين JsonConfig.",
+	"apihelp-jsonconfig-paramvalue-command-reset": "يمسح التكوينات من ذاكرة التخزين المؤقت. يتطلب معلمة $1title وjsonconfig-flush right.",
+	"apihelp-jsonconfig-paramvalue-command-reload": "إعادة تحميل وتخزين التكوينات من مخزن التكوينات. يتطلب معلمة $1title وحق إعادة تعيين jsonconfig.",
+	"apihelp-jsonconfig-param-namespace": "عدد نطاق العنوان لمعالجته.",
+	"apihelp-jsonconfig-param-title": "عنوان للمعالجة بدون بادئة النطاق.",
+	"apihelp-jsonconfig-param-content": "بالنسلة لـ$1command=reload، استخدم هذا المحتوى بدلا من ذلك.",
+	"apihelp-jsonconfig-example-1": "إظهار التكوين",
+	"apihelp-jsonconfig-example-2": "إعادة ضبط [[Data:Brazil/Amazonas.map]]",
+	"apihelp-jsonconfig-example-3": "إعادة تحميل [[Data:Brazil/Amazonas.map]]",
+	"apihelp-jsondata-summary": "استرداد بيانات JSON المترجمة.",
+	"apihelp-jsondata-param-title": "عنوان للحصول عليه، افتراضيا نطاق ليكون \"البيانات:\"",
+	"apihelp-jsondata-example-1": "احصل على محتوى JSON من صفحة Sample.tab، مترجمة إلى لغة المستخدم",
+	"apihelp-jsondata-example-2": "احصل على محتوى JSON من صفحة Sample.tab، مترجمة إلى الفرنسية",
+	"apihelp-jsontransform-summary": "استرداد بيانات JSON المحولة بواسطة دالة لوا.",
+	"apihelp-jsontransform-param-title": "عنوان العملية بدون بادئة اسم النطاق.",
+	"apihelp-jsontransform-param-jtmodule": "اسم وحدة Lua لتحميل كود التحويل منها. الافتراضي هو  نطاق وحدة:.",
+	"apihelp-jsontransform-param-jtfunction": "اسم وظيفة لوا التي سيتم تشغيلها",
+	"apihelp-jsontransform-param-jtargs": "تسلسل السلاسل التي سيتم تمريرها كوسائط إلى دالة التحويل Lua",
+	"apihelp-jsontransform-example-1": "الحصول على محتوى JSON لصفحة Sample.tab التي تعمل من خلال تحويل Lua",
+	"apierror-jsonconfig-paramrequired": "الوسيط <var>$1</var> مطلوب لهذا الأمر.",
+	"apierror-jsonconfig-badtitle": "الصفحة المحددة بواسطة الوسائط <var>namespace</var> و<var>title</var> إما غير صالحة أو غير مسجلة في تكوين JsonConfig."
+}
