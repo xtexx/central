@@ -1,0 +1,35 @@
+{
+	"@metadata": {
+		"authors": [
+			"Saraiki"
+		]
+	},
+	"citizen-search-poweredby-mediawiki": "میڈیا وکی",
+	"citizen-search-keyhint-exit": "ڳولݨ وچوں نکلو",
+	"citizen-search-keyhint-open": "ڳولݨ کھولو",
+	"citizen-search-keyhint-select": "آئٹم چݨو",
+	"citizen-sitestats-articles-label": "مضمون",
+	"citizen-sitestats-images-label": "فائلاں",
+	"citizen-sitestats-users-label": "ورتݨ آلے",
+	"citizen-sitestats-edits-label": "تبدیلیاں",
+	"citizen-page-info-credits": "کریڈٹ",
+	"citizen-search-advancedsearch": "ودھائی ڳول",
+	"citizen-feature-autohide-navigation-0-label": "بند",
+	"citizen-feature-autohide-navigation-1-label": "آن",
+	"citizen-feature-custom-font-size-xlarge-label": "ٻہوں وݙا",
+	"citizen-user-info-edits-label": "تبدیلیاں",
+	"citizen-command-palette-heading-recent": "حالیہ",
+	"citizen-command-palette-heading-related": "متعلقہ",
+	"citizen-command-palette-keyhint-enter-select": "چݨو",
+	"citizen-command-palette-keyhint-enter-open": "کھولو",
+	"citizen-command-palette-keyhint-enter-search": "ڳولو",
+	"citizen-command-palette-keyhint-navigate": "نیویگیٹ",
+	"citizen-command-palette-keyhint-exit": "نکلو",
+	"citizen-command-palette-keyhint-actions": "عمل",
+	"citizen-command-palette-keyhint-return": "ولدا واپس",
+	"citizen-command-palette-type-page": "ورقہ",
+	"citizen-command-palette-type-namespace": "ناں جاہ",
+	"citizen-command-palette-type-command": "کمانڈ",
+	"citizen-command-palette-type-special-page": "خاص ورقہ",
+	"citizen-command-palette-type-user": "ورتݨ آلا"
+}

@@ -1,0 +1,33 @@
+{
+	"name": "Citizen",
+	"private": true,
+	"scripts": {
+		"lint": "npm -s run lint:js && npm -s run lint:styles && npm -s run lint:i18n",
+		"lint:fix:js": "npm -s run lint:js -- --fix",
+		"lint:fix:styles": "npm -s run lint:styles -- --fix",
+		"lint:js": "eslint --cache --max-warnings 0 .",
+		"lint:styles": "stylelint \"**/*.{less,css,vue}\"",
+		"lint:i18n": "banana-checker --requireLowerCase=0 i18n/",
+		"test": "",
+		"prepare": "husky"
+	},
+	"devDependencies": {
+		"@commitlint/cli": "^20.1.0",
+		"@commitlint/config-conventional": "^20.0.0",
+		"devmoji": "^2.3.0",
+		"eslint": "9.38.0",
+		"eslint-config-wikimedia": "0.31.0",
+		"eslint-plugin-compat": "^6.0.2",
+		"grunt-banana-checker": "0.13.0",
+		"husky": "^9.1.7",
+		"pinia": "2.0.16",
+		"stylelint": "16.25.0",
+		"stylelint-config-recess-order": "7.4.0",
+		"stylelint-config-wikimedia": "0.18.0",
+		"stylelint-order": "^7.0.0",
+		"stylelint-plugin-use-baseline": "^1.0.3",
+		"types-mediawiki": "2.0.0",
+		"vue": "3.4.27"
+	},
+	"version": "3.10.0"
+}

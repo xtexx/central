@@ -1,0 +1,159 @@
+/*
+ * Citizen
+ *
+ * Module: mediawiki.skinning.content.media-common
+ * Version: REL1_43
+ */
+
+@import '../../mixins.less';
+
+// Block media items
+figure[ typeof~='mw:File' ],
+figure[ typeof~='mw:File/Frameless' ],
+figure[ typeof~='mw:File/Thumb' ],
+figure[ typeof~='mw:File/Frame' ] {
+	&.mw-halign-none {
+		float: none;
+		clear: none;
+	}
+
+	&.mw-halign-center {
+		margin-inline: auto;
+		text-align: center;
+	}
+}
+
+figure[ typeof~='mw:File' ],
+figure[ typeof~='mw:File/Frameless' ] {
+	> figcaption {
+		display: none; // Hide the caption for frameless and plain floated images
+	}
+}
+
+figure[ typeof~='mw:File/Thumb' ],
+figure[ typeof~='mw:File/Frame' ] {
+	display: table;
+	margin: var( --space-xs ) auto var( --space-md ) auto;
+	text-align: center;
+	.mixin-citizen-font-styles( 'small' );
+
+	> a:first-child,
+	> span:first-child {
+		// Broken media get a span instead
+		span.mw-broken-media {
+			display: inline-block;
+			width: 180px; // This is hardcoded in Linker::makeThumbLink2 for broken media
+			overflow-wrap: break-word;
+		}
+	}
+
+	> figcaption {
+		display: table-caption;
+		// Sync with rounded corner
+		padding-inline: var( --border-radius-base );
+		caption-side: bottom;
+
+		&:not( :empty ) {
+			margin-top: var( --space-xs );
+		}
+	}
+}
+
+// Inline media items
+// img is needed for 1.39 compat, change to .mw-file-element later
+.mw-file-element {
+	.mw-valign-middle & {
+		vertical-align: middle;
+	}
+
+	.mw-valign-baseline & {
+		vertical-align: baseline;
+	}
+
+	.mw-valign-sub & {
+		vertical-align: sub;
+	}
+
+	.mw-valign-super & {
+		vertical-align: super;
+	}
+
+	.mw-valign-top & {
+		vertical-align: top;
+	}
+
+	.mw-valign-text-top & {
+		vertical-align: text-top;
+	}
+
+	.mw-valign-bottom & {
+		vertical-align: bottom;
+	}
+
+	.mw-valign-text-bottom & {
+		vertical-align: text-bottom;
+	}
+}
+
+// Do not float content in mobile view
+@media ( min-width: @min-width-breakpoint-tablet ) {
+	figure[ typeof~='mw:File/Thumb' ],
+	figure[ typeof~='mw:File/Frame' ] {
+		> figcaption {
+			text-align: start;
+		}
+
+		// When float is not explicitly set
+		.mw-content-ltr & {
+			/* @noflip */
+			float: right;
+			/* @noflip */
+			clear: right;
+			/* @noflip */
+			margin-left: var( --space-lg );
+		}
+
+		.mw-content-rtl & {
+			/* @noflip */
+			float: left;
+			/* @noflip */
+			clear: left;
+			/* @noflip */
+			margin-right: var( --space-lg );
+		}
+	}
+
+	figure[ typeof~='mw:File' ],
+	figure[ typeof~='mw:File/Frameless' ],
+	figure[ typeof~='mw:File/Thumb' ],
+	figure[ typeof~='mw:File/Frame' ] {
+		&.mw-halign-right {
+			/* @noflip */
+			float: right;
+			/* @noflip */
+			clear: right;
+			/* @noflip */
+			margin-right: 0;
+			/* @noflip */
+			margin-left: var( --space-lg );
+		}
+
+		&.mw-halign-left {
+			/* @noflip */
+			float: left;
+			/* @noflip */
+			clear: left;
+			/* @noflip */
+			margin-right: var( --space-lg );
+			/* @noflip */
+			margin-left: 0;
+		}
+
+		&.mw-halign-center {
+			float: none;
+			clear: both;
+			margin-inline: auto;
+			text-align: center;
+		}
+	}
+}
