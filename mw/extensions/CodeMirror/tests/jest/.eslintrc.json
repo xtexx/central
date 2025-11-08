@@ -1,0 +1,16 @@
+{
+	"extends": [
+		"wikimedia/jquery",
+		"wikimedia/mediawiki"
+	],
+	"parserOptions": {
+		"sourceType": "module"
+	},
+	"globals": {
+		"mockMwConfigGet": true
+	},
+	"env": {
+		"browser": true,
+		"jest": true
+	}
+}

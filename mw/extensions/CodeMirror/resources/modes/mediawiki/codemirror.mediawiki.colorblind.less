@@ -1,0 +1,103 @@
+/*
+ * This style sheet overrides colors in mediawiki.less
+ * with more colorblind-friendly colors.
+ */
+@import '../../codemirror.mixins.less';
+
+/* copied from codemirror.mediawiki.less */
+@table-color: #d08;
+@table-color-dark: #ff5edd;
+
+.cm-mw-colorblind-colors {
+	/* misc */
+	.cm-mw-section-header,
+	.cm-mw-list,
+	.cm-mw-doubleUnderscore,
+	.cm-mw-signature,
+	.cm-mw-hr,
+	.cm-mw-redirect,
+	.cm-mw-indenting,
+	.cm-mw-apostrophes {
+		color: #e4a400;
+	}
+
+	/* tags */
+	.cm-mw-exttag-name,
+	.cm-mw-exttag-bracket,
+	.cm-mw-exttag-attribute,
+	.cm-mw-exttag-attribute-value,
+	.cm-mw-htmltag-name,
+	.cm-mw-htmltag-bracket,
+	.cm-mw-htmltag-attribute,
+	.cm-mw-htmltag-attribute-value {
+		color: #56b4e9;
+	}
+
+	/* table */
+	.cm-mw-table-definition-value {
+		color: @table-color;
+		.darkmode( color, @table-color-dark );
+	}
+
+	/* templates */
+	.cm-mw-template,
+	.cm-mw-template-name,
+	.cm-mw-template-name-mnemonic,
+	.cm-mw-template-argument-name,
+	.cm-mw-template-delimiter,
+	.cm-mw-template-bracket {
+		color: #9c3a00;
+	}
+
+	/* variables */
+	.cm-mw-templatevariable,
+	.cm-mw-templatevariable-name,
+	.cm-mw-templatevariable-bracket,
+	.cm-mw-templatevariable-delimiter {
+		color: #009e73;
+	}
+
+	/* remove background colors */
+	.cm-mw-matching,
+	.cm-mw-skipformatting,
+	.cm-mw-doubleUnderscore,
+	.cm-mw-signature,
+	.cm-mw-hr,
+	.cm-mw-redirect,
+	pre.CodeMirror-line-like.cm-mw-exttag,
+	.cm-mw-exttag,
+	.cm-mw-tag-pre,
+	.cm-mw-tag-nowiki,
+	.cm-mw-template2-ground,
+	.cm-mw-template3-ground,
+	.cm-mw-template-ext-ground,
+	.cm-mw-template-ext2-ground,
+	.cm-mw-template-ext3-ground,
+	.cm-mw-template-link-ground,
+	.cm-mw-template-ext-link-ground,
+	.cm-mw-template-ext2-link-ground,
+	.cm-mw-template-ext3-link-ground,
+	.cm-mw-template2-ext-ground,
+	.cm-mw-template2-ext2-ground,
+	.cm-mw-template2-ext3-ground,
+	.cm-mw-template2-link-ground,
+	.cm-mw-template2-ext-link-ground,
+	.cm-mw-template2-ext2-link-ground,
+	.cm-mw-template2-ext3-link-ground,
+	.cm-mw-template3-ext-ground,
+	.cm-mw-template3-ext2-ground,
+	.cm-mw-template3-ext3-ground,
+	.cm-mw-template3-link-ground,
+	.cm-mw-template3-ext-link-ground,
+	.cm-mw-template3-ext2-link-ground,
+	.cm-mw-template3-ext3-link-ground,
+	.cm-mw-ext-ground,
+	.cm-mw-ext2-ground,
+	.cm-mw-ext3-ground,
+	.cm-mw-ext-link-ground,
+	.cm-mw-ext2-link-ground,
+	.cm-mw-ext3-link-ground,
+	.cm-mw-link-ground {
+		background-color: transparent;
+	}
+}

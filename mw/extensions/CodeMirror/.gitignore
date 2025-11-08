@@ -1,0 +1,13 @@
+*~
+*.kate-swp
+.*.swp
+.directory
+/node_modules/
+/coverage/
+/tests/selenium/log/
+/vendor/
+/composer.lock
+.eslintcache
+.env
+docs/
+/.stylelintcache

@@ -1,0 +1,170 @@
+/* eslint-disable-next-line n/no-missing-require */
+const { CompletionContext } = require( 'ext.CodeMirror.v6.lib' );
+const CodeMirror = require( '../../../resources/codemirror.js' );
+const { mediawiki } = require( '../../../resources/modes/mediawiki/codemirror.mediawiki.js' );
+const mwModeConfig = require( '../../../resources/modes/mediawiki/codemirror.mediawiki.config.js' );
+
+// Setup CodeMirror instance.
+const textarea = document.createElement( 'textarea' );
+document.body.appendChild( textarea );
+const cm = new CodeMirror( textarea, mediawiki() );
+cm.initialize();
+const [ source ] = cm.view.state.languageDataAt( 'autocomplete' );
+
+/**
+ * Create a completion context at a specific position.
+ *
+ * @return {CompletionContext}
+ */
+const createCompletionContext = () => new CompletionContext(
+	cm.view.state,
+	/** @see https://github.com/codemirror/autocomplete/blob/62dead94d0f4b256f0b437b4733cfef6449e8453/src/completion.ts#L273 */
+	cm.view.state.selection.main.from,
+	false,
+	cm.view
+);
+
+describe( 'MediaWiki autocomplete', () => {
+	it( 'parser functions (without #)', async () => {
+		cm.view.dispatch( {
+			changes: { from: 0, to: cm.view.state.doc.length, insert: '{{ מיון רגיל' },
+			selection: { anchor: 4, head: 4 }
+		} );
+		expect( await source( createCompletionContext() ) ).toEqual( {
+			from: 3,
+			options: [
+				{ label: '#ifexist', type: 'function' },
+				{ label: '#invoke', type: 'function' },
+				{ label: '#lst', type: 'function' },
+				{ label: '#special', type: 'function' },
+				{ label: 'filepath', type: 'function' },
+				{ label: 'int', type: 'function' },
+				{ label: 'ns', type: 'function' },
+				{ label: '!', type: 'constant' },
+				{ label: 'מיון רגיל', type: 'constant' }
+			]
+		} );
+	} );
+
+	it( 'parser functions (with #)', async () => {
+		cm.view.dispatch( {
+			changes: { from: 0, to: cm.view.state.doc.length, insert: '{{ #' },
+			selection: { anchor: 4, head: 4 }
+		} );
+		expect( await source( createCompletionContext() ) ).toEqual( {
+			from: 3,
+			options: [
+				{ label: '#ifexist', type: 'function' },
+				{ label: '#invoke', type: 'function' },
+				{ label: '#lst', type: 'function' },
+				{ label: '#special', type: 'function' },
+				{ label: 'filepath', type: 'function' },
+				{ label: 'int', type: 'function' },
+				{ label: 'ns', type: 'function' },
+				{ label: '!', type: 'constant' },
+				{ label: 'מיון רגיל', type: 'constant' }
+			]
+		} );
+	} );
+
+	it( 'behavior switch', () => {
+		cm.view.dispatch( {
+			changes: { from: 0, to: cm.view.state.doc.length, insert: '__no' },
+			selection: { anchor: 4, head: 4 }
+		} );
+		expect( source( createCompletionContext() ) ).toEqual( {
+			from: 0,
+			options: [ { label: '__notoc__', type: 'constant' } ],
+			validFor: /^[^\s<>[\]{}|#]*$/
+		} );
+	} );
+
+	it( 'closing nowiki tag', () => {
+		cm.view.dispatch( {
+			changes: { from: 0, to: cm.view.state.doc.length, insert: '<nowiki></' },
+			selection: { anchor: 10, head: 10 }
+		} );
+		expect( source( createCompletionContext() ) ).toEqual( {
+			from: 10,
+			options: [
+				...Object.keys( mwModeConfig.permittedHtmlTags )
+					.filter( ( label ) => !( label in mwModeConfig.implicitlyClosedHtmlTags ) )
+					.map( ( label ) => ( { label, type: 'type', apply: `${ label }>` } ) ),
+				{ label: 'nowiki', type: 'type', boost: 50, apply: 'nowiki>' }
+			],
+			validFor: /^[a-z\d]*$/i
+		} );
+	} );
+
+	it( 'closing indicator tag', () => {
+		cm.view.dispatch( {
+			changes: { from: 0, to: cm.view.state.doc.length, insert: '<indicator></' },
+			selection: { anchor: 13, head: 13 }
+		} );
+		expect( source( createCompletionContext() ) ).toEqual( {
+			from: 13,
+			options: [
+				...Object.keys( mwModeConfig.permittedHtmlTags )
+					.filter( ( label ) => !( label in mwModeConfig.implicitlyClosedHtmlTags ) )
+					.map( ( label ) => ( { label, type: 'type', apply: `${ label }>` } ) ),
+				{ label: 'indicator', type: 'type', boost: 50, apply: 'indicator>' }
+			],
+			validFor: /^[a-z\d]*$/i
+		} );
+	} );
+
+	it( 'closing ref tag', () => {
+		cm.view.dispatch( {
+			changes: { from: 0, to: cm.view.state.doc.length, insert: '<ref></' },
+			selection: { anchor: 7, head: 7 }
+		} );
+		expect( source( createCompletionContext() ) ).toEqual( {
+			from: 7,
+			options: [
+				...Object.keys( mwModeConfig.permittedHtmlTags )
+					.filter( ( label ) => !( label in mwModeConfig.implicitlyClosedHtmlTags ) )
+					.map( ( label ) => ( { label, type: 'type', apply: `${ label }>` } ) ),
+				{ label: 'ref', type: 'type', boost: 50, apply: 'ref>' }
+			],
+			validFor: /^[a-z\d]*$/i
+		} );
+	} );
+
+	it( 'opening tag', () => {
+		cm.view.dispatch( {
+			changes: { from: 0, to: cm.view.state.doc.length, insert: '<now' },
+			selection: { anchor: 4, head: 4 }
+		} );
+		expect( source( createCompletionContext() ) ).toEqual( {
+			from: 1,
+			options: [
+				...Object.keys( mwModeConfig.permittedHtmlTags ).map( ( label ) => ( { label, type: 'type' } ) ),
+				{ label: 'nowiki', type: 'type' },
+				{ label: 'indicator', type: 'type' },
+				{ label: 'gallery', type: 'type' },
+				{ label: 'ref', type: 'type' },
+				{ label: 'pre', type: 'type' },
+				{ label: 'references', type: 'type' },
+				{ label: 'templatestyles', type: 'type' },
+				{ label: 'myextension', type: 'type' }
+			],
+			validFor: /^[a-z\d]*$/i
+		} );
+	} );
+
+	it( 'protocol', () => {
+		cm.view.dispatch( {
+			changes: { from: 0, to: cm.view.state.doc.length, insert: '[htt' },
+			selection: { anchor: 4, head: 4 }
+		} );
+		expect( source( createCompletionContext() ) ).toEqual( {
+			from: 1,
+			options: [
+				{ label: 'ftp://', type: 'namespace' },
+				{ label: 'https://', type: 'namespace' },
+				{ label: 'news:', type: 'namespace' }
+			],
+			validFor: /^[a-z:/]*$/i
+		} );
+	} );
+} );
