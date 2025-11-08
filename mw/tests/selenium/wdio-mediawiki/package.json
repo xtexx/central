@@ -1,0 +1,18 @@
+{
+	"name": "wdio-mediawiki",
+	"version": "6.0.0",
+	"type": "module",
+	"main": "index.js",
+	"description": "WebdriverIO plugin for testing a MediaWiki site.",
+	"homepage": "https://gerrit.wikimedia.org/g/mediawiki/core/+/master/tests/selenium/wdio-mediawiki",
+	"license": "MIT",
+	"keywords": [
+		"mediawiki",
+		"wdio-plugin"
+	],
+	"files": [
+		"*.js",
+		"api/",
+		"specs/"
+	]
+}

@@ -1,0 +1,50 @@
+@import 'mediawiki.skin.variables.less';
+
+/*
+ * Titles, including username links, and also tag names
+ * are prone to getting jumbled up
+ * with other titles, usernames, etc. in mixed RTL-LTR environment.
+ */
+.mw-changeslist .mw-tag-marker,
+.mw-changeslist .mw-title {
+	unicode-bidi: embed;
+}
+
+/*
+ * Bidi-isolate these numbers.
+ * See https://phabricator.wikimedia.org/T93484
+ */
+.mw-plusminus-pos,
+.mw-plusminus-neg,
+.mw-plusminus-null {
+	unicode-bidi: isolate;
+}
+
+.mw-input-with-label {
+	white-space: nowrap;
+	display: inline-block;
+}
+
+.mw-title {
+	word-break: break-all;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+
+.mw-add-icon {
+	.cdx-mixin-css-icon( @cdx-icon-add, @color-icon-success );
+}
+
+.mw-subtract-icon {
+	.cdx-mixin-css-icon( @cdx-icon-subtract, @color-icon-error );
+}
+
+.mw-update-icon {
+	.cdx-mixin-css-icon( @cdx-icon-update );
+	padding: 0 2px;
+}
+
+.mw-merge-icon {
+	.cdx-mixin-css-icon( @cdx-icon-merge );
+	padding: 0 2px;
+}
