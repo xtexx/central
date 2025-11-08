@@ -1,0 +1,318 @@
+{
+	"@doc": "Please read README.md",
+	"name": "ConfirmEdit",
+	"version": "1.6.0",
+	"author": [
+		"Brion Vibber",
+		"Florian Schmidt",
+		"Sam Reed",
+		"..."
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:ConfirmEdit",
+	"descriptionmsg": "captcha-desc",
+	"license-name": "GPL-2.0-or-later",
+	"type": "antispam",
+	"requires": {
+		"MediaWiki": ">= 1.45"
+	},
+	"GroupPermissions": {
+		"*": {
+			"skipcaptcha": false
+		},
+		"user": {
+			"skipcaptcha": false
+		},
+		"autoconfirmed": {
+			"skipcaptcha": false
+		},
+		"bot": {
+			"skipcaptcha": true
+		},
+		"sysop": {
+			"skipcaptcha": true
+		}
+	},
+	"AvailableRights": [
+		"skipcaptcha"
+	],
+	"GrantPermissions": {
+		"basic": {
+			"skipcaptcha": true
+		}
+	},
+	"ExtensionFunctions": [
+		"MediaWiki\\Extension\\ConfirmEdit\\Hooks::confirmEditSetup"
+	],
+	"SpecialPages": {
+		"Captcha": "MediaWiki\\Extension\\ConfirmEdit\\Specials\\SpecialCaptcha"
+	},
+	"MessagesDirs": {
+		"ConfirmEdit": [
+			"i18n",
+			"i18n/api"
+		],
+		"hCaptcha": [
+			"i18n/hCaptcha"
+		]
+	},
+	"ExtensionMessagesFiles": {
+		"ConfirmEditAlias": "ConfirmEdit.alias.php"
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\ConfirmEdit\\": "includes/"
+	},
+	"AutoloadClasses": {
+		"MediaWiki\\Extension\\ConfirmEdit\\Maintenance\\CountFancyCaptchas": "maintenance/CountFancyCaptchas.php",
+		"MediaWiki\\Extension\\ConfirmEdit\\Maintenance\\DeleteOldFancyCaptchas": "maintenance/DeleteOldFancyCaptchas.php",
+		"MediaWiki\\Extension\\ConfirmEdit\\Maintenance\\GenerateFancyCaptchas": "maintenance/GenerateFancyCaptchas.php"
+	},
+	"ResourceModules": {
+		"ext.confirmEdit.editPreview.ipwhitelist.styles": {
+			"styles": "ext.confirmEdit.editPreview.ipwhitelist.styles.css"
+		},
+		"ext.confirmEdit.visualEditor": {
+			"scripts": "ve-confirmedit/ve.init.mw.CaptchaSaveErrorHandler.js",
+			"dependencies": "ext.confirmEdit.CaptchaInputWidget"
+		},
+		"ext.confirmEdit.simpleCaptcha": {
+			"styles": "ext.confirmEdit.simpleCaptcha.css"
+		}
+	},
+	"attributes": {
+		"VisualEditor": {
+			"PluginModules": [
+				"ext.confirmEdit.visualEditor"
+			]
+		}
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "resources",
+		"remoteExtPath": "ConfirmEdit/resources"
+	},
+	"HookHandlers": {
+		"ConfirmEditHooks": {
+			"class": "MediaWiki\\Extension\\ConfirmEdit\\Hooks",
+			"services": [
+				"MainWANObjectCache"
+			]
+		},
+		"AbuseFilterHooks": {
+			"class": "MediaWiki\\Extension\\ConfirmEdit\\AbuseFilterHooks",
+			"services": [
+				"MainConfig"
+			]
+		},
+		"RLRegisterModulesHandler": {
+			"class": "MediaWiki\\Extension\\ConfirmEdit\\Hooks\\Handlers\\RLRegisterModulesHandler",
+			"services": [
+				"ConfirmEditLoadedCaptchasProvider"
+			]
+		},
+		"MakeGlobalVariablesScriptHookHandler": {
+			"class": "MediaWiki\\Extension\\ConfirmEdit\\Hooks\\Handlers\\MakeGlobalVariablesScriptHookHandler",
+			"services": [
+				"ExtensionRegistry"
+			],
+			"optional_services": [
+				"VisualEditor.VisualEditorAvailabilityLookup",
+				"MobileFrontend.Context"
+			]
+		}
+	},
+	"Hooks": {
+		"EditPageBeforeEditButtons": "ConfirmEditHooks",
+		"EmailUserForm": "ConfirmEditHooks",
+		"EmailUser": "ConfirmEditHooks",
+		"PageSaveComplete": "ConfirmEditHooks",
+		"TitleReadWhitelist": "ConfirmEditHooks",
+		"AlternateEditPreview": "ConfirmEditHooks",
+		"ResourceLoaderRegisterModules": [
+			"ConfirmEditHooks",
+			"RLRegisterModulesHandler"
+		],
+		"MakeGlobalVariablesScript": "MakeGlobalVariablesScriptHookHandler",
+		"EditPage::showEditForm:fields": "ConfirmEditHooks",
+		"EditFilterMergedContent": "ConfirmEditHooks",
+		"APIGetAllowedParams": "ConfirmEditHooks",
+		"AuthChangeFormFields": "ConfirmEditHooks",
+		"AbuseFilterCustomActions": "AbuseFilterHooks"
+	},
+	"AuthManagerAutoConfig": {
+		"preauth": {
+			"CaptchaPreAuthenticationProvider": {
+				"class": "MediaWiki\\Extension\\ConfirmEdit\\Auth\\CaptchaPreAuthenticationProvider",
+				"sort": 10
+			}
+		}
+	},
+	"config": {
+		"CaptchaClass": {
+			"description": "Set to one of SimpleCaptcha, FancyCaptcha, QuestyCaptcha, ReCaptchaNoCaptcha, hCaptcha, Turnstile, or to a custom PHP subclass of SimpleCaptcha. Defaults to the SimpleCaptcha demo captcha. For example, to use FancyCaptcha: `$wgCaptchaClass = 'FancyCaptcha';`",
+			"value": "SimpleCaptcha"
+		},
+		"ConfirmEditLoadedCaptchas": {
+			"description": "Use this config to define captchas that could be loaded via the ConfirmEditCaptchaClass hook. These should be in the format as used to define the active captcha in $wgCaptchaClass. You should not need to extend this array if you have defined the captchas to use via $wgCaptchaClass or $wgCaptchaTriggers, as these are read to populate this list automatically.",
+			"value": []
+		},
+		"CaptchaWhitelistIP": {
+			"description": "DEPRECATED! Use CaptchaBypassIPs",
+			"value": false
+		},
+		"CaptchaBypassIPs": {
+			"description": "A list of IP addresses that can skip the captcha",
+			"value": false
+		},
+		"CaptchaTriggers": {
+			"description": "Actions which can trigger a captcha",
+			"value": {
+				"edit": false,
+				"create": false,
+				"sendemail": false,
+				"addurl": true,
+				"createaccount": true,
+				"badlogin": true,
+				"badloginperuser": true
+			},
+			"merge_strategy": "array_plus"
+		},
+		"CaptchaTriggersOnNamespace": {
+			"description": "Allows forcing/turning off Captcha in specific namespaces.",
+			"value": {},
+			"merge_strategy": "array_plus_2d"
+		},
+		"CaptchaStorageClass": {
+			"description": "PHP class used for storing Captcha related session data.",
+			"value": "MediaWiki\\Extension\\ConfirmEdit\\Store\\CaptchaSessionStore"
+		},
+		"CaptchaSessionExpiration": {
+			"description": "Number of seconds a captcha session should last in the data cache before expiring when managing through CaptchaCacheStore class.",
+			"value": 1800
+		},
+		"CaptchaBadLoginExpiration": {
+			"description": "Number of seconds after a bad login (from a specific IP address) that a captcha will be shown to that client on the login form to slow down password-guessing bots. A longer expiration time of $wgCaptchaBadLoginExpiration * 300 will also be applied against a login attempt count of $wgCaptchaBadLoginAttempts * 30.",
+			"value": 300
+		},
+		"CaptchaBadLoginPerUserExpiration": {
+			"description": "Number of seconds after a bad login (for a specific user account) that a captcha will be shown to that client on the login form to slow down password-guessing bots. A longer expiration time of $wgCaptchaBadLoginExpiration * 300 will be applied against a login attempt count of $wgCaptchaBadLoginAttempts * 30.",
+			"value": 600
+		},
+		"CaptchaBadLoginAttempts": {
+			"description": "Number of bad login attempts (from a specific IP address) before triggering the captcha. 0 means the captcha is presented on the first login. A captcha will also be triggered if the number of failed logins exceeds $wgCaptchaBadLoginAttempts * 30 in a period of $wgCaptchaBadLoginExpiration * 300.",
+			"value": 3
+		},
+		"CaptchaBadLoginPerUserAttempts": {
+			"description": "Number of bad login attempts (for a specific user account) before triggering the captcha. 0 means the captcha is presented on the first login. A captcha will also be triggered if the number of failed logins exceeds $wgCaptchaBadLoginPerUserAttempts * 30 in a period of $wgCaptchaBadLoginPerUserExpiration * 300.",
+			"value": 20
+		},
+		"CaptchaWhitelist": {
+			"description": "DEPRECATED: Use CaptchaIgnoredUrls.",
+			"value": false
+		},
+		"CaptchaIgnoredUrls": {
+			"description": "Urls that won't trigger a captcha.",
+			"value": false
+		},
+		"CaptchaRegexes": {
+			"description": "Additional regexes to check for. Use full regexes; can match things other than URLs such as junk edits. If the new version matches one and the old version doesn't, show the captcha screen.",
+			"value": []
+		},
+		"ConfirmEditEnabledAbuseFilterCustomActions": {
+			"description": "Feature flag to toggle list of available custom actions to enable in AbuseFilter. See AbuseFilterHooks::onAbuseFilterCustomActions.",
+			"value": []
+		},
+		"HCaptchaProxy": {
+			"description": "Proxy to use for outbound PHP web requests to hCaptcha servers (HCaptchaVerifyUrl)",
+			"value": false
+		},
+		"HCaptchaSiteKey": {
+			"description": "Sitekey from hCaptcha (requires creating an account)",
+			"value": ""
+		},
+		"HCaptchaSecretKey": {
+			"description": "Secret key from hCaptcha (requires creating an account)",
+			"value": ""
+		},
+		"HCaptchaSendRemoteIP": {
+			"description": "Whether to send the client's IP address to hCaptcha",
+			"value": false
+		},
+		"HCaptchaApiUrl": {
+			"description": "Url that the hCaptcha JS is loaded from; may want to use https://cn1.hcaptcha.com/1/api.js?endpoint=https://cn1.hcaptcha.com&assethost=https://assets-cn1.hcaptcha.com&imghost=https://imgs-cn1.hcaptcha.com&reportapi=https://reportapi-cn1.hcaptcha.com for Chinese visitors. You may also want to set $wgHCaptchaApiUrlIntegrityHash to verify the integrity of the JS script being loaded, for example if you're pinning to a specific version as per the hCaptcha documentation.",
+			"value": "https://js.hcaptcha.com/1/api.js"
+		},
+		"HCaptchaVerifyUrl": {
+			"description": "Url that the hCaptcha requested is verified against; may want to use https://cn1.hcaptcha.com/siteverify if server is in China",
+			"value": "https://api.hcaptcha.com/siteverify"
+		},
+		"HCaptchaEnterprise": {
+			"description": "Whether the provided sitekey is for hCaptcha Enterprise features. See https://www.hcaptcha.com/#enterprise-features",
+			"value": false
+		},
+		"HCaptchaInvisibleMode": {
+			"description": "Enable this to make the hCaptcha checkbox invisible and only show a challenge if hCaptcha determines it is needed. This forces the inclusion of a message with the hCaptcha Privacy Policy and Terms of Service",
+			"value": false
+		},
+		"HCaptchaCSPRules": {
+			"description": "Urls to add to the Content Security Policies (CSP) for hcaptcha.com and *.hcaptcha.com to a page when loading a hCaptcha",
+			"value": [
+				"https://hcaptcha.com",
+				"https://*.hcaptcha.com"
+			]
+		},
+		"HCaptchaSecureEnclave": {
+			"description": "Whether to use hCaptcha's Secure Enclave mode. If enabled, then $wgHCaptchaEnterprise must be true (because it is an Enterprise feature). You will need to modify $wgHCaptchaApiUrl as appropriate, such as to use https://js.hcaptcha.com/1/secure-api.js and make rendering explicit - See https://docs.hcaptcha.com/enterprise/secure_enclave",
+			"value": false
+		},
+		"HCaptchaDeveloperMode": {
+			"description": "Whether to place hCaptcha integration in developer mode. When in developer mode, potentially sensitive information is logged to debug logs. DO NOT enable on production wikis.",
+			"value": false
+		},
+		"HCaptchaUseRiskScore": {
+			"description": "Whether to use captcha risk signal. Unless specifically enabled or in developer mode, we do not want that sensitive information to be stored.",
+			"value": false
+		},
+		"HCaptchaApiUrlIntegrityHash": {
+			"description": "The sha256, sha384, or sha512 hash of the script loaded from HCaptchaApiUrl, for use with subresource integrity. See https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity for more information. Note that the hash algorithm should be specified as a prefix, with a dash, e.g. `sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC`",
+			"value": ""
+		},
+		"HCaptchaEnterpriseHealthCheckSiteVerifyErrorThreshold": {
+			"description": "Threshold to use for evaluating the number of failed SiteVerify calls to $wgHCaptchaVerifyUrl within a 1 minute period. If there are more errors accumulated than $wgHCaptchaEnterpriseHealthCheckSiteVerifyErrorThreshold in a 1 minute period, then the service is considered to be unhealthy and a failover mode is enabled.",
+			"value": 5
+		}
+	},
+	"ServiceWiringFiles": [
+		"includes/ServiceWiring.php"
+	],
+	"RateLimits": {
+		"badcaptcha": {
+			"ip": [
+				15,
+				60
+			],
+			"newbie": [
+				15,
+				60
+			],
+			"user": [
+				30,
+				60
+			]
+		}
+	},
+	"QUnitTestModule": {
+		"localBasePath": "tests/qunit/ext.confirmEdit.hCaptcha/",
+		"remoteExtPath": "ConfirmEdit/tests/qunit/ext.confirmEdit.hCaptcha/",
+		"scripts": [
+			"secureEnclave.test.js",
+			"ErrorWidget.test.js",
+			"ProgressIndicatorWidget.test.js",
+			"utils.test.js",
+			"ve/ve.init.mw.HCaptchaSaveErrorHandler.test.js",
+			"ve/ve.init.mw.HCaptchaOnLoadHandler.test.js"
+		],
+		"dependencies": [
+			"ext.confirmEdit.hCaptcha"
+		]
+	},
+	"manifest_version": 2
+}
