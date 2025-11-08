@@ -1,0 +1,28 @@
+{
+	"@metadata": {
+		"authors": [
+			"Bidumsábme",
+			"Olve Utne",
+			"Yupik"
+		]
+	},
+	"vector-languages": "Giela",
+	"vector-language-button-label": "{{PLURAL:$1|$1 giella|$1 giela}}",
+	"vector-no-language-button-label": "Lasedä gielajt",
+	"vector-action-addsection": "Lasedä ábdnasav",
+	"vector-action-delete": "Gádodä",
+	"vector-action-move": "Sirde",
+	"vector-action-protect": "Várrjalä",
+	"vector-view-create": "Álge",
+	"vector-view-edit": "Rävvdadä",
+	"vector-view-history": "Vuosedä histurjav",
+	"vector-view-view": "Lågå",
+	"vector-view-viewsource": "Vuosedä wikitiekstav",
+	"vector-more-actions": "Ienap",
+	"vector-feature-custom-font-size-name": "Täkksta",
+	"vector-toc-label": "Sisadno",
+	"vector-toc-beginning": "Állgo",
+	"vector-page-tools-label": "Riejdo",
+	"vector-page-tools-general-label": "Gájjkasatj",
+	"vector-unpin-element-label": "tjiega"
+}
