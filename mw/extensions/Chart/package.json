@@ -1,0 +1,19 @@
+{
+	"name": "chart",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"test:unit": "jest",
+		"test": "npm run lint && npm run test:unit",
+		"lint:i18n": "banana-checker --requireLowerCase=0 i18n/",
+		"lint": "npm -s run lint:js && npm -s run lint:styles && npm -s run lint:i18n",
+		"lint:js": "eslint --cache .",
+		"lint:styles": "stylelint --cache \"**/*.{less,css}\""
+	},
+	"devDependencies": {
+		"eslint-config-wikimedia": "0.31.0",
+		"grunt-banana-checker": "0.13.0",
+		"jest": "29.7.0",
+		"stylelint-config-wikimedia": "0.18.0"
+	}
+}

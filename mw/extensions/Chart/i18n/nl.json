@@ -1,0 +1,43 @@
+{
+	"@metadata": {
+		"authors": [
+			"Bdijkstra",
+			"Jeroen N",
+			"McDutchie",
+			"Siebrand"
+		]
+	},
+	"chart-desc": "Voegt de parserfunctie <code><nowiki>{{#chart:}}</nowiki></code> toe voor het weergeven van diagrammen",
+	"chart-error-chart-definition-not-found": "Diagramdefinitiepagina niet gevonden.",
+	"chart-error-chart-definition-invalid": "De grafiekdefinitiepagina is onjuist.",
+	"chart-error-data-source-invalid": "Ongeldige tabelgegevensbron opgegeven.",
+	"chart-error-data-source-page-not-found": "De bronpagina voor de tabelgegevens van het diagram is niet gevonden.",
+	"chart-error-default-source-not-specified": "Op de pagina met de diagramdefinitie wordt geen standaardgegevensbron opgegeven.",
+	"chart-error-incompatible-chart-definition": "Definitiepagina is niet compatibel met diagrammen.",
+	"chart-error-incompatible-data-source": "De pagina met tabelgegevensbronnen is niet compatibel met diagrammen.",
+	"chart-error-invalid-data-source": "De bronpagina voor tabelgegevens is onjuist.",
+	"chart-error-invalid-height": "De lengte moet een geheel getal groter dan of gelijk aan 100 zijn.",
+	"chart-error-invalid-width": "De breedte moet een geheel getal groter dan of gelijk aan 100 zijn.",
+	"chart-error-shell-disabled": "Diagrammen kunnen niet worden weergegeven omdat shell-uitvoering is uitgeschakeld.",
+	"chart-error-rendering-error": "Er is een fout opgetreden bij het weergeven van het diagram.",
+	"chart-error-unexpected": "Er is een onverwachte fout opgetreden bij het weergeven van de grafiek.",
+	"chart-error-category": "Pagina's met Chart-weergavefouten",
+	"chart-error-category-desc": "De pagina bevat een grafiek met weergavefouten.",
+	"chart-render-category": "Pagina's die de uitbreiding Chart gebruiken",
+	"chart-render-category-desc": "De pagina gebruikt de parserfunctie <code><nowiki>{{#chart}}</nowiki></code>.",
+	"chart-visualeditor-mwchartdialog-title": "Grafiek",
+	"chart-visualeditor-mwchartdialog-chart-label": "Grafiekdefinitiepagina",
+	"chart-visualeditor-mwchartdialog-data-label": "Bron tabelgegevens grafiek",
+	"chartjson-error-version": "$1 moet een geheel getal zijn tussen $2 en $3.",
+	"chartjson-error-enum": "$1 moet een van de volgende waarden zijn: $2",
+	"chart-error-source-not-found": "De bronpagina met tabelgegevens is niet gevonden.",
+	"chart-error-invalid-source-type": "De bronpagina met tabelgegevens is van een onjuist type.",
+	"chart-error-invalid-source-content": "De inhoud van de bronpagina met tabelgegevens is foutief.",
+	"chart-error-transforms-disabled": "Het transformeren van tabelgegevens is uitgeschakeld.",
+	"chart-error-request-too-large": "De grafiek- en tabelgegevens overschrijden de maximaal toegestane grootte van $1 bytes. Gebruik een kleinere verzameling gegevens of overweeg de [https://www.mediawiki.org/wiki/Extension:Chart/Transforms mogelijkheden voor gegevenstransformatie] om uw gegevens te filteren of te aggregeren.",
+	"chart-error-switchable-string": "De parameter “$1” moet een tekenreeks zijn of een object dat geldige taalcodes toewijst aan tekenreeksen van één regel die niet langer zijn dan $2 tekens en geen tabs en aan het eind geen spaties bevatten, bv. <kbd>{ \"nl\":\"Tekenreeks in het Nederlands\", ... }</kbd>",
+	"apihelp-chartinfo-summary": "Het huidige aantal unieke gebruiken van grafiekpagina’s ophalen. Herhaaldelijk gebruik van dezelfde grafiek op dezelfde pagina wordt beschouwd als éénmalig gebruik.",
+	"apihelp-chartinfo-param-global": "Stel in op ‘true’ om alle verbonden wiki’s op te nemen in plaats van alleen de lokale wiki.",
+	"apihelp-chartinfo-example-1": "Haal het aantal grafieken van de lokale wiki op.",
+	"apihelp-chartinfo-example-2": "Haal het aantal grafieken van alle wiki’s op."
+}

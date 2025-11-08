@@ -1,0 +1,9 @@
+{
+	"@metadata": {
+		"authors": [
+			"Pedian4169"
+		]
+	},
+	"chart-render-category": "Chart uzantısını kullanan sayfalar",
+	"chart-render-category-desc": "Bu sayfa, <code><nowiki>{{#chart\n}}</nowiki></code> ayrıştırıcı işlevini kullanır."
+}
