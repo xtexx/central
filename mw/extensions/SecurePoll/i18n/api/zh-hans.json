@@ -1,0 +1,23 @@
+{
+	"@metadata": {
+		"authors": [
+			"Anterdc99",
+			"Liuxinyu970226",
+			"Stang"
+		]
+	},
+	"apihelp-strikevote-summary": "允许管理员作废或取消作废投票。",
+	"apihelp-strikevote-param-option": "要执行的操作：作废或取消作废投票。",
+	"apihelp-strikevote-paramvalue-option-strike": "作废投票（从计数中移除）。",
+	"apihelp-strikevote-paramvalue-option-unstrike": "取消作废投票（将其恢复至计数）。",
+	"apihelp-strikevote-param-voteid": "要作废或取消作废的投票ID。",
+	"apihelp-strikevote-param-reason": "作废或取消作废投票的原因。",
+	"apihelp-strikevote-example-strike": "作废投票<kbd>1</kbd>，原因是<kbd>duplication</kbd>。",
+	"apihelp-strikevote-example-unstrike": "取消作废投票<kbd>1</kbd>，原因是<kbd>mistake</kbd>。",
+	"apierror-securepoll-mustbeloggedin-strikevote": "您必须登录以作废或取消作废投票。",
+	"apierror-securepoll-badvoteid": "<kbd>$1</kbd>不是一个有效的投票id。",
+	"apihelp-securepollauth-summary": "允许远程wiki在授予选举投票权限前对用户进行验证。",
+	"apihelp-securepollauth-param-token": "基于用户登录令牌的令牌。",
+	"apihelp-securepollauth-param-id": "想投票的用户ID。",
+	"apihelp-securepollauth-example-auth": "验证ID为<kbd>1</kbd>，登录令牌为<kbd>123ABC</kbd>的用户。"
+}

@@ -1,0 +1,261 @@
+{
+	"name": "SecurePoll",
+	"author": [
+		"Tim Starling",
+		"..."
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:SecurePoll",
+	"descriptionmsg": "securepoll-desc",
+	"license-name": "GPL-2.0-or-later",
+	"version": "3.0.0",
+	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.45"
+	},
+	"AvailableRights": [
+		"securepoll-create-poll",
+		"securepoll-edit-poll",
+		"securepoll-view-voter-pii"
+	],
+	"ContentHandlers": {
+		"SecurePoll": "\\MediaWiki\\Extension\\SecurePoll\\SecurePollContentHandler"
+	},
+	"SpecialPages": {
+		"SecurePoll": {
+			"class": "\\MediaWiki\\Extension\\SecurePoll\\SpecialSecurePoll",
+			"services": [
+				"SecurePoll.ActionPageFactory"
+			]
+		}
+	},
+	"JobClasses": {
+		"securePollPopulateVoterList": "\\MediaWiki\\Extension\\SecurePoll\\Jobs\\PopulateVoterListJob",
+		"securePollTallyElection": "\\MediaWiki\\Extension\\SecurePoll\\Jobs\\TallyElectionJob",
+		"securePollLogAdminAction": "\\MediaWiki\\Extension\\SecurePoll\\Jobs\\LogAdminActionJob",
+		"securePollArchiveElection": "\\MediaWiki\\Extension\\SecurePoll\\Jobs\\ArchiveElectionJob",
+		"securePollDeleteTally": "\\MediaWiki\\Extension\\SecurePoll\\Jobs\\DeleteTallyJob",
+		"securePollUnarchiveElection": "\\MediaWiki\\Extension\\SecurePoll\\Jobs\\UnarchiveElectionJob"
+	},
+	"APIModules": {
+		"securepollauth": {
+			"class": "\\MediaWiki\\Extension\\SecurePoll\\Api\\ApiSecurePollAuth",
+			"services": [
+				"UserFactory"
+			]
+		},
+		"strikevote": {
+			"class": "\\MediaWiki\\Extension\\SecurePoll\\Api\\ApiStrikeVote",
+			"services": [
+				"SecurePoll.ActionPageFactory"
+			]
+		}
+	},
+	"RestRoutes": [
+		{
+			"path": "/securepoll/set_translation/{entityid}/{language}",
+			"method": "POST",
+			"class": "\\MediaWiki\\Extension\\SecurePoll\\Rest\\SetTranslationHandler",
+			"services": [
+				"SecurePoll.TranslationRepo",
+				"SecurePoll.ActionPageFactory"
+			]
+		}
+	],
+	"MessagesDirs": {
+		"SecurePoll": [
+			"i18n",
+			"i18n/api"
+		]
+	},
+	"ExtensionMessagesFiles": {
+		"SecurePollAlias": "SecurePoll.alias.php",
+		"SecurePollNamespaces": "SecurePoll.namespaces.php"
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\SecurePoll\\": "includes/",
+		"MediaWiki\\Extension\\SecurePoll\\Maintenance\\": "maintenance/"
+	},
+	"ResourceModules": {
+		"ext.securepoll.htmlform": {
+			"localBasePath": "modules/ext.securepoll.htmlform",
+			"remoteExtPath": "SecurePoll/modules/ext.securepoll.htmlform",
+			"packageFiles": [
+				"dispatcher.js",
+				"page.log.js",
+				"page.create.js",
+				"page.list.js",
+				"page.vote.js",
+				"TranslationParser.js",
+				"TranslationFlattener.js",
+				"TranslationImporter.js",
+				"translation/dialog/ImportDialog.js",
+				"translation/pages/SelectSourcePage.js",
+				"translation/pages/ImportPage.js",
+				"translation/pages/ResultPage.js",
+				"page.vote.highlightWarnings.js",
+				"page.vote.stv.js",
+				"stv.vote/STVQuestionLayout.js",
+				"stv.vote/DraggableGroupWidget.js",
+				"stv.vote/DraggableItemWidget.js"
+			],
+			"dependencies": [
+				"oojs-ui",
+				"mediawiki.widgets.UserInputWidget",
+				"jquery.spinner",
+				"oojs-ui-widgets",
+				"mediawiki.widgets",
+				"oojs-ui-windows",
+				"oojs-ui.styles.icons-layout",
+				"oojs-ui.styles.icons-interactions",
+				"mediawiki.ForeignApi.core"
+			],
+			"messages": [
+				"securepoll-strike-button",
+				"securepoll-strike-reason",
+				"securepoll-unstrike-button",
+				"securepoll-translation-importer-no-content",
+				"securepoll-translation-importer-update-start",
+				"securepoll-translation-importer-update-parsed-content",
+				"securepoll-translation-importer-no-selected-language",
+				"cancel",
+				"securepoll-translation-import-dialog-title",
+				"securepoll-translation-import-action-import",
+				"securepoll-translation-import-action-done",
+				"securepoll-translation-error-no-page-title",
+				"securepoll-translation-error-invalid-source-api",
+				"securepoll-translation-result-error-title",
+				"securepoll-translation-result-error-text",
+				"securepoll-translation-result-import-pages-title",
+				"securepoll-translation-result-import-pages-text",
+				"securepoll-translation-result-description",
+				"securepoll-translation-import-start",
+				"securepoll-translation-select-import-source",
+				"securepoll-translation-select-import-source-api",
+				"securepoll-translation-select-import-source-page",
+				"securepoll-ballot-show-warnings",
+				"securepoll-ballot-show-all",
+				"securepoll-vote-stv-clear-btn-label",
+				"securepoll-stv-unranked-candidates",
+				"securepoll-stv-ranked-candidates"
+			]
+		},
+		"ext.securepoll": {
+			"styles": "ext.securepoll.css"
+		},
+		"ext.securepoll.special": {
+			"styles": "ext.securepoll.special.less"
+		}
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "modules",
+		"remoteExtPath": "SecurePoll/modules"
+	},
+	"Hooks": {
+		"UserLogout": "logout",
+		"LoadExtensionSchemaUpdates": "install",
+		"CanonicalNamespaces": "setup",
+		"TitleQuickPermissions": "setup",
+		"SpecialPage_initList": "setup"
+	},
+	"HookHandlers": {
+		"install": {
+			"class": "\\MediaWiki\\Extension\\SecurePoll\\HookHandler\\InstallHandler"
+		},
+		"setup": {
+			"class": "\\MediaWiki\\Extension\\SecurePoll\\HookHandler\\SetupHandler",
+			"services": [
+				"MainConfig"
+			]
+		},
+		"logout": {
+			"class": "\\MediaWiki\\Extension\\SecurePoll\\HookHandler\\LogoutHandler"
+		}
+	},
+	"ServiceWiringFiles": [
+		"includes/ServiceWiring.php"
+	],
+	"namespaces": [
+		{
+			"id": 830,
+			"name": "SecurePoll",
+			"constant": "NS_SECUREPOLL",
+			"subpages": true,
+			"defaultcontentmodel": "SecurePoll",
+			"conditional": true
+		},
+		{
+			"id": 831,
+			"name": "SecurePoll_talk",
+			"constant": "NS_SECUREPOLL_TALK",
+			"subpages": true,
+			"conditional": true
+		}
+	],
+	"QUnitTestModule": {
+		"localBasePath": "",
+		"remoteExtPath": "SecurePoll",
+		"scripts": [
+			"tests/qunit/TranslationParser.test.js",
+			"tests/qunit/TranslationFlattener.test.js",
+			"tests/qunit/highlightWarnings.test.js",
+			"tests/qunit/STVDragAndDropForm.test.js",
+			"tests/qunit/ImportDialog.test.js",
+			"tests/qunit/SelectSourcePage.test.js"
+		],
+		"templates": {
+			"DragAndDropForm.html": "tests/qunit/data/html/DragAndDropForm.html",
+			"DragAndDropFormReversed.html": "tests/qunit/data/html/DragAndDropFormReversed.html"
+		},
+		"dependencies": [
+			"ext.securepoll.htmlform"
+		]
+	},
+	"config": {
+		"SecurePollTempDir": {
+			"value": "/tmp"
+		},
+		"SecurePollShowErrorDetail": {
+			"value": false
+		},
+		"SecurePollKeepPrivateInfoDays": {
+			"value": 90,
+			"description": "Maximum number of days after a poll ends to store and show private information about voters. After this number of days, 1) private info is hidden from the user interface, and 2) the private info gets deleted when running the PurgePrivateVoteData maintenance script. Set to 0 to hide/delete the data as soon as the poll ends."
+		},
+		"SecurePollCreateWikiGroupDir": {
+			"value": "/../",
+			"description": "Directory containing files defining groups of wikis that can participate in an election. File names are defined in SecurePollCreateWikiGroups."
+		},
+		"SecurePollExcludedWikis": {
+			"value": [],
+			"description": "List of wikis to be excluded from SecurePoll processes"
+		},
+		"SecurePollCreateWikiGroups": {
+			"value": [],
+			"description": "Array of $fileName => $messageKey for defining groups of wikis that can participate in an election, and the groups' labels in the Create form. Files should be stored in SecurePollCreateWikiGroupDir with the suffix .dblist, and contain a list of participating wikis. The suffix should be omitted from the file names given here."
+		},
+		"SecurePollCreateRemoteScriptPath": {
+			"value": "https:$wgServer/w"
+		},
+		"SecurePollUseNamespace": {
+			"value": false,
+			"description": "Make the SecurePoll namespace available, and record election details to pages in this namespace as JSON. This namespace is a read-only record of changes to the poll, changes to the poll's messages in each language, and changes to the voter eligibility lists. It writes pages such as SecurePoll:1, SecurePoll:1/msg/en, and SecurePoll:1/list/include-list. A \"reason\" box is added to the various Special:SecurePoll edit pages, and whatever is typed there ends up as the edit summary for that revision. You can click on the history tab to see who has made what changes, when, and what their reason was. Must not be used together with SecurePollUseMediaWikiNamespace."
+		},
+		"SecurePollUseMediaWikiNamespace": {
+			"value": false,
+			"description": "Similar to SecurePollUseNamespace, but records the election details to subpages of 'MediaWiki:SecurePoll', instead of creating a dedicated namespace. Must not be used together with SecurePollUseNamespace."
+		},
+		"SecurePollUseLogging": {
+			"value": false,
+			"description": "Whether to log admin actions to securepoll_log table."
+		},
+		"SecurePollMostActiveWikisThreshold": {
+			"value": 10,
+			"description": "Consider only wikis where the user has more than X% of their edits as most active wikis"
+		},
+		"SecurePollEditOtherWikis": {
+			"value": false,
+			"description": "In a wiki farm, allows SecurePoll to create redirect polls at other wikis under certain conditions. Adds an option to Special:SecurePoll/create that controls this. If you are using a central votewiki, this should be enabled on your votewiki, and disabled on other wikis."
+		}
+	},
+	"manifest_version": 2
+}
