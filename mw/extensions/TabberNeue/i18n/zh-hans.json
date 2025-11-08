@@ -1,0 +1,25 @@
+{
+	"@metadata": {
+		"authors": [
+			"GuoPC",
+			"Lakejason0",
+			"NekoCharm",
+			"Xiaomingyan",
+			"Yfdyh000",
+			"沈澄心"
+		]
+	},
+	"tabberneue-desc": "允许在页面内创建标签页。是[https://www.mediawiki.org/wiki/Extension:Tabber Tabber扩展]的分支。",
+	"tabberneue-button-next": "下一个",
+	"tabberneue-button-prev": "上一个",
+	"tabberneue-tabber-category": "使用Tabber解析器标签的页面",
+	"tabberneue-tabber-category-desc": "该页面使用<code><tabber></code>解析器标签。",
+	"tabberneue-tabbertransclude-category": "使用TabberTransclude解析器标签的页面",
+	"tabberneue-tabbertransclude-category-desc": "该页面使用<code><tabbertransclude></code>解析器标签。",
+	"tabberneue-visualeditor-mwtabberdialog-title": "Tabber",
+	"tabberneue-visualeditor-mwtabberdialog-desc": "有关具体用法，参见[https://www.mediawiki.org/wiki/Extension:TabberNeue#Simple_tabbers 文档]。",
+	"tabberneue-visualeditor-mwtabbertranscludeinspector-title": "Tabber（嵌入）",
+	"tabberneue-visualeditor-mwtabbertranscludeinspector-desc": "有关具体用法，参见[https://www.mediawiki.org/wiki/Extension:TabberNeue#Transclusion 文档]。",
+	"tabberneue-error-tabs-title": "处理标签时发生以下错误：",
+	"tabberneue-error-tabs-duplicate-label": "标签名“$1”已被使用。"
+}

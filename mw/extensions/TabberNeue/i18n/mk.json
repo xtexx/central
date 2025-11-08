@@ -1,0 +1,20 @@
+{
+	"@metadata": {
+		"authors": [
+			"Bjankuloski06"
+		]
+	},
+	"tabberneue-desc": "Овозможува создавање на јазичиња во рамките на една страница. Расклонето од [https://www.mediawiki.org/wiki/Extension:Tabber Extension:Tabber].",
+	"tabberneue-button-next": "Следно",
+	"tabberneue-button-prev": "Претходно",
+	"tabberneue-tabber-category": "Страници со расчленувачка ознака Tabber",
+	"tabberneue-tabber-category-desc": "Оваа страница ја користи расчленувачката ознака <code><tabber></code>.",
+	"tabberneue-tabbertransclude-category": "Страници со расчленувачка ознака TabberTransclude",
+	"tabberneue-tabbertransclude-category-desc": "Оваа страница ја користи расчленувачката ознака <code><tabbertransclude></code>.",
+	"tabberneue-visualeditor-mwtabberdialog-title": "Tabber",
+	"tabberneue-visualeditor-mwtabberdialog-desc": "Погледајте ја [https://www.mediawiki.org/wiki/Extension:TabberNeue#Simple_tabbers документацијата] за да дознаете за употребата.",
+	"tabberneue-visualeditor-mwtabbertranscludeinspector-title": "Tabber (превметнување)",
+	"tabberneue-visualeditor-mwtabbertranscludeinspector-desc": "Погледајте ја [https://www.mediawiki.org/wiki/Extension:TabberNeue#Transclusion документацијата] за да дознаете за употребата.",
+	"tabberneue-error-tabs-title": "Се јавија следниве грешки при обработката на јазичињата:",
+	"tabberneue-error-tabs-duplicate-label": "Натписот „$1“ е зафатен во друго јазиче."
+}

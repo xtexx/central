@@ -1,0 +1,165 @@
+{
+	"name": "TabberNeue",
+	"version": "3.3.0",
+	"author": [
+		"alistair3149",
+		"Eric Fortin",
+		"Alexia E. Smith",
+		"Ciencia Al Poder"
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:TabberNeue",
+	"descriptionmsg": "tabberneue-desc",
+	"type": "parserhook",
+	"license-name": "GPL-3.0-or-later",
+	"requires": {
+		"MediaWiki": ">= 1.43.0"
+	},
+	"MessagesDirs": {
+		"TabberNeue": [
+			"/i18n"
+		]
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\TabberNeue\\": "includes/"
+	},
+	"TrackingCategories": [
+		"tabberneue-tabber-category",
+		"tabberneue-tabbertransclude-category"
+	],
+	"ResourceModules": {
+		"ext.tabberNeue.init.styles": {
+			"styles": [
+				"ext.tabberNeue.init/ext.tabberNeue.init.less"
+			]
+		},
+		"ext.tabberNeue": {
+			"packageFiles": [
+				"ext.tabberNeue/ext.tabberNeue.js",
+				{
+					"name": "ext.tabberNeue/config.json",
+					"config": {
+						"cdnMaxAge": "CdnMaxAge",
+						"enableAnimation": "TabberNeueEnableAnimation",
+						"updateLocationOnTabChange": "TabberNeueUpdateLocationOnTabChange"
+					}
+				},
+				"ext.tabberNeue/Transclude.js",
+				"ext.tabberNeue/Util.js"
+			],
+			"messages": [
+				"error",
+				"tabberneue-button-next",
+				"tabberneue-button-prev"
+			],
+			"styles": [
+				"ext.tabberNeue/ext.tabberNeue.less",
+				"ext.tabberNeue/ext.tabberNeue.mobile.less"
+			],
+			"dependencies": [
+				"mediawiki.util"
+			]
+		},
+		"ext.tabberNeue.visualEditor": {
+			"scripts": [
+				"ve-tabberNeue/ve.ce.MWTabberNode.js",
+				"ve-tabberNeue/ve.dm.MWTabberNode.js",
+				"ve-tabberNeue/ve.ui.MWTabberContextItem.js",
+				"ve-tabberNeue/ve.ui.MWTabberDialog.js",
+				"ve-tabberNeue/ve.ui.MWTabberDialogTool.js",
+				"ve-tabberNeue/ve.ce.MWTabberTranscludeNode.js",
+				"ve-tabberNeue/ve.dm.MWTabberTranscludeNode.js",
+				"ve-tabberNeue/ve.ui.MWTabberTranscludeContextItem.js",
+				"ve-tabberNeue/ve.ui.MWTabberTranscludeInspector.js",
+				"ve-tabberNeue/ve.ui.MWTabberTranscludeInspectorTool.js"
+			],
+			"styles": [
+				"ve-tabberNeue/ve.ui.MWTabberDialog.less",
+				"ve-tabberNeue/ve.ui.MWTabberIcons.less"
+			],
+			"dependencies": [
+				"ext.visualEditor.mwcore"
+			],
+			"messages": [
+				"tabberneue-visualeditor-mwtabberdialog-title",
+				"tabberneue-visualeditor-mwtabberdialog-desc",
+				"tabberneue-visualeditor-mwtabbertranscludeinspector-title",
+				"tabberneue-visualeditor-mwtabbertranscludeinspector-desc"
+			]
+		},
+		"ext.tabberNeue.icons": {
+			"class": "MediaWiki\\ResourceLoader\\ImageModule",
+			"selector": ".tabber__header__{name}:after",
+			"images": {
+				"next": {
+					"file": {
+						"ltr": "ext.tabberNeue.icons/next-ltr.svg",
+						"rtl": "ext.tabberNeue.icons/next-rtl.svg"
+					}
+				},
+				"prev": {
+					"file": {
+						"ltr": "ext.tabberNeue.icons/previous-ltr.svg",
+						"rtl": "ext.tabberNeue.icons/previous-rtl.svg"
+					}
+				}
+			}
+		}
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "modules",
+		"remoteExtPath": "TabberNeue/modules"
+	},
+	"config_prefix": "wg",
+	"config": {
+		"TabberNeueParseTabName": {
+			"value": false,
+			"description": "Parse tab name as wikitext. This can have a performance impact and cause unexpected behaviors.",
+			"public": true
+		},
+		"TabberNeueEnableAnimation": {
+			"value": true,
+			"description": "Enable or disable smooth scroll animation",
+			"public": true
+		},
+		"TabberNeueUpdateLocationOnTabChange": {
+			"value": true,
+			"description": "If enabled, when a tab is selected, the URL displayed on the browser changes. Opening this URL makes that tab initially selected.",
+			"public": true
+		},
+		"TabberNeueAddTabPrefix": {
+			"value": true,
+			"description": "If enabled, tabpanel IDs will be prepended with \"tabber-\". This avoids potential conflicts with page headings that use the same IDs.",
+			"public": true
+		}
+	},
+	"Hooks": {
+		"ParserFirstCallInit": "TabberHooks",
+		"ScribuntoExternalLibraries": "MediaWiki\\Extension\\TabberNeue\\Hooks::onScribuntoExternalLibraries"
+	},
+	"HookHandlers": {
+		"TabberHooks": {
+			"class": "MediaWiki\\Extension\\TabberNeue\\Hooks",
+			"services": [
+				"MainConfig",
+				"TabberNeue.TabNameHelper",
+				"HookContainer"
+			]
+		}
+	},
+	"ServiceWiringFiles": [
+		"includes/ServiceWiring.php"
+	],
+	"attributes": {
+		"CodeMirror": {
+			"TagModes": {
+				"tabber": "text/mediawiki"
+			}
+		},
+		"VisualEditor": {
+			"PluginModules": [
+				"ext.tabberNeue.visualEditor"
+			]
+		}
+	},
+	"manifest_version": 2
+}
