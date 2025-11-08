@@ -1,0 +1,12 @@
+{
+	"@metadata": {
+		"authors": [
+			"Derslek",
+			"Ерней",
+			"Ильгиз"
+		]
+	},
+	"scribunto-doc-page-does-not-exist": "''[[$1]] битен төзеп бу модульнең документациясен шунда урнаштырырга була''",
+	"scribunto-console-clear": "Бушату",
+	"scribunto-lua-error": "Lua хатасы: $2."
+}
