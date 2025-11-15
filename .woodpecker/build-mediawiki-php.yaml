@@ -4,7 +4,7 @@ matrix:
 
 steps:
     - name: build
-      image: woodpeckerci/plugin-docker-buildx
+      image: woodpeckerci/plugin-docker-buildx:6
       settings:
           platforms: linux/amd64
           repo: codeberg.org/${CI_REPO_OWNER}/x-mediawiki-php

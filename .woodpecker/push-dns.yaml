@@ -11,7 +11,7 @@ steps:
           - echo "$NTFY_TOKEN" > services/dns/dnscontrol/ntfytoken.txt
           - cp -R services/dns/zones services/dns/dnscontrol/zones
     - name: push
-      image: woodpeckerci/plugin-docker-buildx
+      image: woodpeckerci/plugin-docker-buildx:6
       settings:
           dry-run: true
           platforms: linux/amd64
