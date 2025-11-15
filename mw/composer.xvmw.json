@@ -5,7 +5,8 @@
 				"composer.local.json",
 				"extensions/*/composer.json",
 				"skins/*/composer.json"
-			]
+			],
+			"merge-dev": false
 		}
 	},
 	"require": {
