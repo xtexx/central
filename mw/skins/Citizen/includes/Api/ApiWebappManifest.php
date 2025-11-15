@@ -1,24 +1,6 @@
 <?php
-/**
- * Citizen - A responsive skin developed for the Star Citizen Wiki
- *
- * This file is part of Citizen.
- *
- * Citizen is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Citizen is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Citizen.  If not, see <https://www.gnu.org/licenses/>.
- *
- * @file
- */
+
+declare( strict_types=1 );
 
 namespace MediaWiki\Skins\Citizen\Api;
 
@@ -49,15 +31,12 @@ class ApiWebappManifest extends ApiBase {
 
 	private array $options;
 
-	/**
-	 * @inheritDoc
-	 */
 	public function __construct(
-		private ApiMain $main,
-		private string $moduleName,
-		private Language $contentLanguage,
-		private HttpRequestFactory $httpRequestFactory,
-		private UrlUtils $urlUtils,
+		private readonly ApiMain $main,
+		private readonly string $moduleName,
+		private readonly Language $contentLanguage,
+		private readonly HttpRequestFactory $httpRequestFactory,
+		private readonly UrlUtils $urlUtils,
 	) {
 		parent::__construct( $main, $moduleName );
 		$this->config = $this->getConfig();
@@ -117,7 +96,7 @@ class ApiWebappManifest extends ApiBase {
 			if ( count( $icon ) === 0 ) {
 				continue;
 			}
-			array_push( $icons, $icon );
+			$icons[] = $icon;
 		}
 		return $icons;
 	}
@@ -176,7 +155,7 @@ class ApiWebappManifest extends ApiBase {
 			}
 
 			// Set sizes to any if it is a SVG
-			if ( substr( $logoPath, -3 ) === 'svg' ) {
+			if ( str_ends_with( $logoPath, 'svg' ) ) {
 				$icon['sizes'] = 'any';
 				$icon['type'] = 'image/svg+xml';
 			}
