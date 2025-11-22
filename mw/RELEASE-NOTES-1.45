@@ -1,11 +1,16 @@
-
 = MediaWiki 1.45 =
+
+PHP 8.1 workboard: https://phabricator.wikimedia.org/tag/php_8.1_support/
+PHP 8.2 workboard: https://phabricator.wikimedia.org/tag/php_8.2_support/
+PHP 8.3 workboard: https://phabricator.wikimedia.org/tag/php_8.3_support/
+PHP 8.4 workboard: https://phabricator.wikimedia.org/tag/php_8.4_support/
+PHP 8.5 workboard: https://phabricator.wikimedia.org/tag/php_8.5_support/
 
 == MediaWiki 1.45.0-PRERELEASE ==
 
 THIS IS NOT A RELEASE YET
 
-MediaWiki 1.45 is an alpha-quality development branch, and is not recommended
+MediaWiki 1.45 is a pre-release testing branch, and is not recommended
 for use in production.
 
 == Upgrading notes for 1.45 ==
@@ -67,7 +72,7 @@ For notes on 1.44.x and older releases, see HISTORY.
 * (T394054) $wgParserEnableLegacyMediaDOM and $wgUseContentMediaStyles
   were removed.  New media markup is now always enabled.  More information:
   https://www.mediawiki.org/wiki/Parsoid/Parser_Unification/Media_structure/FAQ
-* $wgPageLinksSchemaMigrationStage has been removed.
+* (T299947) $wgPageLinksSchemaMigrationStage has been removed.
 * (T405087) $wgDBDefaultGroup has been removed without deprecation.
   Use ILBFactory::setDefaultGroupName() instead.
 * (T306325) $wgEnableSearchContributorsByIP has been removed.
@@ -265,6 +270,8 @@ because of Phabricator reports.
  - ISQLPlatform
 * Some undocumented behaviors of ParserOptions::setInterfaceMessage() have
   been moved to a new method ParserOptions::setIsMessage(). (T393601, T395589)
+* Old hook handler styles, deprecated in 1.41, have been removed. See
+  `HookContainer::register` for the accepted formats. (T401532)
 * The ParserOutput constructor now enforces strict type hints on its arguments.
   Passing null as the $languageLinks parameter was deprecated in 1.43.
 * ParserOutput::addTemplate() now throws an InvalidArgumentException if an
@@ -360,6 +367,8 @@ because of Phabricator reports.
   use SkinFactory::getInstalledSkins().
 * Skin::makeSpecialUrl and Skin::makeSpecialUrlSubpage, deprecated in 1.39 has
   been removed. Instead, use the replacements in SkinComponentUtils.
+* wfExpandIRI() and wfGetServerUrl(), deprecated since 1.39, has been removed.
+  Instead, use UrlUtils::expandIRI() and UrlUtils::getServer().
 
 === Deprecations in 1.45 ===
 
@@ -521,7 +530,10 @@ because of Phabricator reports.
   - Wikimedia\Stats\IBufferingStatsdDataFactory
   - Wikimedia\Stats\NullStatsdDataFactory
   - Wikimedia\Stats\StatsdAwareInterface
-* …
+* Passing a null ParserOptions to OutputTransformPipeline::run() has been
+  deprecated and emits warnings.  All callers which passed `null` should
+  have been removed with the deprecation (in MW 1.44) and removal (in this
+  release) of ParserOutput::getText().
 
 === Other changes in 1.45 ===
 
