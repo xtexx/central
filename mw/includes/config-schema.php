@@ -1886,6 +1886,7 @@ return [
 			'AllowCrossOrigin' => false,
 			'RestAllowCrossOriginCookieAuth' => false,
 			'SessionSecret' => false,
+			'EnableUnsafeXsltOption' => false,
 			'CookieExpiration' => 2592000,
 			'ExtendedLoginCookieExpiration' => 15552000,
 			'SessionCookieJwtExpiration' => 14400,
