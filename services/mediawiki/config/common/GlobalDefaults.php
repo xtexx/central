@@ -145,6 +145,7 @@ $wgUseNPPatrol = true;
 $wgUseFilePatrol = true;
 $wgFragmentMode = ['html5'];
 $wgRestrictDisplayTitle = false;
+$wgUseLeximorph = true;
 
 $wgConditionalUserOptions['showhiddencats'] = [
 	[1, [CUDCOND_USERGROUP, 'sysop']],
