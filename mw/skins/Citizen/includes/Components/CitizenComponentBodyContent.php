@@ -4,10 +4,9 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Skins\Citizen\Components;
 
-use DOMDocument;
-use DOMElement;
-use DOMNode;
-use DOMXpath;
+use Wikimedia\Parsoid\DOM\Document;
+use Wikimedia\Parsoid\DOM\Element;
+use Wikimedia\Parsoid\DOM\Node;
 use Wikimedia\Parsoid\Utils\DOMCompat;
 use Wikimedia\Parsoid\Utils\DOMUtils;
 
@@ -46,18 +45,10 @@ class CitizenComponentBodyContent implements CitizenComponent {
 	/**
 	 * Splits the body of the document into sections in a single pass.
 	 */
-	private function makeSections( DOMDocument $doc ): DOMDocument {
-		$xpath = new DOMXpath( $doc );
-		$containers = $xpath->query(
-			'//div[contains(concat(" ",normalize-space(@class)," ")," mw-parser-output ")][1]'
-		);
+	private function makeSections( Document $doc ): Document {
+		$container = DOMCompat::querySelector( $doc, 'div.mw-parser-output' );
 
-		if ( $containers->length === 0 ) {
-			return $doc;
-		}
-
-		$container = $containers->item( 0 );
-		if ( !( $container instanceof DOMElement ) ) {
+		if ( $container === null ) {
 			return $doc;
 		}
 
@@ -96,8 +87,8 @@ class CitizenComponentBodyContent implements CitizenComponent {
 	 * This method has the side effect of setting the `$topHeadingName`
 	 * property when the first valid section heading is found.
 	 */
-	private function isSectionBreak( DOMNode $node ): bool {
-		if ( !$node instanceof DOMElement ) {
+	private function isSectionBreak( Node $node ): bool {
+		if ( !$node instanceof Element ) {
 			return false;
 		}
 
@@ -119,8 +110,8 @@ class CitizenComponentBodyContent implements CitizenComponent {
 		}
 	}
 
-	private function getHeadingName( DOMNode $node ): ?string {
-		if ( !( $node instanceof DOMElement ) ) {
+	private function getHeadingName( Node $node ): ?string {
+		if ( !( $node instanceof Element ) ) {
 			return null;
 		}
 
@@ -129,15 +120,17 @@ class CitizenComponentBodyContent implements CitizenComponent {
 		// will be required (T13555).
 		if ( DOMCompat::getClassList( $node )->contains( 'mw-heading' ) ) {
 			$headingNode = DOMCompat::querySelector( $node, implode( ',', $this->topHeadingTags ) );
-			if ( $headingNode instanceof DOMElement ) {
+			if ( $headingNode instanceof Element ) {
 				$tagName = $headingNode->tagName;
-				return in_array( $tagName, $this->topHeadingTags ) ? $tagName : null;
+				// Normalize the tag name to lowercase
+				// Since tagName seems to return uppercase in MW 1.44+ with PHP 8.4+
+				return in_array( strtolower( $tagName ), $this->topHeadingTags ) ? $tagName : null;
 			}
 			return null;
 		}
 
 		$tagName = $node->tagName;
-		return in_array( $tagName, $this->topHeadingTags ) ? $tagName : null;
+		return in_array( strtolower( $tagName ), $this->topHeadingTags ) ? $tagName : null;
 	}
 
 	/**
@@ -145,10 +138,10 @@ class CitizenComponentBodyContent implements CitizenComponent {
 	 * This is used to filter out headings that shouldn't create sections,
 	 * e.g., headings inside the Table of Contents.
 	 */
-	private function isValidSectionHeading( DOMElement $element ): bool {
+	private function isValidSectionHeading( Element $element ): bool {
 		// A heading element can be the element itself (h1-h6) or a wrapper div.
 		$headingElement = $element;
-		if ( !in_array( $element->tagName, $this->topHeadingTags ) ) {
+		if ( !in_array( strtolower( $element->tagName ), $this->topHeadingTags ) ) {
 			// If the element is not a heading tag, it might be a wrapper.
 			$found = DOMCompat::querySelector( $element, implode( ',', $this->topHeadingTags ) );
 			if ( !$found ) {
@@ -158,7 +151,7 @@ class CitizenComponentBodyContent implements CitizenComponent {
 		}
 
 		$parent = $headingElement->parentNode;
-		if ( !( $parent instanceof DOMElement ) ) {
+		if ( !( $parent instanceof Element ) ) {
 			// Should not happen in a valid document.
 			return false;
 		}
@@ -171,7 +164,7 @@ class CitizenComponentBodyContent implements CitizenComponent {
 	/**
 	 * Prepare section headings, add required classes
 	 */
-	private function prepareHeading( DOMDocument $doc, DOMElement $heading ): void {
+	private function prepareHeading( Document $doc, Element $heading ): void {
 		DOMCompat::getClassList( $heading )->add( 'citizen-section-heading' );
 
 		// prepend indicator - this avoids a reflow by creating a placeholder for a toggling indicator
@@ -183,7 +176,7 @@ class CitizenComponentBodyContent implements CitizenComponent {
 	/**
 	 * Creates a Section body element
 	 */
-	private function createSectionBodyElement( DOMDocument $doc, int $sectionNumber ): DOMElement {
+	private function createSectionBodyElement( Document $doc, int $sectionNumber ): Element {
 		$sectionBody = $doc->createElement( 'section' );
 		$sectionBody->setAttribute( 'id', 'citizen-section-' . $sectionNumber );
 		$sectionBody->setAttribute( 'class', self::SECTION_CLASS );

@@ -114,8 +114,10 @@ class SkinHooks implements
 		$this->addSiteTools( $skin, $bar );
 
 		$iconMap = [
-			'n-specialpages' => 'specialPages', // TODO: Remove when we drop MW 1.43 support AND T405413 is resolved
-			't-specialpages' => 'specialPages', // TODO: Remove when we drop MW 1.43 support
+			// TODO: Remove when we drop MW 1.43 support AND T405413 is resolved
+			'n-specialpages' => 'specialPages',
+			// TODO: Remove when we drop MW 1.43 support
+			't-specialpages' => 'specialPages',
 			't-upload' => 'upload',
 		];
 
@@ -295,13 +297,13 @@ class SkinHooks implements
 			'contributions' => 'userContributions',
 			'emailuser' => 'message',
 			// Extension:Cargo
-			'cargo-pagevalues' => 'database',
+			'cargo-pagevalues' => 'table',
 			// Extension:CiteThisPage
 			'citethispage' => 'quotes',
 			// Extension:CreateRedirect
 			'createredirect' => 'articleRedirect',
 			// Extension:SemanticMediaWiki
-			'smwbrowselink' => 'database',
+			'smwbrowselink' => 'table',
 			// Extension:UrlShortener
 			'urlshortener' => 'link',
 			'urlshortener-qrcode' => 'qrCode',
@@ -412,7 +414,9 @@ class SkinHooks implements
 			// Extension:VisualEditor
 			've-edit' => 'edit',
 			// Extension:DiscussionTools
-			'addsection' => 'speechBubbleAdd'
+			'addsection' => 'speechBubbleAdd',
+			// Extension:Page Forms
+			'formedit' => 'tableAddRowBefore'
 		];
 
 		// If both visual edit and source edit buttons are present

@@ -280,7 +280,10 @@ const typeahead = {
 		];
 
 		replaceRules.forEach( ( rule ) => {
-			if ( rule.clients.includes( searchClient.active.id ) && searchQuery.value.startsWith( rule.startWith ) ) {
+			if (
+				rule.clients.includes( searchClient.active.id ) &&
+				searchQuery.value.startsWith( rule.startWith )
+			) {
 				searchQuery.replace( rule.pattern, rule.replace );
 			}
 		} );
@@ -339,9 +342,7 @@ const typeahead = {
 
 /**
  * Fetch suggestions from API and render the suggetions in HTML
- *
  */
-// eslint-disable-next-line es-x/no-async-functions
 async function getSuggestions() {
 	const typeaheadInputElement = typeahead.input.element;
 
@@ -364,7 +365,10 @@ async function getSuggestions() {
 			// Update placeholder with no result content
 			listEl.innerHTML = '';
 			groupEl.hidden = true;
-			placeholderEl.innerHTML = searchResults.getPlaceholderHTML( searchQuery.value, compiledTemplates );
+			placeholderEl.innerHTML = searchResults.getPlaceholderHTML(
+				searchQuery.value,
+				compiledTemplates
+			);
 			placeholderEl.hidden = false;
 		}
 

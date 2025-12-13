@@ -1,22 +1,68 @@
 name: 🔍 CI
 
 on:
+  schedule:
+    - cron: "0 0 * * *"
   push:
     branches:
       - "main"
+    paths-ignore:
+      - "docs/**"
   pull_request:
     branches:
       - "**"
       - "!dependabot/**"
       - "!release-please--branches--**"
+    paths-ignore:
+      - "docs/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: 🤔 Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      php: ${{ steps.filter.outputs.php_any_changed }}
+      script: ${{ steps.filter.outputs.script_any_changed }}
+      stylesheet: ${{ steps.filter.outputs.stylesheet_any_changed }}
+      i18n: ${{ steps.filter.outputs.i18n_any_changed }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: tj-actions/changed-files@v47
+        id: filter
+        with:
+          files_yaml: |
+            php:
+              - includes/**/*.php
+              - tests/**/*.php
+              - skin.json
+              - composer.json
+              - composer.lock
+              - .github/workflows/ci.yml
+            script:
+              - resources/**/*.js
+              - package.json
+              - package-lock.json
+              - .eslintrc.json
+            stylesheet:
+              - resources/**/*.css
+              - resources/**/*.less
+              - skinStyles/**/*.css
+              - skinStyles/**/*.less
+              - package.json
+              - package-lock.json
+            i18n:
+              - i18n/*.json
+              - package.json
+              - package-lock.json
+
   lint:
     name: 🩹 Lint
+    needs: changes
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -29,99 +75,42 @@ jobs:
           path: /home/runner/cache
           key: ${{ runner.os }}-${{ hashFiles('**/*.lock') }}
 
-      - name: Install dependencies
+      - name: Install PHP dependencies
+        if: needs.changes.outputs.php == 'true'
         run: |
           composer validate
           composer install --prefer-dist --no-progress
-          npm ci
 
-      # Check for changed files
-      - name: Check for PHP changes
-        id: changed-php
-        uses: tj-actions/changed-files@v47
-        with:
-          since_last_remote_commit: "true"
-          files: |
-            includes/**/*.php
-            tests/**/*.php
+      - name: Install Node dependencies
+        if: needs.changes.outputs.script == 'true' || needs.changes.outputs.stylesheet == 'true' || needs.changes.outputs.i18n == 'true'
+        run: npm ci
 
-      - name: Check for script changes
-        id: changed-script
-        uses: tj-actions/changed-files@v47
-        with:
-          since_last_remote_commit: "true"
-          files: |
-            resources/**/*.js
-
-      - name: Check for stylesheet changes
-        id: changed-stylesheet
-        uses: tj-actions/changed-files@v47
-        with:
-          since_last_remote_commit: "true"
-          files: |
-            resources/**/*.css
-            resources/**/*.less
-            skinStyles/**/*.css
-            skinStyles/**/*.less
-
-      - name: Check for i18n changes
-        id: changed-i18n
-        uses: tj-actions/changed-files@v47
-        with:
-          since_last_remote_commit: "true"
-          files: |
-            i18n/*.json
-
-      # Bypass the phpcbf non-standard exit code
       - name: Lint PHP
-        if: steps.changed-php.outputs.any_changed == 'true'
-        continue-on-error: true
+        if: needs.changes.outputs.php == 'true'
         run: |
-          sh ./bin/phpcbf.sh
-          composer fix
           composer test
 
       - name: Lint script
-        if: steps.changed-script.outputs.any_changed == 'true'
-        continue-on-error: true
+        if: needs.changes.outputs.script == 'true'
         run: |
-          npm run lint:fix:js
           npm run lint:js
 
       - name: Lint stylesheet
-        if: steps.changed-stylesheet.outputs.any_changed == 'true'
-        continue-on-error: true
+        if: needs.changes.outputs.stylesheet == 'true'
         run: |
-          npm run lint:fix:styles
           npm run lint:styles
 
       - name: Lint i18n
-        if: steps.changed-i18n.outputs.any_changed == 'true'
-        continue-on-error: true
+        if: needs.changes.outputs.i18n == 'true'
         run: |
           npm run lint:i18n
 
-      # Only patch code when it is a push event
-      - name: Push the changes
-        if: github.event_name == 'push'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if ! git diff --exit-code --quiet; then
-            git config --global user.name "github-actions"
-            git config --global user.email "github-actions@users.noreply.github.com"
-            git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-            git add .
-            git commit -am "ci: 👷 lint code to MediaWiki standards" -m "Check commit and GitHub actions for more details"
-            git pull --rebase
-            git push
-          else
-            echo "No changes to commit"
-          fi
-
   test-php:
-    name: "🧪 PHP tests: MW ${{ matrix.mw }}, PHP ${{ matrix.php }}"
+    name: "🧪 Test PHP (MW ${{ matrix.mw }}, PHP ${{ matrix.php }})"
+    needs: changes
+    if: needs.changes.outputs.php == 'true' || github.event_name == 'schedule'
     continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 30
 
     strategy:
       matrix:
@@ -134,8 +123,12 @@ jobs:
             php: 8.3
             coverage: none
             experimental: false
-          - mw: "master"
+          - mw: "REL1_45"
             php: 8.4
+            coverage: none
+            experimental: false
+          - mw: "master"
+            php: 8.5
             coverage: none
             experimental: true
 
@@ -161,9 +154,10 @@ jobs:
           path: |
             mediawiki
             !mediawiki/extensions/
+            !mediawiki/skins/
             !mediawiki/vendor/
             mediawiki/phpunit.xml.dist
-          key: mw_${{ matrix.mw }}-php${{ matrix.php }}-v24
+          key: mw_${{ matrix.mw }}-php${{ matrix.php }}-v27
 
       - name: Cache Composer cache
         uses: actions/cache@v4
@@ -199,7 +193,7 @@ jobs:
           XDEBUG_MODE=coverage composer phpunit -- --testsuite skins --coverage-clover skins/Citizen/coverage/php/coverage.xml skins/Citizen/tests/phpunit --exclude-group Stub
 
       - name: Scan with SonarQube
-        uses: sonarsource/sonarqube-scan-action@v6
+        uses: sonarsource/sonarqube-scan-action@v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         # Only one once

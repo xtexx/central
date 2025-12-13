@@ -1,0 +1,23 @@
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"strict": true,
+		"sourceMap": true,
+		"skipLibCheck": true,
+		"allowImportingTsExtensions": true,
+		"noEmit": true,
+		"lib": [ "esnext", "dom" ],
+	},
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.vue",
+		".vitepress/**/*.ts",
+		".vitepress/**/*.vue",
+	]
+}

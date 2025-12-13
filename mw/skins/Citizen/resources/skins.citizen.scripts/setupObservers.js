@@ -114,7 +114,9 @@ const setupTableOfContents = ( tocElement, bodyContent, initSectionObserverFn ) 
 	const sectionObserver = initSectionObserverFn( {
 		elements: elements(),
 		topMargin: getDocumentScrollPaddingTop(),
-		onIntersection: getHeadingIntersectionHandler( tableOfContents.changeActiveSection.bind( tableOfContents ) )
+		onIntersection: getHeadingIntersectionHandler(
+			tableOfContents.changeActiveSection.bind( tableOfContents )
+		)
 	} );
 	const updateElements = () => {
 		sectionObserver.resume();
@@ -188,7 +190,6 @@ const main = () => {
 		stickyHeaderElement = document.getElementById( stickyHeader.STICKY_HEADER_ID ),
 		stickyIntersection = document.getElementById( 'citizen-page-header-sticky-sentinel' );
 
-	// eslint-disable-next-line es-x/no-optional-chaining
 	const shouldStickyHeader = getComputedStyle( stickyIntersection )?.getPropertyValue( 'display' ) !== 'none';
 	const isStickyHeaderAllowed = !!stickyHeaderElement &&
 		!!stickyIntersection &&

@@ -21,7 +21,6 @@ sftp-config.json
 # Building & testing
 /composer.lock
 /coverage
-/docs
 /vendor
 /node_modules
 .eslintcache
@@ -43,7 +42,3 @@ Thumbs.db
 /.htaccess
 /.htpasswd
 .eslintcache
-
-# Storybook
-/.storybook/resolve-less-imports/
-/.storybook/integration.less.vscode/
