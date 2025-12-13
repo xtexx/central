@@ -23,6 +23,7 @@
   kind: extensions
   prefix: mw/extensions/Cargo
   git: https://gerrit.wikimedia.org/r/mediawiki/extensions/Cargo
+  branch: master
 - name: CategoryTree
   kind: extensions
   prefix: mw/extensions/CategoryTree
