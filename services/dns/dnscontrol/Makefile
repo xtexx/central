@@ -5,8 +5,7 @@ $(shell mkdir -p out)
 out/dnsconfig.js: dnsconfig.js out/creds.json \
 	out/converted/xvnet0.eu.org.js \
 	out/converted/xvnet.eu.org.js \
-	out/converted/xvnetstatus.us.kg.js \
-	out/converted/0.c.6.1.7.0.1.b.e.0.a.2.ip6.arpa.js
+	out/converted/xvnetstatus.us.kg.js
 	cp $< $@
 
 out/creds.json: creds.json
@@ -20,6 +19,3 @@ out/converted/xvnet.eu.org.js: ../zones/xvnet.eu.org.zone scripts/convert.sh
 
 out/converted/xvnetstatus.us.kg.js:: ../zones/xvnetstatus.us.kg.zone scripts/convert.sh
 	scripts/convert.sh xvnetstatus.us.kg
-
-out/converted/0.c.6.1.7.0.1.b.e.0.a.2.ip6.arpa.js: ../zones/0.c.6.1.7.0.1.b.e.0.a.2.ip6.arpa.zone scripts/convert.sh
-	scripts/convert.sh 0.c.6.1.7.0.1.b.e.0.a.2.ip6.arpa

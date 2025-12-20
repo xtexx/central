@@ -13,12 +13,6 @@ D_EXTEND("xvnet0.eu.org", DnsProvider(DSP_DESEC, 0));
 require("converted/xvnet.eu.org.js");
 D_EXTEND("xvnet.eu.org", DnsProvider(DSP_GCORE, 0));
 
-require("converted/0.c.6.1.7.0.1.b.e.0.a.2.ip6.arpa.js");
-D_EXTEND(
-	"0.c.6.1.7.0.1.b.e.0.a.2.ip6.arpa",
-	DnsProvider(DSP_CF, 0)
-);
-
 require("converted/xvnetstatus.us.kg.js");
 D_EXTEND("xvnetstatus.us.kg", DnsProvider(DSP_DESEC, 0));
 
