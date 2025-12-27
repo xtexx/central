@@ -1,6 +1,6 @@
 {
 	"name": "Citizen",
-	"version": "3.11.0",
+	"version": "3.12.0",
 	"author": [
 		"[https://www.mediawiki.org/wiki/User:Alistair3149 Alistair3149]",
 		"[https://www.mediawiki.org/wiki/User:Octfx Octfx]",
@@ -34,7 +34,7 @@
 				"GenderCache",
 				"UserIdentityLookup",
 				"LanguageConverterFactory",
-				"ContentLanguage",
+				"LanguageNameUtils",
 				"PermissionManager",
 				"ExtensionRegistry",
 				"UserGroupManager",
@@ -150,7 +150,8 @@
 				"CdxButton"
 			],
 			"styles": [
-				"resources/skins.citizen.codex.styles/CdxButton.less"
+				"resources/skins.citizen.codex.styles/CdxButton.less",
+				"resources/skins.citizen.codex.styles/CdxCheckbox.less"
 			]
 		},
 		"skins.citizen.styles.fonts.cjk": {
@@ -474,6 +475,7 @@
 				"edit",
 				"editLock",
 				"ellipsis",
+				"eye",
 				"help",
 				"history",
 				"home",
@@ -650,6 +652,7 @@
 			"+onoi.dataTables.styles": "skinStyles/extensions/SemanticResultFormats/jquery/jquery.dataTables.less",
 			"+ext.SimpleTooltip": "skinStyles/extensions/SimpleTooltip/ext.SimpleTooltip.less",
 			"+ext.SmiteSpam.retriever": "skinStyles/extensions/SmiteSpam/ext.SmiteSpam.retriever.less",
+			"+ext.spoilers.styles": "skinStyles/extensions/Spoilers/ext.Spoilers.less",
 			"+ext.structuredNav.NavigationView.styles": "skinStyles/extensions/StructuredNavigation/ext.structuredNav.NavigationView.less",
 			"+ext.pygments": "skinStyles/extensions/SyntaxHighlight_GeSHi/ext.pygments.less",
 			"+ext.searchdigest.styles": "skinStyles/extensions/SearchDigest/ext.searchdigest.styles.less",
@@ -843,12 +846,6 @@
 			"value": true,
 			"description": "Enables the site statistics in drawer menu",
 			"descriptionmsg": "citizen-config-enabledrawersitestats",
-			"public": true
-		},
-		"UseNumberFormatter": {
-			"value": true,
-			"description": "Use NumberFormatter for site statistics",
-			"descriptionmsg": "citizen-config-usenumberformatter",
 			"public": true
 		},
 		"EnableCJKFonts": {
