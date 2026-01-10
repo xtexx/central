@@ -237,6 +237,19 @@ class CargoQueryDisplayer {
 			$linkRenderer = MediaWikiServices::getInstance()->getLinkRenderer();
 			// Hide the namespace in the display?
 			global $wgCargoHideNamespaceName;
+			if ( !$title->exists() && $fieldDescription->mForm !== null && class_exists( 'PFFormEdit' ) ) {
+				// If it's a red link and a Page Forms form has been defined for this field, link to that form.
+				$fe = CargoUtils::getSpecialPage( 'FormEdit' );
+				$formName = $fieldDescription->mForm;
+				$pageName = $wgCargoHideNamespaceName ? $title->getRootText() : $title->getFullText();
+				if ( strpos( $formName, '/' ) !== false ) {
+					$url = $fe->getPageTitle()->getLocalURL( [ 'form' => $formName, 'target' => $pageName ] );
+				} else {
+					$url = $fe->getPageTitle( "$formName/$pageName" )->getLocalURL();
+				}
+				return Html::element( 'a', [ 'href' => $url, 'class' => 'new' ], $pageName );
+			}
+
 			if ( in_array( $title->getNamespace(), $wgCargoHideNamespaceName ) ) {
 				return CargoUtils::makeLink( $linkRenderer, $title, htmlspecialchars( $title->getRootText() ) );
 			} else {
@@ -467,7 +480,7 @@ class CargoQueryDisplayer {
 		if ( $displayHTML ) {
 			$linkRenderer = MediaWikiServices::getInstance()->getLinkRenderer();
 			$link = CargoUtils::makeLink( $linkRenderer, $vd, $moreResultsText, [], $queryStringParams );
-			return Html::rawElement( 'p', null, $link );
+			return Html::rawElement( 'p', [], $link );
 		} else {
 			// Display link as wikitext.
 			global $wgServer;

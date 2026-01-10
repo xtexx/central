@@ -17,8 +17,8 @@
 		"prepare": "husky"
 	},
 	"devDependencies": {
-		"@commitlint/cli": "^20.2.0",
-		"@commitlint/config-conventional": "^20.2.0",
+		"@commitlint/cli": "^20.3.0",
+		"@commitlint/config-conventional": "^20.3.0",
 		"devmoji": "^2.3.0",
 		"eslint": "8.57.1",
 		"eslint-config-wikimedia": "0.32.3",
@@ -29,8 +29,8 @@
 		"stylelint": "16.26.1",
 		"stylelint-config-recess-order": "7.4.0",
 		"stylelint-config-wikimedia": "0.18.0",
-		"stylelint-order": "^7.0.0",
-		"stylelint-plugin-use-baseline": "^1.1.4",
+		"stylelint-order": "^7.0.1",
+		"stylelint-plugin-use-baseline": "^1.1.5",
 		"types-mediawiki": "2.0.0",
 		"vue": "3.4.27"
 	},
