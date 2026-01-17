@@ -244,15 +244,6 @@ class CodeMirror {
 			this.keymap.extension,
 			indentUnit.of( '\t' ),
 			EditorState.readOnly.of( this.readOnly ),
-			EditorView.theme( {
-				'.cm-scroller': {
-					overflow: 'auto'
-				},
-				// Search panel should use the same direction as the interface language (T359611)
-				'.cm-panels': {
-					direction: document.dir
-				}
-			} ),
 			EditorState.allowMultipleSelections.of( true ),
 			drawSelection(),
 			rectangularSelection(),
@@ -493,7 +484,7 @@ class CodeMirror {
 			accesskey: this.textarea.accessKey,
 			// Classes need to be on .cm-content to have precedence over .cm-scroller
 			class: classList.join( ' ' ),
-			spellcheck: 'true',
+			spellcheck: this.mode === 'mediawiki',
 			tabindex: this.textarea.tabIndex
 		} );
 	}
@@ -511,7 +502,9 @@ class CodeMirror {
 		return EditorView.editorAttributes.of( {
 			// Use language of the original textbox.
 			// These should be attributes of .cm-editor, not the .cm-content (T359589)
-			lang: this.textarea.lang
+			lang: this.textarea.lang,
+			// Add a class for the mode/language.
+			class: `cm-mw-mode-${ this.mode || 'none' }`
 		} );
 	}
 

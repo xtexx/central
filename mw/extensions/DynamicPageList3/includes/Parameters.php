@@ -8,8 +8,8 @@ use MediaWiki\Context\RequestContext;
 use MediaWiki\Html\Html;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\Title;
-use StringUtils;
 use Wikimedia\Rdbms\IExpression;
+use Wikimedia\StringUtils\StringUtils;
 use function array_diff;
 use function array_fill_keys;
 use function array_keys;
@@ -383,8 +383,7 @@ class Parameters extends ParametersData {
 			}
 
 			if ( $parameter === '_none_' ) {
-				$this->setParameter( 'includeuncat', true );
-				$categories[] = '';
+				$categories[$operator][] = '';
 				continue;
 			}
 

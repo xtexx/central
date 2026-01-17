@@ -1,6 +1,17 @@
+# Version 4.0.3
+* Fixes performance issue caused by version 4.0.1.
+* Replaced class namespace deprecated in MediaWiki 1.44.
+* Fixed PHP fatal error when moving some pages under certain conditions.
+
+# Version 4.0.2
+* Removes the use of `dpl_clview`. Running `update.php` will automatically drop the view.
+* Fixes issues with the use of `_none_` to get uncategorized pages.
+
 # Version 4.0.1
-## UNRELEASED
-**This release has not yet begun, but the changes it will make, include dropping MediaWiki 1.43 and 1.44 support and supporting MediaWiki 1.45's categorylinks migration.**
+* Drops support for MediaWiki 1.43.
+* Fixes a bug with the usage of `distinct` in queries.
+* Supports `categorylinks` migration for MediaWiki 1.45.
+  * **NOTE**: When upgrading to MediaWiki 1.45 you will also need to recreate the view by running the `CreateView` maintenance script with the `--recreate` option, to apply changes to it for the `categorylinks` migration.
 
 # Version 4.0.0
 **The extension was nearly completely rewritten, as such it has been rebranded as DynamicPageList4 as well. There could also be other changes not mentioned here as well, but major changes should be mentioned here.**
