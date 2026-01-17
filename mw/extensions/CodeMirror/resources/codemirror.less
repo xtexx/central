@@ -6,19 +6,23 @@
 
 	.cm-selectionBackground {
 		background: #d9d9d9;
-		.darkmode( background, #222 );
+		.darkmode( background, #3E4450 );
 	}
 
 	// For the highlightSelectionMatches extension, only used in non-wikitext.
 	.cm-selectionMatch {
-		background: #f6ebeb; // maroon50
-		// FIXME: add dark mode style
+		background: #f6ebeb;
+		.darkmode( background, rgba(170, 254, 102, 0.1) );
 	}
 
-	&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+	&.cm-focused.cm-mw-mode-mediawiki > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
 		background: #d7d4f0;
 		.darkmode( background, #233 );
 	}
+}
+
+.cm-scroller {
+	overflow: auto;
 }
 
 .cm-matchingBracket,
@@ -89,10 +93,7 @@
 }
 
 .cm-editor .cm-cursor {
-	// CodeMirror defines this in JavaScript and flipping the property
-	// causes mismatch thus a noflip is needed.
-	/* @noflip */
-	border-left-color: @color-emphasized;
+	border-left: 2px solid @color-emphasized;
 }
 
 .cm-editor .cm-activeLine {
@@ -111,6 +112,7 @@
 	background-color: @background-color-neutral-subtle;
 	border-bottom: 0;
 	color: @color-base;
+	direction: ltr;
 	z-index: @z-index-above-content;
 
 	.cdx-button-group {

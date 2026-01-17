@@ -51,7 +51,13 @@
 		},
 		"CodeMirrorDefaultPreferences": {
 			"value": {
-				"activeLine": false,
+				"activeLine": [
+					"json",
+					"css",
+					"javascript",
+					"lua",
+					"vue"
+				],
 				"autofocus": true,
 				"bidiIsolation": false,
 				"bracketMatching": true,
@@ -427,6 +433,11 @@
 			"messages": [
 				"codemirror-toggle-label",
 				"codemirror-toggle-label-short"
+			]
+		},
+		"ext.CodeMirror.v6.styles": {
+			"styles": [
+				"codemirror.styleModule.less"
 			]
 		},
 		"ext.CodeMirror.v6.visualEditor": {
