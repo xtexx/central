@@ -246,8 +246,8 @@ class Query {
 		}
 
 		// Partially taken from intersection
-		$queryCacheTime = $this->config->get( 'queryCacheTime' );
-		$maxQueryTime = $this->config->get( 'maxQueryTime' );
+		$queryCacheTime = $this->config->get( ConfigNames::QueryCacheTime );
+		$maxQueryTime = $this->config->get( ConfigNames::MaxQueryTime );
 
 		if ( $maxQueryTime ) {
 			$this->queryBuilder->setMaxExecutionTime( $maxQueryTime );
@@ -444,7 +444,7 @@ class Query {
 		}
 
 		if ( $dbType === 'mysql' ) {
-			$fieldExpr = "LOWER(CAST($field AS CHAR CHARACTER SET utf8mb4))";
+			$fieldExpr = 'LOWER(' . $this->applyCollation( $field ) . ')';
 			if ( $operator === 'REGEXP' ) {
 				return $this->buildRegexpExpression( $fieldExpr, $value );
 			}
