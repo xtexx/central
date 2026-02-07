@@ -17,22 +17,22 @@
 		"prepare": "husky"
 	},
 	"devDependencies": {
-		"@commitlint/cli": "^20.3.1",
+		"@commitlint/cli": "^20.4.0",
 		"@commitlint/config-conventional": "^20.3.1",
 		"devmoji": "^2.3.0",
 		"eslint": "8.57.1",
 		"eslint-config-wikimedia": "0.32.3",
-		"eslint-plugin-compat": "^6.0.2",
+		"eslint-plugin-compat": "^6.1.0",
 		"grunt-banana-checker": "0.13.0",
 		"husky": "^9.1.7",
 		"pinia": "2.0.16",
 		"stylelint": "17.0.0",
-		"stylelint-config-recess-order": "7.4.0",
+		"stylelint-config-recess-order": "7.6.0",
 		"stylelint-config-wikimedia": "0.18.0",
 		"stylelint-order": "^7.0.1",
-		"stylelint-plugin-use-baseline": "^1.2.0",
+		"stylelint-plugin-use-baseline": "^1.2.1",
 		"types-mediawiki": "2.0.0",
 		"vue": "3.4.27"
 	},
-	"version": "3.12.0"
+	"version": "3.13.0"
 }
