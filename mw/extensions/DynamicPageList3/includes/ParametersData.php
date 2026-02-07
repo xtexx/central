@@ -856,6 +856,7 @@ class ParametersData {
 		'userdateformat' => [
 			'default' => 'Y-m-d H:i:s',
 			'strip_html' => true,
+			'preserve_case' => true,
 		],
 
 		/**
@@ -1210,7 +1211,7 @@ class ParametersData {
 
 	public function __construct() {
 		$this->config = Config::getInstance();
-		$this->parameterRichness = $this->config->get( 'functionalRichness' );
+		$this->parameterRichness = $this->config->get( ConfigNames::FunctionalRichness );
 
 		if ( Utils::isLikeIntersection() ) {
 			$this->data['ordermethod'] = [
@@ -1247,7 +1248,7 @@ class ParametersData {
 			return;
 		}
 
-		$overrides = $this->config->get( 'overrideParameterDefaults' );
+		$overrides = $this->config->get( ConfigNames::OverrideParameterDefaults );
 		foreach ( $overrides as $param => $overrideValue ) {
 			// Use array_key_exists since 'default' might be null.
 			if ( !array_key_exists( 'default', $this->data[$param] ?? [] ) ) {
