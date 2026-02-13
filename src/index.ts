@@ -37,6 +37,8 @@ function isUserRealAdmin(
 	if (user.status == 'creator') return true;
 	if (user.status == 'administrator') {
 		for (let k in user) {
+			if (!k.startsWith('can_')) continue;
+			if (k == 'can_be_edited') continue;
 			if (k == 'can_manage_chat') continue;
 			if ((user as any)[k] === true) {
 				if (k in defaultPerms && (defaultPerms as any)[k] === true)
@@ -89,6 +91,10 @@ bot.command([`t${CMD_SUFFIX}`, `title${CMD_SUFFIX}`], async (ctx) => {
 				can_manage_topics: chatPermissions.can_manage_topics || false,
 			});
 			await replyTo(ctx, 'Promoted to administrator');
+		}
+		if(member.status == 'administrator' && !member.can_be_edited) {
+			await replyTo(ctx, 'I cannot edit your title');
+			return;
 		}
 		await ctx.setChatAdministratorCustomTitle(member.user.id, title);
 		await replyTo(ctx, `Title set: \`${title}\``, {

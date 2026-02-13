@@ -19,5 +19,6 @@
 		"api/index.ts": {
 			"maxDuration": 20
 		}
-	}
+	},
+	"bunVersion": "1.x"
 }
