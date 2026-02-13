@@ -34,7 +34,7 @@ RUN apk add libtool readline libidn2 libuv \
 	userspace-rcu krb5 libcap json-c libxml2 zlib libidn2
 COPY --from=builder /usr/local /usr/local
 RUN mkdir -p /etc/bind /var/run/bind
-RUN /usr/local/sbin/named --help 
+RUN /usr/local/sbin/named -v 
 
 LABEL org.opencontainers.image.licenses="MPL-2.0"
 LABEL org.opencontainers.image.source="https://codeberg.org/xens/atremis"
