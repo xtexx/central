@@ -1,6 +1,6 @@
 on:
-  schedule:
-    - cron: "16 3 * * */3"
+  # schedule:
+  #   - cron: "16 3 * * */3"
   workflow_dispatch:
 
 jobs:
@@ -10,7 +10,7 @@ jobs:
       image: "docker.io/library/alpine"
 
     steps:
-      - run: apk add bash nodejs git
+      - run: apk add --no-cache bash nodejs git
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
