@@ -49,7 +49,7 @@ atre::postgres::balaro::upgrade() {
 	dinitctl start balaro
 
 	time (
-		podman exec -it balaroold pg_dumpall | podman exec -it balaro psql -d postgres -p 5433
+		podman exec -it balaroold pg_dumpall -U postgres | podman exec -it balaro psql -U postgres
 	)
 	dinitctl stop balaro
 	podman stop balaroold
