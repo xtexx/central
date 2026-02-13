@@ -4,7 +4,10 @@ import { ExtraReplyMessage } from 'telegraf/typings/telegram-types';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { development, production } from './core';
 import { name, version, author } from '../package.json';
-import { ChatMember, ChatPermissions } from 'telegraf/typings/core/types/typegram';
+import {
+	ChatMember,
+	ChatPermissions,
+} from 'telegraf/typings/core/types/typegram';
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const CMD_SUFFIX = process.env.CMD_SUFFIX || '';
@@ -27,13 +30,17 @@ async function replyTo(
 	});
 }
 
-function isUserRealAdmin(defaultPerms: ChatPermissions, user: ChatMember): boolean {
+function isUserRealAdmin(
+	defaultPerms: ChatPermissions,
+	user: ChatMember,
+): boolean {
 	if (user.status == 'creator') return true;
 	if (user.status == 'administrator') {
 		for (let k in user) {
 			if (k == 'can_manage_chat') continue;
 			if ((user as any)[k] === true) {
-				if((k in defaultPerms) && (defaultPerms as any)[k] === true) continue;
+				if (k in defaultPerms && (defaultPerms as any)[k] === true)
+					continue;
 				return true;
 			}
 		}
