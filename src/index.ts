@@ -4,7 +4,7 @@ import { ExtraReplyMessage } from 'telegraf/typings/telegram-types';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { development, production } from './core';
 import { name, version, author } from '../package.json';
-import { ChatMember } from 'telegraf/typings/core/types/typegram';
+import { ChatMember, ChatPermissions } from 'telegraf/typings/core/types/typegram';
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const CMD_SUFFIX = process.env.CMD_SUFFIX || '';
@@ -27,12 +27,15 @@ async function replyTo(
 	});
 }
 
-function checkUserRealAdmin(user: ChatMember): boolean {
+function isUserRealAdmin(defaultPerms: ChatPermissions, user: ChatMember): boolean {
 	if (user.status == 'creator') return true;
 	if (user.status == 'administrator') {
 		for (let k in user) {
 			if (k == 'can_manage_chat') continue;
-			if ((user as any)[k] === true) return true;
+			if ((user as any)[k] === true) {
+				if((k in defaultPerms) && (defaultPerms as any)[k] === true) continue;
+				return true;
+			}
 		}
 	}
 	return false;
@@ -57,6 +60,12 @@ bot.command([`t${CMD_SUFFIX}`, `title${CMD_SUFFIX}`], async (ctx) => {
 	let member = await ctx.getChatMember(ctx.message.from.id);
 	if (['member', 'creator', 'administrator'].includes(member.status)) {
 		if (member.status == 'member') {
+			const chatInfo = await ctx.getChat();
+			if (chatInfo.type != 'group' && chatInfo.type != 'supergroup')
+				throw 'Inconsistent group type';
+			const chatPermissions = chatInfo.permissions;
+			if (chatPermissions == null)
+				throw 'Chat permission must be available in getChat';
 			await ctx.promoteChatMember(member.user.id, {
 				is_anonymous: false,
 				can_manage_chat: true,
@@ -64,13 +73,13 @@ bot.command([`t${CMD_SUFFIX}`, `title${CMD_SUFFIX}`], async (ctx) => {
 				can_manage_video_chats: false,
 				can_restrict_members: false,
 				can_promote_members: false,
-				can_change_info: false,
-				can_invite_users: false,
+				can_change_info: chatPermissions.can_change_info || false,
+				can_invite_users: chatPermissions.can_invite_users || false,
 				can_post_stories: false,
 				can_edit_stories: false,
 				can_delete_stories: false,
-				can_pin_messages: false,
-				can_manage_topics: false,
+				can_pin_messages: chatPermissions.can_pin_messages || false,
+				can_manage_topics: chatPermissions.can_manage_topics || false,
 			});
 			await replyTo(ctx, 'Promoted to administrator');
 		}
@@ -85,8 +94,15 @@ bot.command([`detitle${CMD_SUFFIX}`, `untitle${CMD_SUFFIX}`], async (ctx) => {
 	if (ctx.chat.type != 'group' && ctx.chat.type != 'supergroup')
 		return await replyTo(ctx, 'This message can only be used in groups.');
 
+	const chatInfo = await ctx.getChat();
+	if (chatInfo.type != 'group' && chatInfo.type != 'supergroup')
+		throw 'Inconsistent group type';
+	const chatPermissions = chatInfo.permissions;
+	if (chatPermissions == null)
+		throw 'Chat permission must be available in getChat';
+
 	let sender = await ctx.getChatMember(ctx.message.from.id);
-	if (!checkUserRealAdmin(sender))
+	if (!isUserRealAdmin(chatPermissions, sender))
 		return await replyTo(ctx, 'Only administrators can do');
 
 	const target = ctx.args[0] ?? null;
@@ -105,7 +121,7 @@ bot.command([`detitle${CMD_SUFFIX}`, `untitle${CMD_SUFFIX}`], async (ctx) => {
 	}
 
 	if (targetUser.status == 'administrator') {
-		if (checkUserRealAdmin(targetUser))
+		if (isUserRealAdmin(chatPermissions, targetUser))
 			return await replyTo(
 				ctx,
 				'Cannot be used against real administrators',
