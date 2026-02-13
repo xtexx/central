@@ -19,3 +19,12 @@ upstream-base-url: "https://ntfy.sh"
 log-level: info
 log-format: json
 log-file: /var/log/ntfy/log.log
+
+cache-batch-size: 25
+cache-batch-timeout: "1s"
+cache-startup-queries: |
+    pragma journal_mode = WAL;
+    pragma synchronous = normal;
+    pragma temp_store = memory;
+    pragma busy_timeout = 15000;
+    vacuum;
