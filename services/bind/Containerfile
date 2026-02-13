@@ -1,7 +1,7 @@
 FROM docker.io/library/alpine AS builder
 ARG VERSION
 
-RUN apk add build-base clang libcap meson git wget tar xz
+RUN apk add build-base clang lld libcap meson git wget tar xz
 RUN apk add libtool readline-dev libidn2-dev libuv-dev \
 	nghttp2-dev libcap-dev jemalloc-dev json-c-dev openssl-dev>3 userspace-rcu-dev \
 	krb5-dev json-c-dev libxml2-dev zlib-dev libidn2-dev
