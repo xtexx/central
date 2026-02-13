@@ -1,6 +1,7 @@
 FROM docker.io/library/alpine AS bld
 ARG VERSION
 
+# FIXME https://github.com/mariadb-corporation/wsrep-lib/pull/257/changes \
 RUN set -eux; \
 	apk add \
 		build-base ninja cmake git \
@@ -11,6 +12,11 @@ RUN set -eux; \
 	; \
 	git clone --depth 1 --recurse-submodules --shallow-submodules -b $VERSION https://github.com/MariaDB/server.git bld; \
 	cd bld; \
+	( \
+		echo '#include <cstdint>'; \
+		cat wsrep-lib/include/wsrep/provider_options.hpp; \
+	) > wsrep-lib/include/wsrep/provider_options.hpp1; \
+	mv wsrep-lib/include/wsrep/provider_options.hpp1 wsrep-lib/include/wsrep/provider_options.hpp \
 	mkdir build; cd build; \
 	CXX=clang++ CC=clang LD=ld.lld \
 	cmake -E time cmake .. \
