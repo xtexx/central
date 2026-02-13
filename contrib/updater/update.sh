@@ -18,7 +18,7 @@ function doUpdate() {
 			-o topic="bot/update" \
 			-o force-push=true \
 			-o title="[bot] Merge upstream" \
-			-o description="$(printf 'CI-Link: <%s>' "$CI_STEP_URL")"
+			-o description=""
 	fi
 	git switch main
 
@@ -29,7 +29,7 @@ function doUpdate() {
 			-o topic="bot/update-tweaks" \
 			-o force-push=true \
 			-o title="[bot] Update dependencies of XensTweaks" \
-			-o description="$(printf 'CI-Link: <%s>' "$CI_STEP_URL")"
+			-o description=""
 	fi
 	git switch main
 }
@@ -38,10 +38,9 @@ if doUpdate; then
 	curl \
 		-H "Authorization: Bearer $NTFY_TOKEN" \
 		-H "X-Title: MediaWiki auto-update succeeded" \
-		-H "X-Actions: view, View on CI, $CI_STEP_URL" \
 		-H "X-Tags: mediawiki,mwupdater,pipeline-success" \
 		-H "X-Priority: min" \
-		-d "$(printf 'MW-Updater-Status: success\nMW-Updater-HEAD: %s\nCI-Link: <%s>' "$(git rev-parse HEAD)" "$CI_STEP_URL")" \
+		-d "$(printf 'MW-Updater-Status: success\nMW-Updater-HEAD: %s' "$(git rev-parse HEAD)")" \
 		-SL --retry 2 \
 		https://ntfy.xvnet.eu.org/publogs
 
@@ -63,10 +62,9 @@ else
 	curl \
 		-H "Authorization: Bearer $NTFY_TOKEN" \
 		-H "X-Title: MediaWiki auto-update failed" \
-		-H "X-Actions: view, View on CI, $CI_STEP_URL" \
 		-H "X-Tags: mediawiki,mwupdater,pipeline-failure" \
 		-H "X-Priority: min" \
-		-d "$(printf 'MW-Updater-Status: failure\nCI-Link: <%s>' "$CI_STEP_URL")" \
+		-d "MW-Updater-Status: failure" \
 		-SL --retry 2 \
 		https://ntfy.xvnet.eu.org/publogs
 
@@ -84,7 +82,7 @@ else
 			-H "Authorization: token $CODEBERG_TOKEN" \
 			-SL --retry 2 \
 			-d "$(jo title="[bot] MW Auto-updater fails" \
-				body="$(printf 'CI-Link: <%s>' "$CI_STEP_URL")" \
+				body="" \
 				labels="$(jo -a -- -n 239885)" assignees="$(jo -a -- -s xtex)")"
 	fi
 fi
