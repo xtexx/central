@@ -446,4 +446,5 @@ Congratulations ! You have completed the ping challenge. I hope you had fun alon
 
 ## 本页历史
 
-- 2028.8.21：First Finish!
+- 2022.8.21：First Finish!
+- 2026.2.14: Fix typo.
