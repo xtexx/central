@@ -10,7 +10,7 @@ $wgConf->wikis = $wgLocalDatabases;
 
 $wgDBtype = 'mysql';
 $wgDBname = 'wiki' . $xvWikiID;
-$wgDBserver = 'opilio.s.xvnet0.eu.org:3307';
+$wgDBserver = 'host.containers.internal:3307';
 $wgDBuser = 'mediawiki';
 $wgDBadminuser = 'mediawikiadmin';
 
