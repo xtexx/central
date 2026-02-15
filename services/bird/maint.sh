@@ -49,8 +49,8 @@ atre::bird::validate() {
 
 atre::bird::update-dn42-roa() {
 	atre::publog 'BIRD: Updating DN42 ROAs ...'
-	curl -SL -o /var/cache/bird/dn42_roa_v4.conf https://explorer.burble.com/api/roa/bird/2/4
-	curl -SL -o /var/cache/bird/dn42_roa_v6.conf https://explorer.burble.com/api/roa/bird/2/6
+	curl -SL -o /var/cache/bird/dn42_roa_v4.conf 'https://kioubit-roa.dn42.dev/?type=v4'
+	curl -SL -o /var/cache/bird/dn42_roa_v6.conf 'https://kioubit-roa.dn42.dev/?type=v6'
 	atre::bird::reconf
 	atre::publog 'BIRD: Updated DN42 ROAs'
 	return
