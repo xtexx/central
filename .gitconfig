@@ -24,9 +24,11 @@
 	insteadOf = https://github.com/rust-lang/crates.io-index
 [pull]
 	rebase = true
+	autoStash = true
 [merge]
 	conflictStyle = diff3
 	guitool = meld
+	autoStash = true
 [diff]
 	tool = difftastic
 	algorithm = histogram
@@ -161,6 +163,12 @@
 [includeIf "hasconfig:remote.*.url:git@github.com:ziglang/*"]
 	path = ~/.config/git/realname.conf
 [includeIf "hasconfig:remote.*.url:git@github.com:wikimedia/*"]
+	path = ~/.config/git/realname.conf
+[includeIf "hasconfig:remote.*.url:ssh://git@codeberg.org/ziglang/*"]
+	path = ~/.config/git/realname.conf
+[includeIf "hasconfig:remote.*.url:ssh://git@codeberg.org/xtexx/zig.git"]
+	path = ~/.config/git/realname.conf
+[includeIf "hasconfig:remote.*.url:https://git.musl-libc.org/git/musl"]
 	path = ~/.config/git/realname.conf
 [includeIf "hasconfig:remote.*.url:ssh://gerrit.wikimedia.org:29418/**"]
 	path = ~/.config/git/wikimedia.conf
