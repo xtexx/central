@@ -5,10 +5,10 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # ZVM
 if [[ -e $HOME/.zvm ]]; then
-    export ZVM_INSTALL="$HOME/.zvm/self"
-    export PATH="$PATH:$HOME/.zvm/bin:$ZVM_INSTALL"
+	export ZVM_INSTALL="$HOME/.zvm/self"
+	export PATH="$PATH:$HOME/.zvm/bin:$ZVM_INSTALL"
 else
-    export PATH="/opt/zig/bin:$PATH"
+	export PATH="/opt/zig/bin:$PATH"
 fi
 
 [ -e /usr/bin/go ] && export PATH="$HOME/go/bin:$PATH"
@@ -16,3 +16,9 @@ fi
 [ -e /opt/rust/bin/bin ] && export PATH="/opt/rust/bin/bin:$PATH"
 
 [ -e /opt/elan ] && export PATH="/opt/elan/bin:$PATH"
+
+if [ -e /home/xtex/.config/guix/current ]; then
+	export GUIX_PROFILE="/home/xtex/.config/guix/current"
+	export GUIX_LOCPATH=/home/xtex/.guix-profile/lib/locale
+	. "$GUIX_PROFILE/etc/profile"
+fi
