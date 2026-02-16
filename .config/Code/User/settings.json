@@ -7,7 +7,7 @@
         "editor.defaultFormatter": "vscode.css-language-features"
     },
     "[html]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "editor.defaultFormatter": "vscode.html-language-features"
     },
     "[javascript]": {
         "editor.defaultFormatter": "vscode.typescript-language-features"
@@ -84,7 +84,7 @@
     "verilog.languageServer.svls.enabled": true,
     "verilog.linting.linter": "verilator",
     "verilog.linting.path": "verilator",
-    "workbench.colorTheme": "Ayu Dark Bordered",
+    "workbench.colorTheme": "GitHub Dark Colorblind (Beta)",
     "workbench.editor.empty.hint": "hidden",
     "workbench.iconTheme": "ayu",
     "workbench.startupEditor": "none",
@@ -103,7 +103,7 @@
     "chat.agent.enabled": false,
     "zig.zls.enabled": "on",
     "diffEditor.experimental.showMoves": true,
-    "editor.minimap.autohide": true,
+    "editor.minimap.autohide": "mouseover",
     "terminal.integrated.enableImages": true,
     "terminal.integrated.hideOnStartup": "always",
     "editor.experimental.preferTreeSitter.regex": true,
@@ -115,5 +115,24 @@
     "lean4.envPathExtensions": [
         "/opt/elan/bin"
     ],
-    "fennel-lsx.server-version": "external"
+    "fennel-lsx.server-version": "external",
+    "shellformat.useEditorConfig": true,
+    "rust-analyzer.diagnostics.disabled": [
+        "E0605"
+    ],
+    "shfmt.formatIgnored": true,
+    "[vue]": {
+        "editor.defaultFormatter": "Vue.volar"
+    },
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "git.blame.editorDecoration.enabled": false,
+    "github.copilot.enable": {
+        "*": false,
+        "plaintext": false,
+        "markdown": false,
+        "scminput": false
+    },
+    "chat.disableAIFeatures": true,
+    "inlineChat.lineNaturalLanguageHint": false,
+    "terminal.integrated.initialHint": false
 }
