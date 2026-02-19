@@ -19,6 +19,7 @@ opilio.s				IN	A		5.255.109.94
 *.opilio.s				IN	CNAME	opilio.s
 altv4.opilio.s			IN	A		5.255.109.94
 altv6.opilio.s			IN	AAAA	2a04:52c0:114:e34a::1
+cotton.s				IN	CNAME	cotton.dyn.xtexx.eu.org.
 
 ; Authoritative Nameservers
 a.ns					IN	A		5.255.109.94
