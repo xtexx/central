@@ -9,6 +9,10 @@ ns				43200	IN	AAAA	fd00:443a:ef14:2::1
 ; Servers
 opilio.s				IN	AAAA	fd00:443a:ef14:1::1
 *.opilio.s				IN	CNAME	opilio.s
+koit.s					IN	AAAA	fd00:443a:ef14:1::2
+*.koit.s				IN	CNAME	koit.s
+cotton.s				IN	AAAA	fd00:443a:ef14:1::3
+*.cotton.s				IN	CNAME	cotton.s
 
 ; Services
 ntfy					IN	CNAME	opilio.s
