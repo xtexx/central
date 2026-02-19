@@ -83,6 +83,8 @@ V_INSTALLED	= y
 V_INST_FILE	= /usr/bin/crond
 $(call end)
 
+cron-package := cronie
+
 $(call systemd-unit)
 V_UNIT		= cronie.service
 V_ENABLED	= y
@@ -106,6 +108,8 @@ V_PKG		= fcron
 V_INSTALLED	= y
 V_INST_FILE	= /usr/bin/crontab
 $(call end)
+
+cron-package := fcron
 
 $(call systemd-unit)
 V_UNIT		= fcron.service
