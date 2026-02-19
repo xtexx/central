@@ -15,12 +15,9 @@ cat >"$temp"/creds.json <<EOF
 }
 EOF
 mkdir "$temp"/zones
-# UPSTREAM: (NEXT RELEASE) https://github.com/StackExchange/dnscontrol v4.9.0
-ldns-read-zone \
-	-e DNSKEY \
-	< ../zones/"$1".zone > "$temp"/zones/"$1".zone
+cp ../zones/"$1".zone "$temp"/zones/"$1".zone
 pushd "$temp"
-dnscontrol get-zones --format=js bind - "$1" | sed -E \
+dnscontrol get-zones --format=js bind BIND "$1" | sed -E \
 	-e 's/^var DSP_BIND.*$//m' \
 	-e 's/^var REG_CHANGE.*$//m' \
 	-e 's/REG_CHANGEME/REG_NONE/' \
