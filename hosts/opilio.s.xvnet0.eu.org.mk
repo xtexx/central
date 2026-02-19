@@ -2,6 +2,7 @@
 
 BIRD_ROUTER_ID := 5.255.109.94
 XVNET_NUM := 1
+DISTRO := archlinux
 
 ### tiang::tag opilio bird
 $(call load-state, services/bird)

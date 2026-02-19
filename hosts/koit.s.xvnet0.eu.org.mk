@@ -1,6 +1,7 @@
 ### tiang::target koit ssh://koit.s.xvnet0.eu.org
 
 XVNET_NUM := 2
+DISTRO := archlinux
 
 ### tiang::tag koit bird
 $(call load-state, services/bird)

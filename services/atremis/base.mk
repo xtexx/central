@@ -75,6 +75,7 @@ $(call end)
 
 $(call add-fs-directory,/var/log/atremis)
 
+ifeq ($(DISTOR),archlinux)
 # ========================= cronie =========================
 $(call package)
 V_PKG		= cronie
@@ -96,6 +97,31 @@ V_DEP_VARS	+= STATES_DIR
 V_POST		= systemd-restart E_UNIT=cronie.service
 V_DEPS		= pkg-cronie
 $(call end)
+endif
+
+ifeq ($(DISTOR),aoscos)
+# ========================= fcron =========================
+$(call package)
+V_PKG		= fcron
+V_INSTALLED	= y
+V_INST_FILE	= /usr/bin/crontab
+$(call end)
+
+$(call systemd-unit)
+V_UNIT		= fcron.service
+V_ENABLED	= y
+V_RUNNING	= y
+V_DEPS		= pkg-fcron
+$(call end)
+
+$(call fs-file)
+V_PATH		= /etc/cron.d/atre-update
+V_TEMPLATE	= bash-tpl $(STATES_DIR)/services/atremis/cron-update
+V_DEP_VARS	+= STATES_DIR
+V_POST		= systemd-restart E_UNIT=fcron.service
+V_DEPS		= pkg-fcron
+$(call end)
+endif
 
 # ========================= packages =========================
 $(call package)
