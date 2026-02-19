@@ -75,7 +75,7 @@ $(call end)
 
 $(call add-fs-directory,/var/log/atremis)
 
-ifeq ($(DISTOR),archlinux)
+ifeq ($(DISTRO),archlinux)
 # ========================= cronie =========================
 $(call package)
 V_PKG		= cronie
@@ -101,7 +101,7 @@ V_DEPS		= pkg-cronie
 $(call end)
 endif
 
-ifeq ($(DISTOR),aoscos)
+ifeq ($(DISTRO),aoscos)
 # ========================= fcron =========================
 $(call package)
 V_PKG		= fcron
