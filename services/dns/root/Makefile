@@ -11,8 +11,7 @@ all: out/root.zone.signed out/root.hint
 out/root.zone: root.zone \
 	out/iana-strip.zone \
 	out/dn42-delegation.zone \
-	out/opennic-glue-strip.zone out/opennic-delegation.zone \
-	out/furnic.zone
+	out/opennic-glue-strip.zone out/opennic-delegation.zone
 	cat $^ | ldns-read-zone -p -s -S unixtime > $@
 
 out/root.hint: out/root.zone.signed
@@ -39,9 +38,6 @@ out/opennic-glue-strip.zone: out/opennic-glue-orig.zone
 
 out/opennic-delegation.zone: gen-opennic-records.sh out/opennic-glue-strip.zone
 	./$< | $(cleanzone) > $@
-
-out/furnic.zone:
-	drill -t @151.236.24.112 NS fur. > $@
 
 out/dnssec-zsk.key out/dnssec-zsk.private:
 	psk="$$(ldns-keygen -a ed25519 .)"; mv $$psk.private out/dnssec-zsk.private; mv $$psk.key out/dnssec-zsk.key
