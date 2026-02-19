@@ -1,0 +1,9 @@
+#!/usr/bin/bash
+
+privkey="$(wg genkey)"
+pubkey="$(wg pubkey <<<"$privkey")"
+psk="$(wg genpsk)"
+
+echo "Private Key: $privkey"
+echo "Public Key: $pubkey"
+echo "Pre-shared Key: $psk"
