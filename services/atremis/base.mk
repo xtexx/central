@@ -38,17 +38,22 @@ V_INSTALLED	= y
 V_INST_FILE	= /usr/bin/dinit
 $(call end)
 
+ifeq ($(DISTRO),archlinux)
 $(call package)
 V_PKG		= dinit-systemd
 V_INSTALLED	= y
 V_INST_FILE	= /usr/lib/systemd/system/dinit.service
 $(call end)
+endif
 
 $(call systemd-unit)
 V_UNIT		= dinit.service
 V_ENABLED	= y
 V_RUNNING	= y
-V_DEPS		= pkg-dinit-systemd $(DINITD_DIR)/boot
+V_DEPS		= $(DINITD_DIR)/boot
+ifeq ($(DISTRO),archlinux)
+V_DEPS		+= pkg-dinit-systemd
+endif
 $(call end)
 
 $(call fs-directory)
