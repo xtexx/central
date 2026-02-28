@@ -208,7 +208,9 @@ class CargoQuery {
 		$parserOutput = $parser->getOutput();
 
 		foreach ( $backlinkPageIds as $pageId ) {
-			$parserOutput->appendExtensionData( CargoBackLinks::BACKLINKS_DATA_KEY, $pageId );
+			if ( $pageId !== null ) {
+				$parserOutput->appendExtensionData( CargoBackLinks::BACKLINKS_DATA_KEY, $pageId );
+			}
 		}
 	}
 

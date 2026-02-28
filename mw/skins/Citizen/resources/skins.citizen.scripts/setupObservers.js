@@ -1,9 +1,9 @@
 // Adopted from Vector 2022
 const
-	scrollObserver = require( './scrollObserver.js' ),
-	initSectionObserver = require( './sectionObserver.js' ),
-	stickyHeader = require( './stickyHeader.js' ),
-	TableOfContents = require( './tableOfContents.js' ),
+	{ createDirectionObserver, createScrollObserver } = require( './scrollObserver.js' ),
+	{ createSectionObserver } = require( './sectionObserver.js' ),
+	{ StickyHeader, STICKY_HEADER_ID, STICKY_HEADER_VISIBLE_CLASS } = require( './stickyHeader.js' ),
+	{ TableOfContents } = require( './tableOfContents.js' ),
 	deferUntilFrame = require( './deferUntilFrame.js' ),
 	TOC_ID = 'citizen-toc',
 	BODY_CONTENT_ID = 'bodyContent',
@@ -49,13 +49,15 @@ const getHeadingIntersectionHandler = ( changeActiveSection ) =>
  * Return the computed value of the `scroll-margin-top` CSS property of the document element
  * which is also used for the scroll intersection threshold (T317661).
  *
+ * @param {Window} window
+ * @param {Document} document
  * @return {number} Value of scroll-margin-top OR 75 if falsy.
  * 75 derived from @scroll-padding-top LESS variable
  * https://gerrit.wikimedia.org/r/c/mediawiki/skins/Vector/+/894696/3/resources/common/variables.less ?
  */
-function getDocumentScrollPaddingTop() {
+function getDocumentScrollPaddingTop( window, document ) {
 	const defaultScrollPaddingTop = 75;
-	const documentStyles = getComputedStyle( document.documentElement );
+	const documentStyles = window.getComputedStyle( document.documentElement );
 	const scrollPaddingTopString = documentStyles.getPropertyValue( 'scroll-padding-top' );
 	return ( parseInt( scrollPaddingTopString, 10 ) || defaultScrollPaddingTop );
 }
@@ -63,10 +65,16 @@ function getDocumentScrollPaddingTop() {
 /**
  * @param {HTMLElement|null} tocElement
  * @param {HTMLElement|null} bodyContent
- * @param {initSectionObserver} initSectionObserverFn
+ * @param {Object} deps
+ * @param {Document} deps.document
+ * @param {Window} deps.window
+ * @param {Object} deps.mw
+ * @param {typeof IntersectionObserver} deps.IntersectionObserver
  * @return {TableOfContents|null}
  */
-const setupTableOfContents = ( tocElement, bodyContent, initSectionObserverFn ) => {
+const setupTableOfContents = (
+	tocElement, bodyContent, { document, window, mw, IntersectionObserver }
+) => {
 	if ( !(
 		tocElement &&
 		bodyContent
@@ -107,13 +115,19 @@ const setupTableOfContents = ( tocElement, bodyContent, initSectionObserverFn ) 
 	const tableOfContents = new TableOfContents( {
 		container: tocElement,
 		onHeadingClick: handleTocSectionChange,
-		onHashChange: handleTocSectionChange
+		onHashChange: handleTocSectionChange,
+		window,
+		document,
+		mw
 	} );
 	const elements = () => bodyContent.querySelectorAll( `${ HEADING_SELECTOR }, .mw-body-content` );
 
-	const sectionObserver = initSectionObserverFn( {
+	const sectionObserver = createSectionObserver( {
+		window,
+		mw,
+		IntersectionObserver,
 		elements: elements(),
-		topMargin: getDocumentScrollPaddingTop(),
+		topMargin: getDocumentScrollPaddingTop( window, document ),
 		onIntersection: getHeadingIntersectionHandler(
 			tableOfContents.changeActiveSection.bind( tableOfContents )
 		)
@@ -136,7 +150,7 @@ const setupTableOfContents = ( tocElement, bodyContent, initSectionObserverFn ) 
 	} );
 
 	const setInitialActiveSection = () => {
-		const hash = location.hash.slice( 1 );
+		const hash = window.location.hash.slice( 1 );
 		// If hash fragment is blank, determine the active section with section
 		// observer.
 		if ( hash === '' ) {
@@ -177,47 +191,60 @@ const setupTableOfContents = ( tocElement, bodyContent, initSectionObserverFn ) 
 };
 
 /**
+ * @param {Object} deps
+ * @param {Document} deps.document
+ * @param {Window} deps.window
+ * @param {Object} deps.mw
+ * @param {typeof IntersectionObserver} deps.IntersectionObserver
  * @return {void}
  */
-const main = () => {
+const init = ( { document, window, mw, IntersectionObserver } ) => {
 	const tocElement = document.getElementById( TOC_ID );
 	const bodyContent = document.getElementById( BODY_CONTENT_ID );
 
 	/* eslint-disable no-unused-vars */
-	const tableOfContents = setupTableOfContents( tocElement, bodyContent, initSectionObserver );
+	const tableOfContents = setupTableOfContents(
+		tocElement, bodyContent, { document, window, mw, IntersectionObserver }
+	);
 
 	const
-		stickyHeaderElement = document.getElementById( stickyHeader.STICKY_HEADER_ID ),
+		stickyHeaderElement = document.getElementById( STICKY_HEADER_ID ),
 		stickyIntersection = document.getElementById( 'citizen-page-header-sticky-sentinel' );
 
-	const shouldStickyHeader = getComputedStyle( stickyIntersection )?.getPropertyValue( 'display' ) !== 'none';
+	const shouldStickyHeader = window.getComputedStyle( stickyIntersection )?.getPropertyValue( 'display' ) !== 'none';
 	const isStickyHeaderAllowed = !!stickyHeaderElement &&
 		!!stickyIntersection &&
 		shouldStickyHeader;
 
-	const scrollDirectionObserver = scrollObserver.initDirectionObserver(
-		() => {
+	const stickyHeaderInstance = isStickyHeaderAllowed ?
+		new StickyHeader( { stickyHeaderElement, document } ) :
+		null;
+
+	const scrollDirectionObserver = createDirectionObserver( {
+		window,
+		throttle: mw.util.throttle,
+		onScrollDown: () => {
 			document.body.classList.remove( SCROLL_UP_CLASS );
 			document.body.classList.add( SCROLL_DOWN_CLASS );
 		},
-		() => {
+		onScrollUp: () => {
 			document.body.classList.remove( SCROLL_DOWN_CLASS );
 			document.body.classList.add( SCROLL_UP_CLASS );
 		},
-		10
-	);
+		threshold: 10
+	} );
 
-	if ( isStickyHeaderAllowed ) {
-		stickyHeader.init( stickyHeaderElement );
+	if ( stickyHeaderInstance ) {
+		stickyHeaderInstance.init();
 	}
 
 	const resumeStickyHeader = () => {
 		if (
-			isStickyHeaderAllowed &&
-			!document.body.classList.contains( stickyHeader.STICKY_HEADER_VISIBLE_CLASS ) &&
+			stickyHeaderInstance &&
+			!document.body.classList.contains( STICKY_HEADER_VISIBLE_CLASS ) &&
 			document.body.classList.contains( PAGE_TITLE_INTERSECTION_CLASS )
 		) {
-			stickyHeader.show( stickyHeaderElement );
+			stickyHeaderInstance.show();
 			if ( document.documentElement.classList.contains( 'citizen-feature-autohide-navigation-clientpref-1' ) ) {
 				scrollDirectionObserver.resume();
 			}
@@ -225,13 +252,17 @@ const main = () => {
 	};
 
 	const pauseStickyHeader = () => {
-		if ( document.body.classList.contains( stickyHeader.STICKY_HEADER_VISIBLE_CLASS ) ) {
-			stickyHeader.hide( stickyHeaderElement );
+		if (
+			stickyHeaderInstance &&
+			document.body.classList.contains( STICKY_HEADER_VISIBLE_CLASS )
+		) {
+			stickyHeaderInstance.hide();
 			scrollDirectionObserver.pause();
 		}
 	};
 
-	const pageHeaderObserver = scrollObserver.initScrollObserver(
+	const scrollObserver = createScrollObserver( { IntersectionObserver } );
+	const pageHeaderObserver = scrollObserver.observe(
 		() => {
 			document.body.classList.add( PAGE_TITLE_INTERSECTION_CLASS );
 			resumeStickyHeader();
@@ -254,5 +285,5 @@ const main = () => {
 };
 
 module.exports = {
-	main
+	init
 };
