@@ -12,7 +12,6 @@ use MediaWiki\Output\OutputPage;
 use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\ResourceLoader as RL;
 use MediaWiki\Skin\SkinComponentUtils;
-use MediaWiki\Skins\Citizen\GetConfigTrait;
 use MediaWiki\Skins\Hook\SkinPageReadyConfigHook;
 use Skin;
 use SkinTemplate;
@@ -27,7 +26,7 @@ class SkinHooks implements
 	SkinBuildSidebarHook,
 	SkinPageReadyConfigHook
 {
-	use GetConfigTrait;
+	private static ?string $inlineScript = null;
 
 	/**
 	 * Adds the inline theme switcher script to the page
@@ -41,11 +40,14 @@ class SkinHooks implements
 			return;
 		}
 
-		if ( $this->getConfigValue( 'CitizenEnablePreferences', $out ) === true ) {
-			$script = file_get_contents( MW_INSTALL_PATH . '/skins/Citizen/resources/skins.citizen.scripts/inline.js' );
-			$script = Html::inlineScript( $script );
-			$script = RL\ResourceLoader::filter( 'minify-js', $script );
-			$out->addHeadItem( 'skin.citizen.inline', $script );
+		if ( $out->getConfig()->get( 'CitizenEnablePreferences' ) === true ) {
+			self::$inlineScript ??= Html::inlineScript(
+				RL\ResourceLoader::filter(
+					'minify-js',
+					file_get_contents( MW_INSTALL_PATH . '/skins/Citizen/resources/skins.citizen.scripts/inline.js' )
+				)
+			);
+			$out->addHeadItem( 'skin.citizen.inline', self::$inlineScript );
 		}
 	}
 
@@ -138,7 +140,7 @@ class SkinHooks implements
 
 	private function addSiteTools( Skin $skin, array &$bar ): void {
 		$out = $skin->getOutput();
-		$customSiteToolsMenuId = $this->getConfigValue( 'CitizenGlobalToolsPortlet', $out );
+		$customSiteToolsMenuId = $out->getConfig()->get( 'CitizenGlobalToolsPortlet' );
 
 		$siteToolsMenuId = empty( $customSiteToolsMenuId )
 			? array_key_first( $bar )
@@ -156,7 +158,7 @@ class SkinHooks implements
 			];
 		}
 
-		if ( !isset( $bar[$siteToolsMenuId]['upload'] ) && $this->getConfigValue( 'EnableUploads', $out ) === true ) {
+		if ( !isset( $bar[$siteToolsMenuId]['upload'] ) && $out->getConfig()->get( 'EnableUploads' ) === true ) {
 			$isUploadWizardEnabled = ExtensionRegistry::getInstance()->isLoaded( 'Upload Wizard' );
 			$bar[$siteToolsMenuId][] = [
 				'text'  => $skin->msg( 'upload' ),
@@ -471,11 +473,8 @@ class SkinHooks implements
 	/**
 	 * Adds class to a property
 	 * Based on Vector
-	 *
-	 * @param array|string &$item to update
-	 * @param array|string $classes to add to the item
 	 */
-	private static function appendClassToItem( mixed &$item, mixed $classes ): void {
+	private static function appendClassToItem( array|string|null &$item, array|string $classes ): void {
 		$existingClasses = $item;
 
 		if ( is_array( $existingClasses ) ) {
