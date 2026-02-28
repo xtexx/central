@@ -259,10 +259,10 @@ class CargoStore {
 			}
 
 			// Also set to blank if the value does not match the type.
-			if ( $fieldDescription->mType === 'Float' && !is_numeric( $fieldValue ) ) {
+			if ( $fieldDescription->mType === 'Float' && !is_numeric( $fieldValue ) && !$fieldDescription->mIsList ) {
 				$tableFieldValues[$fieldName] = null;
 			}
-			if ( $fieldDescription->mType === 'Integer' ) {
+			if ( $fieldDescription->mType === 'Integer' && !$fieldDescription->mIsList ) {
 				if ( $fieldValue === null || !preg_match( '/^-?\d+$/', $fieldValue ) ) {
 					$tableFieldValues[$fieldName] = null;
 				}

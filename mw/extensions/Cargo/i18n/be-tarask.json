@@ -4,6 +4,7 @@
 			"Kareyac",
 			"Red Winged Duck",
 			"Renessaince",
+			"Ucukor",
 			"W"
 		]
 	},
@@ -34,6 +35,7 @@
 	"cargo-drilldown-mapformat": "Мапа",
 	"cargo-drilldown-galleryformat": "Галерэя",
 	"cargo-drilldown-calendarformat": "Каляндар",
+	"cargo-dynamictables-togglecolumns": "Перамкнуць слупы:",
 	"cargo-purgecache": "Ачысьціць запасьнік",
 	"cargo-pageschemas-tablename": "Назва табліцы:",
 	"cargo-field": "Поле"
