@@ -1,2 +1,6 @@
 target/
 mwbot.toml
+weblate.ini
+.weblate.ini
+.weblate
+.vscode
