@@ -20,6 +20,13 @@ jobs:
             experimental: false
             stage: phan
 
+          # Legacy MediaWiki stable - PHP 8.2 (phpunit)
+          - mw: 'REL1_44'
+            php: 8.2
+            php-docker: 82
+            experimental: false
+            stage: phpunit
+
           # Latest MediaWiki stable - PHP 8.2 (phan)
           - mw: 'REL1_45'
             php: 8.2
@@ -33,34 +40,6 @@ jobs:
             php-docker: 84
             experimental: true
             stage: phan
-
-          # Latest MediaWiki master - PHP 8.2 (phan)
-          - mw: 'master'
-            php: 8.2
-            php-docker: 82
-            experimental: true
-            stage: phan
-
-          # Latest MediaWiki master - PHP 8.4 (phan)
-          - mw: 'master'
-            php: 8.4
-            php-docker: 84
-            experimental: true
-            stage: phan
-
-          # Latest MediaWiki master - PHP 8.2 (coverage)
-          - mw: 'master'
-            php: 8.2
-            php-docker: 82
-            experimental: true
-            stage: coverage
-            
-          # Legacy MediaWiki stable - PHP 8.2 (phpunit)
-          - mw: 'REL1_44'
-            php: 8.2
-            php-docker: 82
-            experimental: false
-            stage: phpunit
 
           # Latest MediaWiki stable - PHP 8.2 (phpunit)
           - mw: 'REL1_45'
@@ -76,6 +55,34 @@ jobs:
             experimental: false
             stage: phpunit
 
+          # Latest MediaWiki stable - PHP 8.2 (coverage)
+          - mw: 'REL1_45'
+            php: 8.2
+            php-docker: 82
+            experimental: false
+            stage: coverage
+
+          # Latest MediaWiki stable - PHP 8.2 (composer-test)
+          - mw: 'REL1_45'
+            php: 8.2
+            php-docker: 82
+            experimental: false
+            stage: composer-test
+
+          # Latest MediaWiki master - PHP 8.2 (phan)
+          - mw: 'master'
+            php: 8.2
+            php-docker: 82
+            experimental: true
+            stage: phan
+
+          # Latest MediaWiki master - PHP 8.4 (phan)
+          - mw: 'master'
+            php: 8.4
+            php-docker: 84
+            experimental: true
+            stage: phan
+
           # Latest MediaWiki master - PHP 8.2 (phpunit)
           - mw: 'master'
             php: 8.2
@@ -89,13 +96,6 @@ jobs:
             php-docker: 84
             experimental: true
             stage: phpunit
-
-          # Latest MediaWiki stable - PHP 8.2 (composer-test)
-          - mw: 'REL1_45'
-            php: 8.2
-            php-docker: 82
-            experimental: false
-            stage: composer-test
 
     runs-on: ubuntu-latest
 
@@ -280,10 +280,9 @@ jobs:
               "${DOCKER_REGISTRY}/${DOCKER_ORG}/${DOCKER_IMAGE}:${DOCKER_LATEST_TAG}" \
               --skip-zuul \
               --packages-source composer \
-              -c "/bin/bash -c 'curl -sL https://raw.githubusercontent.com/wikimedia/integration-config/refs/heads/master/dockerfiles/quibble-bullseye-php81-coverage/mwext-phpunit-coverage.sh -o mwext-phpunit-coverage && \
-                curl -sL https://raw.githubusercontent.com/wikimedia/integration-config/refs/heads/master/dockerfiles/quibble-bullseye-php81-coverage/phpunit-suite-edit.py -o phpunit-suite-edit && \
-                curl -sL https://raw.githubusercontent.com/wikimedia/integration-config/refs/heads/master/dockerfiles/quibble-bullseye-php81-coverage/phpunit-junit-edit.py -o phpunit-junit-edit && \
-                rm -rf /workspace/src/extensions/*/vendor/squizlabs/php_codesniffer /workspace/src/extensions/*/vendor/composer/pcre && \
+              -c "/bin/bash -c 'curl -sL https://raw.githubusercontent.com/wikimedia/integration-config/refs/heads/master/dockerfiles/quibble-coverage/mwext-phpunit-coverage.sh -o mwext-phpunit-coverage && \
+                curl -sL https://raw.githubusercontent.com/wikimedia/integration-config/refs/heads/master/dockerfiles/quibble-coverage/phpunit-suite-edit.py -o phpunit-suite-edit && \
+                curl -sL https://raw.githubusercontent.com/wikimedia/integration-config/refs/heads/master/dockerfiles/quibble-coverage/phpunit-junit-edit.py -o phpunit-junit-edit && \
                 chmod +x mwext-phpunit-coverage phpunit-suite-edit phpunit-junit-edit && \
                 sed -i \"s|phpunit-suite-edit|./phpunit-suite-edit|g\" mwext-phpunit-coverage && \
                 sed -i \"s|phpunit-junit-edit|./phpunit-junit-edit|g\" mwext-phpunit-coverage && \
