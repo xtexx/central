@@ -304,7 +304,7 @@ func (h *HTTPTransport) NewTransport(caddyCtx caddy.Context) (*http.Transport, e
 			switch h.ProxyProtocol {
 			case "v1":
 				proxyv = 1
-			case "v2":
+			case "v2", "x-afnet-v2-bind":
 				proxyv = 2
 			default:
 				return nil, fmt.Errorf("unexpected proxy protocol version")
@@ -326,6 +326,9 @@ func (h *HTTPTransport) NewTransport(caddyCtx caddy.Context) (*http.Transport, e
 			default:
 				return nil, fmt.Errorf("unexpected remote addr type in proxy protocol info")
 			}
+			if h.ProxyProtocol == "x-afnet-v2-bind" {
+				destAddr = conn.RemoteAddr()
+			}
 			sourceAddr := &net.TCPAddr{
 				IP:   proxyProtocolInfo.AddrPort.Addr().AsSlice(),
 				Port: int(proxyProtocolInfo.AddrPort.Port()),
@@ -339,6 +342,8 @@ func (h *HTTPTransport) NewTransport(caddyCtx caddy.Context) (*http.Transport, e
 				caddyCtx.Logger().Debug("sending proxy protocol header v1", zap.Any("header", header))
 			case "v2":
 				caddyCtx.Logger().Debug("sending proxy protocol header v2", zap.Any("header", header))
+			case "x-afnet-v2-bind":
+				caddyCtx.Logger().Debug("sending proxy protocol header v2 (AFNET BIND patch)", zap.Any("header", header))
 			}
 
 			_, err = header.WriteTo(conn)
