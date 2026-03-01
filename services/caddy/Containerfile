@@ -1,6 +1,7 @@
 FROM docker.io/library/caddy:builder-alpine AS builder
 
 RUN xcaddy build \
+	--with github.com/caddyserver/caddy/v2=codeberg.org/xens/caddy/v2@afnet \
 	--with github.com/mholt/caddy-ratelimit \
 	--with github.com/ueffel/caddy-brotli \
 	--with github.com/caddyserver/replace-response \
