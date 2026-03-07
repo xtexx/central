@@ -9,7 +9,7 @@ While these extensions are optional to have Citizen work out of the box, there a
 
 - [PageImages](https://www.mediawiki.org/wiki/Extension:PageImages) (bundled with MediaWiki) - Add image to search suggestion results.
 - [TextExtracts](https://www.mediawiki.org/wiki/Extension:TextExtracts) (bundled with MediaWiki) - Add description to search suggestion results.
-- [ShortDescription](https://www.mediawiki.org/wiki/Extension:ShortDescription) - Add short description under page title and search suggestion results (needs to set $wgCitizenSearchDescriptionSource to wikidata).
+- [ShortDescription](https://www.mediawiki.org/wiki/Extension:ShortDescription) - Add short description under page title.
 - [TemplateStylesExtender](https://www.mediawiki.org/wiki/Extension:TemplateStylesExtender) (if you use [TemplateStyles](https://www.mediawiki.org/wiki/Extension:TemplateStyles)) - Allow the use of CSS variables in TemplateStyles, including the ones provided by Citizen.
 
 ## Extension styles
@@ -84,9 +84,3 @@ Name | Version
 [WSSearchFront](https://www.mediawiki.org/wiki/Extension:WSSearchFront) | 3.5.4 `c27ebcb5`
 
 Some fields are marked as N/A due to untracked information.
-
-### How to add your own skinStyles
-
-::: warning 🚧 Under Construction
-This part is currently being built. Please check back soon!
-:::

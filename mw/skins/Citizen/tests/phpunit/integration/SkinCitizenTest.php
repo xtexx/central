@@ -23,7 +23,6 @@ class SkinCitizenTest extends MediaWikiIntegrationTestCase {
 			$this->getServiceContainer()->getLanguageConverterFactory(),
 			$this->getServiceContainer()->getLanguageNameUtils(),
 			$this->getServiceContainer()->getPermissionManager(),
-			$this->getServiceContainer()->getExtensionRegistry(),
 			$this->getServiceContainer()->getUserGroupManager(),
 			$this->getServiceContainer()->getUrlUtils(),
 			null,
@@ -39,10 +38,12 @@ class SkinCitizenTest extends MediaWikiIntegrationTestCase {
 		] );
 
 		$skin = $this->createSkinInstance();
+		$out = $skin->getOutput();
+		$skin->initPage( $out );
 
 		$this->assertContains(
 			[ 'theme-color', '#ffaabb' ],
-			$skin->getOutput()->getMetaTags()
+			$out->getMetaTags()
 		);
 	}
 
@@ -52,6 +53,9 @@ class SkinCitizenTest extends MediaWikiIntegrationTestCase {
 		] );
 
 		$skin = $this->createSkinInstance();
+		$out = $skin->getOutput();
+		$skin->initPage( $out );
+
 		$expected = [
 			'rel' => 'manifest',
 			'href' => $this->getServiceContainer()->getUrlUtils()->expand(
@@ -60,7 +64,7 @@ class SkinCitizenTest extends MediaWikiIntegrationTestCase {
 			),
 		];
 
-		$this->assertContains( $expected, $skin->getOutput()->getLinkTags() );
+		$this->assertContains( $expected, $out->getLinkTags() );
 	}
 
 	public function testManifestLinkNotAddedWhenDisabled(): void {
@@ -69,8 +73,10 @@ class SkinCitizenTest extends MediaWikiIntegrationTestCase {
 		] );
 
 		$skin = $this->createSkinInstance();
+		$out = $skin->getOutput();
+		$skin->initPage( $out );
 
-		$this->assertSame( [], $skin->getOutput()->getLinkTags() );
+		$this->assertSame( [], $out->getLinkTags() );
 	}
 
 	public function testManifestLinkNotAddedOnPrivateWiki(): void {
@@ -80,8 +86,10 @@ class SkinCitizenTest extends MediaWikiIntegrationTestCase {
 		] );
 
 		$skin = $this->createSkinInstance();
+		$out = $skin->getOutput();
+		$skin->initPage( $out );
 
-		$this->assertSame( [], $skin->getOutput()->getLinkTags() );
+		$this->assertSame( [], $out->getLinkTags() );
 	}
 
 	public function testCjkFontModuleEnabled(): void {
@@ -117,7 +125,8 @@ class SkinCitizenTest extends MediaWikiIntegrationTestCase {
 
 		// Should not throw an undefined array key error
 		$skin = $this->createSkinInstance();
-		$this->assertInstanceOf( SkinCitizen::class, $skin );
+		$attrs = $skin->getHtmlElementAttributes();
+		$this->assertStringNotContainsString( 'skin-theme-clientpref-', $attrs['class'] );
 	}
 
 	public function testCollapsibleSectionsBodyClass(): void {
