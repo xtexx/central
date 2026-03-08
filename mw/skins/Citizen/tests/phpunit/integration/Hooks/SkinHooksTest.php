@@ -309,6 +309,60 @@ class SkinHooksTest extends MediaWikiIntegrationTestCase {
 		$this->assertSame( 'recentChanges', $sidebar['TOOLBOX']['recentchangeslinked']['icon'] );
 	}
 
+	public function testViewsMenuAddsCdxButtonClasses(): void {
+		$sktemplate = $this->createSkinTemplateMock();
+		$links = [
+			'views' => [
+				'view' => [ 'id' => 'ca-view' ],
+				'history' => [ 'id' => 'ca-history' ],
+			],
+		];
+
+		SkinHooks::onSkinTemplateNavigation( $sktemplate, $links );
+
+		$expectedClasses = [
+			'citizen-cdx-button--size-large',
+			'cdx-button',
+			'cdx-button--fake-button',
+			'cdx-button--fake-button--enabled',
+			'cdx-button--weight-quiet',
+		];
+		foreach ( $expectedClasses as $class ) {
+			$this->assertContains( $class, $links['views']['view']['link-class'] );
+			$this->assertContains( $class, $links['views']['history']['link-class'] );
+		}
+	}
+
+	public function testViewsMenuPromotesEditButtonsToProgressive(): void {
+		$sktemplate = $this->createSkinTemplateMock();
+		$links = [
+			'views' => [
+				'edit' => [ 'id' => 'ca-edit', 'class' => '' ],
+			],
+		];
+
+		SkinHooks::onSkinTemplateNavigation( $sktemplate, $links );
+
+		$linkClass = $links['views']['edit']['link-class'];
+		$this->assertContains( 'cdx-button--weight-primary', $linkClass );
+		$this->assertContains( 'cdx-button--action-progressive', $linkClass );
+		$this->assertNotContains( 'cdx-button--weight-quiet', $linkClass );
+	}
+
+	public function testAssociatedPagesMenuAddsCdxButtonClasses(): void {
+		$sktemplate = $this->createSkinTemplateMock();
+		$links = [
+			'associated-pages' => [
+				'main' => [ 'id' => 'ca-nstab-main' ],
+			],
+		];
+
+		SkinHooks::onSkinTemplateNavigation( $sktemplate, $links );
+
+		$this->assertContains( 'cdx-button', $links['associated-pages']['main']['link-class'] );
+		$this->assertContains( 'citizen-cdx-button--size-large', $links['associated-pages']['main']['link-class'] );
+	}
+
 	public function testNotificationsMenuMapsIconsAndRewritesClasses(): void {
 		$sktemplate = $this->createSkinTemplateMock();
 		$links = [
@@ -341,6 +395,16 @@ class SkinHooksTest extends MediaWikiIntegrationTestCase {
 			'citizen-echo-notification-badge',
 			$links['notifications']['notifications-alert']['link-class']
 		);
+		// CdxButton classes should be applied
+		$alertClasses = $links['notifications']['notifications-alert']['link-class'];
+		$this->assertContains( 'cdx-button', $alertClasses );
+		$this->assertContains( 'cdx-button--fake-button', $alertClasses );
+		$this->assertContains( 'cdx-button--fake-button--enabled', $alertClasses );
+		$this->assertContains( 'cdx-button--icon-only', $alertClasses );
+		$this->assertContains( 'cdx-button--weight-quiet', $alertClasses );
+		$this->assertContains( 'citizen-cdx-button--size-large', $alertClasses );
+		// Echo reads this class from the PHP anchor to identify the element
+		$this->assertContains( 'mw-echo-notification-badge-nojs', $alertClasses );
 
 		// Notice did NOT have unseen class — it should NOT be present
 		$this->assertNotContains(
@@ -348,9 +412,9 @@ class SkinHooksTest extends MediaWikiIntegrationTestCase {
 			$links['notifications']['notifications-notice']['link-class']
 		);
 		// But the class rewrite should still have happened
-		$this->assertContains(
-			'citizen-echo-notification-badge',
-			$links['notifications']['notifications-notice']['link-class']
-		);
+		$noticeClasses = $links['notifications']['notifications-notice']['link-class'];
+		$this->assertContains( 'citizen-echo-notification-badge', $noticeClasses );
+		$this->assertContains( 'cdx-button', $noticeClasses );
+		$this->assertContains( 'mw-echo-notification-badge-nojs', $noticeClasses );
 	}
 }

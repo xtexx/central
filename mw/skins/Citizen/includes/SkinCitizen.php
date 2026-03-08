@@ -4,7 +4,7 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Skins\Citizen;
 
-use Exception;
+use BadMethodCallException;
 use MediaWiki\Cache\GenderCache;
 use MediaWiki\Config\Config;
 use MediaWiki\Languages\LanguageConverterFactory;
@@ -12,7 +12,6 @@ use MediaWiki\Languages\LanguageNameUtils;
 use MediaWiki\MainConfigNames;
 use MediaWiki\Output\OutputPage;
 use MediaWiki\Permissions\PermissionManager;
-use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentBodyContent;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentFooter;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentMainMenu;
@@ -20,7 +19,6 @@ use MediaWiki\Skins\Citizen\Components\CitizenComponentPageFooter;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentPageHeading;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentPageSidebar;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentPageTools;
-use MediaWiki\Skins\Citizen\Components\CitizenComponentSearchBox;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentSiteStats;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentStickyHeader;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentTableOfContents;
@@ -48,6 +46,7 @@ class SkinCitizen extends SkinMustache {
 
 	private const DEFAULT_CLIENT_PREFS = [
 		'citizen-feature-autohide-navigation' => '1',
+		'citizen-feature-image-dimming' => '0',
 		'citizen-feature-pure-black' => '0',
 		'citizen-feature-custom-font-size' => 'standard',
 		'citizen-feature-custom-width' => 'standard',
@@ -74,9 +73,9 @@ class SkinCitizen extends SkinMustache {
 		private readonly LanguageConverterFactory $languageConverterFactory,
 		private readonly LanguageNameUtils $languageNameUtils,
 		private readonly PermissionManager $permissionManager,
-		private readonly ExtensionRegistry $extensionRegistry,
 		private readonly UserGroupManager $userGroupManager,
 		private readonly UrlUtils $urlUtils,
+		// @phan-suppress-next-line PhanUndeclaredTypeParameter,PhanUndeclaredTypeProperty
 		private readonly ?MobileContext $mfContext,
 		array $options = []
 	) {
@@ -84,9 +83,52 @@ class SkinCitizen extends SkinMustache {
 			$options['name'] = 'citizen';
 		}
 
-		// Add skin-specific features
+		// Add skin-specific features that only modify the $options array.
+		// OutputPage modifications (HTML classes, metadata) are deferred to
+		// initPage() and getHtmlElementAttributes() so that they only run
+		// when Citizen is the active rendering skin. Without this separation,
+		// Special:Preferences pollutes other skins' OutputPage when it
+		// instantiates all registered skins to gather their configuration.
 		$this->buildSkinFeatures( $options );
 		parent::__construct( $options );
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function initPage( OutputPage $out ): void {
+		parent::initPage( $out );
+		$this->addMetadata( $out, $this->getConfig() );
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function getHtmlElementAttributes(): array {
+		$attrs = parent::getHtmlElementAttributes();
+		$config = $this->getConfig();
+		$classes = [];
+
+		// Theme
+		$theme = $config->get( 'CitizenThemeDefault' );
+		if ( isset( self::CLIENTPREFS_THEME_MAP[$theme] ) ) {
+			$classes[] = 'skin-theme-clientpref-' . self::CLIENTPREFS_THEME_MAP[$theme];
+		}
+
+		// Default client preferences
+		foreach ( self::DEFAULT_CLIENT_PREFS as $feature => $value ) {
+			$classes[] = $feature . '-clientpref-' . $value;
+		}
+
+		// Header position
+		$headerPosition = $config->get( 'CitizenHeaderPosition' );
+		if ( !in_array( $headerPosition, [ 'left', 'right', 'top', 'bottom' ], true ) ) {
+			$headerPosition = 'left';
+		}
+		$classes[] = 'citizen-header-position-' . $headerPosition;
+
+		$attrs['class'] = trim( $attrs['class'] . ' ' . implode( ' ', $classes ) );
+		return $attrs;
 	}
 
 	/**
@@ -167,11 +209,6 @@ class SkinCitizen extends SkinMustache {
 				$parentData['data-portlets']['data-languages'] ?? [],
 				$parentData['data-portlets']['data-variants'] ?? []
 			),
-			'data-search-box' => new CitizenComponentSearchBox(
-				$localizer,
-				$this->extensionRegistry,
-				$parentData['data-search-box']
-			),
 			'data-site-stats' => new CitizenComponentSiteStats(
 				$config,
 				$localizer,
@@ -204,15 +241,18 @@ class SkinCitizen extends SkinMustache {
 			$parentData[$key] = $component->getTemplateData();
 		}
 
-		// HACK: So that we only get the tagline once
+		// TODO: Pass tagline through the component instead of reaching across template data
 		$parentData['data-sticky-header']['html-sticky-header-tagline'] =
 			$this->prepareStickyHeaderTagline( $parentData['data-page-heading']['html-tagline'] );
 
-		// HACK: So that we can use Icon.mustache in Header__logo.mustache
+		// TODO: Pass the home icon through the component instead of injecting into logos data
 		$parentData['data-logos']['icon-home'] = 'home';
 
 		$parentData['toc-enabled'] = !empty( $parentData['data-toc'][ 'array-sections' ] );
 		if ( $parentData['toc-enabled'] ) {
+			// This body class depends on template data so it can't move to
+			// getHtmlElementAttributes(). Safe here because getTemplateData()
+			// only runs for the active rendering skin.
 			$out->addBodyClasses( 'citizen-toc-enabled' );
 		}
 
@@ -223,7 +263,7 @@ class SkinCitizen extends SkinMustache {
 	 * Extracts the page tools menu from the sidebar and returns both.
 	 * From Vector 2022
 	 *
-	 * @return array{ 0: array, 1: array } [ $sidebar, $pageToolsMenu ]
+	 * @return array [ $sidebar, $pageToolsMenu ]
 	 */
 	private function extractPageToolsFromSidebar( array $sidebar ): array {
 		$restPortlets = $sidebar[ 'array-portlets-rest' ] ?? [];
@@ -275,6 +315,7 @@ class SkinCitizen extends SkinMustache {
 		}
 
 		// If MF is installed, check if page is in mobile view and let MF do the formatting
+		// @phan-suppress-next-line PhanUndeclaredClassMethod MobileFrontend is an optional dependency
 		return $this->mfContext === null || !$this->mfContext->shouldDisplayMobileView();
 	}
 
@@ -284,23 +325,17 @@ class SkinCitizen extends SkinMustache {
 	 * you can't nest <a> elements in <a> elements
 	 */
 	private static function prepareStickyHeaderTagline( string $tagline ): string {
-		return preg_replace( '/<a\s+href="([^"]+)"[^>]*>(.*?)<\/a>/', '<span>$2</span>', $tagline );
+		return preg_replace( '/<a\s+href="([^"]+)"[^>]*>(.*?)<\/a>/', '<span>$2</span>', $tagline ) ?? $tagline;
 	}
 
 	/**
-	 * Set up optional skin features
+	 * Set up skin features that modify the constructor $options array.
+	 * Only bodyClasses and styles belong here — OutputPage modifications
+	 * are handled by initPage() and getHtmlElementAttributes().
 	 */
 	private function buildSkinFeatures( array &$options ): void {
 		$config = $this->getConfig();
-		$out = $this->getOutput();
-		$title = $out->getTitle();
-
-		$this->addMetadata( $out, $config );
-		$this->setSkinTheme( $out, $config );
-
-		foreach ( self::DEFAULT_CLIENT_PREFS as $feature => $value ) {
-			$out->addHtmlClasses( $feature . '-clientpref-' . $value );
-		}
+		$title = $this->getOutput()->getTitle();
 
 		if ( $title !== null ) {
 			// Collapsible sections
@@ -317,22 +352,13 @@ class SkinCitizen extends SkinMustache {
 				$options['styles'][] = $module;
 			}
 		}
-
-		// Header position
-		$headerPosition = $config->get( 'CitizenHeaderPosition' );
-
-		if ( !in_array( $headerPosition, [ 'left', 'right', 'top', 'bottom' ], true ) ) {
-			$headerPosition = 'left';
-		}
-
-		$out->addHtmlClasses( 'citizen-header-position-' . $headerPosition );
 	}
 
 	/**
 	 * Adds metadata to the output page (theme-color and manifest)
 	 */
 	private function addMetadata( OutputPage $out, Config $config ): void {
-		$out->addMeta( 'theme-color', $config->get( 'CitizenThemeColor' ) ?? '' );
+		$out->addMeta( 'theme-color', $config->get( 'CitizenThemeColor' ) );
 
 		if (
 			$config->get( 'CitizenEnableManifest' ) !== true ||
@@ -344,7 +370,7 @@ class SkinCitizen extends SkinMustache {
 		try {
 			$href = $this->urlUtils->expand( wfAppendQuery( wfScript( 'api' ),
 					[ 'action' => 'appmanifest' ] ), PROTO_RELATIVE );
-		} catch ( Exception $e ) {
+		} catch ( BadMethodCallException ) {
 			$href = '';
 		}
 
@@ -354,13 +380,4 @@ class SkinCitizen extends SkinMustache {
 		] );
 	}
 
-	/**
-	 * Sets the corresponding theme class on the <html> element
-	 */
-	private function setSkinTheme( OutputPage $out, Config $config ): void {
-		$theme = $config->get( 'CitizenThemeDefault' ) ?? 'auto';
-		if ( isset( self::CLIENTPREFS_THEME_MAP[ $theme ] ) ) {
-			$out->addHtmlClasses( 'skin-theme-clientpref-' . self::CLIENTPREFS_THEME_MAP[ $theme ] );
-		}
-	}
 }
