@@ -17,7 +17,7 @@
 	"categorywatch-notification-categorywatch-add-body": "[[User:$1|$1]] huet [[:$3|$3]] bäi [[:$4|$4]] dobäigesat",
 	"categorywatch-notification-categorywatch-remove-summary": "[[:$3|$4]] aus [[:$5|$6]] ewechgeholl",
 	"categorywatch-notification-bundle": "$1 Ännerunge an der Kategorisatioun op {{SITENAME}}",
-	"categorywatch-add-title": "Titel dee bäi eng iwwerwaacht Kategorie dobäigesat gëtt",
+	"categorywatch-add-title": "Titel, dee bei eng iwwerwaacht Kategorie dobäigesat gëtt",
 	"categorywatch-remove-title": "Titel aus der iwwerwaachter Kategorie ewechgeholl",
 	"echo-category-title-categorywatch": "iwwerwaacht Kategorie",
 	"echo-pref-tooltip-categorywatch": "Mech informéieren, wann een eng Säit an eng Kategorie drasetzt oder eraushëlt, déi ech iwwerwaachen."
