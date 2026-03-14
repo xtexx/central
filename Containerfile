@@ -1,9 +1,12 @@
-FROM docker.io/library/caddy:builder-alpine AS bld
+FROM registry.alpinelinux.org/img/alpine AS bld
 
-RUN xcaddy build \
-	--with github.com/caddyserver/replace-response \
-	--with github.com/hairyhenderson/caddy-teapot-module \
-	--with github.com/aksdb/caddy-cgi/v2
+RUN set -euxo pipefail; \
+	apk add go; \
+	go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest; \
+	xcaddy build \
+		--with github.com/caddyserver/replace-response \
+		--with github.com/hairyhenderson/caddy-teapot-module \
+		--with github.com/aksdb/caddy-cgi/v2
 
 FROM docker.io/library/caddy:alpine
 ARG VERSION="local-oci"
