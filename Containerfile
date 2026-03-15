@@ -1,5 +1,6 @@
 FROM registry.alpinelinux.org/img/alpine
 ARG VERSION="local-oci"
+ARG TARGETARCH
 
 COPY caddy-${TARGETARCH} /usr/bin/caddy
 
