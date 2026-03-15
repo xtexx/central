@@ -1,18 +1,7 @@
-FROM registry.alpinelinux.org/img/alpine AS bld
-
-RUN set -euxo pipefail; \
-	apk add go; \
-	go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest; \
-	xcaddy build \
-		--with github.com/caddyserver/replace-response \
-		--with github.com/hairyhenderson/caddy-teapot-module \
-		--with github.com/aksdb/caddy-cgi/v2
-
-FROM docker.io/library/caddy:alpine
+FROM registry.alpinelinux.org/img/alpine
 ARG VERSION="local-oci"
 
-COPY --from=bld /usr/bin/caddy /usr/bin/caddy
-RUN apk add --no-cache bash
+COPY caddy-${TARGETARCH} /usr/bin/caddy
 
 LABEL org.opencontainers.image.title="xtex's Home"
 LABEL org.opencontainers.image.description="xtex's Home Directory"
@@ -23,6 +12,7 @@ LABEL org.opencontainers.image.source="https://codeberg.org/xtex/home"
 
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY src /srv/src
+RUN apk add --no-cache bash
 RUN set -euxo pipefail; \
 	printf "${VERSION}" > /srv/src/version.txt; \
 	mkdir /srv/run;
@@ -32,3 +22,4 @@ WORKDIR /srv
 ENV UDS_DIR_ADMIN run
 ENV UDS_DIR run
 ENV BLOG_DIR blog
+ENTRYPOINT ["/usr/bin/caddy", "run", "-c", "/etc/caddy/Caddyfile"]
