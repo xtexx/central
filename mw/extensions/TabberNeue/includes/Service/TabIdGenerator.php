@@ -6,9 +6,9 @@ namespace MediaWiki\Extension\TabberNeue\Service;
 use MediaWiki\Parser\ParserOutput;
 use MediaWiki\Parser\Sanitizer;
 
-class TabNameHelper {
+class TabIdGenerator {
 	public function __construct(
-		private bool $parseTabName
+		private readonly bool $parseTabName
 	) {
 	}
 
@@ -19,7 +19,8 @@ class TabNameHelper {
 		if ( $this->parseTabName ) {
 			$label = htmlspecialchars( strip_tags( $label ) );
 		}
-		return Sanitizer::escapeIdForAttribute( $label );
+		//return Sanitizer::decodeCharReferencesAndNormalize( Sanitizer::escapeIdForAttribute( $label ) );
+		return $label;
 	}
 
 	/**
