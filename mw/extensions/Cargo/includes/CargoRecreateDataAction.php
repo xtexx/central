@@ -47,23 +47,23 @@ class CargoRecreateDataAction extends Action {
 	/**
 	 * Adds an "action" (i.e., a tab) to recreate the current article's data
 	 *
-	 * @param Title $obj
+	 * @param SkinTemplate $skinTemplate
 	 * @param array &$links
 	 * @return bool
 	 */
-	public static function displayTab( $obj, &$links ) {
-		$title = $obj->getTitle();
+	public static function displayTab( $skinTemplate, &$links ) {
+		$title = $skinTemplate->getTitle();
 		if ( !$title || $title->getNamespace() !== NS_TEMPLATE ) {
 			return true;
 		}
 
-		$user = $obj->getUser();
+		$user = $skinTemplate->getUser();
 		$permissionManager = MediaWikiServices::getInstance()->getPermissionManager();
 		if ( !$permissionManager->userCan( 'recreatecargodata', $user, $title ) ) {
 			return true;
 		}
 
-		$request = $obj->getRequest();
+		$request = $skinTemplate->getRequest();
 
 		// Make sure that this is a template page, that it either
 		// has (or had) a #cargo_declare call or has a #cargo_attach
@@ -80,13 +80,18 @@ class CargoRecreateDataAction extends Action {
 			$recreateDataTabMsg = 'cargo-createdatatable';
 		}
 
-		$recreateDataTab = [
-			'class' => ( $request->getVal( 'action' ) == 'recreatedata' ) ? 'selected' : '',
-			'text' => $obj->msg( $recreateDataTabMsg )->parse(),
-			'href' => $title->getLocalURL( 'action=recreatedata' )
-		];
+		// Link to the template that declares the table.
+		$declaringTemplateID = CargoUtils::getTemplateIDForDBTable( $tableName );
+		$declaringTemplateTitle = Title::newFromID( $declaringTemplateID );
+		if ( $declaringTemplateTitle !== null ) {
+			$recreateDataTab = [
+				'class' => ( $request->getVal( 'action' ) == 'recreatedata' ) ? 'selected' : '',
+				'text' => $skinTemplate->msg( $recreateDataTabMsg )->parse(),
+				'href' => $declaringTemplateTitle->getLocalURL( 'action=recreatedata' )
+			];
 
-		$links['views']['recreatedata'] = $recreateDataTab;
+			$links['views']['recreatedata'] = $recreateDataTab;
+		}
 
 		return true;
 	}
