@@ -266,7 +266,7 @@ $wgFileExtensions = array_merge($wgFileExtensions, [
 	'woff2',
 	'pdf',
 ]);
-$wgThumbLimits = [120, 250, 300];
+$wgThumbLimits = [120, 250, 300, 400];
 $wgDefaultUserOptions['thumbsize'] = 1;
 
 // Echo
