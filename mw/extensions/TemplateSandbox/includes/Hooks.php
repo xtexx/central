@@ -1,0 +1,587 @@
+<?php
+
+namespace MediaWiki\Extension\TemplateSandbox;
+
+use MediaWiki\Api\ApiBase;
+use MediaWiki\Api\ApiExpandTemplates;
+use MediaWiki\Api\ApiParse;
+use MediaWiki\Api\Hook\APIGetAllowedParamsHook;
+use MediaWiki\Api\Hook\ApiMakeParserOptionsHook;
+use MediaWiki\Config\Config;
+use MediaWiki\Content\Content;
+use MediaWiki\Content\ContentSerializationException;
+use MediaWiki\Content\IContentHandlerFactory;
+use MediaWiki\Content\Renderer\ContentRenderer;
+use MediaWiki\Content\Transform\ContentTransformer;
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\EditPage\EditPage;
+use MediaWiki\Hook\AlternateEditPreviewHook;
+use MediaWiki\Hook\EditPage__importFormDataHook;
+use MediaWiki\Hook\EditPage__showStandardInputs_optionsHook;
+use MediaWiki\HookContainer\HookContainer;
+use MediaWiki\Html\Html;
+use MediaWiki\Linker\LinkRenderer;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Page\WikiPageFactory;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Parser\ParserOutputLinkTypes;
+use MediaWiki\Registration\ExtensionRegistry;
+use MediaWiki\Request\WebRequest;
+use MediaWiki\ResourceLoader as RL;
+use MediaWiki\Revision\RevisionRecord;
+use MediaWiki\Revision\SlotRecord;
+use MediaWiki\Title\Title;
+use MediaWiki\Title\TitleValue;
+use MediaWiki\User\Options\UserOptionsLookup;
+use OOUI\ActionFieldLayout;
+use OOUI\ButtonInputWidget;
+use OOUI\FieldsetLayout;
+use OOUI\HtmlSnippet;
+use OOUI\Layout;
+use Wikimedia\ParamValidator\ParamValidator;
+use Wikimedia\ScopedCallback;
+
+class Hooks implements
+	EditPage__importFormDataHook,
+	EditPage__showStandardInputs_optionsHook,
+	AlternateEditPreviewHook,
+	APIGetAllowedParamsHook,
+	ApiMakeParserOptionsHook
+{
+	public function __construct(
+		private readonly IContentHandlerFactory $contentHandlerFactory,
+		private readonly ContentRenderer $contentRenderer,
+		private readonly ContentTransformer $contentTransformer,
+		private readonly HookContainer $hookContainer,
+		private readonly LinkRenderer $linkRenderer,
+		private readonly UserOptionsLookup $userOptionsLookup,
+		private readonly WikiPageFactory $wikiPageFactory,
+	) {
+	}
+
+	/**
+	 * Hook for EditPage::importFormData to parse our new form fields, and if
+	 * necessary put $editpage into "preview" mode.
+	 *
+	 * Note we specifically do not check $wgTemplateSandboxEditNamespaces here,
+	 * since users can manually enable this for other namespaces.
+	 *
+	 * @param EditPage $editpage
+	 * @param WebRequest $request
+	 */
+	public function onEditPage__importFormData( $editpage, $request ) {
+		$editpage->templatesandbox_template = $request->getText(
+			'wpTemplateSandboxTemplate', $editpage->getTitle()->getPrefixedText()
+		);
+		$editpage->templatesandbox_page = $request->getText( 'wpTemplateSandboxPage' );
+
+		if ( $request->wasPosted() ) {
+			if ( $request->getCheck( 'wpTemplateSandboxPreview' ) ) {
+				$editpage->templatesandbox_preview = true;
+				$editpage->preview = true;
+				$editpage->save = false;
+				$editpage->live = false;
+			}
+		}
+	}
+
+	/**
+	 * @param IContextSource $context
+	 * @param string $msg
+	 * @return string
+	 */
+	private static function wrapErrorMsg( IContextSource $context, $msg ) {
+		return Html::errorBox( $context->msg( $msg )->parseAsBlock() );
+	}
+
+	private static function hasTemplate( ParserOutput $parserOutput, Title $title ): bool {
+		foreach ( $parserOutput->getLinkList( ParserOutputLinkTypes::TEMPLATE ) as $link ) {
+			if ( $title->isSameLinkAs( $link['link'] ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Hook for AlternateEditPreview to output an entirely different preview
+	 * when our button was clicked.
+	 *
+	 * @param EditPage $editpage
+	 * @param Content &$content
+	 * @param string &$out
+	 * @param ParserOutput &$parserOutput
+	 * @return bool
+	 */
+	public function onAlternateEditPreview( $editpage, &$content, &$out,
+		&$parserOutput
+	) {
+		if ( !isset( $editpage->templatesandbox_preview ) ) {
+			return true;
+		}
+
+		$context = $editpage->getContext();
+
+		if ( $editpage->templatesandbox_template === '' ||
+			$editpage->templatesandbox_template === null
+		) {
+			$out = self::wrapErrorMsg( $context, 'templatesandbox-editform-need-template' );
+			return false;
+		}
+		if ( $editpage->templatesandbox_page === '' || $editpage->templatesandbox_page === null ) {
+			$out = self::wrapErrorMsg( $context, 'templatesandbox-editform-need-title' );
+			return false;
+		}
+
+		$templatetitle = Title::newFromText( $editpage->templatesandbox_template );
+		if ( !$templatetitle instanceof Title ) {
+			$out = self::wrapErrorMsg( $context, 'templatesandbox-editform-invalid-template' );
+			return false;
+		}
+
+		$title = Title::newFromText( $editpage->templatesandbox_page );
+		if ( !$title instanceof Title ) {
+			$out = self::wrapErrorMsg( $context, 'templatesandbox-editform-invalid-title' );
+			return false;
+		}
+
+		// If we're previewing the same page we're editing, we don't need to check whether
+		// we exist, since we fake that we exist later. This is useful to, for example,
+		// preview a page move.
+		if ( !$title->equals( $templatetitle ) && !$title->exists() ) {
+			$out = self::wrapErrorMsg( $context, 'templatesandbox-editform-title-not-exists' );
+			return false;
+		}
+
+		$dtitle = false;
+		$parserOutput = null;
+
+		$user = $context->getUser();
+		$output = $context->getOutput();
+		$lang = $context->getLanguage();
+
+		$noteHtml = '';
+		$previewIssuesHtml = '';
+
+		try {
+			if ( $editpage->sectiontitle !== '' ) {
+				// TODO (T314475): If sectiontitle is null this uses '' rather than summary; is that wanted?
+				$sectionTitle = $editpage->sectiontitle ?? '';
+			} else {
+				$sectionTitle = $editpage->summary;
+			}
+
+			if ( $editpage->getArticle()->getPage()->exists() ) {
+				$content = $editpage->getArticle()->getPage()->replaceSectionContent(
+					$editpage->section, $content, $sectionTitle, $editpage->edittime
+				);
+				if ( $content === null ) {
+					$out = self::wrapErrorMsg( $context, 'templatesandbox-failed-replace-section' );
+					return false;
+				}
+			} else {
+				if ( $editpage->section === 'new' ) {
+					$content = $content->addSectionHeader( $sectionTitle );
+				}
+			}
+
+			// Apply PST to the to-be-saved text
+			$popts = $editpage->getArticle()->getPage()->makeParserOptions(
+				$context
+			);
+			$popts->setIsPreview( true );
+			$popts->setIsSectionPreview( false );
+			$content = $this->contentTransformer->preSaveTransform(
+				$content,
+				$templatetitle,
+				$user,
+				$popts
+			);
+
+			$continueEditingHtml = Html::rawElement(
+				'span',
+				[ 'class' => 'mw-continue-editing' ],
+				$this->linkRenderer->makePreloadedLink(
+					new TitleValue( NS_MAIN, '', EditPage::EDITFORM_ID ),
+					$lang->getArrow() . ' ' . $context->msg( 'continue-editing' )->text()
+				)
+			);
+			$noteHtml .= Html::noticeBox(
+				$context->msg( 'templatesandbox-previewnote', $title->getPrefixedText() )->parse() .
+					$continueEditingHtml
+			);
+
+			$page = $this->wikiPageFactory->newFromTitle( $title );
+			$popts = $page->makeParserOptions( $context );
+			$popts->setIsPreview( true );
+			$popts->setIsSectionPreview( false );
+			$logic = new Logic( [], $templatetitle, $content );
+			$reset = $logic->setupForParse( $popts );
+
+			$revRecord = $popts->getCurrentRevisionRecordCallback()( $title );
+
+			$pageContent = $revRecord->getContent(
+				SlotRecord::MAIN,
+				RevisionRecord::FOR_THIS_USER,
+				$user
+			);
+			$parserOutput = $this->contentRenderer->getParserOutput( $pageContent, $title, $revRecord, $popts );
+
+			if ( !self::hasTemplate( $parserOutput, $templatetitle ) ) {
+				$out = self::wrapErrorMsg( $context, 'templatesandbox-template-not-used' );
+				return false;
+			}
+
+			$output->addParserOutputMetadata( $parserOutput );
+			if ( $output->userCanPreview() ) {
+				$output->addContentOverride( $templatetitle, $content );
+			}
+
+			$dtitle = $parserOutput->getDisplayTitle();
+			$parserOutput->setTitleText( '' );
+			$skinOptions = $output->getSkin()->getOptions();
+			$out = $parserOutput->runOutputPipeline( $popts, [
+				'injectTOC' => $skinOptions['toc'],
+				'enableSectionEditLinks' => false,
+				'includeDebugInfo' => true,
+			] )->getContentHolderText();
+
+			$parserWarnings = $parserOutput->getWarningMsgs();
+			if ( $parserWarnings ) {
+				$warningsHtml = '';
+				foreach ( $parserWarnings as $mv ) {
+					$warningsHtml .= $context->msg( $mv )->parse() . "<br>";
+				}
+				$previewIssuesHtml .= Html::warningBox( $warningsHtml );
+			}
+		} catch ( ContentSerializationException $ex ) {
+			$m = $context->msg( 'content-failed-to-parse',
+				// @phan-suppress-next-line PhanTypeMismatchArgumentNullable
+				$editpage->contentModel, $editpage->contentFormat, $ex->getMessage()
+			);
+			$previewIssuesHtml .= Html::errorBox( $m->parse() );
+			$out = '';
+		}
+
+		$dtitle = $dtitle === false ? $title->getPrefixedText() : $dtitle;
+		$previewhead = Html::rawElement(
+			'div', [ 'class' => 'previewnote' ],
+			Html::rawElement(
+				'h2', [ 'id' => 'mw-previewheader' ],
+				$context->msg( 'templatesandbox-preview', $title->getPrefixedText(), $dtitle )->parse()
+			) . $previewIssuesHtml . $noteHtml
+		);
+
+		$out = $previewhead . $out . $editpage->previewTextAfterContent;
+
+		return false;
+	}
+
+	/**
+	 * Hook for EditPage::showStandardInputs:options to add our form fields to
+	 * the "editOptions" area of the page.
+	 *
+	 * @param EditPage $editpage
+	 * @param OutputPage $output
+	 * @param int &$tabindex
+	 */
+	public function onEditPage__showStandardInputs_options( $editpage, $output, &$tabindex ) {
+		$namespaces = array_merge(
+			$output->getConfig()->get( 'TemplateSandboxEditNamespaces' ),
+			ExtensionRegistry::getInstance()->getAttribute( 'TemplateSandboxEditNamespaces' )
+		);
+
+		$contentModels = ExtensionRegistry::getInstance()->getAttribute(
+			'TemplateSandboxEditContentModels' );
+
+		// Show the form if the title is in an allowed namespace, has an allowed content model
+		// or if the user requested it with &wpTemplateSandboxShow
+		$showForm = $editpage->getTitle()->inNamespaces( $namespaces )
+			|| in_array( $editpage->getTitle()->getContentModel(), $contentModels, true )
+			|| $output->getRequest()->getCheck( 'wpTemplateSandboxShow' );
+
+		if ( !$showForm ) {
+			// output the values in hidden fields so that a user
+			// using a gadget doesn't have to re-enter them every time
+
+			$html = Html::openElement( 'span', [ 'id' => 'templatesandbox-editform' ] );
+
+			$html .= Html::hidden( 'wpTemplateSandboxTemplate',
+				$editpage->templatesandbox_template, [ 'id' => 'wpTemplateSandboxTemplate' ]
+			);
+
+			$html .= Html::hidden( 'wpTemplateSandboxPage',
+				$editpage->templatesandbox_page, [ 'id' => 'wpTemplateSandboxPage' ]
+			);
+
+			$html .= Html::closeElement( 'span' );
+
+			$output->addHTML( $html . "\n" );
+
+			return;
+		}
+
+		$output->enableOOUI();
+		$output->addModules( 'ext.TemplateSandbox' );
+		$output->addModuleStyles( 'ext.TemplateSandbox.styles' );
+
+		$context = $editpage->getContext();
+
+		$textHtml = '';
+		$text = $context->msg( 'templatesandbox-editform-text' );
+		if ( !$text->isDisabled() ) {
+			$textAttrs = [
+				'class' => 'mw-templatesandbox-editform-text',
+			];
+			$textHtml = Html::rawElement( 'div', $textAttrs, $text->parse() );
+		}
+
+		$helptextHtml = '';
+		$helptext = $context->msg( 'templatesandbox-editform-helptext' );
+		if ( !$helptext->isDisabled() ) {
+			$helptextAttrs = [
+				'class' => 'mw-templatesandbox-editform-helptext',
+			];
+			$helptextHtml = Html::rawElement( 'span', $helptextAttrs, $helptext->parse() );
+		}
+
+		$hiddenInputsHtml =
+			Html::hidden( 'wpTemplateSandboxTemplate',
+				$editpage->templatesandbox_template, [ 'id' => 'wpTemplateSandboxTemplate' ]
+			) .
+			// If they submit our form, pass the parameter along for not allowed namespaces
+			Html::hidden( 'wpTemplateSandboxShow', '' );
+
+		$fieldsetLayout =
+			new FieldsetLayout( [
+				'label' => new HtmlSnippet( $context->msg( 'templatesandbox-editform-legend' )->parse() ),
+				'id' => 'templatesandbox-editform',
+				'classes' => [ 'mw-templatesandbox-fieldset' ],
+				'items' => [
+					// TODO: OOUI should provide a plain content layout, as this is
+					// technically an abstract class
+					new Layout( [
+						'content' => new HtmlSnippet( $textHtml . "\n" . $hiddenInputsHtml )
+					] ),
+					new ActionFieldLayout(
+						new TemplateSandboxTitleWidget( [
+							'id' => 'wpTemplateSandboxPage',
+							'name' => 'wpTemplateSandboxPage',
+							'value' => $editpage->templatesandbox_page,
+							'tabIndex' => ++$tabindex,
+							'placeholder' => $context->msg( 'templatesandbox-editform-page-label' )->text(),
+							'infusable' => true,
+						] ),
+						new ButtonInputWidget( [
+							'id' => 'wpTemplateSandboxPreview',
+							'name' => 'wpTemplateSandboxPreview',
+							'label' => $context->msg( 'templatesandbox-editform-view-label' )->text(),
+							'tabIndex' => ++$tabindex,
+							'type' => 'submit',
+							'useInputTag' => true,
+						] ),
+						[ 'align' => 'top' ]
+					)
+				]
+			] );
+
+		if ( $helptextHtml ) {
+			$fieldsetLayout->addItems( [
+				// TODO: OOUI should provide a plain content layout, as this is
+				// technically an abstract class
+				new Layout( [
+					'content' => new HtmlSnippet( $helptextHtml )
+				] )
+			] );
+		}
+		$output->addHTML( (string)$fieldsetLayout );
+
+		if ( $this->userOptionsLookup->getOption( $context->getUser(), 'uselivepreview' ) ) {
+			$output->addModules( 'ext.TemplateSandbox.preview' );
+		}
+	}
+
+	/**
+	 * Determine if this API module is appropriate for us to mess with.
+	 * @param ApiBase $module
+	 * @return bool
+	 */
+	private static function isUsableApiModule( $module ) {
+		return $module instanceof ApiParse || $module instanceof ApiExpandTemplates;
+	}
+
+	/**
+	 * Hook for APIGetAllowedParams to add our API parameters to the relevant
+	 * modules.
+	 *
+	 * @param ApiBase $module
+	 * @param array &$params
+	 * @param int $flags
+	 */
+	public function onAPIGetAllowedParams( $module, &$params, $flags ) {
+		if ( !self::isUsableApiModule( $module ) ) {
+			return;
+		}
+
+		$params += [
+			'templatesandboxprefix' => [
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_ISMULTI => true,
+				ApiBase::PARAM_HELP_MSG => 'templatesandbox-apihelp-prefix',
+			],
+			'templatesandboxtitle' => [
+				ParamValidator::PARAM_TYPE => 'string',
+				ApiBase::PARAM_HELP_MSG => 'templatesandbox-apihelp-title',
+			],
+			'templatesandboxtext' => [
+				ParamValidator::PARAM_TYPE => 'text',
+				ApiBase::PARAM_HELP_MSG => 'templatesandbox-apihelp-text',
+			],
+			'templatesandboxcontentmodel' => [
+				ParamValidator::PARAM_TYPE => $this->contentHandlerFactory->getContentModels(),
+				ApiBase::PARAM_HELP_MSG => 'templatesandbox-apihelp-contentmodel',
+			],
+			'templatesandboxcontentformat' => [
+				ParamValidator::PARAM_TYPE => $this->contentHandlerFactory->getAllContentFormats(),
+				ApiBase::PARAM_HELP_MSG => 'templatesandbox-apihelp-contentformat',
+			],
+		];
+	}
+
+	/**
+	 * Hook for ApiMakeParserOptions to set things up for TemplateSandbox
+	 * parsing when necessary.
+	 *
+	 * @param ParserOptions $options
+	 * @param Title $title
+	 * @param array $params
+	 * @param ApiBase $module
+	 * @param null &$reset Set to a ScopedCallback used to reset any hooks set.
+	 * @param bool &$suppressCache
+	 */
+	public function onApiMakeParserOptions(
+		$options, $title, $params, $module, &$reset, &$suppressCache
+	) {
+		// Shouldn't happen, but...
+		if ( !self::isUsableApiModule( $module ) ) {
+			return;
+		}
+
+		$params += [
+			'templatesandboxprefix' => [],
+			'templatesandboxtitle' => null,
+			'templatesandboxtext' => null,
+			'templatesandboxcontentmodel' => null,
+			'templatesandboxcontentformat' => null,
+		];
+		$params = [
+			'prefix' => $params['templatesandboxprefix'] ?: [],
+			'title' => $params['templatesandboxtitle'],
+			'text' => $params['templatesandboxtext'],
+			'contentmodel' => $params['templatesandboxcontentmodel'],
+			'contentformat' => $params['templatesandboxcontentformat'],
+		];
+
+		if ( ( $params['title'] === null ) !== ( $params['text'] === null ) ) {
+			$p = $module->getModulePrefix();
+			$module->dieWithError( [ 'templatesandbox-apierror-titleandtext', $p ], 'invalidparammix' );
+		}
+
+		$prefixes = [];
+		foreach ( $params['prefix'] as $prefix ) {
+			$prefixTitle = Title::newFromText( rtrim( $prefix, '/' ) );
+			if ( !$prefixTitle instanceof Title || $prefixTitle->getFragment() !== '' ||
+				$prefixTitle->isExternal()
+			) {
+				$p = $module->getModulePrefix();
+				$module->dieWithError(
+					[ 'apierror-badparameter', "{$p}templatesandboxprefix" ], "bad_{$p}templatesandboxprefix"
+				);
+			}
+			$prefixes[] = $prefixTitle->getPrefixedText();
+		}
+
+		if ( $params['title'] !== null ) {
+			$page = $module->getTitleOrPageId( $params );
+			if ( $params['contentmodel'] == '' ) {
+				$contentHandler = $page->getContentHandler();
+			} else {
+				$contentHandler = $this->contentHandlerFactory
+					->getContentHandler( $params['contentmodel'] );
+			}
+
+			$escName = wfEscapeWikiText( $page->getTitle()->getPrefixedDBkey() );
+			$model = $contentHandler->getModelID();
+
+			if ( $contentHandler->supportsDirectApiEditing() === false ) {
+				$module->dieWithError( [ 'apierror-no-direct-editing', $model, $escName ] );
+			}
+
+			$format = $params['contentformat'] ?: $contentHandler->getDefaultFormat();
+			if ( !$contentHandler->isSupportedFormat( $format ) ) {
+				$module->dieWithError( [ 'apierror-badformat', $format, $model, $escName ] );
+			}
+
+			$templatetitle = $page->getTitle();
+			$content = $contentHandler->makeContent( $params['text'], $page->getTitle(), $model, $format );
+
+			// Apply PST to templatesandboxtext
+			$popts = $page->makeParserOptions( $module );
+			$popts->setIsPreview( true );
+			$popts->setIsSectionPreview( false );
+			$user = RequestContext::getMain()->getUser();
+			$content = $this->contentTransformer->preSaveTransform(
+				$content,
+				$templatetitle,
+				$user,
+				$popts
+			);
+		} else {
+			$templatetitle = null;
+			$content = null;
+		}
+
+		if ( $prefixes || $templatetitle ) {
+			$logic = new Logic( $prefixes, $templatetitle, $content );
+			$resetLogic = $logic->setupForParse( $options );
+			$suppressCache = true;
+
+			$resetHook = $this->hookContainer->scopedRegister(
+				'ApiParseMakeOutputPage',
+				static function ( $module, $output )
+					use ( $prefixes, $templatetitle, $content )
+				{
+					if ( $prefixes ) {
+						Logic::addSubpageHandlerToOutput( $prefixes, $output );
+					}
+					if ( $templatetitle ) {
+						$output->addContentOverride( $templatetitle, $content );
+					}
+				}
+			);
+
+			$reset = new ScopedCallback( static function () use ( &$resetLogic, &$resetHook ) {
+				ScopedCallback::consume( $resetHook );
+				ScopedCallback::consume( $resetLogic );
+			} );
+		}
+	}
+
+	/**
+	 * Function that returns an array of valid namespaces to show the page
+	 * preview form on for the ResourceLoader
+	 *
+	 * @param RL\Context $context
+	 * @param Config $config
+	 * @return array
+	 */
+	public static function getTemplateNamespaces( $context, $config ) {
+		return array_merge(
+			$config->get( 'TemplateSandboxEditNamespaces' ),
+			ExtensionRegistry::getInstance()->getAttribute( 'TemplateSandboxEditNamespaces' )
+		);
+	}
+
+}
