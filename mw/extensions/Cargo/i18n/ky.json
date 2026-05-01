@@ -1,0 +1,18 @@
+{
+	"@metadata": {
+		"authors": [
+			"Bosogo"
+		]
+	},
+	"cargo-viewdata-tables": "Жадыбал(дар):",
+	"cargo-viewdata-limit": "Чек:",
+	"cargo-viewdata-format": "Формат:",
+	"cargo-viewdata-defaultformat": "Демейки",
+	"cargo-drilldown-allpages": "Бардык барактар",
+	"cargo-drilldown-or": "же",
+	"cargo-drilldown-filename": "Файлдын аталышы",
+	"cargo-drilldown-galleryformat": "Галерея",
+	"cargo-gantt-days": "Күндөр",
+	"cargo-gantt-months": "Айлар",
+	"cargo-gantt-years": "Жыл"
+}
