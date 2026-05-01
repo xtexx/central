@@ -1,0 +1,123 @@
+{
+	"name": "DynamicPageList4",
+	"version": "4.0.5",
+	"author": [
+		"Universal Omega",
+		"..."
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:DynamicPageList4",
+	"descriptionmsg": "dpl-desc",
+	"license-name": "GPL-3.0-or-later",
+	"type": "parserhook",
+	"requires": {
+		"MediaWiki": ">= 1.44.0"
+	},
+	"MessagesDirs": {
+		"DynamicPageList4": [
+			"i18n"
+		]
+	},
+	"ExtensionMessagesFiles": {
+		"DynamicPageList4Magic": "DynamicPageList4Magic.php"
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\DynamicPageList4\\": "includes/",
+		"MediaWiki\\Extension\\DynamicPageList4\\Maintenance\\": "maintenance/"
+	},
+	"TestAutoloadNamespaces": {
+		"MediaWiki\\Extension\\DynamicPageList4\\Tests\\": "tests/phpunit/"
+	},
+	"Hooks": {
+		"LoadExtensionSchemaUpdates": {
+			"handler": "Installer"
+		},
+		"ParserFirstCallInit": {
+			"handler": "Main"
+		}
+	},
+	"HookHandlers": {
+		"Installer": {
+			"class": "MediaWiki\\Extension\\DynamicPageList4\\HookHandlers\\Installer"
+		},
+		"Main": {
+			"class": "MediaWiki\\Extension\\DynamicPageList4\\HookHandlers\\Main"
+		}
+	},
+	"config": {
+		"DPLAllowedNamespaces": {
+			"description": "Namespaces DynamicPageList4 is allowed to query.",
+			"value": []
+		},
+		"DPLAllowUnlimitedCategories": {
+			"description": "Allow unlimited categories in a DPL query.",
+			"value": false
+		},
+		"DPLAllowUnlimitedResults": {
+			"description": "Allow unlimited result counts in a DPL query.",
+			"value": false
+		},
+		"DPLAlwaysCacheResults": {
+			"description": "Always cache DPL query results.",
+			"value": false
+		},
+		"DPLCategoryStyleListCutoff": {
+			"description": "Cutoff for switching category style list formatting.",
+			"value": 6
+		},
+		"DPLFunctionalRichness": {
+			"description": "Controls which DPL features are enabled.",
+			"value": 3
+		},
+		"DPLMaxCategoryCount": {
+			"description": "Maximum number of categories allowed in a DPL query.",
+			"value": 8
+		},
+		"DPLMaxQueryTime": {
+			"description": "Maximum execution time for a DPL query (ms).",
+			"value": 10000
+		},
+		"DPLMaxResultCount": {
+			"description": "Maximum number of pages returned by a DPL query.",
+			"value": 500
+		},
+		"DPLMinCategoryCount": {
+			"description": "Minimum number of categories required in a DPL query.",
+			"value": 0
+		},
+		"DPLOverrideParameterDefaults": {
+			"description": "Overrides default values for DPL parameters.",
+			"value": []
+		},
+		"DPLQueryCacheTime": {
+			"description": "Cache lifetime for DPL queries (seconds).",
+			"value": 0
+		},
+		"DPLRecursivePreprocess": {
+			"description": "Enable recursive preprocessing of DPL output.",
+			"value": true
+		},
+		"DPLRecursiveTagParse": {
+			"description": "Enable recursive parsing of DPL tags.",
+			"value": false
+		},
+		"DPLRunFromProtectedPagesOnly": {
+			"description": "Restrict DPL usage to protected pages only.",
+			"value": false
+		}
+	},
+	"ConfigRegistry": {
+		"DynamicPageList4": "MediaWiki\\Config\\GlobalVarConfig::newInstance"
+	},
+	"TrackingCategories": [
+		"dpl-tracking-category",
+		"dpl-tag-tracking-category",
+		"dpl-intersection-tracking-category",
+		"dpl-parserfunc-tracking-category",
+		"dplnum-parserfunc-tracking-category",
+		"dplvar-parserfunc-tracking-category",
+		"dplreplace-parserfunc-tracking-category",
+		"dplchapter-parserfunc-tracking-category",
+		"dplmatrix-parserfunc-tracking-category"
+	],
+	"manifest_version": 2
+}
