@@ -1,0 +1,98 @@
+import Page from 'wdio-mediawiki/Page';
+
+class ViewEditPage extends Page {
+	// Here we avoid things depending on the config, e.g. group and global
+	get filterId() {
+		return $( '#mw-abusefilter-edit-id .oo-ui-labelWidget' );
+	}
+
+	get name() {
+		return $( 'input[name="wpFilterDescription"]' );
+	}
+
+	get rules() {
+		return $( '#wpFilterRules' );
+	}
+
+	get comments() {
+		return $( 'textarea[name="wpFilterNotes"]' );
+	}
+
+	get hidden() {
+		return $( 'input[name="wpFilterHidden"]' );
+	}
+
+	get enabled() {
+		return $( 'input[name="wpFilterEnabled"]' );
+	}
+
+	get deleted() {
+		return $( 'input[name="wpFilterDeleted"]' );
+	}
+
+	// @todo This assumes that warn is enabled in the config, which is true by default
+	get warnCheckbox() {
+		return $( 'input[name="wpFilterActionWarn"]' );
+	}
+
+	get warnOtherMessage() {
+		return $( 'input[name="wpFilterWarnMessageOther"]' );
+	}
+
+	get exportData() {
+		return $( '#mw-abusefilter-export textarea' ).getValue();
+	}
+
+	get submitButton() {
+		return $( '#mw-abusefilter-editing-form input[type="submit"]' );
+	}
+
+	get error() {
+		return $( '.cdx-message--error' );
+	}
+
+	get warning() {
+		return $( '.cdx-message--warning' );
+	}
+
+	async submit() {
+		await this.submitButton.waitForClickable();
+		await this.submitButton.click();
+	}
+
+	/**
+	 * Conveniency: the ace editor is hard to manipulate, and working with
+	 * the hidden textarea isn't great (sendKeys is not processed)
+	 */
+	async switchEditor() {
+		const button = await $( '#mw-abusefilter-switcheditor' );
+		if ( !await button.isExisting() ) {
+			// CodeEditor not installed, nothing to do here.
+			return;
+		}
+		await button.waitForClickable();
+		await button.click();
+	}
+
+	async setWarningMessage( msg ) {
+		// Upgrading to wdio 8 we did this hack when switching to Chromedriver
+		await browser.execute( () => {
+			// eslint-disable-next-line no-undef
+			document.querySelector( 'select[name="wpFilterWarnMessage"]' ).value = 'other';
+		} );
+		await this.warnOtherMessage.setValue( msg );
+	}
+
+	async invalidateToken() {
+		// Upgrading to wdio 8 we did this hack when switching to Chromedriver
+		await browser.execute( () => {
+			// eslint-disable-next-line no-undef
+			document.querySelector( '#mw-abusefilter-editing-form input[name="wpEditToken"]' ).value = '';
+		} );
+	}
+
+	async open( subpage ) {
+		await super.openTitle( 'Special:AbuseFilter/' + subpage );
+	}
+}
+export const viewEditPage = new ViewEditPage();
