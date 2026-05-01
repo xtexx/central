@@ -1,0 +1,10 @@
+{
+	"@metadata": {
+		"authors": [
+			"Papuass"
+		]
+	},
+	"apihelp-parse-param-mobileformat": "Atgriezt parsēšanas rezultātu mobilajām ierīcēm piemērotā formātā.",
+	"apihelp-parse-param-mainpage": "Pielietot mobilās sākumlapas pārveidojumus.",
+	"apihelp-webapp-manifest-summary": "Atgriež tīmekļa lietotnes manifestu."
+}

@@ -1,0 +1,262 @@
+@import 'mediawiki.skin.variables.less';
+@import '../../mobile.less/mobile.variables.less';
+@import 'BlockMessageDetails.less';
+@import 'AbandonSurvey.less';
+@import 'editor.ve.less';
+@import 'icons.less';
+
+.editor-overlay {
+	box-sizing: border-box;
+
+	// Main editor and edit summary
+	textarea {
+		padding: 0.5em;
+	}
+
+	.overlay-content {
+		max-width: none;
+	}
+
+	&.switching {
+		.overlay-content {
+			opacity: 0.5;
+		}
+	}
+
+	.overlay-header-container {
+		box-shadow: 0 1px 1px rgba( 0, 0, 0, 0.1 );
+	}
+
+	.overlay-header {
+		// The border will only be visible on screens >1000px due to max-width set elsewhere.
+		outline: @border-subtle;
+
+		.header-cancel {
+			margin-right: 1em;
+
+			.cdx-button {
+				border-right: @border-width-base @border-style-base @background-color-neutral;
+			}
+		}
+
+		.oo-ui-toolbar-bar,
+		.oo-ui-toolbar-popups {
+			border-collapse: separate;
+		}
+
+		.oo-ui-toolbar-bar {
+			border: 0;
+			box-shadow: none;
+		}
+	}
+
+	.anonwarning {
+		margin-top: 16px;
+
+		.cdx-message {
+			margin-bottom: 16px;
+		}
+
+		.anonmsg {
+			margin-bottom: 19px;
+		}
+
+		.cdx-button { /* stylelint-disable-line no-descending-specificity */
+			margin-bottom: 15px;
+			width: @size-full;
+		}
+
+		.actions {
+			text-align: center;
+		}
+
+		> p {
+			text-align: center;
+			font-style: italic;
+			font-size: 0.875em;
+		}
+	}
+
+	.anonwarning-soft {
+		text-align: center;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		// SourceEditorOverlay does only expands its overlay height to the added content, avoid modifying
+		// its height which could affect other overlays. 3em is the editor's header height
+		height: calc( 100vh - 3em );
+		max-width: 28rem;
+		margin: 0 auto;
+		padding-left: @spacing-150;
+		padding-right: @spacing-150;
+
+		.editor-overlay-ve .overlay-content && {
+			padding-top: 3em;
+		}
+
+		.description {
+			font-size: @font-size-medium;
+			margin-bottom: @spacing-75;
+			line-height: @line-height-small;
+		}
+
+		.cdx-button {
+			width: 100%;
+			// Override .overlay .cdx-button rule from Overlay.less
+			border-radius: @border-radius-base;
+
+			&.login {
+				margin-top: @spacing-75;
+			}
+
+			&.anonymous {
+				margin-bottom: @spacing-50;
+			}
+		}
+
+		.publish-description {
+			margin-top: 0;
+			color: @color-subtle;
+			align-self: stretch;
+			line-height: @line-height-small;
+			font-size: @font-size-small;
+			// HACK in order to reuse the existing message for the anonwarning (not autocreated)
+			// but without bold text. Only necessary during experiment, T415160
+			strong {
+				font-weight: @font-weight-normal;
+			}
+		}
+
+		.separator {
+			display: flex;
+			align-items: center; /* Vertically center lines and text */
+			gap: @spacing-100;
+			width: 100%;
+			margin-top: @spacing-150;
+			margin-bottom: @spacing-150;
+
+			&::before {
+				content: '';
+				flex: 1; /* Take remaining space (pushes text to center) */
+				height: 1px;
+				background: @border-color-base; /* Line color */
+			}
+
+			&::after {
+				content: '';
+				flex: 1;
+				height: 1px;
+				background: @border-color-base;
+			}
+
+			span {
+				white-space: nowrap; /* Prevent text from wrapping */
+			}
+		}
+	}
+
+	&-ve .overlay-footer-container + *:not( .ve-mobile-fakeToolbar-container, .anonwarning-soft ) {
+		// Any extra messages (e.g. .minerva-anon-talk-message or .anonwarning)
+		// should leave space for the toolbar above the first message.
+		margin-top: 4em;
+	}
+
+	&-editNotices {
+		// Edit notices are designed for desktop and can be quite long, so use the desktop font size
+		// oo-ui-messageDialog-message sets font size to 1.1em so undo that as well
+		font-size: ( 14em / 16 / 1.1 );
+		line-height: 1.6;
+
+		.mw-editnotice {
+			// Images in edit notices are usually supplementary, and cause layout issues on narrow screens
+			img,
+			figure {
+				display: none !important;
+			}
+
+			// Reset some specific styles on common block level containers
+			table,
+			td,
+			th,
+			div {
+				font-size: 100% !important;
+				background: none !important;
+				// T384160
+				color: inherit !important;
+				margin: 0 !important;
+				padding: 0 !important;
+				border: 0 !important;
+			}
+		}
+	}
+
+	&-editNotice:not( :first-child ) {
+		border-top: @border-subtle;
+		padding-top: 1em;
+		margin-top: 1em;
+	}
+
+	.preview {
+		display: none;
+	}
+
+	.wikitext-editor {
+		box-sizing: border-box;
+		font-size: inherit;
+		padding: 0;
+		padding-top: 1em;
+
+		&:focus {
+			outline: 0;
+		}
+	}
+
+	.summary-request {
+		font-size: 1.4em;
+		font-weight: bold;
+		margin: 0.5em 0;
+		color: @color-subtle;
+	}
+
+	.buttonBar {
+		.message {
+			color: @color-subtle;
+			margin: 0 0 0.7em;
+			padding: 0 0 0.3em;
+			border-bottom: @border-subtle;
+
+			p {
+				display: inline-block;
+				text-align: center;
+				padding-top: 0;
+			}
+		}
+	}
+
+	// Adjust OOUI icon size WTE editor switcher mini-toolbar
+	.editor-switcher .oo-ui-iconElement-icon {
+		background-size: 20px 20px;
+	}
+
+	.editor-switcher {
+		border-left: @border-width-base @border-style-base @background-color-neutral;
+
+		.oo-ui-toolGroup:last-child {
+			border-right: 0;
+		}
+	}
+
+	// Anon talk message warning is hidden on main namespaces except for in EditorOverlay
+	.minerva-anon-talk-message {
+		display: block;
+	}
+
+	// Add some spacing between the summary input textbox and other elements
+	.save-panel {
+		.cdx-message--error,
+		.ext-confirmEdit-hCaptchaLoadingIndicator {
+			margin-top: 0.5em;
+		}
+	}
+}

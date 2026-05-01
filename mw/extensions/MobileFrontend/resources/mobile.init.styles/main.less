@@ -1,0 +1,124 @@
+@import 'mediawiki.skin.variables.less';
+@import 'mobile.less';
+@import 'icons.less';
+
+@selector-parsoid-top-heading: ~'.mw-parser-output[data-mw-parsoid-version] > section > .mw-heading';
+
+.client-js {
+	/* For Parsoid HTML hide the div until the hidden attribute has been added. */
+	/* .mw-parser-output > section limits this to top level headings */
+	&.mf-expand-sections-clientpref-0 @{selector-parsoid-top-heading} + div:not( .mf-collapsible-content ),
+	.collapsible-block:not( .collapsible-block-js ) {
+		/** the breakpoint used here must correspond with wgMFDeviceWidthTablet to avoid [[phab:T414221]] */
+		@media screen and ( max-width: @max-width-breakpoint-mobile ) {
+			display: none;
+		}
+	}
+
+	// Keep the section containing the URL fragment target visible before JS
+	// runs, preventing a flash of the targeted section being briefly hidden.
+	// :has(:target) on the heading handles e.g. #Section_Title (target is the <h2>),
+	// :has(:target) on the content div handles targets inside section content.
+	// Once JS runs, init() skips collapsing this section so they stay in sync.
+	&.mf-expand-sections-clientpref-0 @{selector-parsoid-top-heading}:has( :target ) + div:not( .mf-collapsible-content ),
+	&.mf-expand-sections-clientpref-0 @{selector-parsoid-top-heading} + div:not( .mf-collapsible-content ):has( :target ) {
+		@media all and ( max-width: @max-width-breakpoint-mobile ) {
+			display: block;
+			content-visibility: visible;
+		}
+	}
+
+	// Interim toggling support, see mfTempOpenSection() in MakeSectionsTransform
+	// (duplicate class to provide higher specificity than the previous rule)
+	.collapsible-block.open-block.open-block {
+		display: block;
+	}
+
+	// Check if collapsible sections are enabled via `mf-collapsible-sections`
+	// body class. If enabled, reserve space for the icon. If disabled, do not
+	// show a visible gap before the section heading title. Some pages are
+	// excluded from section collapsing via MFNamespacesWithoutCollapsibleSections.
+	body.mf-collapsible-sections @{selector-parsoid-top-heading}:not( .mf-collapsible-heading )::before {
+		// Reserve the correct space for the collapsible heading icon (T381655)
+		content: '';
+		display: block;
+		width: 16px;
+		height: 16px;
+		margin-right: 6px;
+	}
+
+	@{selector-parsoid-top-heading} {
+		border-bottom: @border-width-base @border-style-base @border-color-muted;
+		display: flex;
+		// Vertically center toggle and edit icons in the case of long, multiline headings
+		align-items: center;
+	}
+
+	body.mf-collapsible-sections @{selector-parsoid-top-heading} {
+		cursor: pointer;
+
+		.mf-collapsible-icon {
+			margin-right: 6px;
+			max-height: 32px;
+		}
+	}
+}
+
+// Reserve space for ReaderExperiments TOC button next to the page heading (T417932)
+// when the mobile TOC experiment is active and TOC is present. In ReaderExperiments,
+// the JS wraps h1 and tagline in a div which makes the direct child selectors stop
+// matching and the margins are removed automatically.
+.client-js body.test-kitchen-experiment-mobile-toc-abc2-treatment1:has( .toc ),
+.client-js body.xlab-experiment-mobile-toc-abc2-treatment1:has( .toc ) {
+	.page-heading:not( :has( .ext-readerExperiments-minerva-toc__page-heading-button-container ) ) {
+		> h1,
+		> .tagline {
+			// Offset by button width (32px) + margin-right (6px)
+			margin-left: calc( 32px + @spacing-35 );
+		}
+	}
+}
+
+.mf-icon--small {
+	.cdx-mixin-css-icon-background( @size-icon-small );
+	.cdx-mixin-css-icon-size( @size-icon-small );
+
+	// Temporary fix for https://phabricator.wikimedia.org/T356540
+	background-size: ~'calc( max( @{size-icon-small}, @{min-size-icon-small} ) )';
+}
+
+// FIXME: For legacy parser, can be removed when Parsoid is everywhere.
+/* stylelint-disable no-duplicate-selectors */
+.client-js {
+	.collapsible-block:not( .collapsible-block-js ) {
+		display: none;
+		// But show it for tablets.
+		@media all and ( min-width: @min-width-breakpoint-tablet ) {
+			display: block;
+		}
+	}
+
+	// For expand all sections client preference:
+	&.mf-expand-sections-clientpref-1 {
+		.collapsible-block:not( .collapsible-block-js ) {
+			display: block;
+		}
+	}
+
+	.section-heading {
+		align-items: center;
+	}
+}
+
+// FIXME: For legacy parser, can be removed when Parsoid is everywhere.
+.section-heading .indicator {
+	margin-right: 6px;
+}
+
+// FIXME: For legacy parser, can be removed when Parsoid is everywhere.
+.client-nojs {
+	// Toggling indicators are unusable without JavaScript
+	.section-heading .indicator {
+		display: none;
+	}
+}
