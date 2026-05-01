@@ -1,0 +1,68 @@
+/**
+ * Loading indicator
+ * Based on Vector
+ *
+ * By adding a class on the parent search form
+ * <div class=".citizen-loading"></div>
+ * A pseudo element is added via ':after' that adds the loading indicator.
+ *
+ * After appearing for more than a second, a progress-bar animation appears
+ * above the loading indicator.
+ *
+ **/
+.citizen-loading::after {
+	// Delay animation by 500ms after loading
+	--delay-progress-bar: 500ms;
+	--height-progress-bar: 2px;
+	z-index: @z-index-top;
+	// Ensure it doesn't extend beyond the input.
+	box-sizing: border-box;
+	display: block;
+	width: 100%;
+	height: var( --height-progress-bar );
+	content: '';
+	// Add a progress-bar to the loading indicator
+	background: linear-gradient( 90deg, var( --color-progressive ) 0%, var( --color-progressive ) 100% ) -10% 0 ~'/' 0 var( --height-progress-bar ) no-repeat, transparent;
+	// Align style with the form
+	border-radius: 0 0 var( --border-radius-large ) var( --border-radius-large );
+	// Fancy shadow under progress
+	filter: drop-shadow( 0 0 16px var( --color-progressive ) ) drop-shadow( 0 0 24px var( --color-progressive ) );
+	// Animates the progress-bar.
+	animation: progressbar 1200ms linear var( --delay-progress-bar ) infinite alternate;
+}
+
+@keyframes progressbar {
+	0% {
+		background-position: -10% 0;
+		background-size: 0 var( --height-progress-bar );
+	}
+
+	30% {
+		background-position: -10% 0;
+		background-size: 30% var( --height-progress-bar );
+	}
+
+	70% {
+		/* @noflip */
+		background-position: 110% 0;
+		background-size: 30% var( --height-progress-bar );
+	}
+
+	100% {
+		/* @noflip */
+		background-position: 110% 0;
+		background-size: 0 var( --height-progress-bar );
+	}
+}
+
+// On page unload
+html.citizen-loading::after {
+	position: fixed;
+	top: 0;
+
+	// Standalone PWA has no loading affordance
+	// So we provide one
+	@media ( display-mode: standalone ) {
+		--delay-progress-bar: 0ms;
+	}
+}

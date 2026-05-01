@@ -1,0 +1,17 @@
+{
+	"@metadata": {
+		"authors": [
+			"J budissin"
+		]
+	},
+	"citizen-languages-toggle": "Dalše rěče",
+	"citizen-actions-more-toggle": "Dalše akcije",
+	"citizen-sitestats-articles-label": "zapiski",
+	"citizen-sitestats-images-label": "dataje",
+	"citizen-sitestats-users-label": "wužiwarjo",
+	"citizen-sitestats-edits-label": "změny",
+	"citizen-page-info-copyright": "Awtorske prawo",
+	"citizen-action-addsection": "Temu dodać",
+	"citizen-jumptotop": "Wróćo k spočatkej",
+	"citizen-tagline-ns-project": "Informacije wo {{SITENAME}}"
+}

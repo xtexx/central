@@ -1,0 +1,122 @@
+name: 🔍 CI
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  push:
+    branches:
+      - "main"
+    paths-ignore:
+      - "docs/**"
+  pull_request:
+    branches:
+      - "**"
+      - "!dependabot/**"
+      - "!release-please--branches--**"
+    paths-ignore:
+      - "docs/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: 🤔 Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      php: ${{ steps.filter.outputs.php_any_changed }}
+      script: ${{ steps.filter.outputs.script_any_changed }}
+      stylesheet: ${{ steps.filter.outputs.stylesheet_any_changed }}
+      i18n: ${{ steps.filter.outputs.i18n_any_changed }}
+      markdown: ${{ steps.filter.outputs.markdown_any_changed }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: tj-actions/changed-files@v47
+        id: filter
+        with:
+          files_yaml: |
+            php:
+              - includes/**/*.php
+              - tests/**/*.php
+              - skin.json
+              - composer.json
+              - composer.lock
+              - .phan/config.php
+              - .github/workflows/ci.yml
+            script:
+              - resources/**/*.js
+              - tests/vitest/**
+              - vitest.config.js
+              - package.json
+              - package-lock.json
+              - .eslintrc.json
+              - .github/workflows/ci.yml
+            stylesheet:
+              - resources/**/*.css
+              - resources/**/*.less
+              - skinStyles/**/*.css
+              - skinStyles/**/*.less
+              - package.json
+              - package-lock.json
+              - .github/workflows/ci.yml
+            i18n:
+              - i18n/*.json
+              - package.json
+              - package-lock.json
+              - .github/workflows/ci.yml
+            markdown:
+              - '*.md'
+              - .markdownlint.json
+              - .github/workflows/ci.yml
+
+  lint:
+    needs: changes
+    if: >-
+      needs.changes.outputs.php == 'true' ||
+      needs.changes.outputs.script == 'true' ||
+      needs.changes.outputs.stylesheet == 'true' ||
+      needs.changes.outputs.i18n == 'true' ||
+      needs.changes.outputs.markdown == 'true' ||
+      github.event_name == 'schedule'
+    uses: StarCitizenTools/mediawiki-ci-workflows/.github/workflows/lint.yml@main
+    with:
+      lint-php: ${{ needs.changes.outputs.php == 'true' || github.event_name == 'schedule' }}
+      lint-js: ${{ needs.changes.outputs.script == 'true' || github.event_name == 'schedule' }}
+      lint-styles: ${{ needs.changes.outputs.stylesheet == 'true' || github.event_name == 'schedule' }}
+      lint-i18n: ${{ needs.changes.outputs.i18n == 'true' || github.event_name == 'schedule' }}
+      lint-md: ${{ needs.changes.outputs.markdown == 'true' || github.event_name == 'schedule' }}
+
+  analyze-php:
+    needs: changes
+    if: needs.changes.outputs.php == 'true' || github.event_name == 'schedule'
+    uses: StarCitizenTools/mediawiki-ci-workflows/.github/workflows/analyze-php.yml@main
+    with:
+      project-type: skin
+      project-name: Citizen
+      skip-cache: ${{ github.event_name == 'schedule' }}
+
+  test-js:
+    needs: changes
+    if: needs.changes.outputs.script == 'true' || github.event_name == 'schedule'
+    uses: StarCitizenTools/mediawiki-ci-workflows/.github/workflows/test-js.yml@main
+
+  test-php:
+    needs: changes
+    if: needs.changes.outputs.php == 'true' || github.event_name == 'schedule'
+    uses: StarCitizenTools/mediawiki-ci-workflows/.github/workflows/test-php.yml@main
+    with:
+      project-type: skin
+      project-name: Citizen
+      skip-cache: ${{ github.event_name == 'schedule' }}
+
+  sonarqube:
+    needs: [test-js, test-php]
+    if: always() && !failure()
+    uses: StarCitizenTools/mediawiki-ci-workflows/.github/workflows/sonarqube.yml@main
+    with:
+      has-js-coverage: ${{ needs.test-js.result == 'success' }}
+      has-php-coverage: ${{ needs.test-php.result == 'success' }}
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

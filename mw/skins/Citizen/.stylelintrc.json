@@ -1,0 +1,42 @@
+{
+	"plugins": [
+		"stylelint-order",
+		"stylelint-plugin-use-baseline"
+	],
+	"reportNeedlessDisables": true,
+	"extends": [
+		"stylelint-config-wikimedia/support-modern",
+		"stylelint-config-wikimedia/mediawiki",
+		"stylelint-config-recess-order"
+	],
+	"rules": {
+		"font-weight-notation": null,
+		"selector-class-pattern": null,
+		"selector-max-id": null,
+		"no-descending-specificity": null,
+		"declaration-no-important": null,
+		"unit-disallowed-list": null,
+		"declaration-property-unit-disallowed-list": null,
+		"plugin/no-unsupported-browser-features": null,
+		"plugin/use-baseline": [
+			true,
+			{
+				"available": "newly",
+				"ignoreSelectors": [
+					"nesting",
+					"selection"
+				],
+				"ignoreProperties": {
+					"accent-color": [],
+					"interpolate-size": [ "allow-keywords" ],
+					"text-spacing-trim": [ "normal" ],
+					"text-wrap": [ "pretty" ],
+					"user-select": [ "none" ]
+				},
+				"ignoreAtRules": [
+					"view-transition"
+				]
+			}
+		]
+	}
+}

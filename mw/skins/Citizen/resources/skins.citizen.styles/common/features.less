@@ -1,0 +1,196 @@
+@import '../tokens-theme-dark.less';
+@import '../tokens-codex.less';
+
+.feature-pure-black() {
+	--color-surface-0-oklch__l: 0%;
+	--color-surface-0-oklch__c: 0;
+	--color-surface-1-oklch__c: 0;
+	--color-surface-2-oklch__c: 0;
+	--color-surface-3-oklch__c: 0;
+	--color-surface-4-oklch__c: 0;
+
+	--color-surface-0-hsl__l: 0%;
+	--color-surface-0-hsl__s: 0%;
+	--color-surface-1-hsl__s: 0%;
+	--color-surface-2-hsl__s: 0%;
+	--color-surface-3-hsl__s: 0%;
+	--color-surface-4-hsl__s: 0%;
+
+	--color-emphasized-oklch__c: 0;
+	--color-base-oklch__c: 0;
+	--color-subtle-oklch__c: 0;
+	--color-placeholder-oklch__c: 0;
+
+	--color-emphasized-hsl__s: 0%;
+	--color-base-hsl__s: 0%;
+	--color-subtle-hsl__s: 0%;
+	--color-placeholder-hsl__s: 0%;
+
+	--border-color-base: rgba( 255, 255, 255, 0.1 );
+	--border-color-subtle: rgba( 255, 255, 255, 0.05 );
+	--border-color-interactive: rgba( 255, 255, 255, 0.15 );
+}
+
+// T365102 invert class specifically for image related element
+.skin-invert-image img,
+.skin-invert {
+	filter: var( --filter-invert );
+}
+
+.skin-theme-clientpref-night {
+	:root& {
+		.theme-dark();
+	}
+}
+
+.skin-theme-clientpref-os {
+	@media ( prefers-color-scheme: dark ) {
+		:root& {
+			.theme-dark();
+		}
+	}
+}
+
+.citizen-feature-custom-font-size-clientpref-small {
+	.citizen-body {
+		.cdx-mode-small();
+	}
+}
+
+.citizen-feature-custom-font-size-clientpref-large {
+	.citizen-body {
+		.cdx-mode-large();
+	}
+}
+
+.citizen-feature-custom-font-size-clientpref-xlarge {
+	.citizen-body {
+		.cdx-mode-x-large();
+	}
+}
+
+.citizen-feature-custom-width-clientpref-standard {
+	:root& {
+		--width-layout: 1080px;
+	}
+}
+
+.citizen-feature-custom-width-clientpref-wide {
+	:root& {
+		--width-layout: 1600px;
+	}
+}
+
+.citizen-feature-custom-width-clientpref-full {
+	:root& {
+		--width-layout: 100vw;
+	}
+}
+
+.citizen-feature-pure-black-clientpref-1 {
+	:root.skin-theme-clientpref-night& {
+		.feature-pure-black();
+	}
+
+	@media ( prefers-color-scheme: dark ) {
+		:root.skin-theme-clientpref-os& {
+			.feature-pure-black();
+		}
+	}
+}
+
+.citizen-feature-autohide-navigation-clientpref-1 {
+	@media ( max-width: @max-width-breakpoint-tablet ) {
+		.citizen-header,
+		.citizen-page-header,
+		.citizen-page-heading,
+		.citizen-toc,
+		.citizen-page-actions {
+			// use ease-out when scrolling up, in consistence with the title bar (.citizen-sticky-header-container)
+			transition-timing-function: var( --transition-timing-function-ease-out );
+			// use the same duration as the title bar
+			transition-duration: var( --transition-duration-medium );
+		}
+
+		.citizen-header {
+			transition-property: transform;
+		}
+
+		.citizen-page-header,
+		.citizen-toc,
+		.citizen-page-actions {
+			transition-property: transform, opacity;
+		}
+
+		.citizen-page-heading {
+			transition-property: opacity;
+		}
+
+		.citizen-scroll--down {
+			// Need the unit for calc() (#1058)
+			--height-sticky-header: 0 !important;
+			// Just do not modify --header-size-block-end
+			// Because we have already used `transform` to hide the header
+			// If we use bottom in the meantime, the transition will not work.
+
+			// header should use the same timing function
+			.citizen-sticky-header-container,
+			.citizen-header,
+			.citizen-toc,
+			.citizen-page-actions {
+				transition-timing-function: var( --transition-timing-function-ease-in );
+			}
+
+			.citizen-header {
+				transform: translate3d( 0, 100%, 0 );
+			}
+
+			.citizen-toc,
+			.citizen-page-actions {
+				pointer-events: none;
+				opacity: 0;
+				transform: translate3d( 0, var( --header-offset-block-end ), 0 );
+			}
+
+			&.citizen-sticky-header-visible {
+				.citizen-sticky-header-container {
+					transform: translate3d( 0, -100%, 0 );
+				}
+			}
+		}
+	}
+}
+
+.citizen-feature-performance-mode-clientpref-1 {
+	:root& {
+		// Disable frosted glass effect
+		--backdrop-filter-frosted-glass: none !important;
+		--opacity-glass: 1 !important;
+	}
+
+	// Disable all animations and transitions
+	// Adapted from accessibility.less in MediaWiki core
+	*,
+	::before,
+	::after {
+		scroll-behavior: auto !important;
+		transition-duration: 0ms !important;
+		// stylelint-disable-next-line time-min-milliseconds
+		animation-duration: 0.01ms !important;
+		animation-delay: -0.01ms !important;
+		animation-iteration-count: 1 !important;
+	}
+}
+
+// T400838
+.citizen-feature-image-dimming-clientpref-1 {
+	:root.skin-theme-clientpref-night& {
+		--filter-image-brightness: brightness( 0.8 );
+	}
+
+	@media ( prefers-color-scheme: dark ) {
+		:root.skin-theme-clientpref-os& {
+			--filter-image-brightness: brightness( 0.8 );
+		}
+	}
+}

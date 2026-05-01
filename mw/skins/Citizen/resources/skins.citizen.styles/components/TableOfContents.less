@@ -1,0 +1,231 @@
+.citizen-toc {
+	.mixin-citizen-font-styles( 'small' );
+
+	&-contents {
+		position: relative;
+		margin: 0 0 0 var( --space-xs );
+		border-left: var( --border-width-thick ) solid var( --border-color-base );
+
+		// Reset padding on the direct child list since indentation is only for sublists
+		> .citizen-toc-list {
+			padding-left: 0;
+		}
+	}
+
+	&-list {
+		position: relative;
+		width: 100%;
+		padding-left: var( --space-xs );
+		margin: 0;
+		list-style: none;
+	}
+
+	// Use .citizen-toc .citizen-toc-link to beat Codex .cdx-button specificity
+	.citizen-toc-link {
+		display: flex;
+		flex-grow: 1;
+		gap: var( --space-xs );
+		align-items: center;
+		justify-content: normal;
+		max-width: none;
+		font-size: inherit; // unset CdxButton font-size
+		font-weight: var( --font-weight-medium );
+		text-wrap: auto; // unset CdxButton text-wrap
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+
+		&.citizen-toc-top {
+			height: 0;
+			min-height: 0;
+			padding: 0;
+			overflow: hidden;
+			opacity: 0;
+			transition-timing-function: var( --transition-timing-function-ease-out );
+			transition-duration: var( --transition-duration-medium );
+			transition-property: opacity, height, padding;
+		}
+	}
+
+	// Use .citizen-toc .citizen-toc-toggle to beat Codex .cdx-button specificity
+	.citizen-toc-toggle {
+		display: none;
+		padding: 0;
+	}
+
+	&-indicator {
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 1;
+		width: var( --border-width-thick );
+		height: var( --indicator-unit-height, 2rem );
+		margin-left: ~'calc( var( --border-width-thick ) * -1 )';
+		background-color: var( --color-progressive );
+		border-radius: var( --border-width-thick );
+		// Use transform for GPU-composited animation instead of top/height
+		transform: translateY( var( --indicator-top, 0 ) ) scaleY( var( --indicator-scale, 0 ) );
+		transform-origin: top center;
+		transition-timing-function: var( --transition-timing-function-ease-out );
+		transition-duration: var( --transition-duration-medium );
+		transition-property: transform;
+	}
+
+	&-text {
+		display: flex;
+		gap: var( --space-xs );
+	}
+
+	&-numb {
+		display: none;
+		color: var( --color-subtle );
+	}
+
+	&-summary {
+		color: var( --color-subtle );
+	}
+
+	&-list-item {
+		position: relative;
+		display: flex;
+		flex-wrap: wrap;
+	}
+
+	// Scoped under .citizen-toc for (0,3,0) specificity to beat Codex .cdx-button color
+	.citizen-toc-list-item--active > .citizen-toc-link {
+		color: var( --color-progressive );
+	}
+}
+
+// Collapse ToC sections when enabled via CitizenTableOfContentsCollapseAtCount, excluding no-js
+.client-js .citizen-toc--collapse-enabled {
+	.citizen-toc-level-1 .citizen-toc-list-item {
+		display: none;
+	}
+
+	.citizen-toc-level-1.citizen-toc-list-item--expanded .citizen-toc-list-item {
+		display: flex;
+	}
+
+	.citizen-toc-toggle {
+		--size-icon: var( --font-size-x-small );
+		display: grid;
+		place-content: center;
+
+		.citizen-ui-icon {
+			&::before {
+				transform: rotate3d( 1, 0, 0, 180deg );
+				transition: var( --transition-hover );
+				transition-property: transform;
+			}
+		}
+	}
+
+	.citizen-toc-level-1.citizen-toc-list-item--expanded .citizen-toc-toggle .citizen-ui-icon::before {
+		transform: none;
+	}
+}
+
+// Sticky header styles
+.citizen-sticky-header-visible {
+	.citizen-toc .citizen-toc-top.citizen-toc-link {
+		height: 2rem; // 1rem text + 1rem padding
+		padding-block: var( --space-xs );
+		overflow: visible;
+		opacity: 1;
+	}
+}
+
+@media ( max-width: ( @max-width-breakpoint-tablet ) ) {
+	.citizen-toc {
+		position: fixed;
+		bottom: ~'calc( var( --header-size-block-end ) + max( env( safe-area-inset-bottom ), var( --space-xs ) ) )';
+		left: 0;
+		z-index: @z-index-sticky; // Keep ToC above sticky header and page action, but below site header
+		pointer-events: none; // HACK: Make background clickable
+
+		&-card {
+			// Get consistent margin
+			bottom: ~'calc( 100% - var( --space-xs ) )';
+			width: max-content;
+			// This is not bulletproof since it will get covered by page header
+			// in extremely short height. but it should be good for now
+			max-height: ~'calc( var( --header-card-maxheight ) - 8rem )';
+			padding: var( --space-xs );
+			transform-origin: var( --transform-origin-offset-start ) var( --transform-origin-offset-end );
+		}
+
+		.citizen-dropdown {
+			&-summary {
+				box-sizing: border-box;
+				display: grid;
+				place-content: center;
+				width: var( --toolbar-size );
+				height: var( --toolbar-size );
+				margin: var( --space-xs );
+				pointer-events: auto; // HACK: Make button clickable
+				background-color: var( --color-surface-1 );
+				border: 1px solid var( --border-color-base );
+				border-radius: var( --border-radius-medium );
+				box-shadow: var( --box-shadow-large );
+
+				// The hover state colors are not great but it will do for now
+				&:hover {
+					background: ~'linear-gradient( var( --background-color-button-quiet--hover ), var( --background-color-button-quiet--hover ) ) var( --color-surface-1 )';
+				}
+
+				&:active {
+					background: ~'linear-gradient( var( --background-color-button-quiet--active ), var( --background-color-button-quiet--active ) ) var( --color-surface-1 )';
+				}
+			}
+
+			&-details[ open ] {
+				+ .citizen-menu__card {
+					pointer-events: auto; // HACK: Make ToC clickable after ToC is expanded
+				}
+
+				> .citizen-dropdown-summary {
+					background: ~'linear-gradient( var( --background-color-button-quiet--active ), var( --background-color-button-quiet--active ) ) var( --color-surface-1 )';
+				}
+			}
+		}
+	}
+}
+
+@media ( min-width: @min-width-breakpoint-desktop ) {
+	.citizen-toc {
+		position: -webkit-sticky;
+		position: sticky;
+		top: var( --header-offset-block-start );
+		max-height: ~'calc( 100vh - var( --header-offset-block-start ) )';
+		padding: var( --space-xs ) 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+
+		.citizen-menu__card {
+			position: relative;
+			min-width: auto;
+			margin: 0;
+			contain: none;
+			content-visibility: visible;
+			background: transparent;
+			border: 0;
+			border-radius: 0;
+			box-shadow: none;
+			transform: none;
+
+			.citizen-menu__card-content {
+				overflow: visible;
+				opacity: 1;
+			}
+
+			.citizen-ui-icon {
+				content-visibility: visible;
+			}
+		}
+
+		// Hide button in desktop viewport
+		.citizen-dropdown-summary {
+			display: none;
+		}
+	}
+}

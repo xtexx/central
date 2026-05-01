@@ -1,0 +1,21 @@
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+name: 🔖 Write release-please PR
+
+jobs:
+  release-please:
+    if: github.repository == 'StarCitizenTools/mediawiki-skins-Citizen'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5
+        with:
+          token: ${{ secrets.WORKFLOW_TOKEN }}

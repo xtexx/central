@@ -1,0 +1,35 @@
+name: autofix.ci
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+
+permissions:
+  contents: read
+
+jobs:
+  autofix:
+    name: 🔧 Auto-fix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install dependencies
+        working-directory: docs
+        run: npm ci
+
+      - name: Fix linting issues
+        working-directory: docs
+        run: npm run lint:fix
+
+      - name: Apply fixes
+        uses: autofix-ci/action@v1
