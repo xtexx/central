@@ -1,0 +1,174 @@
+/*!
+ * This file is part of the MediaWiki extension BetaFeatures.
+ *
+ * BetaFeatures is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * BetaFeatures is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with BetaFeatures.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * BetaFeatures styles.
+ *
+ * @copyright 2013 Mark Holmquist and others; see AUTHORS
+ * @license GPL-2.0-or-later
+ */
+
+@import 'mediawiki.skin.variables.less';
+
+@beta-features-checkbox-indent: @spacing-200;
+
+.mw-ui-feature-header {
+	width: @size-full;
+	border-bottom: @border-width-base @border-style-base @border-color-muted;
+}
+
+.mw-ui-feature-main {
+	margin-top: @spacing-100;
+}
+
+.mw-ui-feature-meta,
+.mw-ui-feature-screenshot-contain,
+.mw-ui-feature-title-contain,
+.mw-ui-feature-info-links {
+	box-sizing: border-box;
+
+	@media ( min-width: @min-width-breakpoint-tablet ) {
+		display: inline-block;
+		width: @size-half;
+	}
+}
+
+.mw-ui-feature-info-links,
+.mw-ui-feature-title-contain {
+	vertical-align: bottom;
+}
+
+.mw-ui-feature-meta,
+.mw-ui-feature-screenshot-contain {
+	vertical-align: top;
+}
+
+.mw-ui-feature-screenshot-contain {
+	@media ( max-width: @max-width-breakpoint-mobile ) {
+		margin-top: @spacing-100;
+	}
+}
+
+.mw-ui-feature-meta {
+	padding-right: @spacing-100;
+}
+
+.mw-ui-feature-field {
+	margin-bottom: @spacing-400;
+	position: relative;
+}
+
+.mw-htmlform-field-HTMLHorizontalRuleField .mw-input hr,
+.mw-ui-feature-contain {
+	margin-left: @beta-features-checkbox-indent;
+	transition: width @transition-duration-medium @transition-timing-function-system;
+
+	@media ( min-width: @min-width-breakpoint-tablet ) {
+		// Indent to full size minus 64px.
+		width: calc( @size-full - @size-400 );
+	}
+}
+
+.mw-htmlform-field-HTMLHorizontalRuleField .mw-input hr {
+	// <hr>s are close enough to borders, so use a @border- color,
+	// there's no matching background color variable
+	background-color: @border-color-subtle;
+}
+
+// Paragraphs in the description of a feature. Specificity to override MinervaNeue styles.
+.mw-special-Preferences .mw-htmlform-ooui .mw-ui-feature-description {
+	padding-right: @spacing-100;
+
+	@media ( max-width: @max-width-breakpoint-mobile ) {
+		margin-top: @spacing-100;
+		padding-right: 0;
+	}
+}
+
+.mw-ui-feature-discussion-link,
+.mw-ui-feature-info-link {
+	display: inline-block;
+	min-height: @size-150;
+	line-height: @size-200;
+	padding: @spacing-25 @spacing-50;
+	border-left: @border-width-base @border-style-base @border-color-muted;
+}
+
+.mw-ui-feature-info-links {
+	margin-top: @spacing-25;
+	// Ensure the info links are always side-by-side.
+	white-space: nowrap;
+
+	@media ( min-width: @min-width-breakpoint-desktop ) {
+		display: inline-block;
+	}
+
+	.oo-ui-iconWidget {
+		margin-right: @spacing-50;
+	}
+}
+
+.mw-ui-feature-screenshot {
+	max-height: @size-1200;
+	max-width: @size-full;
+}
+
+.mw-ui-feature-user-count {
+	color: @color-success;
+	margin: @spacing-100 0 0 0;
+}
+
+.mw-ui-feature-field .mw-ui-feature-checkbox {
+	.oo-ui-fieldLayout.oo-ui-fieldLayout-align-inline {
+		margin-bottom: 0;
+	}
+}
+
+.mw-ui-feature-title-contain {
+	margin-left: -@beta-features-checkbox-indent;
+	margin-right: @beta-features-checkbox-indent;
+
+	.oo-ui-fieldLayout-field {
+		padding-top: @spacing-25;
+
+		.skin-monobook & {
+			padding-top: 0.7em;
+		}
+	}
+
+	// Overwrite MinervaNeue styles in second selector.
+	.oo-ui-labelElement-label,
+	.oo-ui-window-body.mw-mobile-pref-dialog-body & .oo-ui-labelElement-label {
+		font-size: @size-150;
+		line-height: @size-200;
+	}
+}
+
+.mw-ui-feature-requirements-list {
+	margin-left: 0;
+
+	li {
+		color: @color-error;
+	}
+
+	> li {
+		list-style: none;
+	}
+
+	// Hidden by default, shown with JavaScript
+	.mw-ui-feature-requirements-browser {
+		display: none;
+	}
+}

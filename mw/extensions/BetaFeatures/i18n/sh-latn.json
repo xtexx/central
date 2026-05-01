@@ -1,0 +1,26 @@
+{
+	"@metadata": {
+		"authors": [
+			"Aca",
+			"BadDog",
+			"Winston Sung"
+		]
+	},
+	"betafeatures-auto-enroll": "Automatski uključi većinu beta-funkcija",
+	"betafeatures-auto-enroll-help": "Neke beta-funkcije mogu imati neočekivane izmjene, pa ih {{GENDER:|morate}} ručno uključiti.",
+	"betafeatures-desc": "Omogućuje korisniku uključivanje i isključivanje funkcija koje još nisu uvedene kao zadane",
+	"betafeatures-extension-type": "Beta-funkcije",
+	"betafeatures-section-desc": "Ispod {{PLURAL:$1|1=je prikazana nova funkcija|su prikazane nove funkcije}} u razvoju. Isprobajte {{PLURAL:$1|1=je|ih}} i podijelite svoje utiske.",
+	"betafeatures-toplink": "Beta",
+	"betafeatures-feature-autoenrolled": "Automatski uključena funkcija",
+	"mw-ui-feature-discuss": "Razgovor",
+	"mw-ui-feature-info": "Informacije",
+	"mw-ui-feature-requirements-betafeatures": "Za ovu funkciju potrebno je omogućiti {{PLURAL:$1|sljedeću funkciju|sljedeće funkcije}}:",
+	"mw-ui-feature-requirements-browser": "{{PLURAL:$1|Nije podržan sljedeći preglednik|Nisu podržani sljedeći preglednici}}:",
+	"mw-ui-feature-requirements-javascript": "Ova funkcija zahtijeva JavaScript.",
+	"mw-ui-feature-requirements-skins": "Ova funkcija radi jedino sa sljedećim {{PLURAL:$1|izgledom|izgledima}}:",
+	"mw-ui-feature-user-count": "{{PLURAL:$1|1=Jedan korisnik uključio je ovu funkciju|Ovu funkciju uključio je $1 korisnik|Ovu funkciju uključila su $1 korisnika|Ovu funkciju uključilo je $1 korisnika|0=Nijedan korisnik nije uključio ovu funkciju}}.",
+	"prefs-betafeatures": "Beta",
+	"prefs-description-betafeatures": "Isprobajte najnovije beta-funkcije i dajte svoje mišljenje",
+	"tooltip-pt-betafeatures": "Vaše beta-funkcije"
+}
