@@ -102,6 +102,7 @@ fi
 ((count++)) || true
 
 # Finalize branch
+git update-ref --create-reflog -m "MW upgrade to $branch" refs/heads/main "$(git rev-parse tmp-upgrade)"
 git switch main
 git reset --hard tmp-upgrade
 git tag -s -m "Initial tree of $1 branch" "$branch"/init HEAD
