@@ -1,0 +1,20 @@
+{
+	"@metadata": {
+		"authors": [
+			"Dori",
+			"Klein Muçi",
+			"Olsi",
+			"Xhulianoo"
+		]
+	},
+	"inputbox-desc": "Lejoni përfshirjen e formave HTML të paracaktuara",
+	"inputbox-error-no-type": "Nuk keni specifikuar llojin e kutisë që doni të krijoni.",
+	"inputbox-error-bad-type": "Lloji i kutisë \"$1\" nuk njihet.\nJu lutemi të përdorni një nga format e mëposhtme: \"create\", \"comment\", \"search\", \"search2\" ose \"fulltext\".",
+	"inputbox-tryexact": "Kërkoni përputhje të plotë",
+	"inputbox-searchfulltext": "Kërkoni tekstin e plotë",
+	"inputbox-createarticle": "Krijoni faqen",
+	"inputbox-movearticle": "Lëvizni faqen",
+	"inputbox-postcomment": "Pjesë e re",
+	"inputbox-postcommenttitle": "Pjesë e re",
+	"inputbox-ns-main": "Kryesor"
+}
