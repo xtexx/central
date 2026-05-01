@@ -35,6 +35,12 @@ date_default_timezone_set($wgLocaltimezone);
 // Centralization
 if ($xvCentralized)
 	require_once "$xvConfigDirectory/common/Centralization.php";
+else {
+	// TODO: Remove once the deprecation warning go away
+	// https://gerrit.wikimedia.org/r/c/mediawiki/extensions/OAuth/+/1198691
+	$wgMWOAuthSharedUserIDs = true;
+	$wgMWOAuthSharedUserSource = 'local';
+}
 
 // CAPTCHA
 if ($xvUseCaptcha) {
