@@ -1,0 +1,15 @@
+{
+	"root": true,
+	"extends": [
+		"wikimedia/selenium"
+	],
+	"parserOptions": {
+		"sourceType": "module"
+	},
+	"globals": {
+		"mw": "readonly"
+	},
+	"rules": {
+		"wdio/no-pause": "warn"
+	}
+}

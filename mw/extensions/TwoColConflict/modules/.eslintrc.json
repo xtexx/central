@@ -1,0 +1,10 @@
+{
+	"root": true,
+	"extends": [
+		"../resources/.eslintrc"
+	],
+	"rules": {
+		"no-jquery/no-done-fail": "warn",
+		"mediawiki/no-unlabeled-buttonwidget": "warn"
+	}
+}
