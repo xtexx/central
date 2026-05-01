@@ -1,0 +1,51 @@
+{
+	"name": "mediawiki/lakeus-skin",
+	"description": "A MediaWiki skin made by Lakejason0 and other contributors.",
+	"keywords": [
+		"mediawiki"
+	],
+	"license": "GPL-3.0-or-later",
+	"authors": [
+		{
+			"name": "Lakejason0"
+		},
+		{
+			"name": "Light beacon"
+		},
+		{
+			"name": "Dianliang233"
+		},
+		{
+			"name": "Winston Sung"
+		}
+	],
+	"require": {
+		"mustangostang/spyc": "0.6.3",
+		"php": ">=8.1.0"
+	},
+	"require-dev": {
+		"mediawiki/mediawiki-codesniffer": "48.0.0",
+		"phpunit/phpunit": "9.6.34"
+	},
+	"support": {
+		"issues": "https://github.com/lakejason0/mediawiki-skins-Lakeus/issues"
+	},
+	"autoload": {
+		"psr-4": {
+			"MediaWiki\\Skins\\Lakeus\\": "includes/"
+		}
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		}
+	},
+	"scripts": {
+		"fix": "phpcbf",
+		"cs": "phpcs -sp",
+		"test": [
+			"@composer validate --no-interaction",
+			"@cs"
+		]
+	}
+}
