@@ -1,0 +1,12 @@
+{
+	"@metadata": {
+		"authors": [
+			"Dirruw'o",
+			"Lockal",
+			"Vonavy"
+		]
+	},
+	"tabberneue-desc": "Позволяет создавать вкладки на странице. Форк [https://www.mediawiki.org/wiki/Extension:Tabber Extension:Tabber].",
+	"tabberneue-button-next": "Далее",
+	"tabberneue-button-prev": "Назад"
+}

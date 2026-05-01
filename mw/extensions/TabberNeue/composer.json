@@ -1,0 +1,65 @@
+{
+	"name": "starcitizentools/tabber-neue",
+	"type": "mediawiki-extension",
+	"description": "Allows to create tabs within a page. Forked from Extension:Tabber",
+	"keywords": [
+		"MediaWiki",
+		"TabberNeue",
+		"Tabber",
+		"extension"
+	],
+	"homepage": "https://www.mediawiki.org/wiki/Extension:TabberNeue",
+	"readme": "README.md",
+	"license": "GPL-3.0-or-later",
+	"authors": [
+		{
+			"name": "alistair3149",
+			"email": "alistair31494322@gmail.com",
+			"role": "Developer"
+		}
+	],
+	"support": {
+		"forum": "https://www.mediawiki.org/wiki/Extension_talk:TabberNeue",
+		"wiki": "https://www.mediawiki.org/wiki/Extension:TabberNeue",
+		"source": "https://github.com/StarCitizenTools/mediawiki-extensions-TabberNeue"
+	},
+	"require": {
+		"composer/installers": ">=1.0.1"
+	},
+	"require-dev": {
+		"mediawiki/mediawiki-codesniffer": "50.0.0",
+		"mediawiki/mediawiki-phan-config": "0.20.0",
+		"mediawiki/minus-x": "2.0.1",
+		"php-parallel-lint/php-console-highlighter": "1.0.0",
+		"php-parallel-lint/php-parallel-lint": "1.4.0"
+	},
+	"scripts": {
+		"fix": [
+			"minus-x fix .",
+			"phpcbf"
+		],
+		"test": [
+			"parallel-lint . --exclude node_modules --exclude vendor",
+			"@phpcs",
+			"minus-x check ."
+		],
+		"phan": "phan -d . --long-progress-bar",
+		"phpcs": [
+			"phpcs --config-set ignore_warnings_on_exit 1",
+			"phpcs -sp --cache"
+		],
+		"preflight": [
+			"@test",
+			"@phan"
+		]
+	},
+	"extra": {
+		"installer-name": "TabberNeue"
+	},
+	"config": {
+		"allow-plugins": {
+			"composer/installers": true,
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		}
+	}
+}
