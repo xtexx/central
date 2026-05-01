@@ -1,0 +1,30 @@
+/**
+ * Temporary account info button styles in the navigation bar.
+ * The button is rendered via Skin::getAfterPortlet() for the user-page
+ * portlet and appears in html-after-portal. Skins provide their own
+ * positioning CSS.
+ * See T418478
+ **/
+
+@import 'mediawiki.skin.variables.less';
+
+.mw-temp-user-banner-tooltip {
+	position: relative;
+
+	.mw-temp-user-banner-tooltip-icon {
+		.cdx-mixin-css-icon( @cdx-icon-info, @color-base );
+	}
+
+	& .oo-ui-widget {
+		color: @color-base;
+		font-size: @font-size-small;
+		z-index: @z-index-off-canvas-backdrop;
+	}
+}
+
+.client-nojs {
+	.mw-temp-user-banner-tooltip,
+	.mw-temp-user-banner-tooltip-icon {
+		display: none;
+	}
+}

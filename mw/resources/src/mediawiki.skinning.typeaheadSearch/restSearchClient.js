@@ -1,0 +1,162 @@
+// / <reference lib="@wikimedia/types" />
+/** @module restSearchClient */
+/**
+ * @typedef {import('./urlGenerator.js').UrlGenerator} UrlGenerator
+ */
+
+const fetchJson = require( './fetch.js' );
+
+/**
+ * @typedef {Object} RestResponse
+ * @property {string | null} searchId
+ * @property {RestResponseBody} body
+ */
+
+/**
+ * @typedef {Object} RestResponseBody
+ * @property {RestResult[]} pages
+ */
+
+/**
+ * @typedef {Object} SearchResponse
+ * @property {string | null} searchId
+ * @property {string} query
+ * @property {SearchResult[]} results
+ */
+
+/**
+ * Nullish coalescing operator (??) helper
+ *
+ * @param {any} a
+ * @param {any} b
+ * @return {any}
+ */
+function nullish( a, b ) {
+	return ( a !== null && a !== undefined ) ? a : b;
+}
+
+/**
+ * @param {UrlGenerator} urlGeneratorInstance
+ * @param {string} query
+ * @param {RestResponse} restResponse
+ * @param {boolean} showDescription
+ * @return {SearchResponse}
+ */
+function adaptApiResponse( urlGeneratorInstance, query, restResponse, showDescription ) {
+	return {
+		query,
+		searchId: restResponse.searchId,
+		results: restResponse.body.pages.map( ( page, index ) => {
+			const thumbnail = page.thumbnail;
+			return {
+				id: page.id,
+				value: page.id || -( index + 1 ),
+				label: page.title,
+				key: page.key,
+				title: page.title,
+				description: showDescription ? page.description : undefined,
+				url: urlGeneratorInstance.generateUrl( page ),
+				thumbnail: thumbnail ? {
+					url: thumbnail.url,
+					width: nullish( thumbnail.width, undefined ),
+					height: nullish( thumbnail.height, undefined )
+				} : undefined
+			};
+		} )
+	};
+}
+
+/**
+ * @typedef {Object} AbortableSearchFetch
+ * @property {Promise<SearchResponse>} fetch
+ * @property {Function} abort
+ */
+
+/**
+ * @callback fetchByTitle
+ * @param {string} query The search term.
+ * @param {number} [limit] Maximum number of results.
+ * @param {boolean} [showDescription] Whether descriptions should be added to the results.
+ * @return {AbortableSearchFetch}
+ */
+
+/**
+ * @callback loadMore
+ * @param {string} query The search term.
+ * @param {number} offset The number of search results that were already loaded.
+ * @param {number} [limit] How many further search results to load (at most).
+ * @param {boolean} [showDescription] Whether descriptions should be added to the results.
+ * @return {AbortableSearchFetch}
+ */
+
+/**
+ * @typedef {Object} SearchClient
+ * @property {fetchRecommendationByTitle} fetchRecommendationByTitle
+ * @property {fetchByTitle} fetchByTitle
+ * @property {loadMore} [loadMore]
+ */
+
+/**
+ * @param {string} searchApiUrl
+ * @param {UrlGenerator} urlGeneratorInstance
+ * @param {string} recommendationApiUrl
+ * @return {SearchClient}
+ */
+function restSearchClient( searchApiUrl, urlGeneratorInstance, recommendationApiUrl = null ) {
+	return {
+		/**
+		 * @type {fetchRecommendationByTitle}
+		 */
+		fetchRecommendationByTitle: recommendationApiUrl ? ( currentTitle, showDescription = true ) => {
+			const isPageEligible = !mw.config.get( 'wgIsMainPage' ) &&
+				mw.config.get( 'wgContentNamespaces', [] ).includes(
+					mw.config.get( 'wgNamespaceNumber' )
+				);
+			const result = isPageEligible ?
+				fetchJson( recommendationApiUrl.replace( /\$1/g, currentTitle ), {
+					headers: {
+						accept: 'application/json'
+					}
+				} ) :
+				{
+					fetch: Promise.reject( 'No recommendations for this page.' ),
+					abort: () => {}
+				};
+
+			const recommendationResponsePromise = result.fetch
+				.then( ( /** @type {RestResponse} */ res ) => adaptApiResponse(
+					urlGeneratorInstance, '', res, showDescription
+				) );
+			return {
+				abort: result.abort,
+				fetch: recommendationResponsePromise
+			};
+		} : undefined,
+		/**
+		 * @type {fetchByTitle}
+		 */
+		fetchByTitle: ( q, limit = 10, showDescription = true ) => {
+			const params = { q, limit: limit.toString() };
+			const search = new URLSearchParams( params );
+			mw.hook( 'typeaheadSearch.appendUrlParams' ).fire( ( key, value ) => {
+				search.append( key, value );
+			} );
+			const url = `${ searchApiUrl }/v1/search/title?${ search.toString() }`;
+			const result = fetchJson( url, {
+				headers: {
+					accept: 'application/json'
+				}
+			} );
+			const searchResponsePromise = result.fetch
+				.then( ( /** @type {RestResponse} */ res ) => adaptApiResponse(
+					urlGeneratorInstance, q, res, showDescription
+				) );
+			return {
+				abort: result.abort,
+				fetch: searchResponsePromise
+			};
+		}
+	};
+}
+
+module.exports = restSearchClient;

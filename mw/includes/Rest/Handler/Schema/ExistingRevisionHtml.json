@@ -1,0 +1,128 @@
+{
+	"x-i18n-description": "rest-schema-desc-existing-revision",
+	"required": [
+		"id",
+		"size",
+		"minor",
+		"timestamp",
+		"content_model",
+		"page",
+		"license",
+		"user",
+		"comment",
+		"delta",
+		"html"
+	],
+	"properties": {
+		"id": {
+			"type": "integer",
+			"x-i18n-description": "rest-param-desc-revision-id",
+			"example": 1334073939
+		},
+		"size": {
+			"type": "integer",
+			"x-i18n-description": "rest-property-desc-revision-size",
+			"example": 238224
+		},
+		"minor": {
+			"type": "boolean",
+			"x-i18n-description": "rest-property-desc-revision-minor",
+			"example": false
+		},
+		"timestamp": {
+			"type": "string",
+			"format": "date-time",
+			"x-i18n-description": "rest-property-desc-revision-timestamp",
+			"example": "2026-01-21T10:50:43Z"
+		},
+		"content_model": {
+			"type": "string",
+			"x-i18n-description": "rest-property-desc-revision-content-model",
+			"example": "wikitext"
+		},
+		"page": {
+			"type": "object",
+			"x-i18n-description": "rest-property-desc-revision-page",
+			"required": [
+				"id",
+				"key",
+				"title"
+			],
+			"properties": {
+				"id": {
+					"type": "integer",
+					"x-i18n-description": "rest-property-desc-page-id",
+					"example": 26903
+				},
+				"key": {
+					"type": "string",
+					"x-i18n-description": "rest-property-desc-page-key",
+					"example": "Solar_System"
+				},
+				"title": {
+					"type": "string",
+					"x-i18n-description": "rest-property-desc-page-title",
+					"example": "Solar System"
+				}
+			}
+		},
+		"license": {
+			"type": "object",
+			"x-i18n-description": "rest-property-desc-page-license",
+			"required": [
+				"url",
+				"title"
+			],
+			"properties": {
+				"url": {
+					"type": "string",
+					"x-i18n-description": "rest-property-desc-page-license-url-html",
+					"example": "https://creativecommons.org/licenses/by-sa/4.0/deed.en"
+				},
+				"title": {
+					"type": "string",
+					"x-i18n-description": "rest-property-desc-page-license-title-html",
+					"example": "Creative Commons Attribution-Share Alike 4.0"
+				}
+			}
+		},
+		"user": {
+			"type": "object",
+			"description": "",
+			"nullable": true,
+			"required": [
+				"id",
+				"name"
+			],
+			"properties": {
+				"id": {
+					"type": "integer",
+					"x-i18n-description": "rest-property-desc-user-id",
+					"example": 7903804
+				},
+				"name": {
+					"type": "string",
+					"x-i18n-description": "rest-property-desc-user-name",
+					"example": "Citation bot"
+				}
+			}
+		},
+		"comment": {
+			"type": "string",
+			"x-i18n-description": "rest-property-desc-revision-comment",
+			"nullable": true,
+			"example": "Added isbn. Normalized parameter names."
+		},
+		"delta": {
+			"type": "integer",
+			"x-i18n-description": "rest-property-desc-revision-delta",
+			"nullable": true,
+			"example": 25
+		},
+		"html": {
+			"type": "string",
+			"x-i18n-description": "rest-property-desc-revision-html",
+			"example": "https://en.wikipedia.org/w/rest.php/v1/revision/1334073939/html"
+		}
+	}
+}

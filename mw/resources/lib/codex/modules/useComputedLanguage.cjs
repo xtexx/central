@@ -1,0 +1,1 @@
+"use strict";const n=require("vue");function l(t){const u=n.ref("");return n.onMounted(()=>{let e=t.value;for(;(e==null?void 0:e.lang)==="";)e=e.parentElement;u.value=e?e==null?void 0:e.lang:null}),u}module.exports=l;

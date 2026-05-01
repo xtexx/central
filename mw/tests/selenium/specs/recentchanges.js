@@ -1,0 +1,35 @@
+import { createApiClient } from 'wdio-mediawiki/Api.js';
+import BlankPage from 'wdio-mediawiki/BlankPage.js';
+import RecentChangesPage from '../pageobjects/recentchanges.page.js';
+import { getTestString, isTargetNotWikitext } from 'wdio-mediawiki/Util.js';
+
+describe( 'Special:RecentChanges', () => {
+	let content, name, apiClient;
+
+	before( async () => {
+		apiClient = await createApiClient();
+	} );
+
+	beforeEach( async () => {
+		await browser.deleteAllCookies();
+		content = getTestString();
+		name = getTestString();
+	} );
+
+	it( 'shows page creation', async function () {
+
+		// First try to load a blank page, so the next command works.
+		await BlankPage.open();
+		// Don't try to run wikitext-specific tests if the test namespace isn't wikitext by default.
+		if ( await isTargetNotWikitext( name ) ) {
+			this.skip();
+		}
+
+		await apiClient.edit( name, content );
+
+		await RecentChangesPage.open();
+		await RecentChangesPage.liveUpdates.click();
+		await expect( RecentChangesPage.title( name ) ).toExist();
+	} );
+
+} );
