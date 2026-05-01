@@ -1,0 +1,29 @@
+{
+	"@metadata": {
+		"authors": [
+			"BivutiChakma"
+		]
+	},
+	"collabpad-doctitle": "𑄇𑄮𑄣𑄝𑄴𑄛𑄳𑄠𑄓𑄴: $1",
+	"collabpad-import-subtitle": "𑄃𑄨𑄠𑄮𑄖𑄴𑄪𑄚𑄴 𑄑𑄚𑄨𑄃𑄚𑄴𑄬 $1",
+	"collabpad": "𑄇𑄮𑄣𑄝𑄴𑄛𑄳𑄠𑄓𑄴",
+	"tooltip-ca-ve-edit": "𑄃𑄬𑄭 𑄛𑄘𑄊𑄚𑄴 𑄥𑄮𑄢𑄴 𑄉𑄧𑄢𑄴",
+	"tooltip-ca-ve-edit-local": "𑄣𑄮𑄇𑄣𑄴 𑄓𑄬𑄥𑄴𑄇𑄳𑄢𑄨𑄛𑄴𑄥𑄧𑄚𑄴 𑄛𑄘 𑄥𑄮𑄢𑄴 𑄉𑄧𑄢𑄴",
+	"tooltip-ca-ve-create": "𑄃𑄬𑄭 𑄛𑄘𑄊𑄚𑄴 𑄝𑄚𑄬𑄭 𑄣𑄧",
+	"tooltip-ca-ve-create-local": "𑄣𑄮𑄇𑄣𑄴 𑄓𑄬𑄥𑄴𑄇𑄳𑄢𑄨𑄛𑄴𑄥𑄧𑄚𑄴 𑄛𑄘 𑄝𑄚𑄬𑄭 𑄣𑄧",
+	"tooltip-ca-editsource": "𑄃𑄬𑄭 𑄛𑄘𑄚𑄧𑄢𑄴 𑄥𑄮𑄢𑄴𑄥𑄴 𑄇𑄮𑄓𑄴 𑄥𑄮𑄢𑄴 𑄉𑄧𑄢𑄨 𑄣𑄧",
+	"tooltip-ca-editsource-local": "𑄣𑄮𑄇𑄣𑄴 𑄓𑄬𑄥𑄴𑄇𑄳𑄢𑄨𑄛𑄴𑄥𑄧𑄚𑄴 𑄛𑄘𑄢𑄴 𑄥𑄮𑄢𑄴𑄥𑄴 𑄇𑄮𑄓𑄴 𑄥𑄮𑄢𑄴 𑄉𑄧𑄢𑄴",
+	"tooltip-ca-createsource": "𑄃𑄬𑄭 𑄛𑄘𑄚𑄧𑄢𑄴 𑄥𑄮𑄢𑄴𑄥𑄴 𑄇𑄮𑄓𑄴 𑄥𑄮𑄢𑄴 𑄉𑄧𑄢𑄨 𑄣𑄧",
+	"tooltip-ca-createsource-local": "𑄣𑄮𑄇𑄣𑄴 𑄓𑄬𑄥𑄴𑄇𑄳𑄢𑄨𑄛𑄴𑄥𑄧𑄚𑄴 𑄛𑄘𑄢𑄴 𑄥𑄮𑄢𑄴𑄥𑄴 𑄇𑄮𑄓𑄴 𑄥𑄮𑄢𑄴 𑄉𑄧𑄢𑄴",
+	"visualeditor-advancedsettings-tool": "𑄃𑄬𑄓𑄴𑄞𑄚𑄴𑄥𑄴 𑄥𑄬𑄑𑄨𑄁",
+	"visualeditor-backbutton-tooltip": "𑄜𑄨𑄢𑄨 𑄡",
+	"visualeditor-ca-createlocaldescriptionsource": "𑄡𑄮𑄇𑄴 𑄉𑄧𑄢𑄴 𑄣𑄮𑄇𑄣𑄴 𑄓𑄬𑄥𑄴𑄇𑄳𑄢𑄨𑄛𑄴𑄥𑄧𑄚𑄴 𑄥𑄮𑄢𑄴𑄥𑄴",
+	"visualeditor-ca-createsource": "𑄥𑄮𑄢𑄴𑄥𑄴 𑄝𑄚𑄚",
+	"visualeditor-ca-editlocaldescriptionsource": "𑄣𑄮𑄇𑄣𑄴 𑄓𑄬𑄥𑄴𑄇𑄳𑄢𑄨𑄛𑄴𑄥𑄧𑄚𑄴 𑄥𑄮𑄢𑄴𑄥𑄴 𑄥𑄮𑄢𑄴 𑄉𑄧𑄢𑄴",
+	"visualeditor-ca-editsource": "𑄥𑄮𑄢𑄴𑄥𑄚𑄨 𑄥𑄮𑄢𑄴 𑄉𑄧𑄢𑄚",
+	"visualeditor-ca-editsource-section": "𑄥𑄢𑄴𑄥𑄚𑄨 𑄥𑄮𑄢𑄴𑄉𑄧𑄢𑄚",
+	"visualeditor-ca-editsource-section-hint": "𑄥𑄬𑄇𑄴𑄥𑄧𑄚𑄴 𑄥𑄮𑄢𑄴𑄥𑄴 𑄇𑄮𑄓𑄴 𑄥𑄮𑄢𑄴 𑄉𑄧𑄢𑄴: $1",
+	"visualeditor-categories-tool": "𑄇𑄬𑄑𑄉𑄮𑄢𑄨𑄊𑄚𑄨",
+	"visualeditor-descriptionpagelink": "Project: 𑄞𑄨𑄎𑄪𑄠𑄣𑄴𑄃𑄬𑄓𑄨𑄑𑄧𑄢𑄴",
+	"visualeditor-fullpage-switch-label": "𑄛𑄪𑄢𑄮 𑄛𑄘 𑄥𑄮𑄢𑄴 𑄉𑄧𑄢𑄴"
+}

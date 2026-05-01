@@ -1,0 +1,18 @@
+/*!
+ * VisualEditor ContentEditable MWExternalLinkAnnotation styles.
+ *
+ * @copyright See AUTHORS.txt
+ */
+
+@import 'mediawiki.skin.variables.less';
+
+.ve-ce-linkAnnotation {
+	/* stylelint-disable-next-line selector-class-pattern */
+	&.ve-ce-annotation-active.external {
+		background-color: @background-color-progressive-subtle !important; /* stylelint-disable-line declaration-no-important */
+
+		.ve-init-mobileTarget .ve-ce-surface:not( .ve-ce-surface-deactivated ) & {
+			background-color: @background-color-base !important; /* stylelint-disable-line declaration-no-important */
+		}
+	}
+}

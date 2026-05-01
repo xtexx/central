@@ -1,0 +1,23 @@
+{
+	"@metadata": {
+		"authors": [
+			"Умар"
+		]
+	},
+	"editcheck-dialog-action-no": "ХӀан-хӀа",
+	"editcheck-dialog-action-yes": "ХӀаъ",
+	"editcheck-dialog-action-decline": "Йухатоха",
+	"editcheck-dialog-action-back": "Йуха",
+	"editcheck-dialog-action-submit": "ДӀадахьийта",
+	"editcheck-dialog-addref-reject-other": "Кхийерг",
+	"editcheck-dialog-addref-title": "Хьост тӀетоха",
+	"editcheck-dialog-title": "Публикаци йале",
+	"editcheck-copyvio-prompt": "ХӀара текст йазйина ахь?",
+	"editcheck-copyvio-action-keep": "ХӀаъ, Ӏалашйе",
+	"editcheck-copyvio-action-remove": "ХӀан-хӀа, дӀадаккха",
+	"editcheck-preference-suggestions-label": "Хьехарийн раж",
+	"editcheck-preference-suggestions-description": "Йаззамаш тобан йукъараллин агӀор кечдина нисдаран хьехарш. Хьан йиш йу уьш [[:mw:Special:MyLanguage/VisualEditor|бӀаьран редактор]] чохь лело.",
+	"editcheck-tone-title": "Тон карлайаккхар?",
+	"editcheck-tone-title-acted": "Тон хийцар",
+	"editcheck-tone-reject-other": "Кхийерг"
+}

@@ -1,0 +1,21 @@
+/*!
+ * VisualEditor MediaWiki UserInterface MWCategoryWidget styles.
+ *
+ * @copyright See AUTHORS.txt
+ * @license The MIT License (MIT); see LICENSE.txt
+ */
+
+.ve-ui-mwCategoryWidget {
+	/* So we can measure relative offsets of the category items */
+	position: relative;
+
+	.ve-ui-mwCategoryItemWidget {
+		max-width: 100%;
+
+		&.oo-ui-buttonElement > .oo-ui-buttonElement-button {
+			text-align: left;
+			white-space: normal;
+			overflow-wrap: break-word;
+		}
+	}
+}
