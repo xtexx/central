@@ -5,8 +5,9 @@ namespace MediaWiki\Skins\Lakeus;
 use MediaWiki\Config\Config;
 use MediaWiki\Html\Html;
 use MediaWiki\SiteStats\SiteStats;
+use MediaWiki\Skin\SkinMustache;
+use MediaWiki\Skin\SkinTemplate;
 use MediaWiki\User\Options\UserOptionsLookup;
-use SkinMustache;
 
 class SkinLakeus extends SkinMustache {
 
@@ -216,5 +217,20 @@ class SkinLakeus extends SkinMustache {
 		];
 
 		return $data;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	protected function runOnSkinTemplateNavigationHooks( SkinTemplate $skin, &$content_navigation ) {
+		parent::runOnSkinTemplateNavigationHooks( $skin, $content_navigation );
+
+		/**
+		 * Show user page link in user menu
+		 */
+		$content_navigation['user-menu'] = array_merge(
+			$content_navigation['user-page'],
+			$content_navigation['user-menu'],
+		);
 	}
 }

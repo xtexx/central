@@ -15,7 +15,7 @@
 	"descriptionmsg": "lakeus-skin-desc",
 	"license-name": "GPL-3.0-or-later",
 	"requires": {
-		"MediaWiki": ">= 1.45.0"
+		"MediaWiki": ">= 1.46.0"
 	},
 	"ResourceFileModulePaths": {
 		"localBasePath": "",
@@ -315,6 +315,16 @@
 						"lakeus-preferences-enable-theme-designer-desc",
 						"lakeus-preferences-sticky-toc-donot-auto-collapse",
 						"lakeus-preferences-sticky-toc-donot-auto-collapse-desc"
+					],
+					"menus": [
+						"associated-pages",
+						"views",
+						"actions",
+						"variants",
+						"user-page",
+						"user-interface-preferences",
+						"notifications",
+						"user-menu"
 					]
 				}
 			]
