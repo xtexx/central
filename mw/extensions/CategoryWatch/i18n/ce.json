@@ -1,0 +1,15 @@
+{
+	"@metadata": {
+		"authors": [
+			"Умар"
+		]
+	},
+	"categorywatch-notification-link": "Категори: [[:$1]]",
+	"categorywatch-notification-categorywatch-add-header": "[[:$1|$2]] тӀетоьхна [[:$3|$4]] чу",
+	"categorywatch-notification-categorywatch-add-summary": "[[:$3|$4]] тӀетоьхна [[:$5|$6]] чу",
+	"categorywatch-notification-categorywatch-add-body": "[[User:$1|$1]] тӀетоьхна [[:$3|$3]] [[:$4|$4]] чу",
+	"categorywatch-notification-categorywatch-remove-header": "[[:$1|$2]] дӀайаьккхина [[:$3|$4]] чуьра",
+	"categorywatch-notification-categorywatch-remove-summary": "[[:$3|$4]] дӀайаьккхина [[:$5|$6]] чуьра",
+	"categorywatch-notification-categorywatch-remove-body": "[[User:$1|$1]] дӀайаьккхина [[:$3|$3]] [[:$4|$4]] чуьра",
+	"categorywatch-notification-bundle": "$1 категоризацин хийцамаш {{SITENAME}}"
+}
