@@ -1,0 +1,12 @@
+*~
+*.kate-swp
+.*.swp
+.idea
+.DS_Store
+node_modules/
+vendor/
+composer.lock
+.eslintcache
+
+/.stylelintcache
+/tests/selenium/log
