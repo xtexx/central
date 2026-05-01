@@ -1,0 +1,34 @@
+{
+	"@metadata": {
+		"authors": [
+			"Samoasambia"
+		]
+	},
+	"chart-desc": "Lisää <code><nowiki>{{#chart:}}</nowiki></code>-jäsenninfunktion kaavioiden näyttämistä varten",
+	"chart-error-chart-definition-not-found": "Kaavion määrittelysivua ei löydy.",
+	"chart-error-chart-definition-invalid": "Kaavion määrittelysivu on virheellinen.",
+	"chart-error-data-source-invalid": "Annettu taulukkotietojen lähde on virheellinen.",
+	"chart-error-data-source-page-not-found": "Kaavion taulukkotiedon lähdesivua ei löydy.",
+	"chart-error-default-source-not-specified": "Kaavion määrittelysivua ei määritä oletustietolähdettä.",
+	"chart-error-incompatible-chart-definition": "Määrittelysivu ei ole yhteensopiva kaavioiden kanssa.",
+	"chart-error-incompatible-data-source": "Taulukkotiedon lähdesivu ei ole yhteensopiva kaavioiden kanssa.",
+	"chart-error-invalid-data-source": "Taulukkotiedon lähdesivu on virheellinen.",
+	"chart-error-invalid-height": "Korkeuden on oltava kokonaisluku, joka on suurempi tai yhtä suuri kuin 100.",
+	"chart-error-invalid-width": "Leveyden on oltava kokonaisluku, joka on suurempi tai yhtä suuri kuin 100.",
+	"chart-error-rendering-error": "Kaavion renderöinnissä tapahtui virhe.",
+	"chart-error-unexpected": "Kaaviota renderöinnissä tapahtui odottamaton virhe.",
+	"chart-error-category": "Chart-laajennusta käyttävät sivut, joissa on renderöintivirheitä",
+	"chart-error-category-desc": "Sivulla on kaavio, jossa on renderöintivirheitä.",
+	"chart-render-category": "Chart-laajennusta käyttävät sivut",
+	"chart-render-category-desc": "Sivu käyttää <code><nowiki>{{#chart}}</nowiki></code>-jäsenninfunktiota.",
+	"chart-render-tooltip-nodata": "Ei tietoja",
+	"chart-visualeditor-mwchartdialog-title": "Kaavio",
+	"chart-visualeditor-mwchartdialog-chart-label": "Kaavion määrittelysivu",
+	"chart-visualeditor-mwchartdialog-data-label": "Kaavion taulukkotiedon lähde",
+	"chart-visualedit-tab-label": "Visuaalinen muokkaus",
+	"chartjson-error-version": "$1 on oltava kokonaisluku välillä $2–$3.",
+	"chartjson-error-enum": "$1 on oltava jokin seuraavista arvoista: $2",
+	"chart-error-source-not-found": "Taulukkotiedon lähdesivua ei löytynyt.",
+	"chart-error-invalid-source-type": "Taulukkotiedon lähdesivu on virheellistä tyyppiä.",
+	"chart-error-invalid-source-content": "Taulukkotiedon lähdesivun sisältö on virheellinen."
+}

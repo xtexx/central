@@ -1,0 +1,152 @@
+{
+	"name": "Chart",
+	"author": [
+		"Brooke Vibber",
+		"Katie Filbert",
+		"Roan Kattouw"
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:Chart",
+	"descriptionmsg": "chart-desc",
+	"license-name": "GPL-3.0-or-later",
+	"type": "parserhook",
+	"requires": {
+		"MediaWiki": ">= 1.46",
+		"extensions": {
+			"JsonConfig": "*"
+		}
+	},
+	"config": {
+		"ChartProgressiveEnhancement": {
+			"value": true,
+			"description": "Loads JavaScript on client."
+		},
+		"ChartServiceUrl": {
+			"value": null,
+			"description": "URL to the chart-renderer service. If both ChartCliPath and this setting are set, this setting is used."
+		},
+		"ChartCliPath": {
+			"value": null,
+			"description": "File path to the chart-renderer CLI script. Defaults to 'path/to/extensions/Chart/chart-renderer/cli.js'. If both ChartServiceUrl and this setting are set, this setting is ignored and ChartServiceUrl is used."
+		},
+		"ChartTransformsEnabled": {
+			"value": false,
+			"description": "Enables Lua transforms of input data specified in chart definitions."
+		},
+		"ChartRequestSizeLimit": {
+			"value": 100000,
+			"description": "Maximum size of request payload in bytes when sending data to the chart-renderer service. Default is 100KB."
+		},
+		"ChartVisualModeEnabled": {
+			"value": false,
+			"description": "Enables visual mode form when creating a chart"
+		}
+	},
+	"callback": "MediaWiki\\Extension\\Chart\\Hooks::onRegistration",
+	"TrackingCategories": [
+		"chart-render-category",
+		"chart-error-category"
+	],
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\Chart\\": "src/"
+	},
+	"ForeignResourcesDir": "lib",
+	"ServiceWiringFiles": [
+		"src/ServiceWiring.php"
+	],
+	"MessagesDirs": {
+		"Chart": [
+			"i18n"
+		]
+	},
+	"APIModules": {
+		"chartinfo": {
+			"class": "MediaWiki\\Extension\\Chart\\ApiChartInfo",
+			"services": [
+				"MainWANObjectCache",
+				"JsonConfig.GlobalJsonLinks"
+			]
+		}
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "",
+		"remoteExtPath": "Chart"
+	},
+	"ResourceModules": {
+		"ext.chart.styles": {
+			"styles": [
+				"resources/ext.chart/styles.less"
+			]
+		},
+		"ext.chart.bootstrap": {
+			"packageFiles": [
+				"resources/ext.chart/bootstrap.js"
+			],
+			"dependencies": [
+				"web2017-polyfills"
+			]
+		},
+		"ext.chart.render": {
+			"packageFiles": [
+				"resources/ext.chart/render.js",
+				"lib/echarts/echarts.common.js"
+			],
+			"messages": [
+				"chart-render-tooltip-nodata"
+			]
+		},
+		"ext.chart.visualEditor": {
+			"scripts": [
+				"resources/ext.chart.visualEditor/ve.dm.MWChartNode.js",
+				"resources/ext.chart.visualEditor/ve.ce.MWChartNode.js",
+				"resources/ext.chart.visualEditor/ve.ui.MWChartContextItem.js",
+				"resources/ext.chart.visualEditor/ve.ui.MWChartDialog.js",
+				"resources/ext.chart.visualEditor/ve.ui.MWChartDialogTool.js"
+			],
+			"dependencies": [
+				"ext.visualEditor.mwcore",
+				"ext.visualEditor.mwtransclusion"
+			],
+			"messages": [
+				"chart-visualeditor-mwchartdialog-title",
+				"chart-visualeditor-mwchartdialog-chart-label",
+				"chart-visualeditor-mwchartdialog-data-label"
+			]
+		},
+		"ext.chart.visualEditMode": {
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
+			"dependencies": [
+				"vue"
+			],
+			"packageFiles": [
+				"resources/ext.chart.visualEditMode/init.js",
+				"resources/ext.chart.visualEditMode/ChartVisualEditor.vue"
+			]
+		}
+	},
+	"ExtensionMessagesFiles": {
+		"ChartMagic": "Chart.i18n.magic.php"
+	},
+	"HookHandlers": {
+		"main": {
+			"class": "MediaWiki\\Extension\\Chart\\Hooks",
+			"services": [
+				"MainConfig"
+			]
+		}
+	},
+	"Hooks": {
+		"BeforePageDisplay": "main",
+		"LinksUpdateComplete": "main",
+		"ParserFirstCallInit": "main",
+		"PageSaveComplete": "main",
+		"SkinTemplateNavigation::Universal": "main"
+	},
+	"attributes": {
+		"VisualEditor": {
+			"PluginModules": [
+				"ext.chart.visualEditor"
+			]
+		}
+	},
+	"manifest_version": 2
+}

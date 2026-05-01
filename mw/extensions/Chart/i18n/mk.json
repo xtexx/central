@@ -1,0 +1,42 @@
+{
+	"@metadata": {
+		"authors": [
+			"Bjankuloski06"
+		]
+	},
+	"chart-desc": "Ја додава расчленувачката функција <code><nowiki>{{#chart:}}</nowiki></code> за прикажување на графикони",
+	"chart-error-chart-definition-not-found": "Не ја најдов страницата со одредби за графикон.",
+	"chart-error-chart-definition-invalid": "Страницата со одредби за графиконот е неважечка.",
+	"chart-error-data-source-invalid": "Укажан е неважечки извор на табеларни податоци.",
+	"chart-error-data-source-page-not-found": "Не ја најдов изворната страница со табеларни податоци за графиконот.",
+	"chart-error-default-source-not-specified": "Страницата со одредби за графикон не укажува стандарден извор на податоци.",
+	"chart-error-incompatible-chart-definition": "Страницата со одердби е нескладна со графиконите.",
+	"chart-error-incompatible-data-source": "Изворната страница со табеларни податоци е нескладна со графиконите.",
+	"chart-error-invalid-data-source": "Изворот на табеларни податоци е неважечки.",
+	"chart-error-invalid-height": "Висината мора да биде цел број поголем или еднаков на 100.",
+	"chart-error-invalid-width": "Ширината мора да биде цел број поголем или еднаков на 100.",
+	"chart-error-shell-disabled": "Графиконите не можат да се исцртаат бидејќи извршувањето на обвивката е оневозможено.",
+	"chart-error-rendering-error": "Се јави грешка при исцртувањето на графиконот.",
+	"chart-error-unexpected": "Се јави неочекувана грешка при исцртувањето на графиконот.",
+	"chart-error-category": "Страници што го користат додатокот Графикон со грешки во исписот",
+	"chart-error-category-desc": "Страницата содржи графикот со грешки при испис.",
+	"chart-render-category": "Страници што го користат додатокот Графикон",
+	"chart-render-category-desc": "Страницата ја користи расчленувачката функција <code><nowiki>{{#chart}}</nowiki></code>.",
+	"chart-render-tooltip-nodata": "Нема податоци",
+	"chart-visualeditor-mwchartdialog-title": "Графикон",
+	"chart-visualeditor-mwchartdialog-chart-label": "Страница за графиконска одредба",
+	"chart-visualeditor-mwchartdialog-data-label": "Извор на табеларни податоци за графиконот",
+	"chart-visualedit-tab-label": "Нагледно уредување",
+	"chartjson-error-version": "$1 мора да биде цел број помеѓу $2 и $3 (заклучно со него).",
+	"chartjson-error-enum": "$1 мора да има една од следниве вредности: $2",
+	"chart-error-source-not-found": "Не ја најдов изворната страница со табеларни податоци.",
+	"chart-error-invalid-source-type": "Изворот на табеларни податоци е од неважечки тип.",
+	"chart-error-invalid-source-content": "Содржината на изворот на табеларни податоци е неважечка.",
+	"chart-error-transforms-disabled": "Преобразувањата на табеларни податоци се оневозможени.",
+	"chart-error-request-too-large": "Графиконот и табеларните податоци ја надминуваат дозволената големина од $1 бајти. КОристете помал податочен збир или разгледајте ги [https://www.mediawiki.org/wiki/Extension:Chart/Transforms можностите преобразба на податоци] за да ги филтрирате или насоберете вашите податоци.",
+	"chart-error-switchable-string": "Параметарот „$1“ мора да биде низа или објект кој пресликува важечки јазични кодови во едноредни низи не подолги од $2 {{PLURAL:$2|знак|знаци}}, без табулатори или завршни празни места, како на пр. <kbd>{ \"mk\":\"Низа на македонски\", ... }</kbd>",
+	"apihelp-chartinfo-summary": "Добивање на бројот на одделни употреби на Графикон. Повеќекратните употреби на еден ист графикон на истата страница се бројат како едно.",
+	"apihelp-chartinfo-param-global": "Задајте „true“ за да ги опфатите сите поврзани викија наместо само месното.",
+	"apihelp-chartinfo-example-1": "Добивање на бројот на графикони на месното вики.",
+	"apihelp-chartinfo-example-2": "Добивање на бројот на графикони на сите викија."
+}

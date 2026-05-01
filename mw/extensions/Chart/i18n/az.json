@@ -1,0 +1,38 @@
+{
+	"@metadata": {
+		"authors": [
+			"Nemoralis"
+		]
+	},
+	"chart-desc": "Qrafiklərin göstərilməsi üçün <code><nowiki>{{#chart:}}</nowiki></code> funksiyasını əlavə edir",
+	"chart-error-chart-definition-not-found": "Qrafik tərifi səhifəsi tapılmadı.",
+	"chart-error-chart-definition-invalid": "Qrafik təsvir səhifəsi etibarsızdır.",
+	"chart-error-data-source-invalid": "Etibarsız cədvəlşəkilli məlumat mənbəyi göstərilib.",
+	"chart-error-data-source-page-not-found": "Qrafikin cədvəlşəkilli məlumat mənbəyi səhifəsi tapılmadı.",
+	"chart-error-default-source-not-specified": "Qrafik tərifi səhifəsi defolt məlumat mənbəyini göstərmir.",
+	"chart-error-incompatible-chart-definition": "Tərif səhifəsi qrafiklərlə uyğun gəlmir.",
+	"chart-error-incompatible-data-source": "Cədvəlşəkilli məlumat mənbəyi səhifəsi qrafiklərlə uyğun gəlmir.",
+	"chart-error-invalid-data-source": "Cədvəlşəkilli məlumat mənbəyi səhifəsi etibarsızdır.",
+	"chart-error-invalid-height": "Hündürlük 100-dən böyük və ya ona bərabər tam ədəd olmalıdır.",
+	"chart-error-invalid-width": "Genişlik 100-dən böyük və ya ona bərabər tam ədəd olmalıdır.",
+	"chart-error-shell-disabled": "Qrafiklər göstərilə bilməz, çünki shell icrası deaktivdir.",
+	"chart-error-rendering-error": "Qrafik yaradılarkən xəta baş verdi.",
+	"chart-error-unexpected": "Qrafiki göstərərkən gözlənilməz xəta baş verdi.",
+	"chart-error-category": "Chart uzantısından istifadə edib render xətaları olan səhifələr",
+	"chart-error-category-desc": "Səhifədə render xətaları olan diaqram var.",
+	"chart-render-category": "Chart uzantısından istifadə edən səhifələr",
+	"chart-render-category-desc": "Bu səhifə <code><nowiki>{{#chart}}</nowiki></code> ayrışdırıcı funksiyasından istifadə edir.",
+	"chart-render-tooltip-nodata": "Data yoxdur",
+	"chart-visualeditor-mwchartdialog-title": "Qrafik",
+	"chart-visualeditor-mwchartdialog-chart-label": "Qrafik tərifi səhifəsi",
+	"chart-visualeditor-mwchartdialog-data-label": "Qrafik cədvəlşəkilli məlumat mənbəyi",
+	"chart-visualedit-tab-label": "Vizual redaktə",
+	"chartjson-error-version": "$1 $2 və $3 daxil olmaqla tam ədəd olmalıdır.",
+	"chartjson-error-enum": "$1 aşağıdakı dəyərlərdən biri olmalıdır: $2",
+	"chart-error-source-not-found": "Cədvəlşəkilli məlumat mənbə səhifəsi tapılmadı.",
+	"chart-error-invalid-source-type": "Cədvəlşəkilli məlumat mənbə səhifəsi etibarsız tipdədir.",
+	"chart-error-invalid-source-content": "Cədvəlşəkilli məlumat mənbə səhifəsi etibarsızdır.",
+	"chart-error-transforms-disabled": "Cədvəlşəkilli data transformasiyası deaktiv edilib.",
+	"chart-error-request-too-large": "Diaqram və cədvəlşəkilli datalar icazə verilən maksimum $1 bayt ölçüsünü keçir. Zəhmət olmasa, daha datasetdən istifadə edin və ya məlumatlarınızı filtrləmək və ya toplamaq üçün [https://www.mediawiki.org/wiki/Extension:Chart/Transforms data transformasiya seçimlərini] nəzərdən keçirin.",
+	"chart-error-switchable-string": "Parametr \"$1\" düzgün dil kodlarını tab və ya boşluqlar olmadan, $2 {{PLURAL:$2|simvoldan}} çox olmayan tək sətir mətnlərinə uyğunlaşdıran sətir və ya obyekt olmalıdır, məsələn <kbd>{ \"en\":\"İngilis dilində mətn\", ... }</kbd>"
+}

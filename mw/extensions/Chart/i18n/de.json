@@ -1,0 +1,43 @@
+{
+	"@metadata": {
+		"authors": [
+			"Brettchenweber",
+			"TomatoCake"
+		]
+	},
+	"chart-desc": "Fügt die <code><nowiki>{{#chart:}}</nowiki></code>-Parserfunktion für die Anzeige von Diagrammen hinzu",
+	"chart-error-chart-definition-not-found": "Diagrammdefinitionsseite nicht gefunden.",
+	"chart-error-chart-definition-invalid": "Die Chartdefinitionsseite ist ungültig.",
+	"chart-error-data-source-invalid": "Ungültige tabellarische Datenquelle angegeben.",
+	"chart-error-data-source-page-not-found": "Die Seite mit der tabellarischen Datenquelle wurde nicht gefunden.",
+	"chart-error-default-source-not-specified": "Die Diagrammdefinitionsseite gibt keine Standarddatenquelle an.",
+	"chart-error-incompatible-chart-definition": "Die Definitionsseite ist nicht kompatibel mit Diagrammen.",
+	"chart-error-incompatible-data-source": "Die Seite mit der tabellarischen Datenquelle ist nicht mit Diagrammen kompatibel.",
+	"chart-error-invalid-data-source": "Die Tabellen-Datenquelle-Seite ist ungültig.",
+	"chart-error-invalid-height": "Die Höhe muss eine ganze Zahl von 100 oder größer sein.",
+	"chart-error-invalid-width": "Breite muss eine ganze Zahl von 100 oder größer sein.",
+	"chart-error-shell-disabled": "Diagramme können nicht gerendert werden, weil die Shell-Ausführung deaktiviert ist.",
+	"chart-error-rendering-error": "Bei der Darstellung des Diagramms ist ein Fehler aufgetreten.",
+	"chart-error-unexpected": "Beim Rendern des Diagramms ist ein unerwarteter Fehler aufgetreten.",
+	"chart-error-category": "Seiten, die die Chart-Erweiterung verwenden, mit Darstellungsfehlern",
+	"chart-error-category-desc": "Die Seite enthält ein Diagramm mit Renderingsfehlern.",
+	"chart-render-category": "Seiten, die die Chart-Erweiterung verwenden",
+	"chart-render-category-desc": "Die Seite verwendet die Parserfunktion <code><nowiki>{{#chart}}</nowiki></code>.",
+	"chart-render-tooltip-nodata": "Keine Daten",
+	"chart-visualeditor-mwchartdialog-title": "Diagramm",
+	"chart-visualeditor-mwchartdialog-chart-label": "Diagrammdefinitionsseite",
+	"chart-visualeditor-mwchartdialog-data-label": "Tabellarische Diagrammdatenquelle",
+	"chart-visualedit-tab-label": "Visuelle Bearbeitung",
+	"chartjson-error-version": "$1 muss eine ganze Zahl zwischen $2 und $3 inklusive sein.",
+	"chartjson-error-enum": "$1 muss einer der folgenden Werte sein: $2",
+	"chart-error-source-not-found": "Die Seite mit der tabellarischen Datenquelle wurde nicht gefunden.",
+	"chart-error-invalid-source-type": "Die Tabellen-Datenquelle-Seite hat einen ungültigen Typ.",
+	"chart-error-invalid-source-content": "Die Tabellen-Datenquelle-Seite hat einen ungültigen Inhalt.",
+	"chart-error-transforms-disabled": "Tabellen-Daten-Transformationen sind deaktiviert.",
+	"chart-error-request-too-large": "Diagramm- und Tabellendaten überschreiten die maximal zulässige Größe von $1 Byte. Verwende einen kleineren Datensatz oder nutze [https://www.mediawiki.org/wiki/Extension:Chart/Transforms Datentransformationsoptionen], um deine Daten zu filtern oder zu aggregieren.",
+	"chart-error-switchable-string": "Der Parameter „$1“ muss ein String oder ein Objekt sein, das gültige Sprachcodes auf einzeilige Strings mit maximal {{PLURAL:$2|$2 Zeichen}} abbildet, ohne Tabulatoren oder abschließende Leerzeichen, z. B. <kbd>{ \"en\":\"String in English\", ... }</kbd>",
+	"apihelp-chartinfo-summary": "Ruft die aktuelle Anzahl der eindeutigen Verwendungen der Diagrammseite ab. Mehrere Verwendungen desselben Diagramms auf derselben Seite werden als eine einzige Verwendung betrachtet.",
+	"apihelp-chartinfo-param-global": "Setzt auf true, um alle verbundenen Wikis anstelle des lokalen Wiki einzuschließen.",
+	"apihelp-chartinfo-example-1": "Abruf der Anzahl der Diagramme des lokalen Wikis.",
+	"apihelp-chartinfo-example-2": "Abruf der Anzahl der Diagramme aller Wikis."
+}
