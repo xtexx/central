@@ -35,12 +35,6 @@ date_default_timezone_set($wgLocaltimezone);
 // Centralization
 if ($xvCentralized)
 	require_once "$xvConfigDirectory/common/Centralization.php";
-else {
-	// TODO: Remove once the deprecation warning go away
-	// https://gerrit.wikimedia.org/r/c/mediawiki/extensions/OAuth/+/1198691
-	$wgMWOAuthSharedUserIDs = true;
-	$wgMWOAuthSharedUserSource = 'local';
-}
 
 // CAPTCHA
 if ($xvUseCaptcha) {
@@ -143,6 +137,11 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE6dk4RIVV3eVNbHBd/8ov7i/ljQFu
 U/a6RwrI5yo5PRbTGYAaz5cdGnNjbkq3CCEc0Fd6LH9w0LU0d1uSDOS5vw==
 -----END PUBLIC KEY-----
 EOF;
+
+	// TODO: Remove once the deprecation warning go away
+	// https://gerrit.wikimedia.org/r/c/mediawiki/extensions/OAuth/+/1198691
+	$wgMWOAuthSharedUserIDs = true;
+	$wgMWOAuthSharedUserSource = 'local';
 }
 
 if ($wgUseSharedUploads) {
