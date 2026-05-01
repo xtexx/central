@@ -1,0 +1,23 @@
+{
+	"@metadata": {
+		"authors": [
+			"Aca",
+			"BadDog",
+			"Winston Sung"
+		]
+	},
+	"globalprefs-desc": "Omogućava korisnicima da postavljaju globalne postavke",
+	"globalprefs-set-local-exception": "Postavi lokalni izuzetak za ovu [[Special:GlobalPreferences#$1|globalnu postavku]]",
+	"globalprefs-has-local-exception": "Ova globalna postavka ima [[Special:Preferences#$1|mjesnu iznimku na ovom wikiju]].",
+	"tooltip-globalprefs-check-label": "Napravi ovu postavku globalnom",
+	"globalprefs-error-header": "Greška",
+	"globalprefs-notglobal": "Račun ne vam je globalan i zbog toga ne možete postavljati globalna podešavanja.",
+	"globalpreferences": "Globalne postavke",
+	"globalprefs-info-label": "Globalne postavke:",
+	"globalprefs-info-link": "Promijeni globalne postavke",
+	"globalprefs-info-help": "Globalne postavke primjenjuju se na sve Wikimedijine projekte.",
+	"globalprefs-reset-intro": "Ova stranica služi za onemogućavanje svih globalnih podešavanja na svim wikijama za povratak mjesnih podešavanja. To ne utječe na mjesna podešavanja. Djelovanje je nepovratno.",
+	"globalprefs-restoreprefs": "Uklanjanje svih globalnih postavki (u svim odeljcima)",
+	"globalprefs-select-all": "Izaberi/poništi sve",
+	"globalprefs-col-header": "Globalno primijeni sve postavke"
+}
