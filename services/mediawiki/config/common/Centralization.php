@@ -62,7 +62,7 @@ if ($xvUseGlobalPreferences) {
 }
 
 // OAuth
-$wgMWOAuthCentralWiki = $wgSharedDB;
+$wgVirtualDomainsMapping['virtual-oauth'] = ['db' => $wgSharedDB];
 
 // ThrottleOverride
 $wgThrottleOverrideCentralWiki = $wgSharedDB;
