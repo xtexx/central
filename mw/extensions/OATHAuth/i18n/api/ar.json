@@ -1,0 +1,13 @@
+{
+	"@metadata": {
+		"authors": [
+			"Meno25",
+			"ديفيد"
+		]
+	},
+	"apihelp-query+oath-summary": "تحقق لمعرفة ما إذا تم تمكين المصادقة الثنائية (OATH) للمستخدم.",
+	"apihelp-query+oath-param-user": "المستخدم للحصول على معلومات عنه، افتراضي للمستخدم الحالي.",
+	"apihelp-query+oath-param-reason": "سبب الاستعلام عن حالة OATH.",
+	"apihelp-query+oath-example-1": "الحصول على معلومات حول المستخدم الحالي",
+	"apihelp-query+oath-example-2": "الحصول على معلومات حول المستخدم <kbd>Example</kbd>"
+}

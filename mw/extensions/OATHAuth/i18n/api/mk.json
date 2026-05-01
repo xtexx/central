@@ -1,0 +1,12 @@
+{
+	"@metadata": {
+		"authors": [
+			"Bjankuloski06"
+		]
+	},
+	"apihelp-query+oath-summary": "Провери дали е овозможена двочинителската заверка (OATH) за даден корисник.",
+	"apihelp-query+oath-param-user": "За кој корисник да се дадат информации. По основно: тековниот корисник.",
+	"apihelp-query+oath-param-reason": "Причина за барање на OATH-статусот.",
+	"apihelp-query+oath-example-1": "Дај информации за тековниот корисник.",
+	"apihelp-query+oath-example-2": "Дај информации за корисникот <kbd>Пример</kbd>"
+}
