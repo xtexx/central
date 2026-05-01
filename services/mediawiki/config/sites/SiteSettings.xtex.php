@@ -40,6 +40,7 @@ $wgExtraNamespaces[NS_SIDE_TALK] = 'Side讨论';
 $wgContentNamespaces[] = NS_SIDE;
 xvSetAssocTrues('wgNamespacesWithSubpages', [NS_SIDE, NS_SIDE_TALK]);
 xvMergeInto('wgNonincludableNamespaces', [NS_SIDE, NS_SIDE_TALK]);
+xvMergeInto('wgNamespacesWithoutAutoSummaries', [NS_SIDE, NS_SIDE_TALK]);
 $wgVisualEditorAvailableNamespaces['Side'] = true;
 
 $wgNamespaceAliases['US'] = NS_PROJECT;
