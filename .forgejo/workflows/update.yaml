@@ -1,0 +1,20 @@
+on:
+  # schedule:
+  #   - cron: "16 3 * * */3"
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: codeberg-medium
+    container:
+      image: "docker.io/library/alpine"
+
+    steps:
+      - run: apk add --no-cache bash nodejs git
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - run: ./contrib/updater/update.sh
+        env:
+          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+          NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
