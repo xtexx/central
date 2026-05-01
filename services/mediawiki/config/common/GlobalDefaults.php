@@ -44,7 +44,6 @@ $xvGlobalExtensions = [
 	'Gadgets',
 	'ImageMap',
 	'InputBox',
-	'Interwiki',
 	'JsonConfig',
 	'Linter',
 	'LoginNotify',
