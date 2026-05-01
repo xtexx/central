@@ -1,0 +1,21 @@
+{
+	"@metadata": {
+		"authors": [
+			"Anakmalaysia",
+			"Aurora",
+			"Aviator",
+			"Hakimi97",
+			"SNN95",
+			"Tofeiku",
+			"Zulfadli51"
+		]
+	},
+	"citethispage": "Petik Laman Ini",
+	"citethispage-desc": "Menambah laman khas dan pautan kotak alatan untuk [[Special:CiteThisPage|petikan]]",
+	"citethispage-link": "Petik laman ini",
+	"tooltip-citethispage": "Maklumat tentang cara memetik laman ini",
+	"citethispage-change-submit": "Petik",
+	"citethispage-change-target": "Laman:",
+	"citethispage-badrevision": "Ralat: tidak menemui sebarang semakan untuk laman \"$1\" dengan ID semakan $2.",
+	"citethispage-content": "__TOC__\n<div class=\"mw-specialCiteThisPage-bibliographic\">\n\n== Butiran bibliografi bagi {{FULLPAGENAME}} ==\n\n* Nama halaman: {{FULLPAGENAME}}\n* Pengarang: Penyumbang {{SITENAME}}\n* Penerbit: ''{{SITENAME}}''.\n* Tarikh semakan terakhir: {{CURRENTDAY}} {{CURRENTMONTHNAME}} {{CURRENTYEAR}} {{CURRENTTIME}} UTC\n* Tarikh dicapai: <citation>{{CURRENTDAY}} {{CURRENTMONTHNAME}} {{CURRENTYEAR}} {{CURRENTTIME}} UTC</citation>\n* URL kekal: {{canonicalurl:{{FULLPAGENAME}}|oldid={{REVISIONID}}}}\n* ID Versi Halaman: {{REVISIONID}}\n\n</div>\n<div class=\"plainlinks mw-specialCiteThisPage-styles\">\n\n== Gaya petikan bagi {{FULLPAGENAME}} ==\n\n=== [https://en.wikipedia.org/wiki/APA_style Gaya APA] ===\n{{FULLPAGENAME}}. ({{CURRENTYEAR}}, {{CURRENTMONTHNAME}} {{CURRENTDAY}}). ''{{SITENAME}}''. Dicapai pada <citation>{{CURRENTDAY}} {{CURRENTMONTHNAME}} {{CURRENTYEAR}}</citation>, daripada {{canonicalurl:{{FULLPAGENAME}}|oldid={{REVISIONID}}}}.\n\n=== [https://en.wikipedia.org/wiki/MLA_Handbook#MLA_Style_Manual Gaya MLA] ===\n\"{{FULLPAGENAME}}.\" ''{{SITENAME}}''. {{CURRENTDAY}} {{CURRENTMONTHABBREV}} {{CURRENTYEAR}}, {{CURRENTTIME}} UTC. &lt;{{canonicalurl:{{FULLPAGENAME}}|oldid={{REVISIONID}}}}&gt; <citation>{{CURRENTDAY}} {{CURRENTMONTHABBREV}} {{CURRENTYEAR}}, {{CURRENTTIME}}</citation>.\n\n=== [https://en.wikipedia.org/wiki/MHRA_Style_Guide Gaya MHRA] ===\nPenyumbang {{SITENAME}}, '{{FULLPAGENAME}}', ''{{SITENAME}},'' {{CURRENTDAY}} {{CURRENTMONTHNAME}} {{CURRENTYEAR}}, {{CURRENTTIME}} UTC, &lt;{{canonicalurl:{{FULLPAGENAME}}|oldid={{REVISIONID}}}}&gt; [dicapai pada <citation>{{CURRENTDAY}} {{CURRENTMONTHNAME}} {{CURRENTYEAR}}</citation>]\n\n=== [https://en.wikipedia.org/wiki/The_Chicago_Manual_of_Style Gaya Chicago] ===\nPenyumbang {{SITENAME}}, \"{{FULLPAGENAME}},\" ''{{SITENAME}},'' {{canonicalurl:{{FULLPAGENAME}}|oldid={{REVISIONID}}}} (dicapai pada <citation>{{CURRENTDAY}} {{CURRENTMONTHNAME}} {{CURRENTYEAR}}</citation>).\n\n=== [https://en.wikipedia.org/wiki/Council_of_Science_Editors Gaya CBE/CSE] ===\nPenyumbang {{SITENAME}}. {{FULLPAGENAME}} [Internet]. {{SITENAME}}; {{CURRENTYEAR}} {{CURRENTMONTHABBREV}} {{CURRENTDAY}}, {{CURRENTTIME}} UTC [dipetik <citation>{{CURRENTYEAR}} {{CURRENTMONTHABBREV}} {{CURRENTDAY}}</citation>]. Tersedia daripada:\n{{canonicalurl:{{FULLPAGENAME}}|oldid={{REVISIONID}}}}.\n\n=== [https://en.wikipedia.org/wiki/Bluebook Gaya Bluebook] ===\n{{FULLPAGENAME}}, {{canonicalurl:{{FULLPAGENAME}}|oldid={{REVISIONID}}}} (terakhir dilawati pada <citation>{{CURRENTDAY}} {{CURRENTMONTHNAME}} {{CURRENTYEAR}}</citation>).\n\n=== Entri [https://en.wikipedia.org/wiki/BibTeX BibTeX] ===\n\n  @misc{ wiki:xxx,\n    author = \"{{SITENAME}}\",\n    title = \"{{FULLPAGENAME}} --- {{SITENAME}}{,} {{int:sitesubtitle}}\",\n    year = \"{{CURRENTYEAR}}\",\n    url = \"{{canonicalurl:{{FULLPAGENAME}}|oldid={{REVISIONID}}}}\",\n    note = \"[Dalam talian; dicapai pada <citation>{{CURRENTDAY}}-{{CURRENTMONTHNAME}}-{{CURRENTYEAR}}</citation>]\"\n  }\n\nApabila menggunakan pakej url [https://en.wikipedia.org/wiki/LaTeX LaTeX] (<code>\\usepackage{url}</code> di mana-mana bahagian prambel) yang cenderung memberikan format alamat web yang lebih kemas, yang berikut mungkin lebih diutamakan:\n\n  @misc{ wiki:xxx,\n    author = \"{{SITENAME}}\",\n    title = \"{{FULLPAGENAME}} --- {{SITENAME}}{,} {{int:sitesubtitle}}\",\n    year = \"{{CURRENTYEAR}}\",\n    url = \"'''\\url{'''{{canonicalurl:{{FULLPAGENAME}}|oldid={{REVISIONID}}}}'''}'''\",\n    note = \"[Dalam talian; dicapai pada <citation>{{CURRENTDAY}}-{{CURRENTMONTHNAME}}-{{CURRENTYEAR}}</citation>]\"\n  }\n\n\n</div>"
+}
