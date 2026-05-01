@@ -1,0 +1,158 @@
+/*!
+ * VisualEditor Initialization Debug Bar styles.
+ *
+ * @copyright See AUTHORS.txt
+ */
+
+@import '../../../lib/codex-design-tokens/theme-wikimedia-ui.less';
+
+.ve-ui-debugBar {
+	clear: both;
+	width: 100%;
+
+	&-commands {
+		margin-bottom: -0.5em;
+
+		.ve-ui-debugBar-commands-divider {
+			border-right: 1px solid @border-color-subtle;
+			width: 0;
+		}
+
+		> .oo-ui-widget,
+		.ve-ui-debugBar-commands-divider {
+			display: inline-block;
+			vertical-align: middle;
+			margin-right: 1em;
+			margin-bottom: 0.5em;
+
+			&:last-child {
+				margin-right: 0;
+			}
+		}
+	}
+
+	&-selectionLabel {
+		min-width: 20em;
+		/* Support: Blink, Gecko, Webkit */
+		/* Specify a valid second value to fix size, see T176636 */
+		font-family: monospace, monospace;
+	}
+
+	&-dump {
+		margin-top: 2em;
+
+		> table {
+			background-color: @background-color-neutral-subtle;
+			font-size: 0.85em;
+			width: 100%;
+			border: 1px solid @border-color-subtle;
+			border-radius: 0;
+			border-top-right-radius: 0.25em;
+			border-top-left-radius: 0.25em;
+		}
+
+		> .oo-ui-toggleWidget {
+			margin-bottom: 0.25em;
+		}
+
+		td {
+			background-color: @background-color-base;
+			padding: 0.25em 1em;
+			vertical-align: top;
+		}
+
+		&-linmod-data {
+			width: 50%;
+		}
+
+		th {
+			color: @color-base;
+			padding: 0.5em 1em;
+		}
+
+		ol {
+			color: @color-subtle;
+			padding-left: 1.5em;
+		}
+
+		li {
+			.ve-ui-debugBar-dump-element,
+			.ve-ui-debugBar-dump-char,
+			.ve-ui-debugBar-dump-achar {
+				color: @color-base;
+				display: inline-block;
+				border-radius: 2px;
+				margin: 0.25em 0.25em 0.25em 0;
+				padding: 0.125em 0.5em;
+			}
+
+			.ve-ui-debugBar-dump-element {
+				background-color: @background-color-progressive-subtle;
+			}
+
+			.ve-ui-debugBar-dump-char {
+				background-color: @background-color-success-subtle;
+			}
+
+			.ve-ui-debugBar-dump-achar {
+				background-color: @background-color-warning-subtle;
+			}
+
+			.ve-ui-debugBar-dump-note {
+				color: @color-placeholder;
+				overflow-wrap: break-word;
+			}
+		}
+	}
+
+	&-filibuster {
+		background-color: @background-color-neutral-subtle;
+		font-size: 0.875rem;
+		margin-top: 2em;
+		width: 100%;
+		box-sizing: border-box;
+		border: 1px solid @border-color-subtle;
+		border-radius: 0;
+		border-top-right-radius: 0.25em;
+		border-top-left-radius: 0.25em;
+		padding: 1.5em;
+	}
+
+	&-transactions {
+		> ol > li {
+			border-left: 2em solid @background-color-neutral-subtle;
+		}
+
+		ol ol {
+			margin: 1em 0;
+			padding-left: 0;
+
+			li {
+				padding-left: 1ex;
+			}
+		}
+	}
+}
+
+.ve-filibuster {
+	&-changes {
+		border: 1px solid @border-color-error;
+	}
+
+	&-frame {
+		list-style: none;
+
+		&-expandable::before,
+		&-collapsed::before {
+			content: '+';
+		}
+
+		&-expanded::before {
+			content: '-';
+		}
+
+		&-collapsed ul {
+			display: none;
+		}
+	}
+}

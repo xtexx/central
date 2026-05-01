@@ -1,0 +1,42 @@
+/*!
+ * VisualEditor ContentEditable LanguageAnnotation styles.
+ *
+ * @copyright See AUTHORS.txt
+ */
+
+@import '../../../../lib/codex-design-tokens/theme-wikimedia-ui.less';
+
+.ve-ce-linkAnnotation {
+	&.ve-ce-annotation-active {
+		border-radius: 2px;
+		box-shadow: 0 0 0 2px @background-color-progressive-subtle, 0 0 0 3px @border-color-subtle;
+		background-color: @background-color-progressive-subtle;
+
+		.ve-init-mobileTarget .ve-ce-surface:not( .ve-ce-surface-deactivated ) & {
+			box-shadow: 0 0 0 2px @background-color-base, 0 0 0 3px @border-color-progressive--focus;
+			background-color: @background-color-base;
+		}
+	}
+}
+
+.ve-ce-nail::selection { /* stylelint-disable-line plugin/no-unsupported-browser-features */
+	/* T373868 */
+	background-color: transparent;
+}
+
+.ve-ce-nail:not( .ve-ce-nail-debug ) {
+	/*
+	 * Give nail some width to trick layout engine into creating a cursor
+	 * position after it even at the end of a paragraph (T274068)
+	 */
+	width: 0.1px;
+	height: 0;
+}
+
+.ve-ce-nail-debug {
+	vertical-align: middle;
+}
+
+.ve-init-target-ctrl-meta-down .ve-ce-linkAnnotation {
+	cursor: pointer;
+}

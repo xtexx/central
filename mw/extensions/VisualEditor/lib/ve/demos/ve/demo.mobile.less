@@ -1,0 +1,43 @@
+/*!
+ * VisualEditor mobile demo
+ *
+ * @copyright See AUTHORS.txt
+ */
+
+@import '../../lib/codex-design-tokens/theme-wikimedia-ui.less';
+
+/* Demo */
+
+.ve-demo-logo {
+	padding-right: 1.1em;
+}
+
+.ve-demo-surfaceToolbar-read {
+	padding-left: 1.5em;
+}
+
+.ve-demo-surfaceWrapper,
+.ve-init-sa-target-toolbar > .oo-ui-toolbar-bar,
+.ve-demo-read {
+	border-radius: 0;
+	border-left: 0;
+	border-right: 0;
+}
+
+.ve-demo-surfaceWrapper,
+.ve-ui-mobileContext {
+	max-width: 960px;
+	margin: 0 auto;
+}
+
+.ve-demo-surfaceWrapper {
+	border: 0;
+	box-shadow: @box-shadow-medium, 0 0 0 1px @border-color-subtle;
+}
+
+.ve-demo-surfaceWrapper,
+.ve-ui-overlay-global-mobile,
+/* Increase specificity over demo.wikimediaui.less rule */
+.ve-ce-surface .ve-ce-surface-interface {
+	font-size: 16px;
+}

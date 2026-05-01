@@ -1,0 +1,62 @@
+/*!
+ * VisualEditor UserInterface FindAndReplaceDialog styles.
+ *
+ * @copyright See AUTHORS.txt
+ */
+
+.ve-ui-findAndReplaceDialog {
+	&-row {
+		display: flex;
+		align-items: center;
+		column-gap: 1em;
+		min-width: 30em;
+		padding-bottom: 0.3em;
+
+		&:last-child {
+			/* Extra pixel for button shadows */
+			padding-bottom: 1px;
+		}
+	}
+
+	&-cell {
+		margin: 0;
+
+		&-input {
+			flex-grow: 1;
+			flex-basis: 0;
+
+			.oo-ui-textInputWidget {
+				max-width: none;
+			}
+		}
+	}
+}
+
+.ve-ce-surface-selections-findResults,
+.ve-ce-surface-selections-findResultFocused {
+	.ve-ce-surface-selection {
+		.ve-ce-surface-selection-rects {
+			opacity: 0.2;
+		}
+
+		.ve-ce-surface-selection-rect {
+			background: #28bb0b;
+			position: absolute;
+			margin-top: -0.15em;
+			padding: 0.15em 0;
+			border-radius: 2px;
+		}
+	}
+}
+
+.ve-ce-surface-selections-findResultFocused {
+	.ve-ce-surface-selection {
+		.ve-ce-surface-selection-rects {
+			opacity: 0.4;
+		}
+
+		.ve-ce-surface-selection-rect {
+			background: #1f850b;
+		}
+	}
+}
