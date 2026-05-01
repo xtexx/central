@@ -1,0 +1,11 @@
+.*.swp
+.idea
+*~
+/.project
+/composer.lock
+/vendor
+/node_modules
+/log
+.eslintcache
+/tests/selenium/log
+/.stylelintcache
