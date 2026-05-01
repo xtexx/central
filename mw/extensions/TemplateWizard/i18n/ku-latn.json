@@ -1,0 +1,26 @@
+{
+	"@metadata": {
+		"authors": [
+			"Balyozxane",
+			"Ghybu",
+			"Guherto"
+		]
+	},
+	"templatewizard-add-all": "Hemû parametreyan tevlî bike",
+	"templatewizard-cancel": "Betal bike",
+	"templatewizard-dialog-title": "Şablonekê tevlî bike",
+	"templatewizard-help": "Danasîna TemplateWizardê",
+	"templatewizard-insert": "Tevlî bike",
+	"templatewizard-no-description": "Ji bo vê şablonê danasîn tune ye.",
+	"templatewizard-parameters-optional": "Parametreyên nepêwîst",
+	"templatewizard-parameters-required": "Parametreyên mecbûrî",
+	"templatewizard-parameters-suggested": "Parametreyên pêşniyazkirî",
+	"templatewizard-placeholder-example": "w.m. $1",
+	"templatewizard-remove-all": "Hemû parametreyan jê bibe",
+	"templatewizard-remove-template": "Guhartinan betal bike?",
+	"templatewizard-remove-template-retry": "Guhartinan betal bike",
+	"templatewizard-search-placeholder": "Şablonekê bigere",
+	"templatewizard-parambutton-add-title": "Parametreya '$1' lê zêde bike",
+	"templatewizard-remove-template-title": "Vegere lêgerînê",
+	"templatewizard-link-to-template-title": "Vê şablonê nîşand bide"
+}
