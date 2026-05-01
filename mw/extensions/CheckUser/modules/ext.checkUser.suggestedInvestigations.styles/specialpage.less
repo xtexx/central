@@ -1,0 +1,45 @@
+@import 'mediawiki.skin.variables.less';
+
+.ext-checkuser-suggestedinvestigations-private-data-warning {
+	margin-bottom: @spacing-50;
+}
+
+.ext-checkuser-suggestedinvestigations-description {
+	display: inline-flex;
+	margin-bottom: @spacing-50;
+
+	& > :first-child {
+		padding-right: @spacing-25;
+
+		p {
+			margin-bottom: 0;
+
+			&:first-child {
+				margin-top: 0;
+			}
+		}
+	}
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+.cdx-table:has( .ext-checkuser-suggestedinvestigations-table ) {
+	margin-top: @spacing-100;
+}
+
+.ext-checkuser-suggestedinvestigations-signals-popover-icon {
+	.cdx-mixin-css-icon( @cdx-icon-info );
+	cursor: pointer;
+}
+
+.ext-checkuser-suggestedinvestigations-signals-popover-icon-wrapper {
+	// Ensure that the wrapper has the same height as the icon, so that the
+	// focus styles appear uniformly around the icon
+	height: @size-icon-medium;
+	padding-bottom: 1px;
+
+	&:has( .ext-checkuser-suggestedinvestigations-signals-popover-icon:focus ) {
+		border-color: @border-color-progressive--focus;
+		box-shadow: @box-shadow-inset-small @box-shadow-color-progressive--focus;
+		outline: @outline-base--focus;
+	}
+}
