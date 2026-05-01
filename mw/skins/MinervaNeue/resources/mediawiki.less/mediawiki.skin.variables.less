@@ -1,0 +1,44 @@
+/**
+ * ### IMPORTANT ###
+ * If editing this file, please also edit the respective file in the Vector skin.
+ * ###
+ *
+ * This file is a Less @import match for 'mediawiki.skin.variables.less'
+ * when MinervaNeue is the active skin.
+ *
+ * Please also note, that both current Codex, design system for Wikimedia based skins,
+ * MinervaNeue and Vector 2022 are using the same variable values respectively in their
+ * repositories.
+ */
+@import 'mediawiki.skin.defaults.less';
+
+/**
+ * Codex design tokens. This imports Less variables, some of which refer to CSS variables.
+ * The CSS variable values are imported in CSSCustomProperties.less.
+ */
+@import 'mediawiki.skin.codex-design-tokens/theme-wikimedia-ui.less';
+
+// Overrides for Codex tokens:
+
+// == Typography ==
+
+/**
+ * System font stack for sans-serif fonts
+ *
+ * `-apple-system` ('San Francisco') – Support: Safari 9+ macOS and iOS, Firefox macOS
+ * `BlinkMacSystemFont` ('San Francisco') – Chrome 48+ macOS and iOS
+ * `Segoe UI` – Windows Vista & newer
+ * `Roboto` – Android 4.0
+ * `Lato` – Wikimedia Design choice, OFL licensed
+ * `Helvetica, Arial, sans-serif` – (Generic) Web fallback
+ * Note that CSS Fonts Module Level 4's `system-ui` value has resulted in unresolved
+ * side-effects in certain OS/language combinations and is therefore not included as of now.
+ */
+@font-family-base: @font-family-system-sans;
+
+// Line height specific former values in preparation of new font modes, see T389900.
+// TODO: These variables can be removed once the new font modes typographic styles are
+// fully implemented.
+@line-height-xx-small: 1.375;
+@line-height-small: 1.5714285;
+@line-height-medium: 1.6;
