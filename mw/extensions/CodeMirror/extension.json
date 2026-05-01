@@ -1,0 +1,488 @@
+{
+	"name": "CodeMirror",
+	"version": "6.0.0",
+	"author": [
+		"[https://www.mediawiki.org/wiki/User:Pastakhov Pavel Astakhov]",
+		"Marijn Haverbeke",
+		"MusikAnimal",
+		"Bhsd",
+		"[https://www.mediawiki.org/wiki/User:Florianschmidtwelzow Florian Schmidt]"
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:CodeMirror",
+	"descriptionmsg": "codemirror-desc",
+	"type": "editor",
+	"license-name": "GPL-2.0-or-later",
+	"requires": {
+		"MediaWiki": ">= 1.46"
+	},
+	"suggests": {
+		"extensions": {
+			"VisualEditor": "*",
+			"WikiEditor": "*"
+		}
+	},
+	"config": {
+		"CodeMirrorEnabledModes": {
+			"value": {
+				"mediawiki": true
+			},
+			"description": "Temporary feature flag to control the rollout of CodeMirror to new content models."
+		},
+		"CodeMirrorConflictingGadgets": {
+			"value": [
+				"wikEd"
+			],
+			"description": "An array of gadget names that, if enabled, will prevent CodeMirror from loading on action=edit and action=submit."
+		},
+		"CodeMirrorDefaultPreferences": {
+			"value": {
+				"activeLine": false,
+				"autofocus": true,
+				"bidiIsolation": false,
+				"bracketMatching": true,
+				"closeBrackets": false,
+				"closeTags": false,
+				"highlightRefs": true,
+				"foldAllRefs": false,
+				"lineNumbering": true,
+				"lineWrapping": true,
+				"specialChars": true,
+				"codeFolding": true,
+				"autocomplete": true,
+				"openLinks": true,
+				"whitespace": false,
+				"trailingWhitespace": false,
+				"lint": false
+			},
+			"description": "Defaults for CodeMirror user preferences for wikitext. See https://w.wiki/BwzZ for more information."
+		},
+		"CodeMirrorDefaultPreferencesCode": {
+			"value": {
+				"activeLine": true,
+				"autofocus": true,
+				"bidiIsolation": false,
+				"bracketMatching": true,
+				"closeBrackets": true,
+				"closeTags": false,
+				"highlightRefs": true,
+				"foldAllRefs": false,
+				"lineNumbering": true,
+				"lineWrapping": true,
+				"specialChars": true,
+				"codeFolding": true,
+				"autocomplete": true,
+				"openLinks": true,
+				"whitespace": false,
+				"trailingWhitespace": false,
+				"lint": true
+			},
+			"description": "Defaults for CodeMirror user preferences for non-wikitext. See https://w.wiki/BwzZ for more information."
+		},
+		"CodeMirrorPrimaryPreferences": {
+			"value": {
+				"bidiIsolation": true,
+				"bracketMatching": true,
+				"lineNumbering": true,
+				"lineWrapping": true,
+				"whitespace": true,
+				"specialChars": true,
+				"autocomplete": true,
+				"lint": true
+			},
+			"description": "Preferences advertised in the in-editor preferences panel. These should have a clear visual effect and be useful to most users. Preferences not listed here will be available in the full preferences dialog."
+		}
+	},
+	"MessagesDirs": {
+		"CodeMirror": [
+			"i18n",
+			"i18n/api"
+		]
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\CodeMirror\\": "includes/"
+	},
+	"APIModules": {
+		"codemirror-validate": {
+			"class": "MediaWiki\\Extension\\CodeMirror\\ApiCodeMirrorValidate",
+			"services": [
+				"ContentHandlerFactory",
+				"ObjectFactory"
+			]
+		}
+	},
+	"ResourceModules": {
+		"ext.CodeMirror": {
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
+			"dependencies": [
+				"jquery.textSelection",
+				"mediawiki.api",
+				"mediawiki.language",
+				"mediawiki.user",
+				"user.options",
+				"ext.CodeMirror.lib"
+			],
+			"packageFiles": [
+				"codemirror.js",
+				"codemirror.textSelection.js",
+				"codemirror.panel.js",
+				"codemirror.search.js",
+				"codemirror.gotoLine.js",
+				"codemirror.lint.js",
+				"codemirror.preferences.js",
+				"codemirror.keymap.js",
+				"codemirror.extensionRegistry.js",
+				"codemirror.codex.js",
+				"codemirror.child.js",
+				"codemirror.matchbrackets.js",
+				{
+					"name": "ext.CodeMirror.data.js",
+					"callback": "MediaWiki\\Extension\\CodeMirror\\DataScript::makeScript"
+				}
+			],
+			"styles": [
+				"codemirror.less",
+				"codemirror.keymap.less"
+			],
+			"codexStyleOnly": true,
+			"codexComponents": [
+				"CdxButton",
+				"CdxButtonGroup",
+				"CdxCheckbox",
+				"CdxDialog",
+				"CdxLabel",
+				"CdxField",
+				"CdxTextInput",
+				"CdxToggleButton",
+				"CdxToggleButtonGroup"
+			],
+			"messages": [
+				"codemirror-all",
+				"codemirror-all-tooltip",
+				"codemirror-by-word",
+				"codemirror-close",
+				"codemirror-control-character",
+				"codemirror-done",
+				"codemirror-find",
+				"codemirror-find-results",
+				"codemirror-folded-code",
+				"codemirror-goto-line",
+				"codemirror-goto-line-go",
+				"codemirror-keymap-accessibility",
+				"codemirror-keymap-full-preferences",
+				"codemirror-keymap-autocomplete",
+				"codemirror-keymap-blankline",
+				"codemirror-keymap-codefolding",
+				"codemirror-keymap-copyline",
+				"codemirror-keymap-crosshair",
+				"codemirror-keymap-cursor-modifiers",
+				"codemirror-keymap-direction",
+				"codemirror-keymap-find",
+				"codemirror-keymap-fold",
+				"codemirror-keymap-foldall",
+				"codemirror-keymap-foldref",
+				"codemirror-keymap-help",
+				"codemirror-keymap-help-close",
+				"codemirror-keymap-help-title",
+				"codemirror-keymap-history",
+				"codemirror-keymap-indent",
+				"codemirror-keymap-insert",
+				"codemirror-keymap-lint",
+				"codemirror-keymap-moveline",
+				"codemirror-keymap-multicursor",
+				"codemirror-keymap-next-diagnostic",
+				"codemirror-keymap-other",
+				"codemirror-keymap-outdent",
+				"codemirror-keymap-paragraph",
+				"codemirror-keymap-preferences",
+				"codemirror-keymap-redo",
+				"codemirror-keymap-redoselection",
+				"codemirror-keymap-search",
+				"codemirror-keymap-selectcompletion",
+				"codemirror-keymap-selectnext",
+				"codemirror-keymap-startcompletion",
+				"codemirror-keymap-tabescape",
+				"codemirror-keymap-tabmode",
+				"codemirror-keymap-undo",
+				"codemirror-keymap-undoselection",
+				"codemirror-keymap-unfold",
+				"codemirror-keymap-unfoldall",
+				"codemirror-match-case",
+				"codemirror-next",
+				"codemirror-prefs-activeline",
+				"codemirror-prefs-autocomplete",
+				"codemirror-prefs-autofocus",
+				"codemirror-prefs-bracketmatching",
+				"codemirror-prefs-closebrackets",
+				"codemirror-prefs-closetags",
+				"codemirror-prefs-codefolding",
+				"codemirror-prefs-foldallrefs",
+				"codemirror-prefs-help",
+				"codemirror-prefs-highlightrefs",
+				"codemirror-prefs-keymap",
+				"codemirror-prefs-linenumbering",
+				"codemirror-prefs-linewrapping",
+				"codemirror-prefs-lint",
+				"codemirror-prefs-panel-full",
+				"codemirror-prefs-reset",
+				"codemirror-prefs-section-characters",
+				"codemirror-prefs-section-code-assistance",
+				"codemirror-prefs-section-lines",
+				"codemirror-prefs-section-other",
+				"codemirror-prefs-specialchars",
+				"codemirror-prefs-title",
+				"codemirror-prefs-trailingwhitespace",
+				"codemirror-prefs-whitespace",
+				"codemirror-previous",
+				"codemirror-regexp",
+				"codemirror-regexp-invalid",
+				"codemirror-replace",
+				"codemirror-replace-all",
+				"codemirror-replace-placeholder",
+				"codemirror-special-char-backspace",
+				"codemirror-special-char-bell",
+				"codemirror-special-char-carriage-return",
+				"codemirror-special-char-escape",
+				"codemirror-special-char-left-to-right-isolate",
+				"codemirror-special-char-left-to-right-mark",
+				"codemirror-special-char-left-to-right-override",
+				"codemirror-special-char-line-separator",
+				"codemirror-special-char-narrow-nbsp",
+				"codemirror-special-char-nbsp",
+				"codemirror-special-char-newline",
+				"codemirror-special-char-null",
+				"codemirror-special-char-object-replacement",
+				"codemirror-special-char-paragraph-separator",
+				"codemirror-special-char-pop-directional-isolate",
+				"codemirror-special-char-right-to-left-isolate",
+				"codemirror-special-char-right-to-left-mark",
+				"codemirror-special-char-right-to-left-override",
+				"codemirror-special-char-vertical-tab",
+				"codemirror-special-char-zero-width-joiner",
+				"codemirror-special-char-zero-width-no-break-space",
+				"codemirror-special-char-zero-width-non-joiner",
+				"codemirror-special-char-zero-width-space",
+				"codemirror-unfold",
+				"parentheses-end",
+				"parentheses-start",
+				"pipe-separator",
+				"word-separator",
+				"brackets"
+			]
+		},
+		"ext.CodeMirror.init": {
+			"packageFiles": [
+				"codemirror.init.js"
+			],
+			"dependencies": [
+				"user.options"
+			],
+			"styles": [
+				"codemirror.wikieditor.less"
+			],
+			"messages": [
+				"codemirror-toggle-label",
+				"codemirror-toggle-label-short"
+			]
+		},
+		"ext.CodeMirror.lib": {
+			"packageFiles": [
+				"lib/codemirror.bundle.lib.js"
+			]
+		},
+		"ext.CodeMirror.mode.mediawiki": {
+			"packageFiles": [
+				"modes/mediawiki/codemirror.mediawiki.js",
+				"modes/mediawiki/codemirror.mediawiki.config.js",
+				"modes/mediawiki/codemirror.mediawiki.bidiIsolation.js",
+				"modes/mediawiki/codemirror.mediawiki.codeFolding.js",
+				"modes/mediawiki/codemirror.mediawiki.matchTag.js",
+				"modes/mediawiki/codemirror.mediawiki.autocomplete.js",
+				"modes/mediawiki/codemirror.mediawiki.openLinks.js",
+				"modes/mediawiki/codemirror.mediawiki.closeTags.js",
+				"modes/mediawiki/codemirror.mediawiki.keymap.js",
+				"modes/mediawiki/codemirror.mediawiki.lint.js",
+				"modes/codemirror.mode.js",
+				"workers/codemirror.worker.js"
+			],
+			"styles": [
+				"modes/mediawiki/codemirror.mediawiki.less",
+				"modes/mediawiki/codemirror.mediawiki.colorblind.less"
+			],
+			"dependencies": [
+				"mediawiki.Title",
+				"jquery.client",
+				"ext.CodeMirror",
+				"ext.CodeMirror.lib"
+			],
+			"messages": [
+				"codemirror-fold",
+				"codemirror-keymap-blockquote",
+				"codemirror-keymap-bold",
+				"codemirror-keymap-comment",
+				"codemirror-keymap-computercode",
+				"codemirror-keymap-heading",
+				"codemirror-keymap-heading-n",
+				"codemirror-keymap-italic",
+				"codemirror-keymap-link",
+				"codemirror-keymap-nowiki",
+				"codemirror-keymap-openlinks",
+				"codemirror-keymap-preformatted",
+				"codemirror-keymap-reference",
+				"codemirror-keymap-strikethrough",
+				"codemirror-keymap-subscript",
+				"codemirror-keymap-superscript",
+				"codemirror-keymap-textstyling",
+				"codemirror-keymap-underline",
+				"codemirror-prefs-autocomplete",
+				"codemirror-prefs-bidiisolation",
+				"codemirror-prefs-openlinks",
+				"codemirror-prefs-section-references",
+				"codemirror-potentially-slow",
+				"parentheses"
+			]
+		},
+		"ext.CodeMirror.modes": {
+			"packageFiles": [
+				"modes/codemirror.mode.exporter.js",
+				"modes/codemirror.mode.js",
+				"modes/codemirror.doctag.js",
+				"modes/codemirror.javascript.js",
+				"modes/codemirror.json.js",
+				"modes/json/codemirror.json.lint.js",
+				"modes/codemirror.css.js",
+				"modes/codemirror.lua.js",
+				"modes/codemirror.vue.js",
+				"codemirror.validate.js",
+				"workers/codemirror.worker.js",
+				"lib/codemirror.bundle.modes.js"
+			],
+			"dependencies": [
+				"ext.CodeMirror.lib"
+			]
+		},
+		"ext.CodeMirror.abusefilter": {
+			"packageFiles": [
+				"modes/codemirror.abusefilter.js",
+				"modes/codemirror.mode.js",
+				"workers/codemirror.worker.js",
+				"lib/codemirror.bundle.abusefilter.js"
+			],
+			"dependencies": [
+				"ext.CodeMirror.lib"
+			]
+		},
+		"ext.CodeMirror.WikiEditor": {
+			"dependencies": [
+				"ext.wikiEditor",
+				"ext.CodeMirror"
+			],
+			"packageFiles": [
+				"codemirror.wikieditor.js"
+			],
+			"styles": [
+				"codemirror.wikieditor.less"
+			],
+			"messages": [
+				"codemirror-toggle-label",
+				"codemirror-toggle-label-short"
+			]
+		},
+		"ext.CodeMirror.styles": {
+			"styles": [
+				"codemirror.styleModule.less"
+			]
+		},
+		"ext.CodeMirror.visualEditor": {
+			"dependencies": [
+				"ext.visualEditor.mwcore",
+				"ext.visualEditor.mwmeta",
+				"user.options"
+			],
+			"packageFiles": [
+				"ve-cm/ve.ui.CodeMirrorAction.js",
+				"ve-cm/ve.ui.CodeMirrorTool.js",
+				"codemirror.visualEditor.js"
+			],
+			"styles": [
+				"ve-cm/ve.ui.CodeMirror.less"
+			],
+			"skinStyles": {
+				"minerva": [
+					"ve-cm/ve.ui.CodeMirror.minerva.less"
+				]
+			},
+			"messages": [
+				"codemirror-toggle-label",
+				"codemirror-ve-limit-exceeded",
+				"codemirror-ve-limit-exceeded-info"
+			]
+		},
+		"ext.CodeMirror.visualEditor.init": {
+			"packageFiles": [
+				"ve-cm/ve.ui.CodeMirror.init.js",
+				{
+					"name": "ext.CodeMirror.data.js",
+					"callback": "MediaWiki\\Extension\\CodeMirror\\DataScript::makeScript"
+				}
+			]
+		}
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "resources",
+		"remoteExtPath": "CodeMirror/resources"
+	},
+	"DefaultUserOptions": {
+		"usecodemirror": 0,
+		"usecodemirror-code": 1,
+		"usecodemirror-colorblind": 0,
+		"codemirror-preferences": "",
+		"codemirror-preferences-code": ""
+	},
+	"Hooks": {
+		"EditPage::showEditForm:initial": "main",
+		"EditPage::showReadOnlyForm:initial": "main",
+		"UploadForm:initial": "main",
+		"SpecialPageBeforeExecute": "main",
+		"GetPreferences": "main"
+	},
+	"HookHandlers": {
+		"main": {
+			"class": "MediaWiki\\Extension\\CodeMirror\\Hooks",
+			"services": [
+				"MainConfig",
+				"HookContainer",
+				"LanguageConverterFactory",
+				"UserOptionsManager"
+			],
+			"optional_services": [
+				"GadgetsRepo"
+			]
+		}
+	},
+	"DomainEventIngresses": [
+		{
+			"events": [
+				"PageLatestRevisionChanged"
+			],
+			"class": "MediaWiki\\Extension\\CodeMirror\\EventIngress",
+			"services": [
+				"MainWANObjectCache"
+			]
+		}
+	],
+	"attributes": {
+		"CodeMirror": {
+			"TagModes": {
+				"pre": "mw-tag-pre",
+				"nowiki": "mw-tag-nowiki",
+				"indicator": "mediawiki"
+			}
+		},
+		"VisualEditor": {
+			"PluginModules": [
+				"ext.CodeMirror.visualEditor.init"
+			]
+		}
+	},
+	"manifest_version": 2
+}

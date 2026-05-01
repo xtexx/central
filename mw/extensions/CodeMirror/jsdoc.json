@@ -1,0 +1,75 @@
+{
+	"opts": {
+		"encoding": "utf8",
+		"destination": "docs/js",
+		"package": "package.json",
+		"readme": "README.md",
+		"recurse": true,
+		"template": "node_modules/jsdoc-wmf-theme"
+	},
+	"plugins": [
+		"node_modules/jsdoc-wmf-theme/plugins/default"
+	],
+	"source": {
+		"include": [ "resources" ],
+		"exclude": [ "resources/legacy", "resources/lib" ],
+		"includePattern": ".+\\.js$"
+	},
+	"tags": {},
+	"templates": {
+		"cleverLinks": true,
+		"default": {
+			"useLongnameInNav": true
+		},
+		"wmf": {
+			"maintitle": "CodeMirror",
+			"repository": "https://gerrit.wikimedia.org/g/mediawiki/extensions/CodeMirror",
+			"linkMap": {
+				"Command": "https://codemirror.net/docs/ref/#view.Command",
+				"Compartment": "https://codemirror.net/docs/ref/#state.Compartment",
+				"CompletionSource": "https://codemirror.net/docs/ref/#autocomplete.CompletionSource",
+				"Config": "https://codemirror.net/docs/ref/#language.Config",
+				"Decoration": "https://codemirror.net/docs/ref/#view.Decoration",
+				"DecorationSet": "https://codemirror.net/docs/ref/#view.DecorationSet",
+				"Diagnostic": "https://codemirror.net/docs/ref/#lint.Diagnostic",
+				"Direction": "https://codemirror.net/docs/ref/#view.Direction",
+				"EditorState": "https://codemirror.net/docs/ref/#state.EditorState",
+				"EditorView": "https://codemirror.net/docs/ref/#view.EditorView",
+				"Extension": "https://codemirror.net/docs/ref/#state.Extension",
+				"Hook": "https://doc.wikimedia.org/mediawiki-core/master/js/Hook.html",
+				"KeyBinding": "https://codemirror.net/docs/ref/#view.KeyBinding",
+				"Language": "https://codemirror.net/docs/ref/#language.Language",
+				"LanguageSupport": "https://codemirror.net/docs/ref/#language.LanguageSupport",
+				"LintSource": "https://codemirror.net/docs/ref/#lint.LintSource",
+				"MatchResult": "https://codemirror.net/docs/ref/#language.MatchResult",
+				"Panel": "https://codemirror.net/docs/ref/#view.Panel",
+				"PluginSpec": "https://codemirror.net/docs/ref/#view.PluginSpec",
+				"Prec": "https://codemirror.net/docs/ref/#state.Prec",
+				"Prec.default": "https://codemirror.net/docs/ref/#state.Prec.default",
+				"RangeSet": "https://codemirror.net/docs/ref/#state.RangeSet",
+				"SearchQuery": "https://codemirror.net/docs/ref/#search.SearchQuery",
+				"StateCommand": "https://codemirror.net/docs/ref/#state.StateCommand",
+				"StateEffect": "https://codemirror.net/docs/ref/#state.StateEffect",
+				"StateEffectType": "https://codemirror.net/docs/ref/#state.StateEffectType",
+				"StateField": "https://codemirror.net/docs/ref/#state.StateField",
+				"StreamParser": "https://codemirror.net/docs/ref/#language.StreamParser",
+				"StringStream": "https://codemirror.net/docs/ref/#language.StringStream",
+				"SyntaxNode": "https://lezer.codemirror.net/docs/ref/#common.SyntaxNode",
+				"Tag": "https://lezer.codemirror.net/docs/ref/#highlight.Tag",
+				"TagStyle": "https://codemirror.net/docs/ref/#language.TagStyle",
+				"Tooltip": "https://codemirror.net/docs/ref/#view.Tooltip",
+				"Tree": "https://lezer.codemirror.net/docs/ref/#common.Tree",
+				"ViewUpdate": "https://codemirror.net/docs/ref/#view.ViewUpdate",
+				"jQuery.fn.textSelection": "https://doc.wikimedia.org/mediawiki-core/master/js/jQueryPlugins.html#.textSelection",
+				"mw.Api": "https://doc.wikimedia.org/mediawiki-core/master/js/mw.Api.html",
+				"mw.msg": "https://doc.wikimedia.org/mediawiki-core/master/js/mw.html#.msg",
+				"ve.ce.Surface": "https://doc.wikimedia.org/visualeditor-standalone/master/ve.ce.Surface.html",
+				"ve.dm.Selection": "https://doc.wikimedia.org/visualeditor-standalone/master/ve.dm.Selection.html",
+				"ve.dm.Transaction": "https://doc.wikimedia.org/visualeditor-standalone/master/ve.dm.Transaction.html",
+				"ve.ui.Action": "https://doc.wikimedia.org/visualeditor-standalone/master/ve.ui.Action.html",
+				"ve.ui.Surface": "https://doc.wikimedia.org/visualeditor-standalone/master/ve.ui.Surface.html",
+				"ve.ui.Tool": "https://doc.wikimedia.org/visualeditor-standalone/master/ve.ui.Tool.html"
+			}
+		}
+	}
+}

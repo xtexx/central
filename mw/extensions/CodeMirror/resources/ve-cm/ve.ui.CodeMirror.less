@@ -1,0 +1,105 @@
+@import 'mediawiki.mixins.less';
+
+.ve-init-target {
+	.cm-editor {
+		background: transparent;
+		border: 0;
+		box-sizing: border-box;
+		height: auto;
+		left: 0;
+		pointer-events: none;
+		// stylelint-disable-next-line declaration-no-important
+		position: absolute !important;
+		top: 0;
+		width: 100%;
+		resize: none;
+	}
+
+	.cm-gutterElement {
+		/* @noflip */
+		padding: 0 3px 0 4px !important; /* stylelint-disable-line declaration-no-important */
+	}
+
+	.cm-gutters {
+		background-color: transparent !important; /* stylelint-disable-line declaration-no-important */
+		.padding-inline( 0, 8px );
+		/* @noflip */
+		border-right: 0;
+	}
+
+	.cm-line {
+		padding: 0;
+	}
+
+	.cm-content {
+		padding: 0;
+		// T381714: Disable the automatic minimum size, so it can shrink
+		// See https://www.w3.org/TR/css-flexbox-1/#min-size-auto
+		min-width: 0;
+	}
+
+	// Ensure surfaces are using identical font rules
+	.cm-scroller,
+	.cm-scroller *,
+	.ext-codemirror-wrapper .ve-ce-paragraphNode {
+		// The following are already set by mw-editfont-monospace on the parent: font-size, font-family
+		// T382006: Chromium browsers have rounding issues between 1.5 and 1.5em
+		// Site styles or user styles may also affect the result unintentionally, so override it anyway
+		line-height: 1.5;
+		word-wrap: break-word;
+		// Support: Chrome<76, Firefox<69
+		// Fallback for browsers which don't support break-spaces
+		white-space: pre-wrap;
+		// T347902
+		white-space: break-spaces;
+		word-break: normal;
+		-webkit-hyphens: manual;
+		-moz-hyphens: manual;
+		-ms-hyphens: manual;
+		hyphens: manual;
+		-webkit-font-variant-ligatures: contextual;
+		font-variant-ligatures: contextual;
+
+		// Monospace fonts can change width when bold
+		// stylelint-disable-next-line declaration-no-important
+		font-weight: normal !important;
+		// T252965
+		line-break: initial;
+		// T357482#10111614
+		font-style: normal;
+		// T418793
+		font-family: inherit;
+		font-size: inherit;
+	}
+
+	.cm-mw-section-1,
+	.cm-mw-section-1 ~ *,
+	.cm-mw-section-2,
+	.cm-mw-section-2 ~ *,
+	.cm-mw-section-3 ~ *,
+	.cm-mw-section-4 ~ *,
+	.cm-mw-section-5 ~ *,
+	.cm-mw-section-6 ~ * {
+		font-size: inherit;
+		line-height: inherit;
+		font-weight: inherit;
+	}
+
+	.cm-activeLineGutter {
+		background-color: transparent;
+		border-right: 0;
+	}
+}
+
+.ext-codemirror-wrapper .ve-ce-documentNode-codeEditor-hide {
+	opacity: 0.4;
+
+	&::selection,
+	& *::selection {
+		background: #6da9f7 !important; /* stylelint-disable-line declaration-no-important */
+	}
+}
+
+.ext-codemirror-wrapper .ve-ce-documentNode-codeEditor-webkit-hide {
+	-webkit-text-fill-color: transparent;
+}

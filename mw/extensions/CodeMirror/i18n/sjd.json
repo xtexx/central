@@ -1,0 +1,38 @@
+{
+	"@metadata": {
+		"authors": [
+			"Merrahtar"
+		]
+	},
+	"codemirror-toggle-label": "Синтаксесс тӯзхуввмушш",
+	"codemirror-prefs-section-references": "Тӣһтса̄нҍ",
+	"codemirror-close": "Ка̄һтӭ",
+	"codemirror-find": "О̄дзэ",
+	"codemirror-next": "О̄дзэ пуэдтӭй",
+	"codemirror-previous": "О̄дзэ э̄ввтла",
+	"codemirror-all": "Пугк",
+	"codemirror-all-tooltip": "Воа̄лшэ пугк, мӣ ше̄һт",
+	"codemirror-match-case": "Мугка шэ регистрэнҍ",
+	"codemirror-regexp": "Регулярнэ выраженья",
+	"codemirror-by-word": "О̄ммп са̄нҍ",
+	"codemirror-replace": "Воа̄йхэ",
+	"codemirror-replace-placeholder": "Воа̄йхэ",
+	"codemirror-replace-all": "Пугк воа̄йхэ",
+	"codemirror-done": "Воа̄лмаш",
+	"codemirror-fold": "Ко̄д ле̄вхэмушш",
+	"codemirror-unfold": "ле̄вхэ",
+	"codemirror-keymap-help-title": "Пуалэ э̄ххтътэмуж",
+	"codemirror-keymap-bold": "Пя̄лла кэ̄сс",
+	"codemirror-keymap-computercode": "Коаммпьютэр ко̄дт",
+	"codemirror-keymap-strikethrough": "Туэресь ця̄һксэнҍ",
+	"codemirror-keymap-subscript": "Ню̄ллас вӯлленҍ",
+	"codemirror-keymap-superscript": "Ню̄ллас альн",
+	"codemirror-keymap-underline": "Вӯльма ця̄һксэнҍ",
+	"codemirror-keymap-nowiki": "Игноруввэ вики-форматлаһтҍмуж",
+	"codemirror-keymap-paragraph": "Абзац форматлаһтҍмушш",
+	"codemirror-keymap-indent": "Кугкьнэ туммплаһтҍмуж",
+	"codemirror-keymap-outdent": "Оанҍхэ туммплаһтҍмуж",
+	"codemirror-keymap-preformatted": "Э̄ввтформаһтлаһтма",
+	"codemirror-keymap-find": "Коа̄ввнэ я воа̄йхэ",
+	"codemirror-keymap-help": "Пуалэ э̄ххтътэмуж"
+}
