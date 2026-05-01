@@ -1,0 +1,153 @@
+/**
+* UserLinks
+* All links and menus that appear in the header,
+* at the top of the page, after the search bar.
+*/
+
+/**
+ * Top-most container that holds ALL menus in the user links section
+ * (horizontal menus and dropdowns)
+ * Logged-in and logged-out.
+ */
+.vector-user-links {
+	display: flex;
+	align-items: center;
+	position: relative;
+	justify-content: flex-end;
+	flex-shrink: 1;
+
+	// Spacing for all top-level menu icons.
+	.mw-list-item,
+	.vector-dropdown-label {
+		margin: 0 @spacing-25;
+	}
+	// Reset margins on items inside dropdowns.
+	.vector-dropdown-content .mw-list-item {
+		margin: 0;
+	}
+
+	// <T400946>
+	// Our header currently doesn't support having reading list AND watchlist icons
+	// To be revisited at later date.
+	// stylelint-disable selector-max-specificity, declaration-no-important
+	#pt-readinglists-2 ~ #pt-watchlist-2 {
+		display: none !important;
+	}
+
+	#pt-readinglists ~ #pt-watchlist {
+		display: block !important;
+	}
+	// stylelint-enable selector-max-specificity, declaration-no-important
+	// </T400946>
+}
+
+/**
+ * Container that holds just the dropdown user menu (displays "..." when logged out).
+ * Logged-in and logged-out.
+ */
+.vector-user-menu {
+	.vector-dropdown-content {
+		.mixin-vector-dropdown-content-flip();
+	}
+
+	// Used to hide collapsible items inside the dropdown menu
+	// as well as the dropdown menu itself when the menu is empty
+	&.user-links-collapsible-item,
+	.user-links-collapsible-item {
+		@media ( min-width: @min-width-breakpoint-tablet ) {
+			display: none;
+		}
+
+		&--none {
+			display: none;
+		}
+	}
+}
+
+/**
+ * Container that holds all menus except the user menu (.vector-user-menu).
+ * Logged-in and logged-out.
+ */
+.vector-user-links-main {
+	display: flex;
+	align-items: center;
+
+	// The user page menu may have after-portal content (e.g. temp user info button).
+	.vector-menu-content {
+		display: flex;
+	}
+
+	.vector-menu-content-list {
+		display: flex;
+		align-items: center;
+		font-size: @font-size-small;
+	}
+
+	.after-portlet-user-page,
+	.user-links-collapsible-item {
+		@media ( max-width: @max-width-breakpoint-mobile ) {
+			display: none;
+		}
+	}
+
+	// color the donate link progressive equal to a fake quiet progressive Codex Button component
+	/* stylelint-disable selector-max-specificity */
+	#pt-sitesupport-2 .cdx-button--fake-button--enabled.cdx-button--weight-quiet {
+		color: @color-progressive;
+
+		.mw-ui-icon-heart {
+			background-color: @background-color-progressive;
+		}
+
+		&:hover {
+			background-color: @background-color-progressive-subtle--hover;
+			color: @color-progressive--hover;
+
+			.mw-ui-icon-heart {
+				background-color: @background-color-progressive--hover;
+			}
+		}
+
+		&:active,
+		&.cdx-button--is-active {
+			background-color: @background-color-progressive-subtle--active;
+			color: @color-progressive--active;
+
+			.mw-ui-icon-heart {
+				background-color: @background-color-progressive--active;
+			}
+		}
+	}
+	/* stylelint-enable selector-max-specificity */
+}
+
+/**
+ * Logged-in dropdown user menu.
+ */
+.vector-user-menu-logged-in .vector-dropdown-label {
+	.mixin-vector-arrowed-dropdown-toggle();
+}
+
+/**
+ * Logged-in user-page link in personal (overflow) menu.
+ */
+#pt-userpage-2 {
+	max-width: unit( ( 155 / @font-size-browser ), rem );
+	overflow: hidden;
+	text-overflow: ellipsis;
+
+	a:not( .mw-selflink ) {
+		// T312157 Override redlink (.new) color for non-existant userpage
+		color: @color-progressive;
+	}
+
+	span {
+		.text-overflow( @visible: false );
+	}
+
+	// T287522#7295558: Increase the max-width of the username when viewport
+	// allows for it.
+	@media ( min-width: @min-width-breakpoint-desktop-wide ) {
+		max-width: unit( ( 200 / @font-size-browser ), rem );
+	}
+}
