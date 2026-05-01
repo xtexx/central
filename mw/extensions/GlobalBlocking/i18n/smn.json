@@ -1,0 +1,16 @@
+{
+	"@metadata": {
+		"authors": [
+			"Seipinne",
+			"Yupik"
+		]
+	},
+	"globalblocking-block-reason": "Suijâ:",
+	"globalblocking-list-unblock": "siho",
+	"globalblocking-list-block": "eesti",
+	"globalblocking-list-indefblocks": "Čievâ pisovijd iästuid",
+	"globalblocking-list-autoblocks": "Čievâ automaatlijd iästuid",
+	"globalblocking-unblock-reason": "Suijâ:",
+	"globalblocking-whitelist-reason": "Suijâ:",
+	"globalblocking-mass-block-query-submit": "Uusâ"
+}
