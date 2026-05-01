@@ -1,0 +1,57 @@
+@import 'mediawiki.skin.variables.less';
+@import ( reference ) 'mediawiki.skin.codex-design-tokens/theme-wikimedia-ui-mixin-dark.less';
+
+.mw-mmv-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1000;
+	background-color: #000;
+	display: flex;
+	justify-items: center;
+	align-items: center;
+	align-content: center;
+	justify-content: center;
+
+	.cdx-progress-bar {
+		max-width: 80vw;
+		min-width: 20vw;
+		width: 20rem;
+	}
+
+	// Alternate overlay BG color for beta UI
+	&.mw-mmv-overlay--beta {
+		.cdx-mode-dark();
+		background-color: @background-color-interactive-subtle;
+	}
+}
+
+body.mw-mmv-lightbox-open {
+	overflow-y: auto;
+
+	// This is to ensure the background area for the safe areas (notch) is black in fullscreen mode
+	// Separate from above as not all browsers that we support, support has().
+	background-color: #000;
+
+	// Stop the article from scrolling in the background
+	> *:not( .mw-notification-area-overlay ) {
+		display: none;
+	}
+
+	> .mw-mmv-overlay {
+		display: flex;
+	}
+
+	> .mw-mmv-wrapper {
+		display: block;
+	}
+}
+
+.mw-mmv-view-expanded {
+	.cdx-button__icon {
+		.cdx-mixin-css-icon( @cdx-icon-image-gallery, @param-is-button-icon: true,
+			@param-size-icon: @size-icon-small );
+	}
+}
