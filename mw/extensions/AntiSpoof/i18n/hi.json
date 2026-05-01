@@ -1,0 +1,34 @@
+{
+	"@metadata": {
+		"authors": [
+			"Hindustanilanguage",
+			"Innocentbunny",
+			"Jayprakash12345",
+			"Kannankumar",
+			"Kaustubh",
+			"Knight Samar",
+			"Pooja.srivastava",
+			"Saurmandal",
+			"Sfic",
+			"Shyam123.ckp",
+			"Siddhartha Ghai"
+		]
+	},
+	"antispoof-desc": "मिश्रित लिपि और संभ्रम पैदा करने वाले तथा मिलते-जुलते सदस्यनामों के प्रयोग पर रोक लगाता है।",
+	"antispoof-conflict-top": "\"$1\" सदस्यनाम निम्न {{PLURAL:$2|सदस्यनाम|सदस्यनामों}} से बहुत मिलता-जुलता है:",
+	"antispoof-conflict-bottom": "कृपया कोई अन्य नाम चुनें।",
+	"antispoof-name-illegal": "संभ्रम पैदा होने से बचने के लिए \"$1\" सदस्यनाम का उपयोग नहीं किया जा सकता: $2\nकृपया कोई अन्य नाम चुनें।",
+	"antispoof-badtype": "दिया गया सदस्यनाम अमान्य प्रकार का है",
+	"antispoof-empty": "कोई सदस्यनाम नहीं दिया गया है",
+	"antispoof-prohibited": "सदस्यनाम में \"$1\" कैरेक्टर नहीं हो सकता क्योंकि यह प्रतिबंधित है",
+	"antispoof-combining": "सदस्यनाम में संयोजन कैरेक्टर \"$1\" नहीं हो सकता",
+	"antispoof-unassigned": "सदस्यनाम में \"$1\" कैरेक्टर नहीं हो सकता क्योंकि यह एक अज्ञात कैरेक्टर है",
+	"antispoof-deprecated": "सदस्यनाम में \"$1\" कैरेक्टर नहीं हो सकता क्योंकि यह अप्रचलित है",
+	"antispoof-noletters": "सदस्यनाम में एक या अधिक कैरेक्टर्स होने चाहिए",
+	"antispoof-mixedscripts": "सदस्यनाम में अलग-अलग लिपियों के कैरेक्टर्स नहीं हो सकते",
+	"antispoof-tooshort": "आपका दिया गया सदस्यनाम कुछ ज़्यादा ही छोटा है",
+	"antispoof-ignore": "स्पूफ़िंग जाँच नज़रंदाज़ करें",
+	"antispoof-ignore-help": "कुछ पर्याप्त अधिकार प्राप्त सदस्य ऐसे खाते भी खोल सकते हैं, जिसके समान नाम वाले खाते पहले से ही बने हुए हों।",
+	"action-override-antispoof": "स्पूफ़िंग की जाँचें ओवर्राइड करने",
+	"right-override-antispoof": "स्पूफ़िंग की जाँचें ओवर्राइड करना"
+}
