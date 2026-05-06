@@ -34,7 +34,7 @@
 		"ext-xml": "*",
 		"ext-xmlreader": "*",
 		"guzzlehttp/guzzle": "7.10.0",
-		"justinrainbow/json-schema": "5.3.2",
+		"justinrainbow/json-schema": "5.3.4",
 		"lcobucci/jwt": "5.6.0",
 		"liuggio/statsd-php-client": "1.0.18",
 		"mck89/peast": "1.17.5",
@@ -85,7 +85,7 @@
 		"wikimedia/timestamp": "5.1.0",
 		"wikimedia/wait-condition-loop": "2.0.2",
 		"wikimedia/wrappedstring": "4.1.0",
-		"wikimedia/xmp-reader": "0.10.2",
+		"wikimedia/xmp-reader": "0.10.3",
 		"zordius/lightncandy": "1.2.6"
 	},
 	"require-dev": {

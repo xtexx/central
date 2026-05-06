@@ -134,7 +134,7 @@ For notes on 1.45.x and older releases, see HISTORY.
 
 * Updated codex, codex-design-tokens and codex-icons
   from v2.3.2 to v2.5.1.
-* Updated jsonrainbow/json-schema from 5.3.0 to 5.3.2.
+* Updated jsonrainbow/json-schema from 5.3.0 to 5.3.4.
 * Updated lcobucci/jwt from 4.1.5 to 5.6.0.
 * Updated monolog/monolog from 2.9.3 to 2.11.0.
 * Updated oojs/oojs-ui (OOUI) from v0.53.0 to v0.53.2.
@@ -157,6 +157,7 @@ For notes on 1.45.x and older releases, see HISTORY.
 * Updated wikimedia/testing-access-wrapper from 3.0.0 to 4.0.0.
 * Updated wikimedia/timestamp from 5.0.0 to 5.1.0.
 * Updated wikimedia/wrappedstring from 4.0.1 to 4.1.0.
+* Updated wikimedia/xmp-reader from 0.10.2 to 0.10.3.
 * …
 
 ===== Changed development-only external libraries =====
@@ -362,6 +363,8 @@ because of Phabricator reports.
 * ContentHandler::checkModelID() and AbstractContent::checkModelID() now
   throw UnexpectedContentModelException instead of deprecated MWException.
 * The mediawiki.ui module, deprecated in 1.41 and unused, was removed.
+  Instead, use Codex modules.
+* The mediawiki.ui.input module, deprecated in 1.41 and unused, was removed.
   Instead, use Codex modules.
 * The mediawiki.ui.checkbox module, deprecated in 1.41 and unused, was removed.
   Instead, use Codex modules.
@@ -1062,6 +1065,12 @@ because of Phabricator reports.
   - Xml::listDropdown(),
   - Xml::listDropdownOptions() & Xml::listDropdownOptionsOoui(), and
   - Xml::option().
+* Returning a boolean from LoggedUpdateMaintenance::doDbUpdates() is now
+  deprecated. Maintenance scripts that extend LoggedUpdateMaintenance
+  should return a LoggedUpdateOutcome value from doDbUpdates() and
+  advertise this fact using a return type declaration.
+  This allows doDbUpdates() to signal a dry run explicitly, removing the need
+  to treat dry runs as failures (T411104).
 * Language::emphasize() is unused, got deprecated, and will be removed in the
   next version.
 * RevisionLookup::getKnownCurrentRevision() is now deprecated in favor of
@@ -1148,6 +1157,8 @@ because of Phabricator reports.
 * wfPercent() has been deprecated and now emits deprecation warnings. Use
   round() and format the number as appropriate for the language, for example
   using `wfMessage( 'percent' )->numParams( round( $x, 2 ) )->text()`.
+* The EditFilter hook has been deprecated and will trigger deprecation warnings.
+  Use EditFilterMergedContent or MultiContentSave instead.
 * …
 
 === Other changes in 1.46 ===
