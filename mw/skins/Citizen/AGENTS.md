@@ -87,6 +87,7 @@ To add a new skill, create `.agents/skills/<name>/SKILL.md` with frontmatter (`n
 `skin.json` is the source of truth for how the skin is wired — ResourceLoader modules, hooks, config variables, and extension skin styles are all declared here.
 
 - When adding or removing files under `resources/`, update the corresponding `packageFiles` or `styles` list in `skin.json`
+- When a new i18n message key is read by JS via `mw.message()`, also add it to the relevant ResourceLoader module's `messages` array in `skin.json` — adding the key only to `i18n/en.json` and `i18n/qqq.json` is not enough; messages not listed in the module render as `⧼key⧽` in the UI
 - When adding support for a new extension, add a LESS file under `skinStyles/` and register it in `skin.json` under `ResourceModuleSkinStyles`
 - Config variables are declared under `config` in `skin.json` (prefixed `wgCitizen`). In PHP they are accessed via `$this->getConfig()->get( 'CitizenFoo' )`, and can be injected into JS via `ResourceLoaderHooks`
 
@@ -95,6 +96,7 @@ To add a new skill, create `.agents/skills/<name>/SKILL.md` with frontmatter (`n
 - Use [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `fix(tests):`, `feat:`, `refactor:`)
 - Use `ci:` or `chore:` for non-user-facing changes (tooling, config, dependencies)
 - Do **not** include emojis — a pre-commit hook adds them automatically based on the commit type prefix
+- Subject lines are surfaced in the auto-generated changelog. Write them in plain user-facing language, not implementation jargon — compare `suggest Category as a primitive in SMW property stage` (jargon) with `suggest Category in SMW mode` (clear). The body is where implementation detail belongs.
 
 ### Tests
 
@@ -115,6 +117,14 @@ PHP-generated HTML (Mustache templates, `SkinMustache` output) is cached by the 
 - **Part 2/2**: Remove the old CSS/JS (deploy after caches have expired)
 
 This only applies to PHP-generated HTML. Client-rendered HTML (e.g. Vue components) is not parser-cached and does not need this treatment.
+
+#### Alternative: defensive JS fallback
+
+The two-commit pattern is additive — new state coexists with old during the deploy window. When a change *removes* a load or mount mechanism that the old HTML depends on, coexistence costs more (double-binding handlers across two flows) than the alternative.
+
+For those changes, the new JS detects when expected new HTML is missing (`getElementById(...) === null`) and reconstructs it at runtime as a one-time safety net. Single deploy, robust to any cache state.
+
+Track the fallback's removal as a GitHub issue: it must ship with the release that lands the migration, and can be removed in the next release.
 
 ### i18n
 
