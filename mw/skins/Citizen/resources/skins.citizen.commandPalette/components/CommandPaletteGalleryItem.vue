@@ -15,24 +15,36 @@
 		@mousedown.prevent="onMouseDown"
 		@click="onClick"
 	>
-		<cdx-thumbnail
-			:thumbnail="thumbnail"
-			:placeholder-icon="thumbnailIcon || undefined"
+		<!--
+			CommandPaletteImage handles src + lazy-loaded <img>, the
+			placeholder fallback, and the broken-image bail. Wraps the
+			same square aspect-ratio container the tile previously
+			built inline. Mirrors the CdxImage prop API so swapping it
+			out (when MW LTS bundles a Codex with CdxImage) is a
+			component-rename.
+		-->
+		<command-palette-image
 			class="citizen-command-palette-gallery-item__thumbnail"
-		></cdx-thumbnail>
+			:src="thumbnail ? thumbnail.url : ''"
+			:width="thumbnail ? thumbnail.width : null"
+			:height="thumbnail ? thumbnail.height : null"
+			aspect-ratio="1:1"
+			object-fit="cover"
+			:placeholder-icon="thumbnailIcon || null"
+		></command-palette-image>
 	</component>
 </template>
 
 <script>
 const { defineComponent, computed, ref } = require( 'vue' );
-const { CdxThumbnail } = mw.loader.require( 'skins.citizen.commandPalette.codex' );
+const CommandPaletteImage = require( './CommandPaletteImage.vue' );
 const { CommandPaletteItem } = require( '../types.js' );
 
 // @vue/component
 module.exports = exports = defineComponent( {
 	name: 'CommandPaletteGalleryItem',
 	components: {
-		CdxThumbnail
+		CommandPaletteImage
 	},
 	props: {
 		id: {
@@ -174,59 +186,46 @@ module.exports = exports = defineComponent( {
 		text-decoration: none;
 	}
 
-	// CdxThumbnail at gallery scale: fill the tile, square aspect ratio,
-	// and scale the placeholder icon up from its 1.25rem default so it
-	// stays readable inside a ~140px tile. CdxThumbnail defaults to
-	// `display: inline-flex`, which leaves a line-box descender below
-	// the tile — switching to block removes that gap.
-	&__thumbnail.cdx-thumbnail {
-		display: block;
-		width: 100%;
-		height: auto;
-		aspect-ratio: 1 / 1;
+	// Tile chrome layered on top of CommandPaletteImage's square frame.
+	// The image component owns aspect-ratio, background, and the
+	// `<img>` / placeholder swap. The gallery item adds the border and
+	// the focus-ring overlay so only tiles get them — when the image
+	// component is reused in the detail pane, the chrome doesn't follow.
+	&__thumbnail {
+		border: 1px solid var( --border-color-subtle );
 		border-radius: var( --border-radius-medium );
 
-		.cdx-thumbnail__image,
-		.cdx-thumbnail__placeholder {
-			width: 100%;
-			min-width: 0;
-			height: 100%;
-			min-height: 0;
-			border-color: var( --border-color-subtle );
+		// Focus/active ring overlay. `box-shadow: inset` on the tile
+		// itself paints between the parent's border and its content area
+		// — behind the child <img>, which is opaque and covers the
+		// shadow. A transparent pseudo-element layered on top is the
+		// reliable way to render the ring above image content.
+		&::after {
+			position: absolute;
+			inset: 0;
+			pointer-events: none;
+			content: '';
 			border-radius: inherit;
-		}
-
-		// __image stretches to cover; __placeholder must keep its
-		// flex centering so the icon stays in the middle of the tile.
-		.cdx-thumbnail__image {
-			display: block;
-		}
-
-		.cdx-thumbnail__placeholder__icon {
-			width: 3.5rem;
-			min-width: 0;
-			height: 3.5rem;
-			min-height: 0;
-			-webkit-mask-size: 3.5rem;
-			mask-size: 3.5rem;
+			box-shadow: inset 0 0 0 2px transparent;
 		}
 	}
 
 	// Focus ring matches Codex's interactive-focus pattern (inset 2px
 	// progressive border) — visible against any thumbnail content
-	// without enlarging the tile or pushing siblings around.
-	&--highlighted &__thumbnail.cdx-thumbnail {
-		.cdx-thumbnail__image,
-		.cdx-thumbnail__placeholder {
-			border-color: var( --border-color-progressive );
+	// without enlarging the tile or pushing siblings around. The ring
+	// is drawn on the ::after overlay so it sits above the <img>.
+	&--highlighted &__thumbnail {
+		border-color: var( --border-color-progressive );
+
+		&::after {
 			box-shadow: inset 0 0 0 2px var( --border-color-progressive );
 		}
 	}
 
-	&--active &__thumbnail.cdx-thumbnail {
-		.cdx-thumbnail__image,
-		.cdx-thumbnail__placeholder {
-			border-color: var( --border-color-progressive--active );
+	&--active &__thumbnail {
+		border-color: var( --border-color-progressive--active );
+
+		&::after {
 			box-shadow: inset 0 0 0 2px var( --border-color-progressive--active );
 		}
 	}

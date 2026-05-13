@@ -11,13 +11,13 @@ Run only what's relevant to the files you changed.
 | Files changed | Command |
 | --- | --- |
 | `*.php` | `composer preflight` (lint, style, and Phan) |
-| `*.js` | `npm run lint:js` |
+| `*.js` | `npm run lint:js && npm test` |
 | `*.less`, `*.css` | `npm run lint:styles` |
 | `i18n/` | `npm run lint:i18n` |
 
 Auto-fix commands: `composer fix` (PHP), `npm run lint:fix:js` (JS), `npm run lint:fix:styles` (styles).
 
-**Preflight**: Run `npm run preflight` to execute all Node-based lints in one command. Run `composer preflight` from within a MediaWiki installation to execute all PHP lints, style checks, and Phan static analysis.
+**Preflight**: Run `npm run preflight` to execute all Node-based lints and JS tests in one command. Run `composer preflight` from within a MediaWiki installation to execute all PHP lints, style checks, and Phan static analysis.
 
 **Always run the relevant checks before committing.** Read the full output — PHPCS warnings must be fixed, not just errors. The command exits 0 even with warnings, so do not treat exit code alone as a pass.
 
@@ -38,6 +38,14 @@ Phan requires a full MediaWiki installation at `../../` for type resolution. The
 ```sh
 docker compose exec mediawiki bash -c "cd /var/www/html/w/extensions/TabberNeue && composer phan"
 ```
+
+### Browser testing
+
+When your test plan includes steps that require a browser (e.g., verifying scripts load, checking runtime behavior, confirming interactions work):
+
+- Use available browser automation tools (e.g., Chrome DevTools MCP, Playwright MCP) to test against the dev environment URL before asking the user to test manually
+- Always check the browser console for warnings and errors, not just visual correctness
+- **XSS testing for i18n**: When changes touch interface messages or how they are rendered, append `?uselang=x-xss` to the URL. This replaces all i18n messages with XSS payloads — if any script executes or markup is injected, the message output is not properly escaped. See [Manual:$wgUseXssLanguage](https://www.mediawiki.org/wiki/Manual:$wgUseXssLanguage)
 
 ## Coding conventions
 

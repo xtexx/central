@@ -1,6 +1,6 @@
 {
 	"name": "Citizen",
-	"version": "3.15.1",
+	"version": "3.16.0",
 	"author": [
 		"[https://www.mediawiki.org/wiki/User:Alistair3149 Alistair3149]",
 		"[https://www.mediawiki.org/wiki/User:Octfx Octfx]",
@@ -206,6 +206,7 @@
 				"resources/skins.citizen.scripts/serviceWorker.js",
 				"resources/skins.citizen.scripts/setupObservers.js",
 				"resources/skins.citizen.scripts/share.js",
+				"resources/skins.citizen.scripts/triggerNativeShare.js",
 				"resources/skins.citizen.scripts/speculationRules.js",
 				"resources/skins.citizen.scripts/stickyHeader.js",
 				"resources/skins.citizen.scripts/tableOfContents.js",
@@ -318,6 +319,57 @@
 				"vue"
 			]
 		},
+		"skins.citizen.share.codex": {
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
+			"codexComponents": [
+				"CdxButton",
+				"CdxIcon",
+				"CdxTextInput"
+			]
+		},
+		"skins.citizen.share": {
+			"packageFiles": [
+				"resources/skins.citizen.share/init.js",
+				"resources/skins.citizen.share/composables/useUrlShortener.js",
+				"resources/skins.citizen.share/composables/useDialogResizeAnimation.js",
+				"resources/skins.citizen.share/iconStyle.js",
+				"resources/skins.citizen.share/App.vue",
+				{
+					"name": "resources/skins.citizen.share/icons.json",
+					"callback": "MediaWiki\\ResourceLoader\\CodexModule::getIcons",
+					"callbackParam": [
+						"cdxIconArrowPrevious",
+						"cdxIconCheck",
+						"cdxIconCopy",
+						"cdxIconLink",
+						"cdxIconQrCode"
+					]
+				},
+				{
+					"name": "resources/skins.citizen.share/config.json",
+					"callback": "MediaWiki\\Skins\\Citizen\\Hooks\\ResourceLoaderHooks::getCitizenShareResourceLoaderConfig"
+				}
+			],
+			"messages": [
+				"citizen-share",
+				"citizen-share-copy-link",
+				"citizen-share-copied",
+				"citizen-share-copy-short-url",
+				"citizen-share-short-url-copied",
+				"citizen-share-short-url-error",
+				"citizen-share-show-qr",
+				"citizen-share-qr-title",
+				"citizen-share-qr-scan-hint",
+				"citizen-share-qr-error",
+				"citizen-share-qr-retry",
+				"citizen-share-back"
+			],
+			"dependencies": [
+				"skins.citizen.share.codex",
+				"mediawiki.util",
+				"vue"
+			]
+		},
 		"skins.citizen.serviceWorker": {
 			"scripts": [
 				"resources/skins.citizen.serviceWorker/sw.js"
@@ -384,6 +436,7 @@
 				"resources/skins.citizen.commandPalette/components/CommandPaletteListItemActions.vue",
 				"resources/skins.citizen.commandPalette/components/CommandPaletteListItemContent.vue",
 				"resources/skins.citizen.commandPalette/components/CommandPaletteGalleryItem.vue",
+				"resources/skins.citizen.commandPalette/components/CommandPaletteImage.vue",
 				{
 					"name": "resources/skins.citizen.commandPalette/icons.json",
 					"callback": "MediaWiki\\ResourceLoader\\CodexModule::getIcons",
@@ -652,6 +705,8 @@
 			"+ext.advancedSearch.styles": "skinStyles/extensions/AdvancedSearch/ext.advancedSearch.styles.less",
 			"+ext.ajaxpoll": "skinStyles/extensions/AJAXPoll/ext.ajaxpoll.less",
 			"+ext.ApprovedRevs": "skinStyles/extensions/ApprovedRevs/ext.ApprovedRevs.less",
+			"+ext.articleFeedbackv5": "skinStyles/extensions/ArticleFeedbackv5/ext.articleFeedbackv5.less",
+			"+ext.articleFeedbackv5.dashboard": "skinStyles/extensions/ArticleFeedbackv5/ext.articleFeedbackv5.dashboard.less",
 			"+capiunto.infobox.main": "skinStyles/extensions/Capiunto/capiunto.infobox.main.less",
 			"+ext.cargo.main": "skinStyles/extensions/Cargo/ext.cargo.main.less",
 			"+ext.cargo.pagevalues": "skinStyles/extensions/Cargo/ext.cargo.pagevalues.less",
@@ -983,6 +1038,18 @@
 		"TableOfContentsCollapseAtCount": {
 			"value": 28,
 			"description": "@var The minimum number of headings required to collapse all headings in the sticky table of contents by default."
+		},
+		"EnableShare": {
+			"value": true,
+			"description": "Enable or disable the share button",
+			"descriptionmsg": "citizen-config-enableshare",
+			"public": true
+		},
+		"ShareMode": {
+			"value": "auto",
+			"description": "Which share UI to present. 'auto' (default): try the browser's Web Share API first and fall back to Citizen's panel when unavailable. 'panel': always use Citizen's panel. 'native': always use the Web Share API, with a clipboard fallback on unsupported browsers.",
+			"descriptionmsg": "citizen-config-sharemode",
+			"public": true
 		},
 		"HeaderPosition": {
 			"value": "left",

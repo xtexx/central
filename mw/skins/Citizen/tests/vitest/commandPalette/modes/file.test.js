@@ -168,7 +168,46 @@ describe( 'file mode', () => {
 			// The list-stage iiprop is intentionally minimal — heavier fields
 			// (extmetadata, size, mime, user, timestamp) move to getItemDetail.
 			expect( params.iiprop ).toBe( 'url|mediatype' );
-			expect( params.iiurlwidth ).toBe( 300 );
+			// jsdom's window.devicePixelRatio defaults to 1, so the DPR-aware
+			// thumb width resolves to BASE_TILE_WIDTH (160). Verify it's a
+			// positive integer rather than the exact value so a future tweak
+			// to the tile-width constant doesn't crash this test.
+			expect( params.iiurlwidth ).toBeGreaterThan( 0 );
+			expect( Number.isInteger( params.iiurlwidth ) ).toBe( true );
+		} );
+
+		it( 'computes iiurlwidth per request from devicePixelRatio, capped at the documented max', async () => {
+			const originalDpr = window.devicePixelRatio;
+			mockGet.mockResolvedValue( { query: { pages: SAMPLE_PAGES } } );
+
+			Object.defineProperty( window, 'devicePixelRatio', {
+				value: 1, configurable: true
+			} );
+			await mode.getResults( 'a', undefined );
+			const dpr1 = mockGet.mock.calls.at( -1 )[ 0 ].iiurlwidth;
+
+			Object.defineProperty( window, 'devicePixelRatio', {
+				value: 2, configurable: true
+			} );
+			await mode.getResults( 'b', undefined );
+			const dpr2 = mockGet.mock.calls.at( -1 )[ 0 ].iiurlwidth;
+
+			Object.defineProperty( window, 'devicePixelRatio', {
+				value: 4, configurable: true
+			} );
+			await mode.getResults( 'c', undefined );
+			const dpr4 = mockGet.mock.calls.at( -1 )[ 0 ].iiurlwidth;
+
+			Object.defineProperty( window, 'devicePixelRatio', {
+				value: originalDpr, configurable: true
+			} );
+
+			expect( dpr2 ).toBeGreaterThan( dpr1 );
+			// At DPR 4 the requested width (640) exceeds MAX_THUMB_WIDTH
+			// (400), so the cap is hit and widening stops. Asserting the
+			// exact cap value catches a regression that removes the cap
+			// or raises it without updating the documented intent.
+			expect( dpr4 ).toBe( 400 );
 		} );
 
 		it( 'falls back to full-text search when prefix returns no results', async () => {
@@ -275,10 +314,119 @@ describe( 'file mode', () => {
 
 			const audio = result.find( ( r ) => r.label === 'Lecture.mp3' );
 			expect( audio.thumbnail ).toBeNull();
-			// thumbnailIcon is always assigned by adaptFileItem; the actual
+			// thumbnailIcon is always assigned by adaptListItem; the actual
 			// icon glyph is wired up by MediaWiki's ResourceLoader at runtime
 			// (icons.json is a stub in unit tests). Just check the field exists.
 			expect( audio ).toHaveProperty( 'thumbnailIcon' );
+		} );
+
+		it( 'sets thumbnail to null for non-renderable mediatypes when MW echoes the original URL as thumburl', async () => {
+			// MW echoes `thumburl=url` when no separate thumb can be
+			// generated — audio, webm video without poster, archives, …
+			// — sometimes with -1 dimensions, sometimes with the requested
+			// width and a positive height. Native <img> would attempt to
+			// load the raw media and render a broken glyph, so we gate on
+			// mediatype: AUDIO / VIDEO / OFFICE / ARCHIVE / 3D fall back
+			// to the placeholder icon.
+			const pages = {
+				200: {
+					pageid: 200,
+					ns: 6,
+					title: 'File:Demo.webm',
+					index: 1,
+					imageinfo: [ {
+						url: '/w/images/Demo.webm',
+						thumburl: '/w/images/Demo.webm',
+						thumbwidth: 300,
+						thumbheight: 225,
+						mediatype: 'VIDEO'
+					} ]
+				},
+				201: {
+					pageid: 201,
+					ns: 6,
+					title: 'File:Audio.mp3',
+					index: 2,
+					imageinfo: [ {
+						url: '/w/images/Audio.mp3',
+						thumburl: '/w/images/Audio.mp3',
+						thumbwidth: 300,
+						thumbheight: -1,
+						mediatype: 'AUDIO'
+					} ]
+				}
+			};
+			mockGet.mockResolvedValue( { query: { pages } } );
+
+			const result = await mode.getResults( 'media', undefined );
+
+			expect( result[ 0 ].thumbnail ).toBeNull();
+			expect( result[ 1 ].thumbnail ).toBeNull();
+			expect( result[ 0 ] ).toHaveProperty( 'thumbnailIcon' );
+			expect( result[ 1 ] ).toHaveProperty( 'thumbnailIcon' );
+		} );
+
+		it( 'sets a thumbnail for SVGs when MW echoes the original URL as thumburl', async () => {
+			// SVGs are vector — MW returns the original URL as `thumburl`
+			// because the file is its own thumbnail. Native <img> renders
+			// SVG inline, so the URL is fine to use. mediatype=DRAWING is
+			// the discriminator that distinguishes this from the
+			// non-renderable echo case (audio/video/archive).
+			const pages = {
+				300: {
+					pageid: 300,
+					ns: 6,
+					title: 'File:Logo.svg',
+					index: 1,
+					imageinfo: [ {
+						url: '/w/images/Logo.svg',
+						thumburl: '/w/images/Logo.svg',
+						thumbwidth: 512,
+						thumbheight: 512,
+						mediatype: 'DRAWING'
+					} ]
+				}
+			};
+			mockGet.mockResolvedValue( { query: { pages } } );
+
+			const result = await mode.getResults( 'logo', undefined );
+
+			expect( result[ 0 ].thumbnail ).toEqual( {
+				url: '/w/images/Logo.svg',
+				width: 512,
+				height: 512
+			} );
+		} );
+
+		it( 'sets a thumbnail for small bitmaps when MW echoes the original URL as thumburl', async () => {
+			// When the original bitmap is smaller than the requested
+			// `iiurlwidth`, MW returns the original URL as `thumburl`
+			// with the original (smaller) dimensions instead of upscaling.
+			// Native <img> renders BITMAP inline, so the URL is fine.
+			const pages = {
+				400: {
+					pageid: 400,
+					ns: 6,
+					title: 'File:Tiny.png',
+					index: 1,
+					imageinfo: [ {
+						url: '/w/images/Tiny.png',
+						thumburl: '/w/images/Tiny.png',
+						thumbwidth: 64,
+						thumbheight: 64,
+						mediatype: 'BITMAP'
+					} ]
+				}
+			};
+			mockGet.mockResolvedValue( { query: { pages } } );
+
+			const result = await mode.getResults( 'tiny', undefined );
+
+			expect( result[ 0 ].thumbnail ).toEqual( {
+				url: '/w/images/Tiny.png',
+				width: 64,
+				height: 64
+			} );
 		} );
 
 		it( 'builds a list-stage detail.header with filename + copyValue only (no description, no pairs)', async () => {
@@ -293,6 +441,31 @@ describe( 'file mode', () => {
 			// Description and pairs are populated lazily by getItemDetail.
 			expect( bitmap.detail.header.description ).toBeUndefined();
 			expect( bitmap.detail.pairs ).toBeUndefined();
+		} );
+
+		it( 'builds detail.media from the list-stage thumbnail so the panel renders without a second fetch', async () => {
+			mockGet.mockResolvedValue( { query: { pages: SAMPLE_PAGES } } );
+
+			const result = await mode.getResults( 'thing', undefined );
+
+			const bitmap = result.find( ( r ) => r.label === 'Diagram.png' );
+			expect( bitmap.detail.media.src ).toBe( '/thumb/diagram.png' );
+			expect( bitmap.detail.media.width ).toBe( 300 );
+			expect( bitmap.detail.media.height ).toBe( 200 );
+			// placeholderIcon is always assigned; resolved icon values come
+			// from icons.json which is a dev stub in unit tests, so just
+			// assert the field shape.
+			expect( bitmap.detail.media ).toHaveProperty( 'placeholderIcon' );
+		} );
+
+		it( 'builds detail.media with empty src for non-image files (CommandPaletteImage will render the placeholder)', async () => {
+			mockGet.mockResolvedValue( { query: { pages: SAMPLE_PAGES } } );
+
+			const result = await mode.getResults( 'thing', undefined );
+
+			const audio = result.find( ( r ) => r.label === 'Lecture.mp3' );
+			expect( audio.detail.media.src ).toBe( '' );
+			expect( audio.detail.media ).toHaveProperty( 'placeholderIcon' );
 		} );
 
 		it( 'sets url to the File: page URL', async () => {

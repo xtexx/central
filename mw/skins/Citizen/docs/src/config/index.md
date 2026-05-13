@@ -131,7 +131,7 @@ $wgCitizenEnableCJKFonts = false;
 
 ### `$wgCitizenEnablePreferences`
 
-Enables the user [preferences panel](/customization/preferences), allowing visitors to customize their experience. The panel is extensible — admins can add custom preferences via on-wiki JSON, and gadgets can register their own options at runtime.
+Enables the user [preferences panel](/features/preferences), allowing visitors to customize their experience. The panel is extensible — admins can add custom preferences via on-wiki JSON, and gadgets can register their own options at runtime.
 
 ```php [LocalSettings.php]
 $wgCitizenEnablePreferences = true;
@@ -169,6 +169,34 @@ The minimum number of headings required before the sticky table of contents auto
 ```php [LocalSettings.php]
 $wgCitizenTableOfContentsCollapseAtCount = 28;
 ```
+
+## Share
+
+### `$wgCitizenEnableShare`
+
+Shows the share option on content pages (when the page exists).
+
+```php [LocalSettings.php]
+$wgCitizenEnableShare = true;
+```
+
+**Values**: `true`, `false`
+
+### `$wgCitizenShareMode`
+
+Which share UI to present.
+
+```php [LocalSettings.php]
+$wgCitizenShareMode = 'auto';
+```
+
+**Values**:
+
+- `'auto'` (default) — try the browser's Web Share API first; fall back to Citizen's panel when the API isn't available (e.g. desktop Firefox).
+- `'panel'` — always use Citizen's panel.
+- `'native'` — always use the Web Share API, with a clipboard fallback on browsers that don't support it.
+
+See the [Share customization page](/features/share) for the panel's JSON shape and a starter pack.
 
 ## Webapp manifest
 

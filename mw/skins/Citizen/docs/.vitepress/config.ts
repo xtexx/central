@@ -1,10 +1,26 @@
 import { defineConfig } from "vitepress";
-import pkg from "../../package.json";
+import { routex } from "@itznotabug/routex";
 import { groupIconMdPlugin, groupIconVitePlugin } from "vitepress-plugin-group-icons";
+import llmstxt, { copyOrDownloadAsMarkdownButtons } from "vitepress-plugin-llms";
 import { tabsMarkdownPlugin } from "vitepress-plugin-tabs";
 
+const BASE_URL = process.env.BASE_URL ?? "/";
+
+function withBase(path: string): string {
+	return `${BASE_URL}${path}`.replaceAll(/\/+/g, "/");
+}
+
+const redirects = {
+	"/customization/features": withBase("/customization/utility-classes"),
+	"/features/": withBase("/customization/utility-classes"),
+	"/customization/command-palette": withBase("/features/command-palette"),
+	"/customization/performance-mode": withBase("/features/performance-mode"),
+	"/customization/preferences": withBase("/features/preferences"),
+	"/customization/share": withBase("/features/share"),
+};
+
 export default defineConfig({
-	base: process.env.BASE_URL ?? "/",
+	base: BASE_URL,
 	title: "Citizen",
 	description: "Documentation for Citizen Skin",
 	srcDir: "src",
@@ -14,14 +30,16 @@ export default defineConfig({
 		hostname: "https://starcitizentools.github.io/mediawiki-skins-Citizen/",
 	},
 	themeConfig: {
+		docsVersion: process.env.DOCS_VERSION ?? "main",
 		logo: "/img/layout.svg",
+		outline: [2, 3],
 		nav: [
 			{
 				text: "Guide",
 				link: "/guide/introduction",
 			},
 			{
-				text: pkg.version,
+				text: "Resources",
 				items: [
 					{
 						text: "Releases",
@@ -34,6 +52,9 @@ export default defineConfig({
 						activeMatch: "/changelogs/",
 					},
 				],
+			},
+			{
+				component: "VersionSwitcher",
 			},
 		],
 
@@ -67,6 +88,28 @@ export default defineConfig({
 				],
 			},
 			{
+				text: "Features",
+				collapsed: false,
+				items: [
+					{
+						text: "Command palette",
+						link: "/features/command-palette",
+					},
+					{
+						text: "Performance mode",
+						link: "/features/performance-mode",
+					},
+					{
+						text: "Preferences",
+						link: "/features/preferences",
+					},
+					{
+						text: "Share",
+						link: "/features/share",
+					},
+				],
+			},
+			{
 				text: "Customization",
 				collapsed: false,
 				items: [
@@ -75,27 +118,12 @@ export default defineConfig({
 						link: "/customization/theming",
 					},
 					{
-						text: "Recipes",
-						link: "/customization/recipes",
+						text: "Utility classes",
+						link: "/customization/utility-classes",
 					},
 					{
-						text: "Features",
-						collapsed: true,
-						link: "/customization/features",
-						items: [
-							{
-								text: "Command palette",
-								link: "/customization/command-palette",
-							},
-							{
-								text: "Performance mode",
-								link: "/customization/performance-mode",
-							},
-							{
-								text: "Preferences",
-								link: "/customization/preferences",
-							},
-						],
+						text: "Recipes",
+						link: "/customization/recipes",
 					},
 					{
 						text: "Hooks",
@@ -173,9 +201,17 @@ export default defineConfig({
 		config: (md) => {
 			md.use(groupIconMdPlugin);
 			md.use(tabsMarkdownPlugin);
+			md.use(copyOrDownloadAsMarkdownButtons);
 		},
 	},
 	vite: {
-		plugins: [groupIconVitePlugin()],
+		plugins: [
+			groupIconVitePlugin(),
+			llmstxt(),
+			routex({
+				rules: redirects,
+				options: { addCanonical: true, ignoreDeadLinks: true },
+			}),
+		],
 	},
 });
