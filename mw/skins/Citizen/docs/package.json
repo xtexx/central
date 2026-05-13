@@ -14,12 +14,18 @@
 		"lint:js": "oxlint --type-aware",
 		"lint:fix:js": "oxlint --type-aware --fix",
 		"lint:md": "markdownlint \"**/*.md\" --ignore node_modules",
-		"lint:fix:md": "npm run lint:md -- --fix"
+		"lint:fix:md": "npm run lint:md -- --fix",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"devDependencies": {
+		"@itznotabug/routex": "^0.0.5",
 		"@octokit/rest": "^22.0.1",
 		"@octokit/types": "^16.0.0",
 		"@types/node": "^24.10.1",
+		"@vitejs/plugin-vue": "^5.2.0",
+		"@vue/test-utils": "^2.4.6",
+		"jsdom": "^25.0.0",
 		"less": "^4.4.2",
 		"markdown-it": "14.1.0",
 		"markdownlint-cli": "^0.48.0",
@@ -28,7 +34,9 @@
 		"oxlint-tsgolint": "^0.22.1",
 		"vitepress": "2.0.0-alpha.17",
 		"vitepress-plugin-group-icons": "^1.6.5",
+		"vitepress-plugin-llms": "^1.12.2",
 		"vitepress-plugin-tabs": "^0.9.0",
+		"vitest": "^4.1.5",
 		"vue": "^3.5.0"
 	}
 }

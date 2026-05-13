@@ -1,10 +1,6 @@
 name: 📖 Docs CI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "docs/**"
   pull_request:
     paths:
       - "docs/**"
@@ -32,43 +28,21 @@ jobs:
         working-directory: docs
         run: npm ci
 
-      - name: Lint Docs
+      - name: Lint docs
         working-directory: docs
         run: npm run lint
 
-  check-pages:
-    name: 🔍 Check GitHub Pages
-    runs-on: ubuntu-latest
-    outputs:
-      pages_enabled: ${{ steps.check.outputs.pages_enabled }}
-    steps:
-      - name: Check if GitHub Pages is enabled
-        id: check
-        run: |
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/pages)
-          if [ "$RESPONSE" -eq 200 ]; then
-            echo "pages_enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "pages_enabled=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Run docs tests
+        working-directory: docs
+        run: npm test
 
   build:
     name: 🏗️ Build
-    needs: [lint, check-pages]
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.check-pages.outputs.pages_enabled == 'true'
+    needs: lint
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -77,41 +51,12 @@ jobs:
           cache: npm
           cache-dependency-path: docs/package-lock.json
 
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v6
-
       - name: Install dependencies
         working-directory: docs
         run: npm ci
 
-      - name: Build with VitePress
+      - name: Build
         working-directory: docs
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BASE_URL: ${{ steps.pages.outputs.base_path }}
-          ALGOLIA_APP_ID: ${{ vars.ALGOLIA_APP_ID }}
-          ALGOLIA_API_KEY: ${{ vars.ALGOLIA_API_KEY }}
-          ALGOLIA_INDEX_NAME: ${{ vars.ALGOLIA_INDEX_NAME }}
+          DOCS_VERSION: main
         run: npm run docs:build
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: docs/.vitepress/dist
-
-  # Deployment job
-  deploy:
-    name: 🚀 Deploy
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    concurrency:
-      group: pages
-      cancel-in-progress: false
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5

@@ -7,6 +7,11 @@ description: Customizing the look and feel of Citizen
 
 Citizen's visual appearance is controlled by CSS custom properties. Override them in `MediaWiki:Citizen.css` to match your wiki's brand.
 
+::: tip
+To truly make the wiki your own, you would need CSS to style the skin and templates.
+If you are getting started, check out the [How to use Dev Tools guide](https://river.me/blog/dev-tools) from River!
+:::
+
 ## Colors
 
 ### Primary color
@@ -115,3 +120,11 @@ Citizen supports Light, Dark, Pure Black, and Automatic modes. Use these selecto
 | Dark | `.skin-theme-clientpref-night` |
 | Pure black | `.skin-theme-clientpref-night.citizen-feature-pure-black-clientpref-1` |
 | Automatic | `.skin-theme-clientpref-os` |
+
+### Inverting images in dark mode
+
+Some images, especially black text or icons on a transparent background, become invisible in dark mode. Citizen exposes a `--filter-invert` CSS variable that inverts colors only when a dark theme is active. Apply it to the element containing the image:
+
+```css
+filter: var( --filter-invert );
+```
