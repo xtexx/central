@@ -1,6 +1,6 @@
 {
 	"name": "Citizen",
-	"version": "3.16.0",
+	"version": "3.16.1",
 	"author": [
 		"[https://www.mediawiki.org/wiki/User:Alistair3149 Alistair3149]",
 		"[https://www.mediawiki.org/wiki/User:Octfx Octfx]",
@@ -62,7 +62,10 @@
 						"views",
 						"actions",
 						"variants",
-						"associated-pages"
+						"associated-pages",
+						"footer-info",
+						"footer-places",
+						"footer-icons"
 					],
 					"scripts": [
 						"skins.citizen.scripts"
