@@ -2,8 +2,16 @@
 	.mixin-citizen-font-styles( 'small' );
 
 	&__card {
-		--transform-origin-offset-start: var( --space-xs );
-		--transform-origin-offset-end: ~'calc( 100% - var( --space-xs ) )';
+		// Closed-state animation direction (--citizen-clip-closed and
+		// --citizen-translate-closed) comes from the page-level cascade in
+		// tokens-citizen.less, keyed off the active .citizen-header-position-*
+		// class on <html>. That is correct for cards anchored to the header
+		// (drawer, header__end menus) — they inherit and require no per-scope
+		// declaration. Any new card whose trigger is NOT on the same edge as
+		// the active header (search, page-actions, sticky header, mobile ToC,
+		// future menus) MUST call .mixin-citizen-card-expand( ... ) in its own
+		// scope to pick its direction; inheriting the page-level value will
+		// produce a wrong animation direction.
 		margin: var( --space-xs );
 		contain: content;
 		-webkit-user-select: none;
@@ -11,7 +19,8 @@
 		border: var( --border-width-base ) solid var( --border-color-base );
 		border-radius: var( --border-radius-medium );
 		box-shadow: var( --box-shadow-large );
-		transform: scale( 0 );
+		clip-path: var( --citizen-clip-closed );
+		transform: var( --citizen-translate-closed );
 		.mixin-citizen-frosted-glass;
 
 		&-content {
