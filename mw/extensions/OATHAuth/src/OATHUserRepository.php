@@ -56,6 +56,40 @@ class OATHUserRepository implements LoggerAwareInterface {
 	}
 
 	/**
+	 * Used for a "cheap" lookup whether a user has 2FA enabled.
+	 *
+	 * If you have no subsequent need for access to the full OATHUser object,
+	 * or their 2FA keys, use this function, rather than findByUser or similar.
+	 *
+	 * This function will check the cache first. If the OATHUser object is in
+	 * the cache, we can use OATHUser::isTwoFactorAuthEnabled(). If it is not, it
+	 * will query the database to check for oathauth_devices rows for this user.
+	 *
+	 * This can be more performant than loading all the oathauth_devices rows,
+	 * de-serializing them, and potentially decrypting values that would never be
+	 * used.
+	 */
+	public function userHas2FAEnabled( UserIdentity $user ): bool {
+		/** @var OATHUser $oathUser */
+		$oathUser = $this->cache->get( $user->getName() );
+		// Use the OATHUser from cache if it exists (though this is HashBagOfStuff, so limited in-process use only)
+		if ( $oathUser ) {
+			return $oathUser->isTwoFactorAuthEnabled();
+		}
+
+		// Else look it up from the database
+		return $this->dbProvider
+			->getReplicaDatabase( 'virtual-oathauth' )
+			->newSelectQueryBuilder()
+			->from( 'oathauth_devices' )
+			->where( [
+				'oad_user' => $this->centralIdLookupFactory->getLookup()
+					->centralIdFromLocalUser( $user, CentralIdLookup::AUDIENCE_RAW )
+			] )
+			->fetchRowCount() > 0;
+	}
+
+	/**
 	 * Find the user who owns a given User Handle, and load an OATHUser object for them.
 	 * Use this to identify a user when you only have their WebAuthn authentication result.
 	 * @param string $userHandle User Handle value from the user's WebAuthn key
