@@ -41,7 +41,7 @@ atre::bird::validate() {
 
 	podman run -it --rm --name bird-validate -v "$(pwd)":/validate \
 		--privileged \
-		codeberg.org/xens/bird:2.18 \
+		codeberg.org/xens/bird:2.19.1 \
 		-p -c /validate/.bird-valid.conf
 
 	rm -f .bird-valid.conf
