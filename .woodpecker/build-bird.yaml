@@ -1,6 +1,7 @@
 matrix:
     VERSION:
         - "3.3.1" # TAG:LATEST
+        - "2.19.1"
         - "2.18"
 
 steps:
