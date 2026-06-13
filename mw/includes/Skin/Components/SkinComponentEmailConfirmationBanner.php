@@ -28,21 +28,13 @@ class SkinComponentEmailConfirmationBanner implements SkinComponent {
 			return [ 'html' => '' ];
 		}
 
-		$out = $this->context->getOutput();
-		$out->addModuleStyles( 'mediawiki.codex.messagebox.styles' );
-		$out->addModules( 'mediawiki.emailConfirmationBanner.abTest' );
+		$this->context->getOutput()->addModuleStyles( 'mediawiki.codex.messagebox.styles' );
 
-		$armA = Html::rawElement(
-			'div',
-			[ 'class' => 'mw-emailconfirmbanner-container', 'data-arm' => 'arm_a', 'style' => 'display:none' ],
-			Html::warningBox( $this->context->msg( 'confirmemail-notice' )->parse(), 'mw-emailconfirmbanner' )
-		);
-		$armB = Html::rawElement(
-			'div',
-			[ 'class' => 'mw-emailconfirmbanner-container', 'data-arm' => 'arm_b', 'style' => 'display:none' ],
-			Html::warningBox( $this->context->msg( 'confirmemail-notice-arm-b' )->parse(), 'mw-emailconfirmbanner' )
-		);
-
-		return [ 'html' => $armA . $armB ];
+		return [
+			'html' => Html::warningBox(
+				$this->context->msg( 'confirmemail-notice' )->parse(),
+				'mw-emailconfirmbanner'
+			),
+		];
 	}
 }
