@@ -2,30 +2,25 @@ const std = @import("std");
 const mem = std.mem;
 const http = std.http;
 
-pub fn main() !void {
-    var arena_instance = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena_instance.deinit();
-    const arena = arena_instance.allocator();
+pub fn main(init: std.process.Init) !void {
+    const arena = init.gpa;
+    const io = init.io;
 
     var body: std.Io.Writer.Allocating = .init(arena);
     defer body.deinit();
     try body.ensureUnusedCapacity(64 * 1024);
 
-    var args = try std.process.argsWithAllocator(arena);
-    defer args.deinit();
-
+    var args = try init.minimal.args.iterateAllocator(arena);
     _ = args.skip();
     if (args.next()) |file_path| {
         std.debug.print("Loading elf.h from {s} ...\n", .{file_path});
-        const elf_h = try std.fs.cwd().openFileZ(file_path, .{ .mode = .read_only });
-        defer elf_h.close();
-        const elf_h_buffer = try arena.alloc(u8, 4096);
-        defer arena.free(elf_h_buffer);
-        var elf_h_reader = elf_h.readerStreaming(elf_h_buffer);
+        const elf_h = try std.Io.Dir.cwd().openFile(io, file_path, .{ .mode = .read_only });
+        defer elf_h.close(io);
+        var elf_h_reader = elf_h.reader(io, &.{});
         _ = try elf_h_reader.interface.streamRemaining(&body.writer);
     } else {
         std.debug.print("Fetching musl elf.h ...\n", .{});
-        var client: http.Client = .{ .allocator = arena };
+        var client: http.Client = .{ .allocator = arena, .io = io };
         defer client.deinit();
         const res = try client.fetch(.{
             .location = .{ .url = "https://git.musl-libc.org/cgit/musl/tree/include/elf.h" },
@@ -38,9 +33,8 @@ pub fn main() !void {
 
     std.debug.print("Generating elf.zig ...\n", .{});
 
-    const stdout_buffer = try arena.alloc(u8, 4096);
-    defer arena.free(stdout_buffer);
-    var stdout_writer = std.fs.File.stdout().writerStreaming(stdout_buffer);
+    var stdout_buffer: [4096]u8 = undefined;
+    var stdout_writer = std.Io.File.stdout().writer(io, &stdout_buffer);
     var output = &stdout_writer.interface;
 
     var lines = mem.splitScalar(u8, body.written(), '\n');
