@@ -23,7 +23,7 @@ pub fn main(init: std.process.Init) !void {
         var client: http.Client = .{ .allocator = arena, .io = io };
         defer client.deinit();
         const res = try client.fetch(.{
-            .location = .{ .url = "https://git.musl-libc.org/cgit/musl/tree/include/elf.h" },
+            .location = .{ .url = "https://git.musl-libc.org/cgit/musl/plain/include/elf.h" },
             .method = .GET,
             .extra_headers = &.{.{ .name = "User-Agent", .value = "gen-elf-relocs-enum.zig" }},
             .response_writer = &body.writer,
