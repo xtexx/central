@@ -103,7 +103,7 @@ static const char http_header_content_len_fmt[] = "Content-length:%5d\r\n\r\n";
 static const char http_html_gzip_contentencoding[] = "Content-Encoding: gzip\r\n";
 
 /* Externally defined: static const char enduser_setup_html_default[] = ... */
-#include "enduser_setup/enduser_setup.html.gz.def.h"
+// #include "enduser_setup/enduser_setup.html.gz.def.h"
 
 // The tcp_arg can be either a pointer to the scan_listener_t or http_request_buffer_t.
 // The enum defines which one it is.
@@ -500,40 +500,7 @@ static int enduser_setup_http_load_payload(void)
       vfs_close(f);
     }
 
-    sprintf(cl_hdr, http_header_content_len_fmt, sizeof(enduser_setup_html_default));
-    cl_len = strlen(cl_hdr);
-    int html_len = LITLEN(enduser_setup_html_default);
-
-    if (enduser_setup_html_default[0] == 0x1f && enduser_setup_html_default[1] == 0x8b)
-    {
-        ce_len = strlen(http_html_gzip_contentencoding);
-        html_len = enduser_setup_html_default_len; /* Defined in enduser_setup/enduser_setup.html.gz.def.h by xxd -i */
-        ENDUSER_SETUP_DEBUG("Content is gzipped");
-    }
-
-    int payload_len = LITLEN(http_header_200) + cl_len + ce_len + html_len;
-    state->http_payload_len = payload_len;
-    state->http_payload_data = (char *) malloc(payload_len);
-
-    if (state->http_payload_data == NULL)
-    {
-      return 2;
-    }
-
-    int offset = 0;
-    memcpy(&(state->http_payload_data[offset]), &(http_header_200), LITLEN(http_header_200));
-    offset += LITLEN(http_header_200);
-
-    if (ce_len > 0)
-    {
-        offset += sprintf(state->http_payload_data + offset, http_html_gzip_contentencoding, ce_len);
-    }
-
-    memcpy(&(state->http_payload_data[offset]), &(cl_hdr), cl_len);
-    offset += cl_len;
-    memcpy(&(state->http_payload_data[offset]), &(enduser_setup_html_default), sizeof(enduser_setup_html_default));
-
-    return 1;
+    return 2;
   }
 
   char magic[2];

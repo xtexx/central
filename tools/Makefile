@@ -2,9 +2,9 @@
 # Options
 #
 
-FSSOURCE ?= ../local/fs
-LUASOURCE ?= ../local/lua
-FLASHSIZE ?= 4mb 32mb 8mb
+FSSOURCE ?= ../yawo-app
+LUASOURCE ?= ../yawo-lfs
+FLASHSIZE ?= 4MB 32MB 8MB
 FLASH_SW = -S
 SUBDIRS =
 APP_DIR = ../app
@@ -22,13 +22,13 @@ SPIFFSFILES ?= $(patsubst $(FSSOURCE)/%,%,$(shell find $(FSSOURCE)/ -name '*' '!
 
 FLASH_FS_SIZE := $(shell $(CC) -E -dM - <$(APP_DIR)/include/user_config.h | grep SPIFFS_MAX_FILESYSTEM_SIZE| cut -d ' ' -f 3)
 
-ifneq ($(strip $(FLASH_FS_SIZE)),)
-FLASHSIZE = $(shell printf "0x%x" $(FLASH_FS_SIZE))
-FLASH_SW = -c
-endif
+# ifneq ($(strip $(FLASH_FS_SIZE)),)
+# FLASHSIZE = $(shell printf "0x%x" $(FLASH_FS_SIZE))
+# FLASH_SW = -c
+# endif
 
 FLASH_FS_LOC := $(shell $(CC) -E -dM - <$(APP_DIR)/include/user_config.h | grep SPIFFS_FIXED_LOCATION| cut -d ' ' -f 3)
-ifeq ($(strip $(FLASH_FS_LOC)),)
+ifeq ($(strip $(FLASH_FS_LOC)),0x0)
 FLASH_FS_LOC := $(shell printf "0x%x" $$((0x$(shell $(OBJDUMP) -t $(APP_DIR)/.output/eagle/debug/image/eagle.app.v6.out |grep " _flash_used_end" |cut -f1 -d" ") - 0x40200000)))
 else
 FLASH_FS_LOC := $(shell printf "0x%x" $(FLASH_FS_LOC))
@@ -74,7 +74,8 @@ spiffsscript: remove-image LFSimage spiffsimg/spiffsimg
 	rm -f ./spiffsimg/spiffs.lst
 	@echo "" >> ./spiffsimg/spiffs.lst
 	@$(foreach f, $(SPIFFSFILES), echo "import $(FSSOURCE)/$(f) $(f)" >> ./spiffsimg/spiffs.lst ;)
-	$(foreach sz, $(FLASHSIZE), spiffsimg/spiffsimg -f ../bin/0x%x-$(sz).img  $(FLASH_SW) $(sz) -U $(FLASH_FS_LOC) -r ./spiffsimg/spiffs.lst -d; )
+	echo "import ../app/modules/enduser_setup/enduser_setup.html.gz enduser_setup.html.gz" >> ./spiffsimg/spiffs.lst
+	$(foreach sz, $(FLASHSIZE), spiffsimg/spiffsimg -f ../bin/$(FLASH_FS_LOC)-$(sz).img  $(FLASH_SW) $(sz) -U $(FLASH_FS_LOC) -r ./spiffsimg/spiffs.lst -d; )
 	@$(foreach sz, $(FLASHSIZE), if [ -r ../bin/spiffs-$(sz).dat ]; then echo Built $$(cat ../bin/spiffs-$(sz).dat)-$(sz).bin; fi; )
 
 ifneq ($(LFSSOURCES),)

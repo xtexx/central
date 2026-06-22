@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # ESP8266 LFS Loader Utility
 #
@@ -22,7 +22,7 @@
 
 import os
 import sys
-print os.path.dirname(os.path.realpath(__file__))
+print(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/toolchains/')
 import esptool
 
@@ -93,6 +93,7 @@ def unpack_RCR(data):
     RCRword,recs, i = [PACK_INT.unpack_from(data,i)[0] \
                           for i in range(0, FLASH_PAGESIZE, WORDSIZE)], \
                       [],0
+    PTrec = None
     while RCRword[i] % 256 != PLATFORM_RCR_FREE:
         Rlen, Rtype = RCRword[i] % 256, (RCRword[i]/256) % 256
         if Rtype != PLATFORM_RCR_DELETED:
@@ -106,7 +107,7 @@ def unpack_RCR(data):
     if PTrec is not None:
         return PTrec,recs
 
-    FatalError("No partition table found")
+    raise FatalError("No partition table found")
 
 def repack_RCR(recs):
     data = []
@@ -157,7 +158,7 @@ def load_PT(data, args):
         PTrec[-6:-6] = [SPIFFS, PTrec[-5] + PTrec[-4], 0x1000]
 
     lastEnd, newPT, map = 0,[], dict()
-    print "  Partition          Start   Size \n  ------------------ ------ ------"
+    print("  Partition          Start   Size \n  ------------------ ------ ------")
     for i in range (0, len(PTrec), 3):
         Ptype, Paddr, Psize = PTrec[i:i+3]
 
@@ -251,7 +252,7 @@ def relocate_lfs(data, addr, size):
     flash_size //= WORDSIZE
     flags_size = (flash_size + WORDBITS - 1) // WORDBITS
 
-    print WORDSIZE*flash_size, size, len(data), WORDSIZE*(flash_size + flags_size)
+    print(WORDSIZE * flash_size, size, len(data), WORDSIZE * (flash_size + flags_size))
     assert (WORDSIZE*flash_size <= size and
             len(data) == WORDSIZE*(flash_size + flags_size))
 

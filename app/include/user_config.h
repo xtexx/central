@@ -182,14 +182,14 @@
 // invalid, then it will not be used, and a message will be printed
 // during boot.
 
-//#define WIFI_STA_HOSTNAME "NodeMCU"
-//#define WIFI_STA_HOSTNAME_APPEND_MAC
+#define WIFI_STA_HOSTNAME "YAWO"
+#define WIFI_STA_HOSTNAME_APPEND_MAC
 
 
 // If you use the enduser_setup module, then you can also set the default
 // SSID when this module is running in AP mode.
 
-#define ENDUSER_SETUP_AP_SSID "NodeMCU"
+#define ENDUSER_SETUP_AP_SSID "YAWO"
 
 
 // I2C software driver partially supports use of GPIO16 (D0) pin for SCL line.
@@ -255,7 +255,7 @@
 #endif
 
 #ifndef SPIFFS_FIXED_LOCATION
-  #define SPIFFS_FIXED_LOCATION           0x0
+  #define SPIFFS_FIXED_LOCATION           0x100000
   // You'll rarely need to customize this, because nowadays
   // it's usually overruled by the partition table anyway.
 #endif

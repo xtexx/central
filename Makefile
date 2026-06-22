@@ -4,6 +4,8 @@
 
 TOP_DIR:=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
+PYTHON?=python3
+
 # SDK base version, as released by Espressif depends on the RELEASE flag
 #
 # RELEASE = lastest pulls the latest V3.0.0 branch version as at the issue of this make
@@ -199,7 +201,7 @@ BINODIR := $(ODIR)/$(TARGET)/$(FLAVOR)/bin
 OBINS := $(GEN_BINS:%=$(BINODIR)/%)
 
 ifndef PDIR
-  ifneq ($(wildcard $(TOP_DIR)/local/fs/*),)
+  ifneq ($(wildcard $(TOP_DIR)/yawo-app/*),)
     SPECIAL_MKTARGETS += spiffs-image
   else
     SPECIAL_MKTARGETS += spiffs-image-remove
@@ -265,7 +267,7 @@ $(BINODIR)/%.bin: $(IMAGEODIR)/%.out
 	$(summary) NM $(patsubst $(TOP_DIR)/%,%,$(CURDIR))/$@
 	@$(NM) $< | grep -w U && { echo "Firmware has undefined (but unused) symbols!"; exit 1; } || true
 	$(summary) ESPTOOL $(patsubst $(TOP_DIR)/%,%,$(CURDIR))/$< $(FIRMWAREDIR)
-	$(ESPTOOL) elf2image --flash_mode dio --flash_freq 40m $< -o $(FIRMWAREDIR)
+	esptool --chip esp8266 elf2image -e 1 --flash-mode dio --flash-freq 40m $< -o $(FIRMWAREDIR)
 
 endif # TARGET
 #############################################################
@@ -365,7 +367,7 @@ flash512k:
 	$(MAKE) -e FLASHOPTIONS="-fm qio -fs  4m -ff 40m" flashinternal
 
 flash4m:
-	$(MAKE) -e FLASHOPTIONS="-fm dio -fs 32m -ff 40m" flashinternal
+	$(MAKE) -e FLASHOPTIONS="-fm dio -fs 4MB -ff 40m" flashinternal
 
 flash1m-dout:
 	$(MAKE) -e FLASHOPTIONS="-fm dout -fs 8m -ff 40m" flashinternal
@@ -375,7 +377,7 @@ flashinternal:
 ifndef PDIR
 	$(MAKE) -C $(APP_DIR) flashinternal
 else
-	$(ESPTOOL) --port $(ESPPORT) --baud $(BAUDRATE) write_flash $(FLASHOPTIONS) 0x00000 $(FIRMWAREDIR)0x00000.bin 0x10000 $(FIRMWAREDIR)0x10000.bin
+	esptool -v --before default-reset --port $(ESPPORT) --baud $(BAUDRATE) write-flash $(FLASHOPTIONS) --erase-all --compress 0x00000 $(FIRMWAREDIR)0x00000.bin 0x10000 $(FIRMWAREDIR)0x10000.bin
 endif
 
 .subdirs:
@@ -406,7 +408,7 @@ pre_build: $(APP_DIR)/modules/server-ca.crt.h
 
 $(APP_DIR)/modules/server-ca.crt.h: $(TOP_DIR)/server-ca.crt
 	$(summary) MKCERT $(patsubst $(TOP_DIR)/%,%,$<)
-	python $(TOP_DIR)/tools/make_server_cert.py $(TOP_DIR)/server-ca.crt > $(APP_DIR)/modules/server-ca.crt.h
+	$(PYTHON) $(TOP_DIR)/tools/make_server_cert.py $(TOP_DIR)/server-ca.crt > $(APP_DIR)/modules/server-ca.crt.h
 
 DEFINES += -DHAVE_SSL_SERVER_CRT=\"server-ca.crt.h\"
 else
@@ -494,3 +496,21 @@ endif # TARGET
 
 PDIR := ../$(PDIR)
 sinclude $(PDIR)Makefile
+
+########## Yet-Another-WiFi-Outlet ##########
+
+merge-bin: bin/esp8266-4M.bin
+
+FLASH_CMD := esptool -v --before default-reset --port $(ESPPORT) --baud $(BAUDRATE) write-flash -ff 40m -fm dio -fs 4MB
+
+bin/esp8266-4M.bin: bin/0x10000.bin spiffs-image
+	esptool --chip esp8266 merge-bin -ff 40m -fm dio -fs 4MB --output $@ \
+		0x00000 bin/0x00000.bin \
+		0x10000 bin/0x10000.bin \
+		0x100000 bin/0x100000-4MB.img
+
+flash-esp8266-4M: bin/esp8266-4M.bin
+	$(FLASH_CMD) --compress 0x0 bin/esp8266-4M.bin
+
+flash-esp8266-4M-spiffs: spiffs-image
+	$(FLASH_CMD) --compress 0x100000 bin/0x100000-4MB.img

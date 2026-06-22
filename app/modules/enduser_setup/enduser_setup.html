@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 
 <head>
 	<meta name='viewport' content='width=device-width, initial-scale=1.0'>
-	<title>WiFi Login</title>
+	<meta charset="utf-8">
+	<title>YAWO设置</title>
 	<style type=text/css>
 		* {
 			margin: 0;
@@ -152,31 +153,36 @@
 		<fieldset>
 			<div id=deviceId></div>
 			<div id=f1>
-				<h3>Connect device to your Wi-Fi</h3>
+				<h2>Yet-Another-WiFi-Outlet</h2>
+				<h3>设置</h3>
 				<form action="/setwifi" method="POST">
 					<button id=networks type=button class=utility></button>
 					<div id=dropdown>
 						<span id=arrow>&#x25bc;</span>
 						<select id=aplist name=aplist></select>
 					</div>
-					<input id=ssid name=wifi_ssid type=text autocorrect=off autocapitalize=none placeholder='Wi-Fi Name' />
-					<input id=wifi_password name=wifi_password type=password autocorrect=off autocapitalize=none autocomplete=off placeholder=Password />
-					<!-- You can add inputs here and have them pop up in your lua code through the file eus_params.lua -->
-					<input type="submit" value="Save"/>
+					<input id=ssid name=wifi_ssid type=text autocorrect=off autocapitalize=none placeholder='Wi-Fi名称' />
+					<input id=wifi_password name=wifi_password type=password autocorrect=off autocapitalize=none autocomplete=off placeholder='Wi-Fi密码' />
+
+					<input id=server name=server type=text autocorrect=off autocapitalize=none autocomplete=off placeholder='服务器地址' />
+					<input id=server_port name=server_port type=text autocorrect=off autocapitalize=none autocomplete=off placeholder='服务器端口' />
+					<input id=gpio_idx name=gpio_idx type=text autocorrect=off autocapitalize=none autocomplete=off placeholder='GPIO的IO索引' value=2 />
+
+					<input type="submit" value="保存"/>
 				</form>
 			</div>
 			<div id=f2>
-				<h1>Success!</h1>
+				<h1>成功！</h1>
 				<div id=i>
-					<h3>Your device has successfully connected to the Wi-Fi network.<br /><br/>You may now close this web page.</h3>
+					<h3>设备已连接至Wi-Fi网络。<br /><br/>您现在可以关闭本页面。</h3>
 				</div>
 			</div>
 			<div id=f3>
-				<h2>Trying...</h2>
-				<button id=bk2 type=button class='utility'>Go Back to Wi-Fi Setup</button>
+				<h2>尝试中……</h2>
+				<button id=bk2 type=button class='utility'>返回Wi-Fi设置</button>
 			</div>
 		</fieldset>
-		<h4 id='st'>Updating Status...</h4>
+		<h4 id='st'>更新状态中……</h4>
 	</div>
 	<script>
 		var $ = function (selector) { return document.querySelector(selector); };
@@ -212,30 +218,30 @@
 			rs = to(refr, 3);
 
 			if (s != 200) {
-				$('#st').innerText = 'Awaiting Status (' + s + ')';
+				$('#st').innerText = '等待状态（' + s + '）';
 			} else {
 				if (typeof d === 'string') {
 					d = JSON.parse(d);
 				}
 
-				$('#deviceId').innerText = "Device: " + d.deviceid;
+				$('#deviceId').innerText = "设备：" + d.deviceid;
 
 				var c = d.pairing;
 
 				var st = [
-					'Idle',
-					'Connecting...',
-					'Failed - wrong password',
-					'Failed - network not found',
-					'Failed',
-					'Wi-Fi successfully connected!'
+					'空闲',
+					'连接中……',
+					'失败：密码错误',
+					'失败：找不到网络',
+					'失败',
+					'Wi-Fi已连接！'
 				][d.status];
 
 				if (st == null)
 					st = "";
 
 				if (!submitted && d.status > 1 && d.status < 5)
-					st = "Need a valid Network and Password";
+					st = "需要有效的网络名称和密码";
 
 				$('#st').innerText = st;
 
@@ -273,7 +279,7 @@
                     list.sort(function (a, b) {
                       return b.rssi - a.rssi;
                     });
-                    var ops = '<option>Select a Network...</option>';
+                    var ops = '<option>选择网络……</option>';
                     var seen = {};
                     for (var i = 0; i < list.length; ++i) {
                       var ssid = list[i].ssid;
@@ -288,7 +294,7 @@
                     togAp(null, true);
                     ab.onclick = togAp;
                   } else {
-                    ab.innerText = 'No networks found (' + s + ')';
+                    ab.innerText = '找不到网络（' + s + '）';
                     ra = to(refrAp, 5);
                   }
 		}
@@ -296,38 +302,38 @@
 			if (!force || ap.style.display == 'block') {
                           hide('#dropdown');
                           show('#ssid');
-                          ab.innerText = 'Scan for Networks';
+                          ab.innerText = '扫描网络';
                           ab.onclick = refrAp;
 			} else {
                           show('#dropdown');
                           hide('#ssid');
-                          ab.innerText = 'Manual Entry';
+                          ab.innerText = '手动输入';
 			}
                         let pw = $('#wifi_password');
-                        pw.placeholder = "Password";
+                        pw.placeholder = "Wi-Fi密码";
                         pw.disabled = false;
                         pw.required = true;
 		}
 		function refrAp() {
-			ab.innerText = 'Searching for networks...';
+			ab.innerText = '正在扫描网络……';
 			ab.disabled = true;
-			ap.innerHTML = '<option disabled>Scanning...</option>';
+			ap.innerHTML = '<option disabled>扫描中……</option>';
 			if (!stopAll)
 				fetch('/aplist?n=' + Math.random(), 'GET', gotAp, 10);
 		}
 		window.onload = function() {
 			let trying = $.urlParam('trying');
-			ab.innerText = 'Scan for Networks';
+			ab.innerText = '扫描网络';
 			ab.onclick = refrAp;
 			$('#aplist').onchange = function () {
                           $('#ssid').value = $('#aplist').value;
                           let pw = $('#wifi_password');
                           if ($('#aplist').selectedOptions[0].dataset.auth > 0) {
-                            pw.placeholder = "Password";
+                            pw.placeholder = "Wi-Fi密码";
                             pw.disabled = false;
                             pw.required = true;
                           } else {
-                            pw.placeholder = "Open -- no password";
+                            pw.placeholder = "开放网络——无需密码";
                             pw.disabled = true;
                             pw.required = false;
                           }

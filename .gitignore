@@ -37,3 +37,5 @@ uz_zip
 
 #ignore temp file for build infos
 buildinfo.h
+
+/compile_commands.json
