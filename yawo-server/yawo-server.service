@@ -1,0 +1,17 @@
+[Unit]
+Description=YetAnotherWiFiOutlet Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/yawo
+ExecStart=/opt/yawo/yawo-server --listen=192.168.0.107:13432 --cred-dir=/opt/yawo/
+Restart=always
+RestartSec=3
+TimeoutStopSec=30
+KillMode=process
+
+[Install]
+WantedBy=default.target
+
