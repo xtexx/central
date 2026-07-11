@@ -1,9 +1,10 @@
 [init]
 	defaultBranch = main
 [user]
-	email = xtexchooser@duck.com
+	email = xtex@astrafall.org
 	name = xtex
-	signingKey = 7231804B052C670F15A6771DB918086ED8045B91
+	signingkey = /home/xtex/.ssh/id_ed25519.pub
+	#signingkey = 7231804B052C670F15A6771DB918086ED8045B91
 [commit]
 	verbose = true
 [tag]
@@ -31,8 +32,9 @@
 	autoStash = true
 [diff]
 	tool = difftastic
-	algorithm = histogram
+	algorithm = patience
 	submodule = log
+	renames = true
 [difftool]
 	prompt = false
 [difftool "difftastic"]
@@ -52,9 +54,9 @@
 	c = commit
 	ca = commit --amend --no-edit
 	cae = commit --amend
-	mine = commit --amend --author 'xtex <xtexchooser@duck.com>'
+	mine = commit --amend --author 'xtex <xtex@astrafall.org>'
 	cq = -c commit.verbose=false commit
-	come = coauthor xtex xtexchooser@duck.com
+	come = coauthor xtex xtex@astrafall.org
 	ck = checkout
 	clo = clone
 	clf = clone --filter blob:none
@@ -105,6 +107,7 @@
 	nosign = "!git -c commit.gpgSign=false"
 	fixes = log -1 --pretty=fixes
 	refc = log -1 --pretty=reference
+	msg = log -1 --format='%B'
 	fix = commit --fixup
 	fixx = "!f() { git commit --fixup \"$1\"; git stash; git rebase --autosquash \"$1\"^; git stash pop; }; f"
 	acapp = "!f() { git add .; git commit --amend --no-edit; git push --force; }; f"
@@ -116,6 +119,7 @@
 	smtpUser = xtex@envs.net
 	from = xtex <xtex@envs.net>
 	smtpDomain = xtexx.eu.org
+	smtpAuth = PLAIN LOGIN
 	confirm = auto
 [am]
 	threeWay = true
@@ -151,7 +155,7 @@
 	mw = /home/xtex/src/wm/mediawiki
 	aosc = /home/xtex/src/aosc
 [includeIf "hasconfig:remote.*.url:https://git.kernel.org/**"]
-	path = ~/.config/git/realname.conf
+	path = ~/.config/git/chiaki.conf
 [includeIf "hasconfig:remote.*.url:https://*.googlesource.com/**"]
 	path = ~/.config/git/realname.conf
 [includeIf "hasconfig:remote.*.url:git@github.com:xtexx/llvm-project.git"]
@@ -164,10 +168,12 @@
 	path = ~/.config/git/realname.conf
 [includeIf "hasconfig:remote.*.url:git@github.com:wikimedia/*"]
 	path = ~/.config/git/realname.conf
-[includeIf "hasconfig:remote.*.url:ssh://git@codeberg.org/ziglang/*"]
+[includeIf "hasconfig:remote.*.url:git@gitlab.com:qemu-project/qemu.git"]
 	path = ~/.config/git/realname.conf
-[includeIf "hasconfig:remote.*.url:ssh://git@codeberg.org/xtexx/zig.git"]
-	path = ~/.config/git/realname.conf
+#[includeIf "hasconfig:remote.*.url:ssh://git@codeberg.org/ziglang/*"]
+#	path = ~/.config/git/realname.conf
+#[includeIf "hasconfig:remote.*.url:ssh://git@codeberg.org/xtexx/zig.git"]
+#	path = ~/.config/git/realname.conf
 [includeIf "hasconfig:remote.*.url:https://git.musl-libc.org/git/musl"]
 	path = ~/.config/git/realname.conf
 [includeIf "hasconfig:remote.*.url:ssh://gerrit.wikimedia.org:29418/**"]
@@ -180,3 +186,7 @@
 	path = ~/.config/git/deployment.conf
 [absorb]
 	autoStageIfNothingStaged = true
+[gpg]
+	format = ssh
+[patatt]
+	signingkey = openssh:/home/xtex/.ssh/id_ed25519.pub
