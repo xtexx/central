@@ -149,8 +149,16 @@ export default defineConfig({
 						link: "/changelogs/",
 					},
 					{
+						text: "Migrating to Citizen 4",
+						link: "/guide/migrating-to-citizen-4",
+					},
+					{
 						text: "Contribute",
 						link: "/contribute/",
+					},
+					{
+						text: "Preview channel",
+						link: "/contribute/preview-channel",
 					},
 				],
 			},
