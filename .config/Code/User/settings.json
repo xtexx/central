@@ -10,7 +10,7 @@
         "editor.defaultFormatter": "vscode.html-language-features"
     },
     "[javascript]": {
-        "editor.defaultFormatter": "vscode.typescript-language-features"
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "[json]": {
         "editor.defaultFormatter": "vscode.json-language-features"
@@ -25,9 +25,6 @@
         "editor.defaultFormatter": "DEVSENSE.phptools-vscode"
     },
     "[typescript]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[yaml]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "betterGitLineBlame.showInlineAnnotations": false,
@@ -75,7 +72,7 @@
     "phpTools.suppressPremiumFeatures": true,
     "python.analysis.autoImportCompletions": true,
     "redhat.telemetry.enabled": false,
-    "rust-analyzer.server.path": "rust-analyzer",
+    // "rust-analyzer.server.path": "rust-analyzer",
     "rust-analyzer.showUnlinkedFileNotification": false,
     "security.workspace.trust.untrustedFiles": "open",
     "telemetry.telemetryLevel": "off",
@@ -84,7 +81,6 @@
     "verilog.languageServer.svls.enabled": true,
     "verilog.linting.linter": "verilator",
     "verilog.linting.path": "verilator",
-    "workbench.colorTheme": "GitHub Dark Colorblind (Beta)",
     "workbench.editor.empty.hint": "hidden",
     "workbench.iconTheme": "ayu",
     "workbench.startupEditor": "none",
@@ -93,7 +89,6 @@
     "zig.zls.checkForUpdate": false,
     "zig.zls.path": "zls",
     "zig.zls.warnStyle": true,
-    "zig.zls.zigLibPath": "/opt/zig/bin/lib/",
     "chat.commandCenter.enabled": false,
     "git.autoStash": true,
     "git.pruneOnFetch": true,
@@ -134,5 +129,13 @@
     },
     "chat.disableAIFeatures": true,
     "inlineChat.lineNaturalLanguageHint": false,
-    "terminal.integrated.initialHint": false
+    "terminal.integrated.initialHint": false,
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+    "zig.libPath": "/opt/zig/bin/lib/",
+    "[yaml]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "diffEditor.hideUnchangedRegions.enabled": true,
 }
