@@ -12,15 +12,15 @@
 		"preflight": "npm -s run lint && npm -s test"
 	},
 	"devDependencies": {
-		"@vitest/coverage-v8": "^4.1.9",
+		"@vitest/coverage-v8": "^4.1.10",
 		"@wikimedia/types-wikimedia": "0.6.0",
 		"eslint-config-wikimedia": "0.32.4",
-		"eslint-plugin-no-jquery": "5.0.0",
+		"eslint-plugin-no-jquery": "6.0.0",
 		"grunt-banana-checker": "0.13.0",
 		"jsdom": "^29.1.1",
 		"stylelint-config-recess-order": "7.7.0",
 		"stylelint-config-wikimedia": "0.19.2",
 		"stylelint-order": "8.1.1",
-		"vitest": "^4.1.9"
+		"vitest": "^4.1.10"
 	}
 }
