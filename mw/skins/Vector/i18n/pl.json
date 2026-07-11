@@ -11,7 +11,8 @@
 			"Sp5uhe",
 			"Tar Lócesilion",
 			"WaldiSt",
-			"Woytecr"
+			"Woytecr",
+			"PanWor"
 		]
 	},
 	"skinname-vector": "Stary Wektor (2010)",
@@ -59,7 +60,7 @@
 	"skin-theme-day-label": "Jasny",
 	"skin-theme-night-label": "Ciemny",
 	"skin-theme-os-label": "Automatyczny",
-	"skin-theme-exclusion-notice": "Ta strona zawsze jest wyświetlana w motywie jasnym.",
+	"skin-theme-exclusion-notice": "Ta strona zawsze jest wyświetlana w jasnym motywie.",
 	"vector-intro-page": "Help:Pierwsze kroki",
 	"vector-toc-label": "Spis treści",
 	"vector-toc-beginning": "Początek",
