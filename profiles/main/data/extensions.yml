@@ -1,0 +1,172 @@
+builtin:
+  disabled:
+    - GitHub.copilot-chat
+disabled:
+  - id: AvaloniaTeam.vscode-avalonia
+    uuid: 4b5f46f8-72f6-4978-a0e3-97c20c46aa09
+  - id: bmewburn.vscode-intelephense-client
+    uuid: ffda6552-0ad5-431b-a4fa-0905a7e4f3f0
+  - id: ccls-project.ccls
+    uuid: 8e21d425-1e30-4072-8436-786a9017e5c7
+  - id: espressif.esp-idf-extension
+    uuid: 2f6509f0-2abc-4e12-91e8-91b6ff24c654
+  - id: Jannchie.codetime
+    uuid: 79d8e45d-5812-4b3d-8f14-f31b8ebb9570
+  - id: ms-dotnettools.csdevkit
+    uuid: 7ad42776-8f7e-4214-bf67-4f0b518ef629
+  - id: ms-dotnettools.csharp
+    uuid: d0bfc4ab-1d3a-4487-8782-7cf6027b4fff
+  - id: ms-dotnettools.vscode-dotnet-runtime
+    uuid: 1aab81a1-b3d9-4aef-976b-577d5d90fe3f
+  - id: zobo.php-intellisense
+    uuid: 3eddb68d-a5dd-43fb-be03-6f508d98fe97
+enabled:
+  - id: 13xforever.language-x86-64-assembly
+    uuid: 7c8fcf53-a602-48d2-afdf-9c1318472604
+  - id: aeschli.vscode-css-formatter
+    uuid: 3f770365-3682-44ee-a63e-5ef1b16c74d2
+  - id: antfu.slidev
+    uuid: 1396f3b6-119e-4436-a767-30a73c5a4a4f
+  - id: asciidoctor.asciidoctor-vscode
+    uuid: c1309cc2-f420-46a3-b2be-ca04f4d9e51b
+  - id: basdp.language-gas-x86
+    uuid: 75dcb385-9b1a-4065-a72b-aab05260382e
+  - id: BIRDCC.bird2-lsp
+    uuid: 019e6e4b-67e4-42bc-a3f2-c5b03bfd1eaf
+  - id: budparr.language-hugo-vscode
+    uuid: 0e22bd0e-8a8d-424d-b5bd-29aaf21800eb
+  - id: charliermarsh.ruff
+    uuid: c2ca9b43-fa38-44fc-928e-5125970b9c00
+  - id: coolchyni.beyond-debug
+    uuid: 4c6a1625-43cf-4b46-ac0b-eedb77aba254
+  - id: cschlosser.doxdocgen
+    uuid: da7e26d5-d57c-4742-ab47-d77fb189e195
+  - id: DavidAnson.vscode-markdownlint
+    uuid: daf8b44d-8aae-4da2-80c5-1f770219f643
+  - id: dbaeumer.vscode-eslint
+    uuid: 583b2b34-2c1e-4634-8c0b-0b82e283ea3a
+  - id: denoland.vscode-deno
+    uuid: 91881318-cfd0-4905-adb7-f4e431ca1ead
+  - id: DEVSENSE.composer-php-vscode
+    uuid: eed2a934-7bb6-4a5b-a29d-353077efd839
+  - id: DEVSENSE.intelli-php-vscode
+    uuid: f83b9c6c-24dd-435c-a088-daff1769b0b8
+  - id: DEVSENSE.phptools-vscode
+    uuid: 93916db4-e944-4c74-b68e-47f2834e9e93
+  - id: DEVSENSE.profiler-php-vscode
+    uuid: 6e4e2904-96c2-4c5c-8b78-23da062f2f9e
+  - id: dtoplak.vscode-glsllint
+    uuid: 3718a7c9-0ac8-46dd-81b5-8bc53de038af
+  - id: EditorConfig.EditorConfig
+    uuid: f60a60a6-95ba-42d4-b41c-3d24c1b89588
+  - id: eliostruyf.vscode-hugo-themer
+    uuid: f7cdab71-cf1f-4ecf-bf00-f30d954a13dc
+  - id: esbenp.prettier-vscode
+    uuid: 96fa4707-6983-4489-b7c5-d5ffdfdcce90
+  - id: GitHub.codespaces
+    uuid: 4023d3e5-c840-4cdd-8b54-51c77548aa3f
+  - id: GitHub.github-vscode-theme
+    uuid: 7328a705-91fc-49e6-8293-da6f112e482d
+  - id: golang.go
+    uuid: d6f6cfea-4b6f-41f4-b571-6ad2ab7918da
+  - id: kokororin.vscode-phpfmt
+    uuid: 8130e01f-ac60-4803-ab86-f05469dd7b4d
+  - id: leanprover.lean4
+    uuid: ddb6b8b1-9e92-40ce-90d4-45bb5f345ef9
+  - id: llvm-vs-code-extensions.vscode-clangd
+    uuid: 103154cb-b81d-4e1b-8281-c5f4fa563d37
+  - id: maelvalais.autoconf
+    uuid: 3ca928a4-41a2-409c-81be-e58c381fce5a
+  - id: matthewpi.caddyfile-support
+    uuid: c1d1ec36-b62e-4046-b2e6-0e49df95a9f8
+  - id: mhutchie.git-graph
+    uuid: 438221f8-1107-4ccd-a6fe-f3b7fe0856b7
+  - id: microhobby.linuxkerneldev
+    uuid: f6be665f-7668-4429-9082-1de4f2d565b1
+  - id: mkhl.shfmt
+    uuid: 0c2ca002-79c2-4b79-95a5-61a5b188a4f7
+  - id: ms-python.black-formatter
+    uuid: 859e640c-c157-47da-8699-9080b81c8371
+  - id: ms-python.debugpy
+    uuid: 4bd5d2c9-9d65-401a-b0b2-7498d9f17615
+  - id: ms-python.python
+    uuid: f1f59ae4-9318-4f3c-a9b5-81b2eaa5f8a5
+  - id: ms-python.vscode-pylance
+    uuid: 364d2426-116a-433a-a5d8-a5098dc3afbd
+  - id: ms-python.vscode-python-envs
+    uuid: b41d8e8a-b6d4-4202-8f07-7189bdda81be
+  - id: ms-vscode-remote.remote-containers
+    uuid: 93ce222b-5f6f-49b7-9ab1-a0463c6238df
+  - id: ms-vscode-remote.remote-ssh
+    uuid: 607fd052-be03-4363-b657-2bd62b83d28a
+  - id: ms-vscode-remote.remote-ssh-edit
+    uuid: bfeaf631-bcff-4908-93ed-fda4ef9a0c5c
+  - id: ms-vscode.cmake-tools
+    uuid: 7c889349-8749-43d4-8b5e-08939936d7f4
+  - id: ms-vscode.cpp-devtools
+    uuid: a71e0b52-0402-498f-a148-d2e344390f14
+  - id: ms-vscode.cpptools
+    uuid: 690b692e-e8a9-493f-b802-8089d50ac1b2
+  - id: ms-vscode.makefile-tools
+    uuid: e09cf600-90a1-414e-92a0-031f1a5391c6
+  - id: ms-vscode.remote-explorer
+    uuid: 11858313-52cc-4e57-b3e4-d7b65281e34b
+  - id: ms-vscode.remote-server
+    uuid: 105c0b3c-07a9-4156-a4fc-4141040eb07e
+  - id: ms-vscode.vscode-serial-monitor
+    uuid: 17dcad22-0c4b-428f-8a04-5d2629f1480e
+  - id: myriad-dreamin.tinymist
+    uuid: e15002cc-f2ff-4c29-b86a-7504683a0369
+  - id: nefrob.vscode-just-syntax
+    uuid: 4d059c6e-aaea-42e3-97f5-f4fd35b70d3d
+  - id: nsarrazin.pep723-uv-interpreter
+    uuid: 053eb5da-dc16-49f0-837f-d627da0dc8c5
+  - id: pascal-lab.vide-ide
+    uuid: 35959e61-7794-450d-b39d-044df95684b8
+  - id: redhat.vscode-xml
+    uuid: 6703768d-d42f-474e-9f6e-5f288d53f6e8
+  - id: redhat.vscode-yaml
+    uuid: 2061917f-f76a-458a-8da9-f162de22b97e
+  - id: RoweWilsonFrederiskHolme.wikitext
+    uuid: 2f257e55-e083-4d22-9a83-2b320853fa17
+  - id: rust-lang.rust-analyzer
+    uuid: 06574cb4-e5dc-4631-8174-a543a4533621
+  - id: samuelcolvin.jinjahtml
+    uuid: 8b477a76-974c-403d-a454-58028c1709d1
+  - id: saoudrizwan.claude-dev
+    uuid: ad94c633-a9d5-4f78-b85f-c664e7d91a0f
+    version: 4.0.7
+  - id: slevesque.shader
+    uuid: 3a63675f-7987-4cff-a411-d4a9568f560c
+  - id: streetsidesoftware.code-spell-checker
+    uuid: f6dbd813-b0a0-42c1-90ea-10dde9d925a7
+  - id: surajbarkale.ninja
+    uuid: e32678bf-e609-4703-b498-acfff48e5a0d
+  - id: svelte.svelte-vscode
+    uuid: c5463f77-75d9-4a25-8cc4-d8541a461285
+  - id: tamasfe.even-better-toml
+    uuid: b2215d5f-675e-4a2b-b6ac-1ca737518b78
+  - id: tauri-apps.tauri-vscode
+    uuid: 53763e89-ec31-4d0c-b220-f714761180e5
+  - id: teabyii.ayu
+    uuid: 5178733e-4b02-4829-95c5-1ce970847c23
+  - id: timonwong.shellcheck
+    uuid: f95d8fff-f70a-4ae5-bb06-5c47ddbc8fc6
+  - id: unifiedjs.vscode-mdx
+    uuid: af8cfc85-cb72-45d0-bae2-9a98cd0c69f3
+  - id: Vue.volar
+    uuid: a95ee795-1576-4ffa-acda-8d6e6a95c584
+  - id: webfreak.debug
+    uuid: 2fd22b8e-b3b8-4e7f-9a28-a5e2d1bdd0d4
+  - id: xyc.vscode-mdx-preview
+    uuid: 2d6939dc-9776-4c55-bdbe-6af17c602141
+  - id: yinfei.luahelper
+    uuid: d3707c86-e17d-4f81-ae03-bbfae896128b
+  - id: ziglang.vscode-zig
+    uuid: 9f528315-746c-44d9-97ba-d4d505cca308
+  - id: ZixuanWang.linkerscript
+    uuid: 63c2dc61-783f-4cbc-9fb8-0c75aeb0527c
+  - id: zizmor.zizmor-vscode
+    uuid: 43970a2e-72d2-4070-ad90-d7199ef2db65
+  - id: zokugun.cron-tasks
+    uuid: b7bbbbd5-7a39-4312-87aa-ef6a41de67fb

@@ -1,0 +1,155 @@
+{
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
+    "[css]": {
+        "editor.defaultFormatter": "vscode.css-language-features"
+    },
+    "[html]": {
+        "editor.defaultFormatter": "vscode.html-language-features"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[php]": {
+        "editor.defaultFormatter": "DEVSENSE.phptools-vscode"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "betterGitLineBlame.showInlineAnnotations": false,
+    "cmake.allowUnsupportedPresetsVersions": true,
+    "cmake.generator": "Ninja",
+    "cmake.pinnedCommands": [
+        "workbench.action.tasks.configureTaskRunner",
+        "workbench.action.tasks.runTask"
+    ],
+    "cmake.showOptionsMovedNotification": false,
+    "ctags.disable": true,
+    "diffEditor.ignoreTrimWhitespace": false,
+    "editor.fontFamily": "'Fira Code', Consolas, 'Courier New', 'Noto Sans CJK SC', monospace",
+    "editor.fontLigatures": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": false,
+    "editor.inlineSuggest.enabled": true,
+    "editor.unicodeHighlight.allowedLocales": {
+        "zh-hans": true,
+        "zh-hant": true
+    },
+    "editor.unicodeHighlight.ambiguousCharacters": false,
+    "editor.unicodeHighlight.invisibleCharacters": true,
+    "editor.unicodeHighlight.nonBasicASCII": false,
+    "extensions.ignoreRecommendations": true,
+    "files.associations": {
+        "CODEGROUPS": "plaintext"
+    },
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 5000,
+    "git.autofetch": true,
+    "git.autofetchPeriod": 360,
+    "git.confirmSync": false,
+    "git.enableCommitSigning": true,
+    "git.ignoreLimitWarning": true,
+    "git.statusLimit": 0,
+    "git.timeline.showUncommitted": true,
+    "git.useCommitInputAsStashMessage": true,
+    "github.gitProtocol": "ssh",
+    "go.toolsManagement.autoUpdate": true,
+    "kerneldev.experimental.newDtsEngine": true,
+    "makefile.configureAfterCommand": false,
+    "makefile.configureOnEdit": false,
+    "makefile.configureOnOpen": false,
+    "phpTools.suppressPremiumFeatures": true,
+    "python.analysis.autoImportCompletions": true,
+    "redhat.telemetry.enabled": false,
+    // "rust-analyzer.server.path": "rust-analyzer",
+    "rust-analyzer.showUnlinkedFileNotification": false,
+    "security.workspace.trust.untrustedFiles": "open",
+    "telemetry.telemetryLevel": "off",
+    "update.mode": "manual",
+    "verilog.ctags.path": "ctags",
+    "verilog.languageServer.svls.enabled": true,
+    "verilog.linting.linter": "verilator",
+    "verilog.linting.path": "verilator",
+    "workbench.editor.empty.hint": "hidden",
+    "workbench.iconTheme": "ayu",
+    "workbench.startupEditor": "none",
+    "zig.checkForUpdate": false,
+    "zig.path": "zig",
+    "zig.zls.checkForUpdate": false,
+    "zig.zls.path": "zls",
+    "zig.zls.warnStyle": true,
+    "chat.commandCenter.enabled": false,
+    "git.autoStash": true,
+    "git.pruneOnFetch": true,
+    "git.supportCancellation": true,
+    "git.terminalGitEditor": true,
+    "python.analysis.typeCheckingMode": "standard",
+    "chat.agent.enabled": false,
+    "zig.zls.enabled": "on",
+    "diffEditor.experimental.showMoves": true,
+    "editor.minimap.autohide": "mouseover",
+    "terminal.integrated.enableImages": true,
+    "terminal.integrated.hideOnStartup": "always",
+    "editor.experimental.preferTreeSitter.regex": true,
+    "editor.experimental.preferTreeSitter.css": true,
+    "workbench.experimental.cloudChanges.partialMatches.enabled": true,
+    "http.experimental.systemCertificatesV2": true,
+    "C_Cpp.experimentalFeatures": "enabled",
+    "lean4.alwaysAskBeforeInstallingLeanVersions": true,
+    "lean4.envPathExtensions": [
+        "/opt/elan/bin"
+    ],
+    "fennel-lsx.server-version": "external",
+    "shellformat.useEditorConfig": true,
+    "rust-analyzer.diagnostics.disabled": [
+        "E0605"
+    ],
+    "shfmt.formatIgnored": true,
+    "[vue]": {
+        "editor.defaultFormatter": "Vue.volar"
+    },
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "git.blame.editorDecoration.enabled": false,
+    "github.copilot.enable": {
+        "*": false,
+        "plaintext": false,
+        "markdown": false,
+        "scminput": false
+    },
+    "chat.disableAIFeatures": true,
+    "inlineChat.lineNaturalLanguageHint": false,
+    "terminal.integrated.initialHint": false,
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+    "zig.libPath": "/opt/zig/bin/lib/",
+    "[yaml]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "diffEditor.hideUnchangedRegions.enabled": true,
+    "syncSettings.gitInitMessage": "{{profile}}: init ({{now|date:iso}})",
+    "syncSettings.gitUpdateMessage": "{{profile}}: update ({{hostname}} {{now|date:iso}})",
+    "syncSettings.crons": {
+        "review": "0 * * * *",
+        "download": "0 */2 * * *",
+        "upload": "15 */2 * * *",
+    },
+    "syncSettings.resources": [
+        "extensions",
+        "keybindings",
+        "settings",
+        "snippets",
+        "tasks",
+    ]
+}
