@@ -109,7 +109,6 @@
     "lean4.envPathExtensions": [
         "/opt/elan/bin"
     ],
-    "fennel-lsx.server-version": "external",
     "shellformat.useEditorConfig": true,
     "rust-analyzer.diagnostics.disabled": [
         "E0605"
@@ -120,14 +119,7 @@
     },
     "workbench.secondarySideBar.defaultVisibility": "hidden",
     "git.blame.editorDecoration.enabled": false,
-    "github.copilot.enable": {
-        "*": false,
-        "plaintext": false,
-        "markdown": false,
-        "scminput": false
-    },
     "chat.disableAIFeatures": true,
-    "inlineChat.lineNaturalLanguageHint": false,
     "terminal.integrated.initialHint": false,
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff"
@@ -141,8 +133,6 @@
     "syncSettings.gitUpdateMessage": "{{profile}}: update ({{hostname}} {{now|date:iso}})",
     "syncSettings.crons": {
         "review": "0 * * * *",
-        "download": "0 10 * * *",
-        "upload": "15 10 * * *",
     },
     "syncSettings.resources": [
         "extensions",

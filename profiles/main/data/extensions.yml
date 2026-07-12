@@ -14,8 +14,6 @@ enabled:
     uuid: 0e22bd0e-8a8d-424d-b5bd-29aaf21800eb
   - id: charliermarsh.ruff
     uuid: c2ca9b43-fa38-44fc-928e-5125970b9c00
-  - id: coolchyni.beyond-debug
-    uuid: 4c6a1625-43cf-4b46-ac0b-eedb77aba254
   - id: cschlosser.doxdocgen
     uuid: da7e26d5-d57c-4742-ab47-d77fb189e195
   - id: DavidAnson.vscode-markdownlint
