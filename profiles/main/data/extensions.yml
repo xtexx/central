@@ -22,14 +22,6 @@ enabled:
     uuid: 583b2b34-2c1e-4634-8c0b-0b82e283ea3a
   - id: denoland.vscode-deno
     uuid: 91881318-cfd0-4905-adb7-f4e431ca1ead
-  - id: DEVSENSE.composer-php-vscode
-    uuid: eed2a934-7bb6-4a5b-a29d-353077efd839
-  - id: DEVSENSE.intelli-php-vscode
-    uuid: f83b9c6c-24dd-435c-a088-daff1769b0b8
-  - id: DEVSENSE.phptools-vscode
-    uuid: 93916db4-e944-4c74-b68e-47f2834e9e93
-  - id: DEVSENSE.profiler-php-vscode
-    uuid: 6e4e2904-96c2-4c5c-8b78-23da062f2f9e
   - id: dtoplak.vscode-glsllint
     uuid: 3718a7c9-0ac8-46dd-81b5-8bc53de038af
   - id: EditorConfig.EditorConfig
