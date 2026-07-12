@@ -142,8 +142,8 @@
     "syncSettings.gitUpdateMessage": "{{profile}}: update ({{hostname}} {{now|date:iso}})",
     "syncSettings.crons": {
         "review": "0 * * * *",
-        "download": "0 */2 * * *",
-        "upload": "15 */2 * * *",
+        "download": "0 10 * * *",
+        "upload": "15 10 * * *",
     },
     "syncSettings.resources": [
         "extensions",

@@ -23,14 +23,9 @@ disabled:
 enabled:
   - id: 13xforever.language-x86-64-assembly
     uuid: 7c8fcf53-a602-48d2-afdf-9c1318472604
-  - id: aeschli.vscode-css-formatter
-    uuid: 3f770365-3682-44ee-a63e-5ef1b16c74d2
-  - id: antfu.slidev
-    uuid: 1396f3b6-119e-4436-a767-30a73c5a4a4f
   - id: asciidoctor.asciidoctor-vscode
     uuid: c1309cc2-f420-46a3-b2be-ca04f4d9e51b
   - id: basdp.language-gas-x86
-    uuid: 75dcb385-9b1a-4065-a72b-aab05260382e
   - id: BIRDCC.bird2-lsp
     uuid: 019e6e4b-67e4-42bc-a3f2-c5b03bfd1eaf
   - id: budparr.language-hugo-vscode
@@ -63,10 +58,6 @@ enabled:
     uuid: f7cdab71-cf1f-4ecf-bf00-f30d954a13dc
   - id: esbenp.prettier-vscode
     uuid: 96fa4707-6983-4489-b7c5-d5ffdfdcce90
-  - id: GitHub.codespaces
-    uuid: 4023d3e5-c840-4cdd-8b54-51c77548aa3f
-  - id: GitHub.github-vscode-theme
-    uuid: 7328a705-91fc-49e6-8293-da6f112e482d
   - id: golang.go
     uuid: d6f6cfea-4b6f-41f4-b571-6ad2ab7918da
   - id: kokororin.vscode-phpfmt
@@ -107,8 +98,6 @@ enabled:
     uuid: a71e0b52-0402-498f-a148-d2e344390f14
   - id: ms-vscode.cpptools
     uuid: 690b692e-e8a9-493f-b802-8089d50ac1b2
-  - id: ms-vscode.makefile-tools
-    uuid: e09cf600-90a1-414e-92a0-031f1a5391c6
   - id: ms-vscode.remote-explorer
     uuid: 11858313-52cc-4e57-b3e4-d7b65281e34b
   - id: ms-vscode.remote-server
@@ -140,14 +129,8 @@ enabled:
     uuid: 3a63675f-7987-4cff-a411-d4a9568f560c
   - id: streetsidesoftware.code-spell-checker
     uuid: f6dbd813-b0a0-42c1-90ea-10dde9d925a7
-  - id: surajbarkale.ninja
-    uuid: e32678bf-e609-4703-b498-acfff48e5a0d
-  - id: svelte.svelte-vscode
-    uuid: c5463f77-75d9-4a25-8cc4-d8541a461285
   - id: tamasfe.even-better-toml
     uuid: b2215d5f-675e-4a2b-b6ac-1ca737518b78
-  - id: tauri-apps.tauri-vscode
-    uuid: 53763e89-ec31-4d0c-b220-f714761180e5
   - id: teabyii.ayu
     uuid: 5178733e-4b02-4829-95c5-1ce970847c23
   - id: timonwong.shellcheck
@@ -158,14 +141,10 @@ enabled:
     uuid: a95ee795-1576-4ffa-acda-8d6e6a95c584
   - id: webfreak.debug
     uuid: 2fd22b8e-b3b8-4e7f-9a28-a5e2d1bdd0d4
-  - id: xyc.vscode-mdx-preview
-    uuid: 2d6939dc-9776-4c55-bdbe-6af17c602141
   - id: yinfei.luahelper
     uuid: d3707c86-e17d-4f81-ae03-bbfae896128b
   - id: ziglang.vscode-zig
     uuid: 9f528315-746c-44d9-97ba-d4d505cca308
-  - id: ZixuanWang.linkerscript
-    uuid: 63c2dc61-783f-4cbc-9fb8-0c75aeb0527c
   - id: zizmor.zizmor-vscode
     uuid: 43970a2e-72d2-4070-ad90-d7199ef2db65
   - id: zokugun.cron-tasks
