@@ -66,13 +66,9 @@
     "github.gitProtocol": "ssh",
     "go.toolsManagement.autoUpdate": true,
     "kerneldev.experimental.newDtsEngine": true,
-    "makefile.configureAfterCommand": false,
-    "makefile.configureOnEdit": false,
-    "makefile.configureOnOpen": false,
     "phpTools.suppressPremiumFeatures": true,
     "python.analysis.autoImportCompletions": true,
     "redhat.telemetry.enabled": false,
-    // "rust-analyzer.server.path": "rust-analyzer",
     "rust-analyzer.showUnlinkedFileNotification": false,
     "security.workspace.trust.untrustedFiles": "open",
     "telemetry.telemetryLevel": "off",
@@ -82,7 +78,6 @@
     "verilog.linting.linter": "verilator",
     "verilog.linting.path": "verilator",
     "workbench.editor.empty.hint": "hidden",
-    "workbench.iconTheme": "ayu",
     "workbench.startupEditor": "none",
     "zig.checkForUpdate": false,
     "zig.path": "zig",
@@ -110,7 +105,6 @@
     "lean4.envPathExtensions": [
         "/opt/elan/bin"
     ],
-    "fennel-lsx.server-version": "external",
     "shellformat.useEditorConfig": true,
     "rust-analyzer.diagnostics.disabled": [
         "E0605"
@@ -121,14 +115,7 @@
     },
     "workbench.secondarySideBar.defaultVisibility": "hidden",
     "git.blame.editorDecoration.enabled": false,
-    "github.copilot.enable": {
-        "*": false,
-        "plaintext": false,
-        "markdown": false,
-        "scminput": false
-    },
     "chat.disableAIFeatures": true,
-    "inlineChat.lineNaturalLanguageHint": false,
     "terminal.integrated.initialHint": false,
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff"
@@ -138,4 +125,15 @@
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "diffEditor.hideUnchangedRegions.enabled": true,
+    "syncSettings.gitInitMessage": "{{profile}}: init ({{now|date:iso}})",
+    "syncSettings.gitUpdateMessage": "{{profile}}: update ({{hostname}} {{now|date:iso}})",
+    "syncSettings.crons": {
+        "review": "0 * * * *",
+    },
+    "syncSettings.resources": [
+        "extensions",
+        "keybindings",
+        "settings",
+        "tasks",
+    ]
 }
