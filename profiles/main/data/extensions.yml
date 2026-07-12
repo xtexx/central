@@ -92,7 +92,6 @@ enabled:
     uuid: 06574cb4-e5dc-4631-8174-a543a4533621
   - id: saoudrizwan.claude-dev
     uuid: ad94c633-a9d5-4f78-b85f-c664e7d91a0f
-    version: 4.0.7
   - id: slevesque.shader
     uuid: 3a63675f-7987-4cff-a411-d4a9568f560c
   - id: streetsidesoftware.code-spell-checker
