@@ -19,7 +19,7 @@
 !/.config/fish/conf.d
 !/.config/fish/conf.d/pastebin.fish
 !/.config/tmux/tmux.conf
-!/.config/git/*.conf
+!/.config/git/*
 /.config/git/local.conf
 
 # To fix ripgrep

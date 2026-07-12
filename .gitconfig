@@ -4,7 +4,7 @@
 	email = xtex@astrafall.org
 	name = xtex
 	signingkey = /home/xtex/.ssh/id_ed25519.pub
-	#signingkey = 7231804B052C670F15A6771DB918086ED8045B91
+	# signingkey = 7231804B052C670F15A6771DB918086ED8045B91
 [commit]
 	verbose = true
 [tag]
@@ -12,7 +12,6 @@
 [core]
 	autocrlf = input
 	abbrev = 12
-	excludesfile = /home/xtex/.gitignore.common
 [url "git@github.com:"]
 	insteadOf = https://github.com/
 [url "git@codeberg.org:"]
