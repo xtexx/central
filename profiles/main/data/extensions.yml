@@ -1,6 +1,3 @@
-builtin:
-  disabled:
-    - GitHub.copilot-chat
 disabled:
   - id: ccls-project.ccls
     uuid: 8e21d425-1e30-4072-8436-786a9017e5c7
@@ -8,6 +5,7 @@ enabled:
   - id: asciidoctor.asciidoctor-vscode
     uuid: c1309cc2-f420-46a3-b2be-ca04f4d9e51b
   - id: basdp.language-gas-x86
+    uuid: 75dcb385-9b1a-4065-a72b-aab05260382e
   - id: BIRDCC.bird2-lsp
     uuid: 019e6e4b-67e4-42bc-a3f2-c5b03bfd1eaf
   - id: budparr.language-hugo-vscode
@@ -82,8 +80,6 @@ enabled:
     uuid: 4d059c6e-aaea-42e3-97f5-f4fd35b70d3d
   - id: nsarrazin.pep723-uv-interpreter
     uuid: 053eb5da-dc16-49f0-837f-d627da0dc8c5
-  - id: pascal-lab.vide-ide
-    uuid: 35959e61-7794-450d-b39d-044df95684b8
   - id: redhat.vscode-xml
     uuid: 6703768d-d42f-474e-9f6e-5f288d53f6e8
   - id: redhat.vscode-yaml
