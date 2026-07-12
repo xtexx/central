@@ -82,7 +82,6 @@
     "verilog.linting.linter": "verilator",
     "verilog.linting.path": "verilator",
     "workbench.editor.empty.hint": "hidden",
-    "workbench.iconTheme": "ayu",
     "workbench.startupEditor": "none",
     "zig.checkForUpdate": false,
     "zig.path": "zig",

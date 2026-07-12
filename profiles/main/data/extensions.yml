@@ -2,27 +2,9 @@ builtin:
   disabled:
     - GitHub.copilot-chat
 disabled:
-  - id: AvaloniaTeam.vscode-avalonia
-    uuid: 4b5f46f8-72f6-4978-a0e3-97c20c46aa09
-  - id: bmewburn.vscode-intelephense-client
-    uuid: ffda6552-0ad5-431b-a4fa-0905a7e4f3f0
   - id: ccls-project.ccls
     uuid: 8e21d425-1e30-4072-8436-786a9017e5c7
-  - id: espressif.esp-idf-extension
-    uuid: 2f6509f0-2abc-4e12-91e8-91b6ff24c654
-  - id: Jannchie.codetime
-    uuid: 79d8e45d-5812-4b3d-8f14-f31b8ebb9570
-  - id: ms-dotnettools.csdevkit
-    uuid: 7ad42776-8f7e-4214-bf67-4f0b518ef629
-  - id: ms-dotnettools.csharp
-    uuid: d0bfc4ab-1d3a-4487-8782-7cf6027b4fff
-  - id: ms-dotnettools.vscode-dotnet-runtime
-    uuid: 1aab81a1-b3d9-4aef-976b-577d5d90fe3f
-  - id: zobo.php-intellisense
-    uuid: 3eddb68d-a5dd-43fb-be03-6f508d98fe97
 enabled:
-  - id: 13xforever.language-x86-64-assembly
-    uuid: 7c8fcf53-a602-48d2-afdf-9c1318472604
   - id: asciidoctor.asciidoctor-vscode
     uuid: c1309cc2-f420-46a3-b2be-ca04f4d9e51b
   - id: basdp.language-gas-x86
@@ -116,12 +98,8 @@ enabled:
     uuid: 6703768d-d42f-474e-9f6e-5f288d53f6e8
   - id: redhat.vscode-yaml
     uuid: 2061917f-f76a-458a-8da9-f162de22b97e
-  - id: RoweWilsonFrederiskHolme.wikitext
-    uuid: 2f257e55-e083-4d22-9a83-2b320853fa17
   - id: rust-lang.rust-analyzer
     uuid: 06574cb4-e5dc-4631-8174-a543a4533621
-  - id: samuelcolvin.jinjahtml
-    uuid: 8b477a76-974c-403d-a454-58028c1709d1
   - id: saoudrizwan.claude-dev
     uuid: ad94c633-a9d5-4f78-b85f-c664e7d91a0f
     version: 4.0.7
@@ -131,8 +109,6 @@ enabled:
     uuid: f6dbd813-b0a0-42c1-90ea-10dde9d925a7
   - id: tamasfe.even-better-toml
     uuid: b2215d5f-675e-4a2b-b6ac-1ca737518b78
-  - id: teabyii.ayu
-    uuid: 5178733e-4b02-4829-95c5-1ce970847c23
   - id: timonwong.shellcheck
     uuid: f95d8fff-f70a-4ae5-bb06-5c47ddbc8fc6
   - id: unifiedjs.vscode-mdx
