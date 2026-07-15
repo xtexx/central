@@ -312,6 +312,7 @@
 				"citizen-preferences-section-appearance",
 				"citizen-preferences-section-behavior",
 				"citizen-theme-description",
+				"citizen-theme-black-label",
 				"citizen-theme-day-label",
 				"citizen-theme-name",
 				"citizen-theme-night-label",
@@ -991,7 +992,7 @@
 	"config": {
 		"ThemeDefault": {
 			"value": "auto",
-			"description": "Default theme of the skin. Valid values are 'light', 'dark' and 'auto'.",
+			"description": "Default theme of the skin. Accepts 'auto', 'light', 'dark', or any theme value such as 'black' or a wiki-defined theme.",
 			"descriptionmsg": "citizen-config-themedefault",
 			"public": true
 		},

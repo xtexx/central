@@ -32,9 +32,12 @@ mw.loader.require = vi.fn( () => ( {
 	}
 } ) );
 
-// Mock getComputedStyle to return fake CSS custom property values
+// Mock getComputedStyle to return fake CSS custom property values and a
+// resolved color-scheme (which useVisibility's dark-theme condition reads).
+let mockColorScheme = 'light';
 const originalGetComputedStyle = globalThis.getComputedStyle;
 globalThis.getComputedStyle = vi.fn( () => ( {
+	colorScheme: mockColorScheme,
 	getPropertyValue: vi.fn( ( prop ) => {
 		if ( prop === '--color-surface-0' ) {
 			return '#ffffff';
@@ -145,6 +148,7 @@ beforeAll( async () => {
 
 afterEach( () => {
 	document.documentElement.className = '';
+	mockColorScheme = 'light';
 	vi.clearAllMocks();
 } );
 
@@ -274,6 +278,36 @@ describe( 'App', () => {
 		} );
 	} );
 
+	describe( 'preview channel (citizen-v4)', () => {
+		beforeEach( () => {
+			document.documentElement.classList.add( 'citizen-v4' );
+		} );
+
+		afterEach( () => {
+			document.documentElement.classList.remove( 'citizen-v4' );
+		} );
+
+		it( 'should preview the black theme swatch with a dark color scheme', () => {
+			// Build fresh instead of reusing BASE_CONFIG — the cached base
+			// was built without the citizen-v4 class, so it has the legacy
+			// three-theme shape. mountApp resets the classList, but the
+			// config is already built by then.
+			const v4Config = normalizeConfig( getDefaultConfig() );
+
+			const wrapper = mountApp( ALL_PREF_CLASSES, v4Config );
+
+			const radios = wrapper.findAllComponents( { name: 'CdxRadio' } );
+			const blackRadio = radios.find(
+				( c ) => c.props( 'inputValue' ) === 'black'
+			);
+			expect( blackRadio ).toBeTruthy();
+			const preview = blackRadio.find(
+				'.citizen-preferences-card__preview--theme'
+			);
+			expect( preview.attributes( 'style' ) ).toContain( 'color-scheme: dark' );
+		} );
+	} );
+
 	describe( 'initialization', () => {
 		it( 'should initialize values from classList', () => {
 			const classes = ALL_PREF_CLASSES.map( ( cls ) =>
@@ -360,7 +394,7 @@ describe( 'App', () => {
 
 		it( 'should show dark-theme preference when theme changes to night', async () => {
 			// pure-black has dark-theme visibility condition;
-			// with os theme and matchMedia=false it is hidden via v-show.
+			// with a light resolved color-scheme it is hidden via v-show.
 			const wrapper = mountApp( ALL_PREF_CLASSES );
 
 			const pureBlack = wrapper.find(
@@ -369,7 +403,9 @@ describe( 'App', () => {
 
 			expect( pureBlack.attributes( 'style' ) ).toContain( 'display: none' );
 
-			// Changing theme to night makes dark-theme conditions visible.
+			// Changing the theme swaps the root class, so the computed
+			// color-scheme resolves to dark and dark-theme conditions show.
+			mockColorScheme = 'dark';
 			const radioGroup = wrapper.findComponent( { name: 'RadioGroup' } );
 			radioGroup.vm.$emit( 'update:modelValue', 'night' );
 			await wrapper.vm.$nextTick();
