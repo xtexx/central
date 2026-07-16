@@ -24,7 +24,7 @@ steps:
           from_secret: codeberg_token
       commands:
           - ./scripts/pkgs/tag-latest.sh "codeberg.org/${CI_REPO_OWNER}/headscale" .woodpecker/build-headscale.yaml "${VERSION}"
-    - name: send-headscale
+    - name: send-ntfy
       image: alpine
       environment:
         HEADSCALE_TOKEN:
