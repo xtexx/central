@@ -8,7 +8,7 @@ RUN set -euxo pipefail; \
 	go install \
 		-ldflags="-s -w -X github.com/juanfont/headscale/hscontrol/types.Version=$VERSION \
 			-X github.com/juanfont/headscale/hscontrol/types.GitCommitHash=HASH" \
-		github.com/juanfont/headscale@v$VERSION
+		github.com/juanfont/headscale/cmd/headscale@v$VERSION
 
 FROM docker.io/library/alpine
 
