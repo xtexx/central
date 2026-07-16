@@ -1,0 +1,46 @@
+matrix:
+    VERSION:
+        - "0.29.2" # TAG:LATEST
+
+steps:
+    - name: build
+      image: woodpeckerci/plugin-docker-buildx:6.0.3
+      settings:
+          platforms: linux/amd64,linux/arm64
+          repo: codeberg.org/${CI_REPO_OWNER}/headscale
+          registry: codeberg.org
+          tags: "${VERSION}"
+          build_args:
+              VERSION: "${VERSION}"
+          username: ${CI_REPO_OWNER}
+          password:
+              from_secret: codeberg_token
+          context: services/headscale
+          dockerfile: services/headscale/Containerfile
+    - name: mark-latest
+      image: alpine
+      environment:
+        CODEBERG_TOKEN:
+          from_secret: codeberg_token
+      commands:
+          - ./scripts/pkgs/tag-latest.sh "codeberg.org/${CI_REPO_OWNER}/headscale" .woodpecker/build-headscale.yaml "${VERSION}"
+    - name: send-headscale
+      image: alpine
+      environment:
+        HEADSCALE_TOKEN:
+          from_secret: headscale_token
+        VERSION: "${VERSION}"
+      when:
+          - status: [success, failure]
+      commands:
+          - ./scripts/pkgs/send-log.sh
+when:
+    - event: push
+      branch: main
+      path:
+          include:
+              [".woodpecker/build-headscale.yaml", "services/headscale/Containerfile"]
+    - event: cron
+      cron: build-pkgs
+    - event: manual
+      evaluate: 'TARGET == "all" || TARGET == "headscale"'

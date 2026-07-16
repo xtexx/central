@@ -1,0 +1,23 @@
+FROM docker.io/library/golang:alpine
+ARG VERSION
+
+RUN set -euxo pipefail; \
+	GOBIN=/usr/local/bin \
+	GOPROXY=direct \
+	go install \
+		-ldflags="-s -w -X github.com/juanfont/headscale/hscontrol/types.Version=$VERSION \
+			-X github.com/juanfont/headscale/hscontrol/types.GitCommitHash=HASH" \
+		github.com/juanfont/headscale@v$VERSION
+
+FROM docker.io/library/alpine
+
+COPY --from=bld /usr/local/bin /usr/local/bin
+
+WORKDIR /var/lib/headscale
+ENTRYPOINT [ "/usr/local/bin/headscale" ]
+
+LABEL org.opencontainers.image.licenses="BSD-3-Clause"
+LABEL org.opencontainers.image.source="https://codeberg.org/xens/atremis"
+LABEL org.opencontainers.image.title="Headscale"
+LABEL org.opencontainers.image.url="https://headscale.net/"
+LABEL org.opencontainers.image.vendor="AstraFall Network"
