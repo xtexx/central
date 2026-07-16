@@ -28,7 +28,7 @@ steps:
       image: alpine
       environment:
         HEADSCALE_TOKEN:
-          from_secret: headscale_token
+          from_secret: ntfy_token
         VERSION: "${VERSION}"
       when:
           - status: [success, failure]
