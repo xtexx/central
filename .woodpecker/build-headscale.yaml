@@ -27,7 +27,7 @@ steps:
     - name: send-ntfy
       image: alpine
       environment:
-        HEADSCALE_TOKEN:
+        NTFY_TOKEN:
           from_secret: ntfy_token
         VERSION: "${VERSION}"
       when:
