@@ -1,4 +1,4 @@
-FROM docker.io/library/golang:alpine
+FROM docker.io/library/golang:alpine AS bld
 ARG VERSION
 
 RUN set -euxo pipefail; \

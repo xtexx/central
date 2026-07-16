@@ -30,6 +30,9 @@ P: ^services/caddy/
 S: DNS
 P: ^services/dns/
 
+S: Headscale
+P: ^services/headscale
+
 # APPLICATION SERVICES
 S: MariaDB
 P: ^services/mariadb/
