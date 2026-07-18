@@ -1,6 +1,6 @@
 {
 	"name": "Citizen",
-	"version": "3.17.1",
+	"version": "3.18.0",
 	"author": [
 		"[https://www.mediawiki.org/wiki/User:Alistair3149 Alistair3149]",
 		"[https://www.mediawiki.org/wiki/User:Octfx Octfx]",
@@ -200,13 +200,12 @@
 				"resources/skins.citizen.scripts/lastModified.js",
 				"resources/skins.citizen.scripts/overflowElements/index.js",
 				"resources/skins.citizen.scripts/overflowElements/wrapper.js",
+				"resources/skins.citizen.scripts/overflowElements/float.js",
 				"resources/skins.citizen.scripts/overflowElements/state.js",
 				"resources/skins.citizen.scripts/overflowElements/stickyHeader.js",
 				"resources/skins.citizen.scripts/performance.js",
 				"resources/skins.citizen.scripts/preferences.js",
-				"resources/skins.citizen.scripts/resizeObserver.js",
 				"resources/skins.citizen.scripts/scrollObserver.js",
-				"resources/skins.citizen.scripts/sectionObserver.js",
 				"resources/skins.citizen.scripts/search.js",
 				"resources/skins.citizen.scripts/sections.js",
 				"resources/skins.citizen.scripts/serviceWorker.js",
@@ -214,25 +213,7 @@
 				"resources/skins.citizen.scripts/share.js",
 				"resources/skins.citizen.scripts/triggerNativeShare.js",
 				"resources/skins.citizen.scripts/speculationRules.js",
-				"resources/skins.citizen.scripts/stickyHeader.js",
-				"resources/skins.citizen.scripts/tableOfContents.js",
-				"resources/skins.citizen.scripts/tableOfContentsSections.js",
-				{
-					"name": "resources/skins.citizen.scripts/tableOfContentsConfig.json",
-					"config": [
-						"CitizenTableOfContentsCollapseAtCount"
-					]
-				},
-				{
-					"name": "resources/skins.citizen.scripts/templates/TableOfContents__list.mustache",
-					"file": "templates/TableOfContents__list.mustache",
-					"type": "text"
-				},
-				{
-					"name": "resources/skins.citizen.scripts/templates/TableOfContents__line.mustache",
-					"file": "templates/TableOfContents__line.mustache",
-					"type": "text"
-				}
+				"resources/skins.citizen.scripts/stickyHeader.js"
 			],
 			"messages": [
 				"citizen-command-palette-load-error",
@@ -242,6 +223,34 @@
 			"dependencies": [
 				"mediawiki.storage",
 				"mediawiki.page.ready",
+				"mediawiki.util"
+			]
+		},
+		"skins.citizen.toc": {
+			"packageFiles": [
+				"resources/skins.citizen.toc/index.js",
+				"resources/skins.citizen.toc/sectionObserver.js",
+				"resources/skins.citizen.toc/tableOfContents.js",
+				"resources/skins.citizen.toc/tableOfContentsSections.js",
+				{
+					"name": "resources/skins.citizen.toc/tableOfContentsConfig.json",
+					"config": [
+						"CitizenTableOfContentsCollapseAtCount"
+					]
+				},
+				{
+					"name": "resources/skins.citizen.toc/templates/TableOfContents__list.mustache",
+					"file": "templates/TableOfContents__list.mustache",
+					"type": "text"
+				},
+				{
+					"name": "resources/skins.citizen.toc/templates/TableOfContents__line.mustache",
+					"file": "templates/TableOfContents__line.mustache",
+					"type": "text"
+				},
+				"resources/skins.citizen.scripts/deferUntilFrame.js"
+			],
+			"dependencies": [
 				"mediawiki.util"
 			]
 		},
@@ -260,6 +269,8 @@
 				"resources/skins.citizen.preferences/init.js",
 				"resources/skins.citizen.preferences/App.vue",
 				"resources/skins.citizen.preferences/RadioGroup.vue",
+				"resources/skins.citizen.preferences/ThemePicker.vue",
+				"resources/skins.citizen.preferences/themePreviewBaseline.js",
 				"resources/skins.citizen.preferences/useVisibility.js",
 				"resources/skins.citizen.preferences/defaultConfig.js",
 				"resources/skins.citizen.preferences/configRegistry.js",
@@ -315,6 +326,7 @@
 				"citizen-theme-black-label",
 				"citizen-theme-day-label",
 				"citizen-theme-name",
+				"citizen-theme-name-v4",
 				"citizen-theme-night-label",
 				"citizen-theme-os-label",
 				"preferences"
@@ -324,6 +336,9 @@
 				"mediawiki.storage",
 				"mediawiki.util",
 				"vue"
+			],
+			"styles": [
+				"resources/skins.citizen.preferences/themePreview.less"
 			]
 		},
 		"skins.citizen.share.codex": {
@@ -1106,16 +1121,16 @@
 			"descriptionmsg": "citizen-config-headerposition",
 			"public": true
 		},
+		"HeaderPositionMobile": {
+			"value": "bottom",
+			"description": "Position of the header on the mobile and tablet layout (below the desktop breakpoint). Possible values: 'top' and 'bottom'",
+			"descriptionmsg": "citizen-config-headerpositionmobile",
+			"public": true
+		},
 		"Preview": {
 			"value": 0,
 			"description": "Version-scoped switch for the Citizen preview channel. Set to the upcoming major release number (currently 4) to preview it ahead of release — during this cycle that enables the new color token pipeline. 0 or any other value keeps the stable experience, so a stale setting never enrolls the wiki in a later cycle.",
 			"descriptionmsg": "citizen-config-preview",
-			"public": true
-		},
-		"UseNewToken": {
-			"value": false,
-			"description": "Deprecated alias for $wgCitizenPreview = 4. Honored through the next minor release and then removed — use $wgCitizenPreview instead.",
-			"descriptionmsg": "citizen-config-usenewtoken",
 			"public": true
 		}
 	},

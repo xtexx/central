@@ -156,6 +156,13 @@ class SkinCitizen extends SkinMustache {
 		}
 		$classes[] = 'citizen-header-position-' . $headerPosition;
 
+		// Header position (mobile and tablet)
+		$headerPositionMobile = $config->get( 'CitizenHeaderPositionMobile' );
+		if ( !in_array( $headerPositionMobile, [ 'top', 'bottom' ], true ) ) {
+			$headerPositionMobile = 'bottom';
+		}
+		$classes[] = 'citizen-header-position-mobile-' . $headerPositionMobile;
+
 		$attrs['class'] = trim( $attrs['class'] . ' ' . implode( ' ', $classes ) );
 		return $attrs;
 	}
@@ -288,12 +295,21 @@ class SkinCitizen extends SkinMustache {
 		// above). Drives the notifications dropdown in Header.mustache.
 		$parentData['data-notifications'] = $this->notificationData;
 
+		// Scope matches the .page-Main_Page.action-view main-page styles.
+		// skin.mustache renders the page header after the content on the main
+		// page so its bottom placement holds from the first streamed paint.
+		$parentData['is-mainpage'] = $title->isMainPage() && $this->getActionName() === 'view';
+
 		$parentData['toc-enabled'] = !empty( $parentData['data-toc'][ 'array-sections' ] );
 		if ( $parentData['toc-enabled'] ) {
 			// This body class depends on template data so it can't move to
 			// getHtmlElementAttributes(). Safe here because getTemplateData()
 			// only runs for the active rendering skin.
 			$out->addBodyClasses( 'citizen-toc-enabled' );
+			// Queue the scroll spy with the initial module batch. Cached HTML
+			// from before this condition existed is covered by the client-side
+			// element check in setupObservers.js, which mw.loader dedupes.
+			$out->addModules( [ 'skins.citizen.toc' ] );
 		}
 
 		return $parentData;

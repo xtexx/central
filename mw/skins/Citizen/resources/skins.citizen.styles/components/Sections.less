@@ -1,11 +1,5 @@
-// Hide indicator when client is noscript
-// FIXME: On rare occasion, indicator can appear without the .citizen-sections-enabled class, not sure why
-.citizen-section-indicator,
-.client-nojs.citizen-sections-enabled .citizen-section-indicator {
-	display: none;
-}
-
 .citizen-section-heading,
+section[ data-mw-section-id ] > .mw-heading,
 .mw-editsection {
 	--size-icon: 1.125rem;
 }
@@ -18,12 +12,48 @@
 		.mw-headline {
 			flex-grow: 1;
 		}
+	}
+}
+
+// The collapse affordance is applied purely through CSS — no indicator
+// markup is injected server- or client-side, so first paint carries it
+// with no layout shift and noscript clients never see it. All markup
+// shapes share one recipe: the legacy transform's sections (heading
+// inside, carrying .citizen-section-heading) and native Parsoid
+// sections (<section data-mw-section-id> with the heading inside).
+// Trade-off: this claims the heading's single ::before slot, so any
+// extension or gadget styling these headings' ::before will conflict.
+.client-js .citizen-sections-enabled {
+	section:is( [ data-mw-section-id ], .citizen-section ) > :is( .mw-heading, .citizen-section-heading ) {
+		cursor: pointer;
+		-webkit-user-select: none;
+		user-select: none;
+
+		&::before {
+			flex-shrink: 0;
+			order: -2;
+			width: var( --size-icon );
+			height: var( --size-icon );
+			margin-inline-end: var( --space-sm );
+			content: '';
+			background-color: currentcolor;
+			-webkit-mask-image: url( assets/images/cdxIconCollapse.svg );
+			mask-image: url( assets/images/cdxIconCollapse.svg );
+			-webkit-mask-repeat: no-repeat;
+			mask-repeat: no-repeat;
+			-webkit-mask-position: center;
+			mask-position: center;
+			-webkit-mask-size: contain;
+			mask-size: contain;
+			transition: var( --transition-hover );
+			transition-property: transform;
+		}
 
 		:is( .mw-headline, h1, h2, h3, h4, h5, h6 ) {
 			transition: var( --transition-hover );
 			transition-property: opacity;
 
-			@media ( hover: pointer ) {
+			@media ( hover: hover ) {
 				&:hover {
 					opacity: var( --opacity-icon-base--hover );
 				}
@@ -33,36 +63,15 @@
 				}
 			}
 		}
-
-		&:has( + .citizen-section[ hidden ] ) {
-			.citizen-section-indicator {
-				transform: rotate3d( 1, 0, 0, 180deg );
-			}
-
-			:is( .mw-headline, h1, h2, h3, h4, h5, h6 ) {
-				color: var( --color-subtle );
-			}
-		}
 	}
-}
 
-.citizen-sections-enabled {
-	.citizen-section {
-		&-heading {
-			cursor: pointer;
-			-webkit-user-select: none;
-			user-select: none;
+	section:is( [ data-mw-section-id ], .citizen-section ).citizen-section--collapsed > :is( .mw-heading, .citizen-section-heading ) {
+		&::before {
+			transform: rotate3d( 1, 0, 0, 180deg );
 		}
 
-		&-indicator {
-			display: block;
-			order: -2;
-			width: var( --size-icon );
-			height: var( --size-icon );
-			margin-right: var( --space-sm );
-			cursor: pointer;
-			transition: var( --transition-hover );
-			transition-property: transform;
+		:is( .mw-headline, h1, h2, h3, h4, h5, h6 ) {
+			color: var( --color-subtle );
 		}
 	}
 }

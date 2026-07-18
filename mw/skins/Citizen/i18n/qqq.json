@@ -74,6 +74,7 @@
 	"citizen-preferences-section-appearance": "Görünüm",
 	"citizen-preferences-section-behavior": "Label for the behavior section in the preferences panel",
 	"citizen-theme-name": "Heading label for setting that allows you to change theme.",
+	"citizen-theme-name-v4": "Label for the theme preference in the Citizen 4 preferences panel. Replaces {{msg-mw|citizen-theme-name}} once Citizen 4 ships.\n{{Identical|Theme}}",
 	"citizen-theme-description": "Description for theme.",
 	"citizen-theme-day-label": "Label for light/day theme.",
 	"citizen-theme-night-label": "Label for dark/night theme.",
@@ -216,6 +217,6 @@
 	"citizen-command-palette-mode-user-placeholder": "Placeholder text shown in the command palette input when the user search mode is active.",
 	"citizen-command-palette-queryaction-fulltext-search-description": "Description for the fulltext search in the command palette",
 	"citizen-command-palette-queryaction-page-edit-description": "Description for the page edit action in the command palette",
-	"citizen-config-preview": "Description for the {{Help|Preview}} config option. Used in extension registration metadata.",
-	"citizen-config-usenewtoken": "Description for the {{Help|UseNewToken}} config option. Used in extension registration metadata."
+	"citizen-config-headerpositionmobile": "Description for the {{Help|HeaderPositionMobile}} config option. Used in extension registration metadata.",
+	"citizen-config-preview": "Description for the {{Help|Preview}} config option. Used in extension registration metadata."
 }
