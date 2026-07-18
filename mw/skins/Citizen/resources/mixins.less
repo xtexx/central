@@ -33,6 +33,18 @@
 	left: 0;
 	max-height: var( --header-card-maxheight );
 
+	// Cards flip below the header when it sits at the top edge on
+	// mobile/tablet. citizen-header-position-mobile-top stays in the
+	// markup at desktop widths too, but is inert there — desktop
+	// positioning is driven by the separate citizen-header-position-*
+	// class (Dropdown.less/Drawer.less), so scope this to mobile only.
+	@media ( max-width: @max-width-breakpoint-tablet ) {
+		.citizen-header-position-mobile-top & {
+			top: 100%;
+			bottom: unset;
+		}
+	}
+
 	@media ( min-width: @min-width-breakpoint-tablet ) {
 		& when (@position =start) {
 			right: unset;
@@ -270,4 +282,30 @@
 		-webkit-mask-image: linear-gradient( @direction, @color1, @color2, @color3, @color4 );
 		mask-image: linear-gradient( @direction, @color1, @color2, @color3, @color4 );
 	}
+}
+
+// Standard float treatment for floated content. Shared by the legacy float
+// classes (common/hacks.less), the overflow wrapper float modifiers
+// (components/OverflowElements.less), and the media/thumbnail floats
+// (skinning/content.media-common.less) so they cannot drift.
+// Floats are physical by MediaWiki convention, so each declaration carries
+// its own /* @noflip */ so CSSJanus does not flip them for RTL wikis.
+// Callers own only the tablet media query. Only the literal keywords
+// `left`/`right` are accepted; any other value emits nothing.
+.mixin-citizen-float-declarations( @direction ) when ( @direction = right ) {
+	/* @noflip */
+	float: right;
+	/* @noflip */
+	clear: right;
+	/* @noflip */
+	margin-left: var( --space-lg );
+}
+
+.mixin-citizen-float-declarations( @direction ) when ( @direction = left ) {
+	/* @noflip */
+	float: left;
+	/* @noflip */
+	clear: left;
+	/* @noflip */
+	margin-right: var( --space-lg );
 }
