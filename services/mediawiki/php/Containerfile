@@ -31,7 +31,7 @@ ADD dinit.d /etc/dinit.d
 ENV MW_CONFIG_FILE=/etc/mediawiki/LocalSettings.php
 WORKDIR /opt/mediawiki
 
-ENTRYPOINT [ "/usr/sbin/dinit", "-s" ]
+ENTRYPOINT [ "/usr/bin/dinit", "-s" ]
 
 LABEL org.opencontainers.image.licenses="PHP-3.01"
 LABEL org.opencontainers.image.source="https://codeberg.org/xens/atremis"
