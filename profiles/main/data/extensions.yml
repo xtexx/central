@@ -46,14 +46,14 @@ enabled:
     uuid: f6be665f-7668-4429-9082-1de4f2d565b1
   - id: mkhl.shfmt
     uuid: 0c2ca002-79c2-4b79-95a5-61a5b188a4f7
+  - id: ms-pyright.pyright
+    uuid: 593fe6a5-513e-4cb3-abfb-5b9f5fe39802
   - id: ms-python.black-formatter
     uuid: 859e640c-c157-47da-8699-9080b81c8371
   - id: ms-python.debugpy
     uuid: 4bd5d2c9-9d65-401a-b0b2-7498d9f17615
   - id: ms-python.python
     uuid: f1f59ae4-9318-4f3c-a9b5-81b2eaa5f8a5
-  - id: ms-python.vscode-pylance
-    uuid: 364d2426-116a-433a-a5d8-a5098dc3afbd
   - id: ms-python.vscode-python-envs
     uuid: b41d8e8a-b6d4-4202-8f07-7189bdda81be
   - id: ms-vscode-remote.remote-containers
