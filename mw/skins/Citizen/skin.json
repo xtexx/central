@@ -1,6 +1,6 @@
 {
 	"name": "Citizen",
-	"version": "3.18.0",
+	"version": "3.19.0",
 	"author": [
 		"[https://www.mediawiki.org/wiki/User:Alistair3149 Alistair3149]",
 		"[https://www.mediawiki.org/wiki/User:Octfx Octfx]",
@@ -79,6 +79,7 @@
 					"messages": [
 						"citizen-actions-more-toggle",
 						"citizen-drawer-toggle",
+						"citizen-jumptocontent",
 						"citizen-jumptotop",
 						"citizen-languages-toggle",
 						"citizen-notifications-label",
@@ -202,7 +203,7 @@
 				"resources/skins.citizen.scripts/overflowElements/wrapper.js",
 				"resources/skins.citizen.scripts/overflowElements/float.js",
 				"resources/skins.citizen.scripts/overflowElements/state.js",
-				"resources/skins.citizen.scripts/overflowElements/stickyHeader.js",
+				"resources/skins.citizen.scripts/overflowElements/stickyRows.js",
 				"resources/skins.citizen.scripts/performance.js",
 				"resources/skins.citizen.scripts/preferences.js",
 				"resources/skins.citizen.scripts/scrollObserver.js",

@@ -7,10 +7,12 @@
 	string html-body-content--formatted
 	string html-categories
 	string html-after-content
+	string msg-citizen-jumptocontent label for the link that skips the site header and jumps to the page content
 	bool is-mainpage whether this is a view of the wiki's main page
 	object data-footer for footer template partial. see Footer.mustache for documentation.
 }}
 
+<a class="mw-jump-link citizen-jump-link" href="#bodyContent">{{msg-citizen-jumptocontent}}</a>
 {{>Header}}
 <div class="citizen-page-container">
 	<div class="citizen-sitenotice-container">{{{html-site-notice}}}</div>
@@ -20,7 +22,7 @@
 			mid-stream paints from shifting the header. }}
 		{{^is-mainpage}}{{>PageHeader}}{{/is-mainpage}}
 		<div class="citizen-body-container">
-			<div id="bodyContent" class="citizen-body" aria-labelledby="firstHeading">
+			<div id="bodyContent" class="citizen-body">
 				<div id="contentSub"{{{html-user-language-attributes}}}>{{{html-subtitle}}}</div>
 				{{#html-undelete-link}}<div id="contentSub2">{{{.}}}</div>{{/html-undelete-link}}
 				{{{html-user-message}}}
