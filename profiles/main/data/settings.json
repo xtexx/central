@@ -120,7 +120,6 @@
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff"
     },
-    "zig.libPath": "/opt/zig/bin/lib/",
     "[yaml]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },

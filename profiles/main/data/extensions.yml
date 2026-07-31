@@ -64,8 +64,6 @@ enabled:
     uuid: bfeaf631-bcff-4908-93ed-fda4ef9a0c5c
   - id: ms-vscode.cmake-tools
     uuid: 7c889349-8749-43d4-8b5e-08939936d7f4
-  - id: ms-vscode.cpp-devtools
-    uuid: a71e0b52-0402-498f-a148-d2e344390f14
   - id: ms-vscode.cpptools
     uuid: 690b692e-e8a9-493f-b802-8089d50ac1b2
   - id: ms-vscode.remote-explorer
