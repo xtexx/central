@@ -6,5 +6,10 @@
     {
         "key": "ctrl+space ctrl+down",
         "command": "merge.goToNextUnhandledConflict"
+    },
+    {
+        "key": "ctrl+enter ctrl+enter",
+        "command": "workbench.action.toggleMaximizedPanel",
+        "when": "panelAlignment == 'center' || panelPosition != 'bottom' && panelPosition != 'top'"
     }
 ]
