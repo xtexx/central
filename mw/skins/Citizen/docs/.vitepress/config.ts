@@ -74,6 +74,10 @@ export default defineConfig({
 						text: "Installation",
 						link: "/guide/installation",
 					},
+					{
+						text: "Upgrading",
+						link: "/guide/upgrading",
+					},
 				],
 			},
 			{
