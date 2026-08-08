@@ -1,11 +1,91 @@
 const { computed, nextTick } = require( 'vue' );
-const { resolveBinding, resolveHints } = require( './useKeyboardBindings.js' );
+const { modifierToken, resolveBinding, resolveHints } = require( './useKeyboardBindings.js' );
+// keyboardLayout.js is listed in both this module's and
+// skins.citizen.scripts' packageFiles — keep the two in sync
+const {
+	isMacPlatform,
+	isLetterPressed,
+	isAltGraphChar,
+	isComposing
+} = require( '../../skins.citizen.scripts/keyboardLayout.js' );
 
 // Mac vs everywhere-else copy shortcut, computed once. Mac users
 // recognise ⌘C; Windows/Linux users recognise Ctrl+C.
-const IS_MAC = typeof navigator !== 'undefined' &&
-	/Mac|iPhone|iPad/i.test( navigator.platform || '' );
+const IS_MAC = isMacPlatform( typeof navigator !== 'undefined' ? navigator : null );
 const COPY_KBD = IS_MAC ? '⌘C' : 'Ctrl+C';
+
+// Arrow keys are physical; the bindings below are logical (previous/next, and
+// input → action row). CSSJanus mirrors the inline axis for RTL interface
+// languages, so on an RTL wiki the two horizontal arrows have to be swapped
+// before a binding is resolved, or navigation runs backwards on screen.
+const MIRRORED_KEYS = Object.assign( Object.create( null ), {
+	ArrowLeft: 'ArrowRight',
+	ArrowRight: 'ArrowLeft'
+} );
+
+/**
+ * Whether the palette is laid out right-to-left.
+ *
+ * Prefers the element's computed direction so a palette inside a direction
+ * island still resolves correctly, and falls back to the document for the
+ * window between mount and the input existing.
+ *
+ * @param {HTMLElement|null} element
+ * @return {boolean}
+ */
+function isRtlDirection( element ) {
+	// getComputedStyle throws on anything that is not an Element, and the
+	// input reference is null until the header mounts.
+	if (
+		element && element.nodeType === 1 &&
+		typeof window !== 'undefined' && window.getComputedStyle
+	) {
+		// Sample the palette, not the input: it is the palette's inline axis
+		// that CSSJanus mirrors, and a search field is the one element here
+		// likely to acquire a direction of its own (`dir="auto"` resolves to
+		// ltr for a Latin query on an RTL wiki, which would silently switch
+		// the mirror off while the layout stayed flipped).
+		const root = typeof element.closest === 'function' ?
+			( element.closest( '.citizen-command-palette' ) || element ) :
+			element;
+		const direction = window.getComputedStyle( root ).direction;
+		if ( direction ) {
+			return direction === 'rtl';
+		}
+	}
+	return typeof document !== 'undefined' && document.dir === 'rtl';
+}
+
+/**
+ * Map a physical arrow onto the logical direction the bindings are written in.
+ *
+ * @param {string} key
+ * @param {boolean} rtl
+ * @return {string}
+ */
+function toLogicalKey( key, rtl ) {
+	return rtl && MIRRORED_KEYS[ key ] ? MIRRORED_KEYS[ key ] : key;
+}
+
+/**
+ * Mirror the arrow glyphs in a footer hint, so the key it advertises is the
+ * one the user actually has to press.
+ *
+ * @param {string} kbd
+ * @param {boolean} rtl
+ * @return {string}
+ */
+function mirrorHint( kbd, rtl ) {
+	if ( !rtl || typeof kbd !== 'string' ) {
+		return kbd;
+	}
+	// A hint offering both arrows already covers either direction, so swapping
+	// them would only shuffle the glyphs into a stranger order.
+	if ( kbd.includes( '←' ) && kbd.includes( '→' ) ) {
+		return kbd;
+	}
+	return kbd.replace( /[←→]/g, ( glyph ) => ( glyph === '←' ? '→' : '←' ) );
+}
 
 /**
  * Core keybinding registry for the command palette.
@@ -81,6 +161,24 @@ const coreBindings = [
 			event.preventDefault();
 			state.actionNav.deactivate();
 			state.dispatchEscape( state, event );
+			state.focusInput();
+		},
+		hint: null
+	},
+	// Tab steps back to the input rather than closing, mirroring the Escape
+	// ladder above: one key to leave the action row, a second to leave the
+	// palette. Without a binding here the browser would walk focus out of the
+	// palette from the action row instead.
+	{
+		id: 'action-tab-to-input',
+		zone: 'action',
+		keys: [ 'Tab' ],
+		modifiers: [ 'none', 'shift' ],
+		when: () => true,
+		worksDuringHelp: true,
+		handle: ( state, event ) => {
+			event.preventDefault();
+			state.actionNav.deactivate();
 			state.focusInput();
 		},
 		hint: null
@@ -332,11 +430,17 @@ const coreBindings = [
 	},
 
 	// --- INPUT ZONE: Tab closes the palette ---
+	// `worksDuringHelp` is load-bearing rather than a nicety: without it the
+	// binding is inactive while the help overlay is up, nothing else claims
+	// Tab, and the browser walks focus out of a palette that can no longer be
+	// dismissed — this handler is bound to the palette itself.
 	{
 		id: 'input-tab-close',
 		zone: 'input',
 		keys: [ 'Tab' ],
+		modifiers: [ 'none', 'shift' ],
 		when: () => true,
+		worksDuringHelp: true,
 		handle: ( state, event ) => {
 			event.preventDefault();
 			state.onClose();
@@ -623,7 +727,7 @@ function useKeyboard( options ) {
 			actionsFocused: false,
 			dispatchEscape: null
 		} );
-		const binding = resolveBinding( inputState, { key: 'Escape' }, activeBindings.value );
+		const binding = resolveBinding( inputState, 'Escape', activeBindings.value );
 		if ( binding ) {
 			binding.handle( inputState, event );
 		}
@@ -687,9 +791,12 @@ function useKeyboard( options ) {
 	const keyboardHints = computed( () => {
 		const state = buildState();
 		const zone = state.actionsFocused ? 'action' : 'input';
-		return resolveHints( state, zone, activeBindings.value ).map( ( hint ) => ( {
+		const hints = resolveHints( state, zone, activeBindings.value );
+		const rtl = hints.some( ( hint ) => /[←→]/.test( hint.kbd ) ) &&
+			isRtlDirection( state.inputElement );
+		return hints.map( ( hint ) => ( {
 			msgKey: hint.msgKey,
-			kbd: hint.kbd
+			kbd: mirrorHint( hint.kbd, rtl )
 		} ) );
 	} );
 
@@ -708,6 +815,12 @@ function useKeyboard( options ) {
 	}
 
 	function handleKeydown( event ) {
+		// Acting on the key that commits or cancels a composition would
+		// navigate away from (Enter) or clear (Escape) the query being typed.
+		if ( isComposing( event ) ) {
+			return;
+		}
+
 		// Cmd/Ctrl+C: when nothing is selected and the highlighted item
 		// declares `detail.header.copyValue`, hijack the shortcut to copy
 		// that value. With a selection present, the browser's native copy
@@ -716,7 +829,7 @@ function useKeyboard( options ) {
 			( event.metaKey || event.ctrlKey ) &&
 			!event.altKey &&
 			!event.shiftKey &&
-			( event.key === 'c' || event.key === 'C' ) &&
+			isLetterPressed( event, 'c' ) &&
 			!hasTextSelection() &&
 			core.requestHeaderCopy
 		) {
@@ -732,14 +845,13 @@ function useKeyboard( options ) {
 			}
 		}
 
-		// Ignore events with modifier keys (Shift is allowed for printable chars
-		// like @, >, :, ?).
-		if ( event.altKey || event.ctrlKey || event.metaKey ) {
-			return;
-		}
-		if ( event.shiftKey && event.key.length !== 1 ) {
-			return;
-		}
+		// One reading of the modifier state, shared by the binding lookup and
+		// by the fallbacks below. Bindings declare what they claim; anything
+		// unclaimed stays with the browser and the text field.
+		const modifiers = modifierToken( event, IS_MAC, isAltGraphChar );
+		// `none` is the only state in which a keystroke counts as typed text,
+		// which is what the fallbacks after the dispatcher all act on.
+		const isTypedText = modifiers === 'none';
 
 		const state = buildState();
 		// The actual focus zone is determined by the event target (an action
@@ -755,6 +867,7 @@ function useKeyboard( options ) {
 		// Typing with a chip selected: deselect the chip first, then let the
 		// character flow through to the dispatcher so it lands in the input.
 		if (
+			isTypedText &&
 			!state.actionsFocused &&
 			!state.helpVisible &&
 			tokens.selectedTokenIndex &&
@@ -766,7 +879,15 @@ function useKeyboard( options ) {
 			state.selectedTokenIndex = -1;
 		}
 
-		const binding = resolveBinding( state, event, activeBindings.value );
+		// Resolve against the logical key, but hand the handler the real event —
+		// the only handler that re-reads event.key distinguishes ArrowUp from
+		// ArrowDown, which the mirror never touches. Direction is only sampled
+		// for the two keys that can be mirrored, so ordinary typing does not
+		// pay for a style read.
+		const logicalKey = MIRRORED_KEYS[ event.key ] ?
+			toLogicalKey( event.key, isRtlDirection( state.inputElement ) ) :
+			event.key;
+		const binding = resolveBinding( state, logicalKey, activeBindings.value, modifiers );
 		if ( binding ) {
 			binding.handle( state, event );
 			return;
@@ -774,13 +895,17 @@ function useKeyboard( options ) {
 
 		// Help-mode swallow: while the overlay is up, eat printable keys and
 		// Backspace so they neither modify input nor trigger modes/tokens.
-		if ( state.helpVisible && ( event.key.length === 1 || event.key === 'Backspace' ) ) {
+		if (
+			isTypedText && state.helpVisible &&
+			( event.key.length === 1 || event.key === 'Backspace' )
+		) {
 			event.preventDefault();
 			return;
 		}
 
 		// Action-zone fallback: typing redirects to the input field.
 		if (
+			isTypedText &&
 			state.actionsFocused &&
 			(
 				event.key.length === 1 ||
@@ -800,6 +925,7 @@ function useKeyboard( options ) {
 		// this fallback rather than relying on the help-swallow fallback above
 		// firing first.
 		if (
+			isTypedText &&
 			!state.actionsFocused &&
 			!state.helpVisible &&
 			!state.activeMode &&

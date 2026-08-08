@@ -14,6 +14,8 @@
 			v-if="isOpen"
 			ref="paletteRoot"
 			class="citizen-command-palette"
+			role="search"
+			:aria-label="$i18n( 'citizen-command-palette-label' ).text()"
 			:data-palette-layout="paletteLayout"
 			@keydown="keyboard.handleKeydown"
 		>
@@ -27,6 +29,8 @@
 				:active-mode="activeMode"
 				:active-mode-context="activeModeContext"
 				:help-visible="helpVisible"
+				:expanded="flatItems.length > 0"
+				:active-descendant-id="activeDescendantId"
 				@exit-mode="exitMode"
 				@close-help="orchCloseHelp"
 				@update:free-text="handleFreeTextUpdate( $event )"
@@ -527,6 +531,10 @@ module.exports = exports = defineComponent( {
 			handleRemoveToken,
 			// Keyboard
 			keyboard,
+			// Exposed at the top level so Vue unwraps the ref for the template.
+			// Reading it off `keyboard` would bind the Ref object itself, which
+			// renders as "[object Object]" and resolves to no element.
+			activeDescendantId: keyboard.activeDescendantId,
 			highlightedHelpMode,
 			viewportHasDetail,
 			uniformItemType,
@@ -538,8 +546,12 @@ module.exports = exports = defineComponent( {
 			highlightedItemDetail,
 			copyTrigger,
 			// Methods
-			// eslint-disable-next-line vue/no-unused-properties -- Used externally by init.js
+			// eslint-disable-next-line vue/no-unused-properties -- Used by skins.citizen.scripts/commandPalette.js
 			open,
+			// Restore focus to the search input without resetting anything, for
+			// a trigger fired while the palette is already on screen.
+			// eslint-disable-next-line vue/no-unused-properties -- Used by skins.citizen.scripts/commandPalette.js
+			focus: () => nextTick( focusInput ),
 			close,
 			selectResult,
 			handleAction,

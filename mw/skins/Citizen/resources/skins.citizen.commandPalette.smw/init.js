@@ -160,17 +160,17 @@ function adaptSmwResult( subject, index ) {
  * @param {string} browse The smwbrowse type ('property' or 'category').
  * @param {string} typePrefix The item type prefix (e.g. 'smw-property').
  * @param {string} icon The icon for result items.
- * @return {function(string): Promise<Array>} Fetcher function.
+ * @return {function(string, AbortSignal=): Promise<Array>} Fetcher function.
  */
 function createSmwBrowseFetcher( browse, typePrefix, icon ) {
-	return function ( fragment ) {
+	return function ( fragment, signal ) {
 		return new mw.Api().get( {
 			action: 'smwbrowse',
 			browse: browse,
 			params: JSON.stringify( { search: fragment, limit: 10 } ),
 			maxage: config.wgSearchSuggestCacheExpiry,
 			smaxage: config.wgSearchSuggestCacheExpiry
-		} ).then( ( data ) => {
+		}, { signal } ).then( ( data ) => {
 			const items = Object.values( data.query || {} );
 			return items.map( ( item, index ) => ( {
 				id: 'citizen-command-palette-item-' + typePrefix + '-' + index,
@@ -180,7 +180,7 @@ function createSmwBrowseFetcher( browse, typePrefix, icon ) {
 				highlightQuery: true
 			} ) );
 		} ).catch( ( error ) => {
-			if ( error !== 'AbortError' ) {
+			if ( error && error.name !== 'AbortError' ) {
 				mw.log.error( '[commandPalette] SMW ' + browse + ' query failed:', error );
 			}
 			return [];
@@ -196,16 +196,17 @@ const fetchCategorySuggestions = createSmwBrowseFetcher( 'category', 'smw-catego
  *
  * @param {string} fragment The partial value to search for.
  * @param {string} property The property name to fetch values for.
+ * @param {AbortSignal} [signal] Forwarded to mw.Api as an ajax option.
  * @return {Promise<Array>} Array of CommandPaletteItems.
  */
-function fetchValueSuggestions( fragment, property ) {
+function fetchValueSuggestions( fragment, property, signal ) {
 	return new mw.Api().get( {
 		action: 'smwbrowse',
 		browse: 'pvalue',
 		params: JSON.stringify( { search: fragment, property: property, limit: 10 } ),
 		maxage: config.wgSearchSuggestCacheExpiry,
 		smaxage: config.wgSearchSuggestCacheExpiry
-	} ).then( ( data ) => {
+	}, { signal } ).then( ( data ) => {
 		const values = data.query || [];
 		return values.map( ( value, index ) => ( {
 			id: 'citizen-command-palette-item-smw-value-' + index,
@@ -216,7 +217,7 @@ function fetchValueSuggestions( fragment, property ) {
 			highlightQuery: true
 		} ) );
 	} ).catch( ( error ) => {
-		if ( error !== 'AbortError' ) {
+		if ( error && error.name !== 'AbortError' ) {
 			mw.log.error( '[commandPalette] SMW pvalue query failed:', error );
 		}
 		return [];
@@ -282,9 +283,10 @@ function extractFreeText( fullQuery, tokens ) {
  * Executes an Ask API query and returns adapted results.
  *
  * @param {string} askQuery The complete Ask query string.
+ * @param {AbortSignal} [signal] Forwarded to mw.Api as an ajax option.
  * @return {Promise<Array>} Array of CommandPaletteItems.
  */
-async function executeAskQuery( askQuery ) {
+async function executeAskQuery( askQuery, signal ) {
 	const api = new mw.Api();
 	try {
 		const data = await api.get( {
@@ -293,7 +295,7 @@ async function executeAskQuery( askQuery ) {
 			format: 'json',
 			maxage: config.wgSearchSuggestCacheExpiry,
 			smaxage: config.wgSearchSuggestCacheExpiry
-		} );
+		}, { signal } );
 
 		const results = data?.query?.results;
 		if ( !results ) {
@@ -302,7 +304,7 @@ async function executeAskQuery( askQuery ) {
 
 		return Object.values( results ).map( adaptSmwResult );
 	} catch ( error ) {
-		if ( error !== 'AbortError' ) {
+		if ( error && error.name !== 'AbortError' ) {
 			mw.log.error( '[commandPalette] SMW query failed:', error );
 		}
 		return [];
@@ -313,12 +315,13 @@ async function executeAskQuery( askQuery ) {
  * Fetches results from the SMW Ask API.
  *
  * @param {string} subQuery The full serialized query (token raws + freeText).
- * @param {AbortSignal} [_signal] Unused — mw.Api does not support AbortSignal.
- *   Kept for interface conformance with PaletteMode.getResults.
+ * @param {AbortSignal} [signal] Forwarded to mw.Api. Honoured on
+ *   MediaWiki 1.44+; on 1.43 the option is ignored, so the request
+ *   simply runs to completion.
  * @param {Array} [tokens] Optional tokens array.
  * @return {Promise<Array>} Array of CommandPaletteItems.
  */
-async function getSmwResults( subQuery, _signal, tokens ) {
+async function getSmwResults( subQuery, signal, tokens ) {
 	// Extract the free-text tail for incomplete-condition detection.
 	// The orchestrator passes the full query (token raws + freeText),
 	// but the parser needs only the freeText portion.
@@ -330,7 +333,7 @@ async function getSmwResults( subQuery, _signal, tokens ) {
 	const incomplete = parseIncompleteCondition( freeText );
 	if ( incomplete ) {
 		if ( incomplete.stage === 'printout' ) {
-			return fetchPropertySuggestions( incomplete.fragment )
+			return fetchPropertySuggestions( incomplete.fragment, signal )
 				.then( ( items ) => items.map( ( item ) => Object.assign(
 					{}, item, {
 						id: item.id.replace( 'smw-property', 'smw-printout' ),
@@ -340,7 +343,7 @@ async function getSmwResults( subQuery, _signal, tokens ) {
 				) ) );
 		}
 		if ( incomplete.stage === 'property' ) {
-			return fetchPropertySuggestions( incomplete.fragment ).then( ( items ) => {
+			return fetchPropertySuggestions( incomplete.fragment, signal ).then( ( items ) => {
 				// Surface "Category" as a primitive at the top of property
 				// suggestions so users can discover the category-namespace
 				// path (`[[Category:...]]`) without knowing the syntax.
@@ -362,16 +365,16 @@ async function getSmwResults( subQuery, _signal, tokens ) {
 			} );
 		}
 		if ( incomplete.stage === 'category' ) {
-			return fetchCategorySuggestions( incomplete.fragment );
+			return fetchCategorySuggestions( incomplete.fragment, signal );
 		}
 		if ( incomplete.stage === 'value' ) {
-			return fetchValueSuggestions( incomplete.fragment, incomplete.property );
+			return fetchValueSuggestions( incomplete.fragment, incomplete.property, signal );
 		}
 		return [];
 	}
 
 	if ( askQuery.trim() && isCompleteAskQuery( askQuery ) ) {
-		return executeAskQuery( askQuery );
+		return executeAskQuery( askQuery, signal );
 	}
 
 	return [];

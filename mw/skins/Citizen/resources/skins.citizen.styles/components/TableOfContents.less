@@ -194,6 +194,7 @@
 
 @media ( min-width: @min-width-breakpoint-desktop ) {
 	.citizen-toc {
+		.mixin-citizen-header-offset-block-start();
 		position: -webkit-sticky;
 		position: sticky;
 		top: var( --header-offset-block-start );
@@ -218,10 +219,6 @@
 			.citizen-menu__card-content {
 				overflow: visible;
 				opacity: 1;
-			}
-
-			.citizen-ui-icon {
-				content-visibility: visible;
 			}
 		}
 

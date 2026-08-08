@@ -164,7 +164,7 @@ Every entry must have at minimum an `id`, `triggers`, and `description`. If the 
 | `icon` | `Object` | No | Codex icon for the header when the mode is active. Modes only. |
 | `compactResults` | `boolean` | No | Render results in a denser layout — a small icon instead of a thumbnail and the description inline beside the label. Use this for command-style modes whose items don't have real thumbnail images. Ignored in gallery layout. Modes only. |
 | `layout` | `'list' \| 'gallery'` | No | Result layout. `'list'` (default) renders a vertical list. `'gallery'` renders a tiled grid for thumbnail-driven content like media browsers, and widens the palette to fit. Modes only. |
-| `getResults` | `function` | No | `(subQuery, signal?, tokens?, modeContext?) => Promise<Array>` — if provided, this entry is a mode. The optional fourth argument is the current [mode context](#mode-context) stack. |
+| `getResults` | `function` | No | `(subQuery, signal?, tokens?, modeContext?) => Promise<Array>` — if provided, this entry is a mode. The optional fourth argument is the current [mode context](#mode-context) stack. `signal` is honoured by `mw.Api` on MediaWiki 1.44+ and ignored on 1.43. |
 | `getItemDetail` | `function` | No | `(item, signal?) => Promise<Object>` — lazy detail-pane data for the highlighted item. Use this when the detail is too heavy to compute for every item upfront (the file mode uses it for image metadata and licensing). Modes only. |
 | `onResultSelect` | `function` | No | `(item) => { action, payload }` — handles selection of a result item. |
 | `headerLabel` | `function` | No | `(modeContext) => string \| null` — replaces the input placeholder with a custom label. Return `null` to fall back to the regular placeholder — useful for showing a breadcrumb only when the mode is drilled in. Typically used with [mode context](#mode-context). Modes only. |
@@ -294,7 +294,8 @@ keybindings: [
 | :--- | :--- | :--- |
 | `id` | `string` | Unique binding identifier (used for debugging). |
 | `zone` | `'input' \| 'action'` | Which focus zone the binding applies to. |
-| `keys` | `string[]` | Event `key` values that fire `handle`. An empty array marks the binding as hint-only. |
+| `keys` | `string[]` | Event `key` values that fire `handle`. An empty array marks the binding as hint-only. Declare `ArrowLeft`/`ArrowRight` logically (previous/next) — the physical arrow is mirrored on RTL interface languages. |
+| `modifiers` | `string \| string[]` | Which modifier state the binding claims: `none` (the default), `shift`, `accel` (Ctrl, or Command on a Mac), `accel+shift`, or `any`. An array accepts several. A character composed with AltGr and a capital typed with Shift both count as `none` — they are typed text, not chords — so a binding on `?` or `@` needs nothing special. Anything not named stays with the browser. |
 | `when` | `function` | `(state) => boolean` — predicate over the dispatch state. False suppresses both the handler and the hint. |
 | `handle` | `function` | `(state, event) => void` — called when a `keys` entry matches and `when` passes. Call `event.preventDefault()` to claim the keystroke. |
 | `worksDuringHelp` | `boolean` | When true, the binding fires even with the help overlay open. Defaults to false. |
@@ -305,7 +306,7 @@ Hint shape:
 | Property | Type | Description |
 | :--- | :--- | :--- |
 | `msgKey` | `string` | i18n message key for the hint label. |
-| `kbd` | `string` | Keyboard glyph shown next to the label (e.g. `↵`, `↑↓`, `⌘C`). |
+| `kbd` | `string` | Keyboard glyph shown next to the label (e.g. `↵`, `↑↓`, `⌘C`). A lone `←` or `→` is swapped on RTL interface languages so the hint names the key the user actually presses; a hint offering both is left alone. |
 | `order` | `number` | Sort order within the footer (lower = leftmost). |
 
 Mode keybindings are prepended to the core bindings while the mode is active, so a mode binding wins on key collisions within its own focus zone. Footer hints derive from the same list, so a hint is visible iff its handler will fire — no risk of stale hints.
