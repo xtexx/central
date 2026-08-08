@@ -4,8 +4,9 @@ const { createNotifications } = require( '../../../resources/skins.citizen.scrip
 const mw = require( '../mocks/mw.js' );
 globalThis.mw = mw;
 
-// Mirrors Notifications.mustache: a dropdown with a summary trigger and a
-// card whose content holds the skeleton, hidden error block, and see-all link.
+// Mirrors Notifications.mustache: a dropdown with a summary trigger and a card
+// whose content holds the placeholder frame (header, rows, footer) and the
+// hidden error block.
 const FIXTURE = `
 <div class="citizen-dropdown">
 	<details id="citizen-notifications-details" class="citizen-dropdown-details">
@@ -14,11 +15,21 @@ const FIXTURE = `
 	<div id="citizen-notifications-dropdown__card" class="citizen-menu__card">
 		<div class="citizen-menu__card-content">
 			<div id="citizen-notifications-content" class="citizen-notifications">
-				<div class="citizen-notifications__skeleton"></div>
-				<div class="citizen-notifications__error" hidden>
-					<button class="citizen-notifications__retry" type="button">Retry</button>
+				<div class="citizen-notifications__placeholder">
+					<div class="citizen-notifications__placeholder-header">
+						<h2 class="citizen-notifications__placeholder-title">Notifications</h2>
+					</div>
+					<div class="citizen-notifications__placeholder-body">
+						<div class="citizen-notifications__placeholder-item"></div>
+					</div>
+					<div class="citizen-notifications__error" hidden>
+						<button class="citizen-notifications__retry" type="button">Retry</button>
+					</div>
+					<footer class="citizen-notifications__placeholder-footer">
+						<a class="citizen-notifications__placeholder-history" href="/wiki/Special:Notifications">See all</a>
+						<a class="citizen-notifications__placeholder-prefs" href="/wiki/Special:Preferences#mw-prefsection-echo">Preferences</a>
+					</footer>
 				</div>
-				<a class="citizen-notifications__see-all" href="/wiki/Special:Notifications">See all</a>
 			</div>
 		</div>
 	</div>
@@ -26,6 +37,7 @@ const FIXTURE = `
 
 let mockApp;
 let mockRefresh;
+let mockMarkSeen;
 let mockInitApp;
 let resolveLoad;
 let rejectLoad;
@@ -47,13 +59,36 @@ function setOpen( open ) {
 	return tick();
 }
 
+/**
+ * Fire an intent event on the bell.
+ *
+ * @param {string} type
+ */
+function intent( type ) {
+	document.querySelector( '.citizen-dropdown-summary' )
+		.dispatchEvent( new Event( type ) );
+}
+
+// The preview the error stands in for; the frame around it stays put.
+function preview() {
+	return document.querySelector( '.citizen-notifications__placeholder-body' );
+}
+
+function footerLinks() {
+	return Array.from(
+		document.querySelectorAll( '.citizen-notifications__placeholder-footer a' )
+	);
+}
+
 beforeEach( () => {
 	document.body.innerHTML = FIXTURE;
 	mw.loader.load.mockClear();
 	mw.loader.using.mockReset();
+	mw.requestIdleCallback.mockClear();
 
 	mockRefresh = vi.fn();
-	mockApp = { refresh: mockRefresh };
+	mockMarkSeen = vi.fn();
+	mockApp = { refresh: mockRefresh, markSeen: mockMarkSeen };
 	mockInitApp = vi.fn().mockReturnValue( mockApp );
 	const req = vi.fn().mockReturnValue( { initApp: mockInitApp } );
 	const usingPromise = new Promise( ( resolve, reject ) => {
@@ -81,13 +116,102 @@ describe( 'notifications trigger', () => {
 		expect( mw.loader.using ).not.toHaveBeenCalled();
 	} );
 
-	it( 'prefetches the module on pointer intent over the summary', () => {
+	it( 'mounts the panel on pointer intent, before the card is opened', async () => {
 		setup();
 
-		document.querySelector( '.citizen-dropdown-summary' )
-			.dispatchEvent( new Event( 'pointerenter' ) );
+		intent( 'pointerenter' );
+		resolveLoad();
+		await tick();
 
-		expect( mw.loader.load ).toHaveBeenCalledWith( 'skins.citizen.notifications' );
+		expect( mw.loader.using ).toHaveBeenCalledWith( 'skins.citizen.notifications' );
+		expect( mockInitApp ).toHaveBeenCalledTimes( 1 );
+		expect( document.getElementById( 'citizen-notifications-details' ).open ).toBe( false );
+	} );
+
+	it( 'defers a pointer-intent mount to idle', async () => {
+		setup();
+
+		intent( 'pointerenter' );
+		resolveLoad();
+		await tick();
+
+		expect( mw.requestIdleCallback ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	it( 'mounts synchronously on touch intent, where an idle callback would lose the race', async () => {
+		setup();
+
+		intent( 'touchstart' );
+		resolveLoad();
+		await tick();
+
+		expect( mockInitApp ).toHaveBeenCalledTimes( 1 );
+		expect( mw.requestIdleCallback ).not.toHaveBeenCalled();
+	} );
+
+	it( 'does not mark the streams seen on intent alone', async () => {
+		setup();
+
+		intent( 'pointerenter' );
+		resolveLoad();
+		await tick();
+
+		expect( mockMarkSeen ).not.toHaveBeenCalled();
+
+		await setOpen( true );
+
+		expect( mockMarkSeen ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	it( 'refreshes the already-mounted panel when opened after intent', async () => {
+		setup();
+
+		intent( 'pointerenter' );
+		resolveLoad();
+		await tick();
+		await setOpen( true );
+
+		expect( mw.loader.using ).toHaveBeenCalledTimes( 1 );
+		expect( mockRefresh ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	// The two halves of the `app || loading` guard on the deferred mount, one
+	// test each: a click can beat the intent mount, or be beaten by it.
+	it( 'mounts once when a click beats the intent-driven mount', async () => {
+		setup();
+
+		intent( 'pointerenter' );
+		// The card opens while the module is still in flight, so the click path
+		// takes over the mount the intent path had queued.
+		await setOpen( true );
+		resolveLoad();
+		await tick();
+
+		expect( mockInitApp ).toHaveBeenCalledTimes( 1 );
+		expect( mockMarkSeen ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	it( 'mounts once when the idle mount lands after a click already mounted', async () => {
+		// Hold the idle callback rather than running it inline, so the deferred
+		// mount genuinely lands after the click-driven one.
+		let idleCallback = null;
+		mw.requestIdleCallback.mockImplementationOnce( ( fn ) => {
+			idleCallback = fn;
+		} );
+		setup();
+
+		intent( 'pointerenter' );
+		await setOpen( true );
+		resolveLoad();
+		await tick();
+
+		expect( mockInitApp ).toHaveBeenCalledTimes( 1 );
+
+		// `loading` is back to false by now, so only the mounted app itself can
+		// stop this second mount.
+		idleCallback();
+
+		expect( mockInitApp ).toHaveBeenCalledTimes( 1 );
 	} );
 
 	it( 'lazy-loads and mounts the panel into the card on first open', async () => {
@@ -95,8 +219,8 @@ describe( 'notifications trigger', () => {
 
 		await setOpen( true );
 		expect( mw.loader.using ).toHaveBeenCalledWith( 'skins.citizen.notifications' );
-		// Skeleton revealed while loading.
-		expect( document.querySelector( '.citizen-notifications__skeleton' ).hidden ).toBe( false );
+		// Placeholder revealed while loading.
+		expect( preview().hidden ).toBe( false );
 
 		resolveLoad();
 		await tick();
@@ -105,6 +229,30 @@ describe( 'notifications trigger', () => {
 		expect( mockInitApp ).toHaveBeenCalledWith( contentEl, expect.objectContaining( {
 			onCountsChange: expect.any( Function )
 		} ) );
+		expect( mockMarkSeen ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	it( 'hands the panel the unread count the server rendered', async () => {
+		setup();
+
+		await setOpen( true );
+		resolveLoad();
+		await tick();
+
+		expect( mockInitApp.mock.calls[ 0 ][ 1 ].initialCount ).toBe( 1 );
+	} );
+
+	it( 'reports an unknown count as null rather than guessing', async () => {
+		// Markup cached before the counter attribute existed.
+		document.querySelector( '.citizen-dropdown-summary' )
+			.removeAttribute( 'data-counter-text' );
+		setup();
+
+		await setOpen( true );
+		resolveLoad();
+		await tick();
+
+		expect( mockInitApp.mock.calls[ 0 ][ 1 ].initialCount ).toBeNull();
 	} );
 
 	it( 'refreshes instead of reloading on subsequent opens', async () => {
@@ -117,8 +265,10 @@ describe( 'notifications trigger', () => {
 
 		await setOpen( false );
 		await setOpen( true );
+
 		expect( mw.loader.using ).toHaveBeenCalledTimes( 1 );
 		expect( mockRefresh ).toHaveBeenCalledTimes( 1 );
+		expect( mockMarkSeen ).toHaveBeenCalledTimes( 2 );
 	} );
 
 	it( 'updates the bell badge when counts change', async () => {
@@ -145,11 +295,41 @@ describe( 'notifications trigger', () => {
 		await tick();
 
 		expect( document.querySelector( '.citizen-notifications__error' ).hidden ).toBe( false );
-		expect( document.querySelector( '.citizen-notifications__skeleton' ).hidden ).toBe( true );
+		expect( preview().hidden ).toBe( true );
 
 		// Retry re-attempts the load.
 		document.querySelector( '.citizen-notifications__retry' ).click();
 		expect( mw.loader.using ).toHaveBeenCalledTimes( 2 );
+	} );
+
+	it( 'keeps the footer links reachable when the module fails to load', async () => {
+		setup();
+
+		await setOpen( true );
+		rejectLoad();
+		await tick();
+
+		// The error replaces the preview, not the frame around it: with the
+		// module unreachable these links are the only way left to get to the
+		// notifications and preferences pages.
+		const links = footerLinks();
+		expect( links.length ).toBeGreaterThan( 0 );
+		links.forEach( ( link ) => {
+			expect( link.closest( '[hidden]' ) ).toBeNull();
+		} );
+	} );
+
+	it( 'stays silent when an intent-driven load fails', async () => {
+		setup();
+
+		intent( 'pointerenter' );
+		rejectLoad();
+		await tick();
+
+		// Nothing was asked for yet, so the error block stays hidden; the
+		// click path owns surfacing it.
+		expect( document.querySelector( '.citizen-notifications__error' ).hidden ).toBe( true );
+		expect( preview().hidden ).toBe( false );
 	} );
 
 	it( 'shows the error and stays reopenable when mounting throws', async () => {
@@ -164,6 +344,8 @@ describe( 'notifications trigger', () => {
 
 		// The thrown mount surfaces the error instead of silently hanging.
 		expect( document.querySelector( '.citizen-notifications__error' ).hidden ).toBe( false );
+		// A mount that never completed must not be marked seen.
+		expect( mockMarkSeen ).not.toHaveBeenCalled();
 
 		// `loading` was reset, so reopening re-attempts the load (not a no-op).
 		mw.loader.using.mockReturnValue( Promise.resolve(

@@ -1,7 +1,7 @@
 <template>
 	<li
 		class="citizen-notifications__item"
-		:class="{ 'citizen-notifications__item--unread': !item.read }"
+		:class="{ 'citizen-notifications__item--read': item.read }"
 		@click="onClick"
 	>
 		<!--
@@ -16,6 +16,13 @@
 			:href="item.primaryUrl"
 			:aria-label="plainHeader"
 		></a>
+		<span class="citizen-notifications__item-badge" aria-hidden="true">
+			<span
+				v-if="iconStyle"
+				class="citizen-notifications__item-icon"
+				:style="iconStyle"
+			></span>
+		</span>
 		<div class="citizen-notifications__item-content">
 			<div class="citizen-notifications__item-meta">
 				<span
@@ -53,6 +60,7 @@
 
 <script>
 const { defineComponent, computed } = require( 'vue' );
+const formatRelativeTime = require( '../relativeTime.js' );
 
 // Action links rendered as quiet progressive Codex buttons; links need the
 // fake-button variants since they are <a>, not <button>.
@@ -64,58 +72,10 @@ const ACTION_BUTTON_CLASS = [
 	'cdx-button--action-progressive'
 ];
 
-// Largest-first so we pick the coarsest unit that fits.
-const RELATIVE_UNITS = [
-	[ 'year', 31536000 ],
-	[ 'month', 2592000 ],
-	[ 'week', 604800 ],
-	[ 'day', 86400 ],
-	[ 'hour', 3600 ],
-	[ 'minute', 60 ]
-];
-
-/**
- * Format a unix timestamp (seconds) as a compact localized relative time via
- * Intl's narrow style, e.g. "now", "2m ago", "5h ago", "3d ago". Returns ''
- * for a missing/invalid timestamp, where Intl is unsupported, or where the
- * user language is not a valid BCP 47 tag.
- *
- * @param {number} unixSeconds
- * @return {string}
- */
-function formatRelativeTime( unixSeconds ) {
-	// Captured through a guarded reference so unsupported browsers degrade to
-	// no timestamp rather than throwing (mirrors lastModified.js).
-	// eslint-disable-next-line compat/compat
-	const RelativeTimeFormat = typeof Intl !== 'undefined' && Intl.RelativeTimeFormat;
-	if ( !unixSeconds || !RelativeTimeFormat ) {
-		return '';
-	}
-	const deltaSeconds = unixSeconds - Math.floor( Date.now() / 1000 ); // negative = past
-	const abs = Math.abs( deltaSeconds );
-	const match = RELATIVE_UNITS.find( ( unit ) => abs >= unit[ 1 ] );
-	const unitName = match ? match[ 0 ] : 'second';
-	const divisor = match ? match[ 1 ] : 1;
-
-	let rtf;
-	try {
-		rtf = new RelativeTimeFormat(
-			mw.config.get( 'wgUserLanguage' ) || undefined,
-			{ style: 'narrow', numeric: 'auto' }
-		);
-	} catch ( e ) {
-		// A structurally invalid BCP 47 tag (e.g. the x-xss testing
-		// pseudo-language) makes the constructor throw. Degrade to no relative
-		// timestamp rather than breaking the notification row's render.
-		mw.log.warn(
-			'[Citizen] Skipping the notification relative time; the interface language is not a valid BCP 47 tag:',
-			e
-		);
-		return '';
-	}
-
-	return rtf.format( Math.round( deltaSeconds / divisor ), unitName );
-}
+// Only URL shapes Echo legitimately emits (absolute http(s),
+// protocol-relative, or root-relative), with no characters that could
+// escape a CSS url() string. Anything else renders no glyph.
+const ICON_URL_PATTERN = /^(?:https?:\/\/|\/\/|\/)[^"'\\\s]*$/;
 
 // @vue/component
 module.exports = exports = defineComponent( {
@@ -138,18 +98,35 @@ module.exports = exports = defineComponent( {
 			return ( el.textContent || '' ).trim();
 		} );
 
+		// The icon file only contributes its alpha shape: it is applied as a
+		// mask and painted with theme tokens, so any icon matches any theme.
+		const iconStyle = computed( () => {
+			const url = props.item.iconUrl || '';
+			if ( !ICON_URL_PATTERN.test( url ) ) {
+				return null;
+			}
+			return { '--citizen-notification-icon': `url( "${ url }" )` };
+		} );
+
 		/**
 		 * Whole-row click: mark read once. Navigation to the primary action is
 		 * handled natively by the stretched link (or by a nested link the user
 		 * clicked); the click bubbles here either way.
 		 */
 		function onClick() {
-			if ( !props.item.read ) {
-				emit( 'read', props.item.id );
+			if ( props.item.read ) {
+				return;
 			}
+			emit( 'read', props.item.id );
 		}
 
-		return { formattedTime, plainHeader, actionButtonClass: ACTION_BUTTON_CLASS, onClick };
+		return {
+			formattedTime,
+			plainHeader,
+			iconStyle,
+			actionButtonClass: ACTION_BUTTON_CLASS,
+			onClick
+		};
 	}
 } );
 </script>
@@ -160,28 +137,48 @@ module.exports = exports = defineComponent( {
 .citizen-notifications {
 	&__item {
 		position: relative;
+		display: grid;
+		grid-template-columns: auto 1fr;
+		column-gap: var( --space-sm );
 		padding: var( --space-sm ) var( --space-md );
 		cursor: pointer;
-		border-bottom: var( --border-subtle );
 		transition: background-color var( --transition-duration-base );
 
 		&:hover {
 			background-color: var( --color-surface-1--hover );
 		}
 
-		// Unread rows get a subtle tint (the panel's only read/unread cue).
-		&--unread {
-			background-color: var( --color-surface-2 );
+		// Everything here is waiting to be read, so the resting state is plain.
+		// A row recedes once read, marking what you have dealt with this
+		// session; the next open drops it from the list entirely. This shifts
+		// the surface and steps the text down to the palette's own subtle
+		// colour rather than fading the row, which would take the text below
+		// the contrast floor and dim the focus ring with it.
+		&--read {
+			background-color: var( --color-surface-1 );
 
-			&:hover {
-				background-color: var( --color-surface-2--hover );
+			.citizen-notifications__item-header {
+				color: var( --color-subtle );
 			}
 		}
 	}
 
+	// The divider belongs between rows, never after the last one — a trailing
+	// line would hang under the end of the list, worst of all above the
+	// borderless footer.
+	&__item + &__item {
+		border-top: var( --border-subtle );
+	}
+
 	// Stretched primary link: an empty link whose ::after is the row-wide hit
-	// area and focus surface.
+	// area and focus surface. Taken out of flow so it is not a grid item of the
+	// row — otherwise it would claim the badge's column and push the content on
+	// to a second row. Its box is the row's padding box, so the ::after below
+	// still resolves to exactly the area it covered before.
 	&__item-primary {
+		position: absolute;
+		inset: 0;
+
 		&::after {
 			position: absolute;
 			inset: 0;
@@ -206,6 +203,33 @@ module.exports = exports = defineComponent( {
 	&__item-link {
 		position: relative;
 		z-index: 2;
+	}
+
+	// Decorative icon badge: neutral circle, glyph masked from the backend's
+	// icon file and painted with the text ink so every theme restyles it.
+	&__item-badge {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		margin-block-start: 0.125rem;
+		background-color: var( --color-surface-3 );
+		border-radius: var( --border-radius-circle );
+	}
+
+	&__item-icon {
+		width: 1rem;
+		height: 1rem;
+		background-color: var( --color-base );
+		-webkit-mask-image: var( --citizen-notification-icon );
+		mask-image: var( --citizen-notification-icon );
+		-webkit-mask-repeat: no-repeat;
+		mask-repeat: no-repeat;
+		-webkit-mask-position: center;
+		mask-position: center;
+		-webkit-mask-size: contain;
+		mask-size: contain;
 	}
 
 	&__item-content {

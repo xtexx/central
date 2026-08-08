@@ -16,6 +16,7 @@
  * @property {string} [icon] Optional SVG icon string or object.
  * @property {string} label Metadata label (e.g., matched title for redirect).
  * @property {boolean} [highlightQuery] Whether to highlight the query in the label.
+ * @property {'success'|'error'} [status] Optional status tint for the badge (e.g. the size-delta direction in the history mode).
  */
 
 /**
@@ -54,11 +55,22 @@
  */
 
 /**
+ * Media block rendered at the top of the detail panel.
+ *
+ * @typedef {Object} CommandPaletteItemDetailMedia
+ * @property {string} src Image URL; empty string when the item has no renderable thumbnail.
+ * @property {?number} width Intrinsic width, when known.
+ * @property {?number} height Intrinsic height, when known.
+ * @property {Object|null} [placeholderIcon] Codex icon shown while loading, on load error, or when `src` is empty.
+ */
+
+/**
  * Detail data shown in the side panel when an item is focused.
  *
  * @typedef {Object} CommandPaletteItemDetail
  * @property {Array<CommandPaletteDetailPair>} [pairs] Key-value pairs to display.
  * @property {CommandPaletteItemDetailHeader} [header] Optional header rendered above the pairs.
+ * @property {CommandPaletteItemDetailMedia} [media] Optional media block rendered above the header and pairs.
  */
 
 /**
@@ -77,6 +89,7 @@
  * @property {Array<CommandPaletteItemAction>} [actions] Optional list of actions available for the item.
  * @property {string} [value] Optional mode-specific payload associated with the item (e.g. the namespace trigger '/ns:', or the SMW property name for value suggestions).
  * @property {boolean} [highlightQuery] Whether to highlight the query in the label.
+ * @property {string} [highlightTerm] Overrides the term highlighted in the label — set by providers whose sub-query differs from the full input. Falls back to the current search query.
  * @property {CommandPaletteItemDetail} [detail] Optional detail data shown in the side panel when focused.
  * @property {string} [source] Identifier of the provider that generated this item (e.g., 'recent', 'command', 'search').
  * @property {boolean} [isMouseClick] True if the selection was triggered by a mouse click.
@@ -122,7 +135,8 @@
  * @property {function(string, Array?): StateContent} [noResults] Returns content shown when query produces no results. Receives the query string and optional tokens array. Falls back to default no-results messaging.
  * @property {TokenPattern|TokenPattern[]} [tokenPattern] Optional token detection pattern(s) for auto-tokenization.
  * @property {PaletteHelp} [help] Optional content surfaced by the help overlay when this mode is active.
- * @property {function(string, AbortSignal?, Array?, Array?): Promise<CommandPaletteItem[]>} getResults Returns result items for the given sub-query. Optional signal for abort, optional tokens array, optional mode context array (only meaningful for modes that opt in to drill-down state).
+ * @property {function(string, AbortSignal?, Array?, Array?): Promise<CommandPaletteItem[]>} getResults Returns result items for the given sub-query. Optional signal for abort, optional tokens array, optional mode context array (only meaningful for modes that opt in to drill-down state). The signal is honoured by mw.Api on MediaWiki 1.44+ and ignored on 1.43.
+ * @property {function(CommandPaletteItem, AbortSignal?): Promise<Object>} [getItemDetail] Lazy detail-pane data for the highlighted item, resolving to `{ description, pairs }` — each field is merged into the item's `detail` when present. Use when the data is too heavy to compute for every item upfront. Same signal caveat as `getResults`.
  * @property {function(CommandPaletteItem): (CommandPaletteActionResult|Promise<CommandPaletteActionResult>)} [onResultSelect] Handles selection of a result item.
  * @property {function(Array): string} [headerLabel] Optional breadcrumb label rendered in the header. Receives the current modeContext stack. Falls back to the input placeholder when absent.
  */
@@ -159,6 +173,8 @@
  * @typedef {Object} KeyBindingHint
  * @property {string} msgKey i18n message key for the hint label.
  * @property {string} kbd Keyboard glyph shown next to the label (e.g. '↵', '↑↓', '⌘C').
+ *   A lone '←' or '→' is swapped on RTL interface languages so the hint names
+ *   the key the user actually presses.
  * @property {number} [order] Sort order within the footer (lower = leftmost).
  */
 
@@ -170,7 +186,8 @@
  * @typedef {Object} KeyBinding
  * @property {string} id Unique binding identifier (used for debugging).
  * @property {'input'|'action'} zone Which focus zone the binding applies to.
- * @property {string[]} keys Event `key` values that fire `handle`. An empty array marks the binding as hint-only.
+ * @property {string[]} keys Event `key` values that fire `handle`. An empty array marks the binding as hint-only. Declare 'ArrowLeft'/'ArrowRight' logically (previous/next): the palette mirrors the physical arrow on RTL interface languages before resolving.
+ * @property {string|string[]} [modifiers='none'] Which modifier state the binding claims, from 'none', 'shift', 'accel' (Ctrl, or Command on a Mac), 'accel+shift', or 'any'. An array accepts several. A character composed with AltGr, and a capital typed with Shift, count as 'none' — they are typed text, not chords. Anything not named here stays with the browser.
  * @property {function(Object): boolean} when Predicate over the dispatch state — false suppresses both the handler and the hint.
  * @property {function(Object, KeyboardEvent)} handle Called when a `keys` entry matches and `when` passes. Should call `event.preventDefault()` to claim the keystroke.
  * @property {boolean} [worksDuringHelp] When true, the binding fires even with the help overlay open. Defaults to false.
@@ -211,6 +228,15 @@
  */
 
 /**
+ * Action to append a token chip to the input and clear the free text,
+ * without leaving the current mode.
+ *
+ * @typedef {Object} CommandPaletteAddTokenAction
+ * @property {'addToken'} action
+ * @property {{label: string, raw: string, modeId: string, position: string, variant: (string|undefined)}} payload The token to append — the shape TokenPattern matchers produce, plus its owning mode.
+ */
+
+/**
  * Action to toggle the in-palette help overlay.
  *
  * @typedef {Object} CommandPaletteToggleHelpAction
@@ -230,7 +256,7 @@
  * Describes the action the UI should take after an item selection is handled.
  * This is a discriminated union based on the 'action' property.
  *
- * @typedef {CommandPaletteNavigateAction | CommandPaletteExitWithQueryAction | CommandPaletteUpdateQueryAction | CommandPalettePushModeContextAction | CommandPaletteToggleHelpAction | CommandPaletteNoneAction} CommandPaletteActionResult
+ * @typedef {CommandPaletteNavigateAction | CommandPaletteExitWithQueryAction | CommandPaletteUpdateQueryAction | CommandPalettePushModeContextAction | CommandPaletteAddTokenAction | CommandPaletteToggleHelpAction | CommandPaletteNoneAction} CommandPaletteActionResult
  */
 
 /**
@@ -247,7 +273,6 @@
 /**
  * @typedef {Object} CitizenCommandPaletteSearchClient
  * @property {function(string): Promise<CommandPaletteSearchResponse>} fetchByQuery
- * @property {function(): Promise<CommandPaletteSearchResponse>} [loadMore]
  */
 
 /**
@@ -261,9 +286,8 @@
  *
  * @interface CommandPaletteProvider
  * @property {string} id - Unique identifier for the provider.
- * @property {boolean} isAsync - Whether the provider fetches results asynchronously.
- * @property {?number} debounceMs - Debounce time in milliseconds for async providers.
- * @property {boolean} keepStaleResultsOnQueryChange - Whether to keep stale results when the query changes.
+ * @property {number} debounceMs - Debounce in milliseconds; 0 fetches immediately on every keystroke.
+ * @property {boolean} keepStaleResults - Whether the previous results stay on screen while fresh ones load.
  * @property {function(string): boolean} canProvide - Method to check if the provider can handle the query.
  * @property {function(string): Array<CommandPaletteItem>|Promise<Array<CommandPaletteItem>>} getResults - Method to fetch results.
  * @property {?function(CommandPaletteItem): CommandPaletteActionResult|Promise<CommandPaletteActionResult>} onResultSelect - Optional method to handle result selection.
@@ -281,7 +305,7 @@
  * Configuration for a provider, passed to createProvider.
  *
  * @typedef {Object} ProviderConfig
- * @property {number} [debounceMs=250] Debounce delay in milliseconds.
+ * @property {number} [debounceMs=120] Debounce delay in milliseconds.
  * @property {boolean} [keepStaleResults=false] Whether to show previous results while loading.
  */
 

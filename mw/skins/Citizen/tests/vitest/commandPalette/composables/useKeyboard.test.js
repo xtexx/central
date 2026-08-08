@@ -82,7 +82,11 @@ describe( 'useKeyboard', () => {
 			altKey: false,
 			ctrlKey: false,
 			metaKey: false,
-			shiftKey: false
+			shiftKey: false,
+			// Browsers always supply this; the AltGr detection consults it
+			// before falling back to the modifier flags, so a fixture without
+			// it would leave that branch unreachable.
+			getModifierState: vi.fn( () => false )
 		};
 	}
 
@@ -192,6 +196,51 @@ describe( 'useKeyboard', () => {
 			expect( listNav.highlightNext ).not.toHaveBeenCalled();
 		} );
 
+		it( 'should close on Shift+Tab, so focus cannot leave the open palette', () => {
+			var event = createKeyEvent( 'Tab' );
+			event.shiftKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onClose ).toHaveBeenCalled();
+			expect( event.preventDefault ).toHaveBeenCalled();
+		} );
+
+		it( 'should still claim Tab while the help overlay is up', () => {
+			deps.helpVisible = ref( true );
+			deps.onToggleHelp = vi.fn();
+			deps.onCloseHelp = vi.fn();
+			keyboard = useKeyboard( toGrouped( deps ) );
+
+			[ false, true ].forEach( ( shift ) => {
+				const event = createKeyEvent( 'Tab' );
+				event.shiftKey = shift;
+
+				keyboard.handleKeydown( event );
+
+				expect( event.preventDefault ).toHaveBeenCalled();
+			} );
+			expect( deps.onClose ).toHaveBeenCalledTimes( 2 );
+		} );
+
+		it( 'should step Tab back to the input from the action zone, not out of the palette', () => {
+			const actionTarget = {
+				closest: vi.fn( ( selector ) => (
+					selector === '.citizen-command-palette-list-item__action' ? actionTarget : null
+				) )
+			};
+			actionNav.isActive.value = true;
+
+			const event = createKeyEvent( 'Tab', actionTarget );
+			event.shiftKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( event.preventDefault ).toHaveBeenCalled();
+			expect( actionNav.deactivate ).toHaveBeenCalled();
+			expect( deps.onClose ).not.toHaveBeenCalled();
+		} );
+
 		it( 'should ignore Shift for non-printable keys', () => {
 			var event = createKeyEvent( 'ArrowDown' );
 			event.shiftKey = true;
@@ -215,6 +264,358 @@ describe( 'useKeyboard', () => {
 			keyboard.handleKeydown( event );
 
 			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode );
+		} );
+	} );
+
+	describe( 'AltGr characters', () => {
+		it( 'should treat a Ctrl+Alt character as typed, not as a chord', () => {
+			deps.query = ref( '' );
+			deps.activeMode = ref( null );
+			const mode = { id: 'user', triggers: [ '@' ] };
+			deps.findModeByTrigger = vi.fn( () => mode );
+			deps.onEnterMode = vi.fn();
+			keyboard = useKeyboard( toGrouped( deps ) );
+
+			// German and Nordic layouts type "@" as AltGr+Q, which Windows
+			// reports as Ctrl+Alt.
+			var event = createKeyEvent( '@' );
+			event.ctrlKey = true;
+			event.altKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode );
+		} );
+
+		it( 'should still ignore Ctrl+Alt with a non-printable key', () => {
+			// Ctrl+Alt+Arrow is a live desktop shortcut; AltGr cannot produce it.
+			var event = createKeyEvent( 'ArrowDown' );
+			event.ctrlKey = true;
+			event.altKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( listNav.highlightNext ).not.toHaveBeenCalled();
+		} );
+
+		it( 'should redirect an AltGr character typed in the action zone to the input', () => {
+			const actionTarget = {
+				closest: vi.fn( ( selector ) => (
+					selector === '.citizen-command-palette-list-item__action' ? actionTarget : null
+				) )
+			};
+			actionNav.isActive.value = true;
+
+			var event = createKeyEvent( '@', actionTarget );
+			event.ctrlKey = true;
+			event.altKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( actionNav.deactivate ).toHaveBeenCalled();
+		} );
+
+		it( 'should treat a character Firefox reports via getModifierState as typed', () => {
+			deps.query = ref( '' );
+			deps.activeMode = ref( null );
+			const mode = { id: 'user', triggers: [ '@' ] };
+			deps.findModeByTrigger = vi.fn( () => mode );
+			deps.onEnterMode = vi.fn();
+			keyboard = useKeyboard( toGrouped( deps ) );
+
+			// Firefox flags AltGr without setting ctrlKey.
+			var event = createKeyEvent( '@' );
+			event.altKey = true;
+			event.getModifierState = vi.fn( ( m ) => m === 'AltGraph' );
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode );
+		} );
+
+		it( 'should not let Ctrl+Alt+Space activate the focused action', () => {
+			const actionTarget = {
+				closest: vi.fn( ( selector ) => (
+					selector === '.citizen-command-palette-list-item__action' ? actionTarget : null
+				) )
+			};
+			actionNav.isActive.value = true;
+
+			// Space is a real action-zone binding, and no AltGr layer types a
+			// plain U+0020 — the layouts that map it emit U+00A0.
+			var event = createKeyEvent( ' ', actionTarget );
+			event.ctrlKey = true;
+			event.altKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( actionNav.clickFocused ).not.toHaveBeenCalled();
+		} );
+
+		it( 'should still ignore a Command chord', () => {
+			const actionTarget = {
+				closest: vi.fn( ( selector ) => (
+					selector === '.citizen-command-palette-list-item__action' ? actionTarget : null
+				) )
+			};
+			actionNav.isActive.value = true;
+
+			var event = createKeyEvent( '@', actionTarget );
+			event.metaKey = true;
+			event.altKey = true;
+			event.ctrlKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( actionNav.deactivate ).not.toHaveBeenCalled();
+		} );
+	} );
+
+	describe( 'input method composition', () => {
+		it( 'should ignore the Enter that commits an IME candidate', () => {
+			listNav.highlightedIndex.value = 0;
+
+			var event = createKeyEvent( 'Enter' );
+			event.isComposing = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onSelect ).not.toHaveBeenCalled();
+			expect( event.preventDefault ).not.toHaveBeenCalled();
+		} );
+
+		it( 'should still act on a key that only reports the legacy keyCode 229', () => {
+			// Chrome on Android sets 229 for almost every non-printable key,
+			// Enter included, whether or not anything is being composed. Reading
+			// it would disable the palette's Enter and Backspace on mobile.
+			var event = createKeyEvent( 'Escape' );
+			event.keyCode = 229;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onClose ).toHaveBeenCalled();
+		} );
+	} );
+
+	describe( 'copy shortcut', () => {
+		function withCopyValue() {
+			deps.items = ref( [
+				{ id: '1', detail: { header: { copyValue: 'File:Foo.png' } } }
+			] );
+			deps.requestHeaderCopy = vi.fn();
+			keyboard = useKeyboard( toGrouped( deps ) );
+			listNav.highlightedIndex.value = 0;
+		}
+
+		it( 'should copy the header value on Ctrl+C', () => {
+			withCopyValue();
+
+			var event = createKeyEvent( 'c' );
+			event.ctrlKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.requestHeaderCopy ).toHaveBeenCalled();
+		} );
+
+		it( 'should copy on a layout that types no Latin letter', () => {
+			withCopyValue();
+
+			// Russian keycaps carry a Latin legend on the US positions.
+			var event = createKeyEvent( 'с' );
+			event.code = 'KeyC';
+			event.ctrlKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.requestHeaderCopy ).toHaveBeenCalled();
+		} );
+
+		it( 'should not copy from the key position when the layout types c elsewhere', () => {
+			withCopyValue();
+
+			// Dvorak types "j" from the US QWERTY "c" position.
+			var event = createKeyEvent( 'j' );
+			event.code = 'KeyC';
+			event.ctrlKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.requestHeaderCopy ).not.toHaveBeenCalled();
+		} );
+	} );
+
+	describe( 'right-to-left interface languages', () => {
+		function actionZoneTarget() {
+			const target = {
+				closest: vi.fn( ( selector ) => (
+					selector === '.citizen-command-palette-list-item__action' ? target : null
+				) )
+			};
+			actionNav.isActive.value = true;
+			return target;
+		}
+
+		afterEach( () => {
+			document.dir = '';
+		} );
+
+		it( 'steps the action row visually, so ArrowLeft advances under RTL', () => {
+			document.dir = 'rtl';
+			const target = actionZoneTarget();
+
+			keyboard.handleKeydown( createKeyEvent( 'ArrowLeft', target ) );
+
+			expect( actionNav.focusNext ).toHaveBeenCalled();
+			expect( actionNav.focusPrevious ).not.toHaveBeenCalled();
+		} );
+
+		it( 'sends ArrowRight backwards under RTL', () => {
+			document.dir = 'rtl';
+			const target = actionZoneTarget();
+
+			keyboard.handleKeydown( createKeyEvent( 'ArrowRight', target ) );
+
+			expect( actionNav.focusPrevious ).toHaveBeenCalled();
+			expect( actionNav.focusNext ).not.toHaveBeenCalled();
+		} );
+
+		it( 'leaves the action row unmirrored under LTR', () => {
+			document.dir = 'ltr';
+			const target = actionZoneTarget();
+
+			keyboard.handleKeydown( createKeyEvent( 'ArrowRight', target ) );
+
+			expect( actionNav.focusNext ).toHaveBeenCalled();
+			expect( actionNav.focusPrevious ).not.toHaveBeenCalled();
+		} );
+
+		it( 'prefers the input\'s own direction over the document', () => {
+			// A palette inside a direction island must follow the island.
+			document.dir = 'ltr';
+			// A real element: getComputedStyle rejects anything else.
+			const inputEl = document.createElement( 'input' );
+			deps.inputRef.value.getInputElement = vi.fn( () => inputEl );
+			const original = globalThis.getComputedStyle;
+			globalThis.getComputedStyle = vi.fn( () => ( { direction: 'rtl' } ) );
+			keyboard = useKeyboard( toGrouped( deps ) );
+			const target = actionZoneTarget();
+
+			try {
+				keyboard.handleKeydown( createKeyEvent( 'ArrowLeft', target ) );
+			} finally {
+				globalThis.getComputedStyle = original;
+			}
+
+			expect( actionNav.focusNext ).toHaveBeenCalled();
+			expect( actionNav.focusPrevious ).not.toHaveBeenCalled();
+		} );
+
+		it( 'does not mirror the vertical arrows', () => {
+			document.dir = 'rtl';
+
+			keyboard.handleKeydown( createKeyEvent( 'ArrowDown' ) );
+			keyboard.handleKeydown( createKeyEvent( 'ArrowUp' ) );
+
+			expect( listNav.highlightNext ).toHaveBeenCalledTimes( 1 );
+			expect( listNav.highlightPrevious ).toHaveBeenCalledTimes( 1 );
+		} );
+
+		it( 'reaches the action row with ArrowLeft under RTL', () => {
+			// The input to action-row jump: one of the two paths in T1741.
+			document.dir = 'rtl';
+			var inputEl = {
+				selectionStart: 5,
+				selectionEnd: 5,
+				value: 'hello',
+				focus: vi.fn(),
+				closest: vi.fn( () => null )
+			};
+			deps.inputRef.value.getInputElement = vi.fn( () => inputEl );
+			listNav.highlightedIndex.value = 0;
+			keyboard = useKeyboard( toGrouped( deps ) );
+
+			keyboard.handleKeydown( createKeyEvent( 'ArrowLeft', inputEl ) );
+
+			expect( actionNav.focusFirst ).toHaveBeenCalled();
+		} );
+
+		it( 'steps gallery tiles with ArrowLeft under RTL', () => {
+			// Gallery tiles: the other path in T1741.
+			document.dir = 'rtl';
+			const gridNav = {
+				highlightNext: vi.fn(),
+				highlightPrevious: vi.fn(),
+				highlightUp: vi.fn(),
+				highlightDown: vi.fn(),
+				highlightFirst: vi.fn(),
+				highlightLast: vi.fn(),
+				highlightedIndex: ref( 0 ),
+				scrollToHighlighted: vi.fn()
+			};
+			deps.gridNav = gridNav;
+			deps.isGalleryLayout = ref( true );
+			keyboard = useKeyboard( toGrouped( deps ) );
+
+			keyboard.handleKeydown( createKeyEvent( 'ArrowLeft' ) );
+
+			expect( gridNav.highlightNext ).toHaveBeenCalled();
+			expect( gridNav.highlightPrevious ).not.toHaveBeenCalled();
+		} );
+
+		it( 'mirrors every arrow in a combined hint glyph', () => {
+			document.dir = 'rtl';
+			const actionTarget = {
+				closest: vi.fn( ( selector ) => (
+					selector === '.citizen-command-palette-list-item__action' ? actionTarget : null
+				) )
+			};
+			actionNav.isActive.value = true;
+			// focusedIndex at the last action selects the `↑↓←` hint variant.
+			actionNav.focusedIndex.value = 1;
+			deps.items = ref( [ { id: '1', actions: [ { id: 'a' }, { id: 'b' } ] } ] );
+			keyboard = useKeyboard( toGrouped( deps ) );
+			listNav.highlightedIndex.value = 0;
+
+			const kbds = keyboard.keyboardHints.value.map( ( hint ) => hint.kbd );
+
+			expect( kbds ).toContain( '↑↓→' );
+			expect( kbds ).not.toContain( '↑↓←' );
+		} );
+
+		it( 'leaves a hint offering both arrows untouched', () => {
+			// focusedIndex before the last action selects the `↑↓←→` variant,
+			// which already covers either direction — swapping would only
+			// shuffle the glyphs into a stranger order.
+			document.dir = 'rtl';
+			const actionTarget = {
+				closest: vi.fn( ( selector ) => (
+					selector === '.citizen-command-palette-list-item__action' ? actionTarget : null
+				) )
+			};
+			actionNav.isActive.value = true;
+			actionNav.focusedIndex.value = 0;
+			deps.items = ref( [ { id: '1', actions: [ { id: 'a' }, { id: 'b' } ] } ] );
+			keyboard = useKeyboard( toGrouped( deps ) );
+			listNav.highlightedIndex.value = 0;
+
+			const kbds = keyboard.keyboardHints.value.map( ( hint ) => hint.kbd );
+
+			expect( kbds ).toContain( '↑↓←→' );
+		} );
+
+		it( 'mirrors the arrow glyphs in the footer hints', () => {
+			document.dir = 'rtl';
+			deps.items = ref( [ { id: '1', actions: [ { id: 'edit' } ] } ] );
+			keyboard = useKeyboard( toGrouped( deps ) );
+			listNav.highlightedIndex.value = 0;
+
+			const kbds = keyboard.keyboardHints.value.map( ( hint ) => hint.kbd );
+
+			// The action row sits to the left under RTL, so the hint for
+			// reaching it must advertise the key the user actually presses.
+			expect( kbds ).toContain( '←' );
+			expect( kbds ).not.toContain( '→' );
 		} );
 	} );
 

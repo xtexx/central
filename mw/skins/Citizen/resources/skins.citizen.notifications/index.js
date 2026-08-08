@@ -13,18 +13,24 @@ const { createEchoSource } = require( './sources/echo.js' );
  *
  * @param {HTMLElement} mountEl
  * @param {Object} [options]
- * @param {Function} [options.onCountsChange] Called with `{ alert, message, total }`
+ * @param {Function} [options.onCountsChange] Called with `{ total, local, foreign }`
  *   whenever unread counts change, so the trigger can update the bell badge.
- * @return {Object} mounted instance exposing `refresh()`
+ * @param {number|null} [options.initialCount] Unread count the server rendered.
+ *   Zero lets the panel open straight into its empty state; null means unknown.
+ * @return {Object} mounted instance exposing `refresh()` and `markSeen()`
  */
 function initApp( mountEl, options ) {
 	const opts = options || {};
 
 	const app = Vue.createMwApp( App );
-	app.provide( 'source', createEchoSource( mw.Api ) );
+	app.provide( 'source', createEchoSource( mw.Api, mw.ForeignApi ) );
 	if ( typeof opts.onCountsChange === 'function' ) {
 		app.provide( 'onCountsChange', opts.onCountsChange );
 	}
+	app.provide(
+		'initialCount',
+		typeof opts.initialCount === 'number' ? opts.initialCount : null
+	);
 
 	return app.mount( mountEl );
 }
