@@ -12,12 +12,10 @@ use MediaWiki\Output\OutputPage;
 use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\ResourceLoader as RL;
 use MediaWiki\Skin\SkinComponentUtils;
+use MediaWiki\Skins\Citizen\Menu\MenuItemDecorator;
 use MediaWiki\Skins\Citizen\PreviewChannel;
-use MediaWiki\Skins\Citizen\SkinCitizen;
 use MediaWiki\Skins\Hook\SkinPageReadyConfigHook;
-use MediaWiki\SpecialPage\SpecialPage;
 use Skin;
-use SkinTemplate;
 
 /**
  * Hooks to run relating the skin
@@ -29,16 +27,6 @@ class SkinHooks implements
 	SkinBuildSidebarHook,
 	SkinPageReadyConfigHook
 {
-	/**
-	 * Rows the notification placeholder previews at most. Enough to fill the
-	 * panel's minimum height; the list itself scrolls once mounted.
-	 *
-	 * The mounted panel previews the same number while it fetches — keep in
-	 * step with PLACEHOLDER_ROWS in
-	 * resources/skins.citizen.notifications/components/App.vue.
-	 */
-	private const NOTIFICATIONS_PLACEHOLDER_ROWS = 5;
-
 	private static ?string $inlineScript = null;
 
 	/**
@@ -179,7 +167,7 @@ class SkinHooks implements
 				}
 
 				if ( !empty( $item['icon'] ) ) {
-					$item['link-html'] = self::getIconHtml( $item['icon'] );
+					$item['link-html'] = MenuItemDecorator::getIconHtml( $item['icon'] );
 				}
 			}
 		}
@@ -241,104 +229,9 @@ class SkinHooks implements
 	}
 
 	/**
-	 * Modify navigation links
-	 *
-	 * TODO: Update to a proper hook when T287622 is resolved
-	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/SkinTemplateNavigation::Universal
-	 * @param SkinTemplate $sktemplate
-	 * @param array &$links
-	 */
-	public static function onSkinTemplateNavigation( $sktemplate, &$links ): void {
-		// Be extra safe because it might be active on other skins with caching
-		if ( $sktemplate->getSkinName() !== 'citizen' ) {
-			return;
-		}
-
-		if ( isset( $links['actions'] ) ) {
-			self::updateActionsMenu( $links );
-		}
-
-		if ( isset( $links['associated-pages'] ) ) {
-			self::updateAssociatedPagesMenu( $links );
-		}
-
-		if ( isset( $links['notifications'] ) ) {
-			self::updateNotificationsMenu( $sktemplate, $links );
-		}
-
-		if ( isset( $links['user-menu'] ) ) {
-			self::updateUserMenu( $sktemplate, $links );
-		}
-
-		if ( isset( $links['user-interface-preferences'] ) ) {
-			self::updateUserInterfacePreferencesMenu( $links );
-		}
-
-		if ( isset( $links['views'] ) ) {
-			self::updateViewsMenu( $links );
-		}
-	}
-
-	/**
-	 * Update actions menu items
-	 *
-	 * @internal used inside Hooks\SkinHooks::onSkinTemplateNavigation
-	 */
-	private static function updateActionsMenu( array &$links ): void {
-		// Most icons are not mapped yet in the actions menu
-		$iconMap = [
-			'delete' => 'trash',
-			'move' => 'move',
-			'protect' => 'lock',
-			'unprotect' => 'unLock',
-			// Extension:Purge
-			// Extension:SemanticMediaWiki
-			'purge' => 'reload',
-			// Extension:Cargo
-			'cargo-purge'  => 'reload',
-			// Extension:DiscussionTools
-			'dt-page-subscribe' => 'bell'
-		];
-
-		self::mapIconsToMenuItems( $links, 'actions', $iconMap );
-		self::addIconsToMenuItems( $links, 'actions' );
-	}
-
-	/**
-	 * Update associated pages menu items
-	 *
-	 * @internal used inside Hooks\SkinHooks::onSkinTemplateNavigation
-	 */
-	private static function updateAssociatedPagesMenu( array &$links ): void {
-		// Most icons are not mapped yet in the associated pages menu
-		$iconMap = [
-			'main' => 'article',
-			'file' => 'image',
-			'talk' => 'speechBubbles',
-			'user' => 'userAvatar'
-		];
-
-		// Special handling for talk pages
-		// Since talk keys have namespace as prefix
-		foreach ( $links['associated-pages'] as $key => $item ) {
-			$keyStr = (string)$key;
-			if ( str_ends_with( $keyStr, '_talk' ) ) {
-				// Extract the namespace key from the talk key (e.g. Project from Project_talk)
-				$namespace = substr( $keyStr, 0, -strlen( '_talk' ) );
-				$links['associated-pages'][$key]['icon'] = 'speechBubbles';
-				$links['associated-pages'][$namespace]['icon'] = 'arrowPrevious';
-			}
-		}
-
-		self::mapIconsToMenuItems( $links, 'associated-pages', $iconMap );
-		self::addIconsToMenuItems( $links, 'associated-pages' );
-		self::addButtonClassesToMenuItems( $links, 'associated-pages' );
-	}
-
-	/**
 	 * Update toolbox menu items
 	 *
-	 * @internal used inside Hooks\SkinHooks::onSkinTemplateNavigation
+	 * @internal used inside Hooks\SkinHooks::onSidebarBeforeOutput
 	 */
 	private static function updateToolboxMenu( array &$links ): void {
 		// Most icons are not mapped yet in the toolbox menu
@@ -373,240 +266,7 @@ class SkinHooks implements
 			unset( $links['TOOLBOX'][$siteTool] );
 		}
 
-		self::mapIconsToMenuItems( $links, 'TOOLBOX', $iconMap );
-		self::addIconsToMenuItems( $links, 'TOOLBOX' );
-	}
-
-	/**
-	 * Capture Echo's two notification badges (alert + notice) as merged data
-	 * for Citizen's own notifications dropdown (Notifications.mustache), then
-	 * drop Echo's portlet so there is no duplicate control. The merged unread
-	 * count is handed to the skin, which exposes it as template data; the
-	 * dropdown renders a single bell that opens a panel showing both streams
-	 * (and links to Special:Notifications without JS).
-	 *
-	 * @internal used inside Hooks\SkinHooks::onSkinTemplateNavigation
-	 */
-	private static function updateNotificationsMenu( SkinTemplate $sktemplate, array &$links ): void {
-		$alert = $links['notifications']['notifications-alert'] ?? null;
-		$notice = $links['notifications']['notifications-notice'] ?? null;
-
-		// Nothing to do if Echo did not provide its badges.
-		if ( $alert === null && $notice === null ) {
-			return;
-		}
-
-		$alertCount = (int)( $alert['data']['counter-num'] ?? 0 );
-		$noticeCount = (int)( $notice['data']['counter-num'] ?? 0 );
-		// Clamped because the count sizes an array below, where a negative
-		// would be fatal rather than merely wrong — and this runs on every page
-		// view for every logged-in user.
-		$count = max( 0, $alertCount + $noticeCount );
-
-		if ( $sktemplate instanceof SkinCitizen ) {
-			$sktemplate->setNotificationData( [
-				'count' => $count,
-				'href' => $alert['href'] ?? $notice['href']
-					?? SpecialPage::getTitleFor( 'Notifications' )->getLocalURL(),
-				// Concatenated rather than passed as a Title fragment, because
-				// getLocalURL() omits the fragment and would silently drop it.
-				'prefs-href' => SpecialPage::getTitleFor( 'Preferences' )
-					->getLocalURL() . '#mw-prefsection-echo',
-				// The panel's pre-mount placeholder previews what is waiting:
-				// rows when something is, the empty state when nothing is.
-				// Mustache cannot count, so the row list is built here.
-				'has-unread' => $count > 0,
-				'placeholder-rows' => array_fill(
-					0, min( $count, self::NOTIFICATIONS_PLACEHOLDER_ROWS ), true
-				),
-			] );
-		}
-
-		// Citizen renders its own notifications dropdown, so drop Echo's
-		// portlet badges to avoid a duplicate control in the header.
-		unset( $links['notifications'] );
-	}
-
-	/**
-	 * Update user menu
-	 *
-	 * @internal used inside Hooks\SkinHooks::onSkinTemplateNavigation
-	 */
-	private static function updateUserMenu( SkinTemplate $sktemplate, array &$links ): void {
-		$user = $sktemplate->getUser();
-		$isRegistered = $user->isRegistered();
-		$isTemp = $user->isTemp();
-
-		if ( $isTemp ) {
-			// Remove temporary user page text and the temp username link from
-			// user menu — both are already shown in the user info header
-			unset( $links['user-menu']['tmpuserpage'] );
-			unset( $links['user-menu']['userpage'] );
-
-			// Move account links to appear right before the exit session link
-			$tail = [];
-			foreach ( [ 'createaccount', 'login', 'logout' ] as $key ) {
-				if ( isset( $links['user-menu'][$key] ) ) {
-					$tail[$key] = $links['user-menu'][$key];
-					unset( $links['user-menu'][$key] );
-				}
-			}
-			$links['user-menu'] += $tail;
-		} elseif ( $isRegistered ) {
-			// Remove user page link from user menu and recreate it in user info
-			unset( $links['user-menu']['userpage'] );
-		} else {
-			// Remove anon user page text from user menu and recreate it in user info
-			unset( $links['user-menu']['anonuserpage'] );
-		}
-
-		self::addIconsToMenuItems( $links, 'user-menu' );
-	}
-
-	/**
-	 * Update user interface preferences menu
-	 *
-	 * @internal used inside Hooks\SkinHooks::onSkinTemplateNavigation
-	 */
-	private static function updateUserInterfacePreferencesMenu( array &$links ): void {
-		self::addIconsToMenuItems( $links, 'user-interface-preferences' );
-	}
-
-	/**
-	 * Update views menu items
-	 *
-	 * @internal used inside Hooks\SkinHooks::onSkinTemplateNavigation
-	 */
-	private static function updateViewsMenu( array &$links ): void {
-		// Most icons are not mapped yet in the views menu
-		$iconMap = [
-			'view' => 'eye',
-			// View source button only appears when the user do not have permission
-			'viewsource' => 'editLock',
-			'history' => 'history',
-			'edit' => 'edit',
-			'view-foreign' => 'linkExternal',
-			// Extension:VisualEditor
-			've-edit' => 'edit',
-			// Extension:DiscussionTools
-			'addsection' => 'speechBubbleAdd',
-			// Extension:Page Forms
-			'formedit' => 'tableAddRowBefore'
-		];
-
-		// If both visual edit and source edit buttons are present
-		if ( isset( $links['views']['ve-edit'] ) && isset( $links['views']['edit'] ) ) {
-			// Add a class so that we can make a merged button through CSS
-			self::appendClassToItem( $links['views']['ve-edit']['class'], [ 'citizen-ve-edit-merged' ] );
-			self::appendClassToItem( $links['views']['edit']['class'], [ 'citizen-ve-edit-merged' ] );
-			// Use wikiText icon instead of edit icon for source edit
-			$iconMap['edit'] = 'wikiText';
-		}
-
-		self::mapIconsToMenuItems( $links, 'views', $iconMap );
-		self::addIconsToMenuItems( $links, 'views' );
-		self::addButtonClassesToMenuItems( $links, 'views' );
-
-		// Make edit buttons progressive primary instead of quiet
-		foreach ( [ 'edit', 've-edit' ] as $key ) {
-			if ( isset( $links['views'][$key] ) ) {
-				self::setProgressiveAction( $links['views'][$key]['link-class'] );
-			}
-		}
-	}
-
-	/**
-	 * Set the icon parameter of the menu item based on the mapping
-	 */
-	private static function mapIconsToMenuItems( array &$links, string $menu, array $map ): void {
-		foreach ( $map as $key => $icon ) {
-			if ( isset( $links[$menu][$key] ) ) {
-				$links[$menu][$key]['icon'] ??= $icon;
-			}
-		}
-	}
-
-	/**
-	 * Add Codex button classes to menu items
-	 */
-	private static function addButtonClassesToMenuItems( array &$links, string $menu ): void {
-		$buttonClasses = [
-			'citizen-cdx-button--size-large',
-			'cdx-button',
-			'cdx-button--fake-button',
-			'cdx-button--fake-button--enabled',
-			'cdx-button--weight-quiet',
-		];
-
-		foreach ( $links[$menu] as &$item ) {
-			if ( is_array( $item ) ) {
-				self::appendClassToItem( $item['link-class'], $buttonClasses );
-			}
-		}
-	}
-
-	/**
-	 * Add the HTML needed for icons to menu items
-	 */
-	private static function addIconsToMenuItems( array &$links, string $menu ): void {
-		// Loop through each menu to check/append its link classes.
-		foreach ( $links[$menu] as $key => $item ) {
-			$icon = $item['icon'] ?? '';
-
-			if ( $icon ) {
-				$links[$menu][$key]['link-html'] = self::getIconHtml( $icon );
-			}
-		}
-	}
-
-	/**
-	 * Get the HTML for an icon
-	 */
-	private static function getIconHtml( string $icon ): string {
-		// Html::makeLink will pass this through rawElement
-		// Avoid using mw-ui-icon in case its styles get loaded
-		// Sometimes extension includes the "wikimedia-" part in the icon key (e.g. ULS),
-		// so we apply both classes just to be safe
-		return '<span class="citizen-ui-icon mw-ui-icon-' . $icon . ' mw-ui-icon-wikimedia-' . $icon . '"></span>';
-	}
-
-	/**
-	 * Promote a menu item from quiet to progressive primary
-	 */
-	private static function setProgressiveAction( array|string|null &$linkClass ): void {
-		if ( is_array( $linkClass ) ) {
-			$linkClass = array_values( array_diff( $linkClass, [ 'cdx-button--weight-quiet' ] ) );
-		} elseif ( is_string( $linkClass ) ) {
-			$linkClass = trim( str_replace( 'cdx-button--weight-quiet', '', $linkClass ) );
-		}
-		self::appendClassToItem( $linkClass, [
-			'cdx-button--weight-primary',
-			'cdx-button--action-progressive',
-		] );
-	}
-
-	/**
-	 * Adds class to a property
-	 * Based on Vector
-	 */
-	private static function appendClassToItem( array|string|null &$item, array|string $classes ): void {
-		$existingClasses = $item;
-
-		if ( is_array( $existingClasses ) ) {
-			// Treat as array
-			$newArrayClasses = is_array( $classes ) ? $classes : [ trim( $classes ) ];
-			$item = array_merge( $existingClasses, $newArrayClasses );
-		} elseif ( is_string( $existingClasses ) ) {
-			// Treat as string
-			$newStrClasses = is_string( $classes ) ? trim( $classes ) : implode( ' ', $classes );
-			$item .= ' ' . $newStrClasses;
-		} else {
-			// Treat as whatever $classes is
-			$item = $classes;
-		}
-
-		if ( is_string( $item ) ) {
-			$item = trim( $item );
-		}
+		MenuItemDecorator::mapIconsToMenuItems( $links, 'TOOLBOX', $iconMap );
+		MenuItemDecorator::addIconsToMenuItems( $links, 'TOOLBOX' );
 	}
 }
