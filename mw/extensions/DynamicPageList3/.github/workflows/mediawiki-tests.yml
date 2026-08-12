@@ -111,7 +111,7 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # /home/runner/cache/                               Cache
       # /home/runner/src/                                 Mediawiki installation
@@ -148,7 +148,7 @@ jobs:
           fi
 
       - name: Cache docker image
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: /home/runner/docker-images/${{ env.DOCKER_IMAGE }}
           key: ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_LATEST_TAG }}
@@ -160,7 +160,7 @@ jobs:
 
       - name: Cache quibble docker image
         if: ${{ matrix.stage == 'coverage' || matrix.stage == 'phan' }}
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: /home/runner/docker-images/${{ env.QUIBBLE_DOCKER_IMAGE }}
           key: ${{ env.QUIBBLE_DOCKER_IMAGE }}:${{ env.QUIBBLE_DOCKER_LATEST_TAG }}
@@ -196,7 +196,7 @@ jobs:
           git -C src/ log -n 1 --format="%H"
 
       - name: Cache dependencies (composer and npm)
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: /home/runner/cache
           key: ${{ runner.os }}-${{ env.MEDIAWIKI_VERSION }}-${{ hashFiles('**/*.json') }}
@@ -302,7 +302,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: ${{ matrix.stage == 'coverage' }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           directory: /home/runner/cover
 
