@@ -5,8 +5,4 @@
       { left: "$", right: "$", display: false },
     ],
   });
-{{ if .Store.Get "hasMermaid" }}
-  import mermaid from 'https://unpkg.com/mermaid@11.16.1/dist/mermaid.esm.min.mjs';
-  mermaid.initialize({ startOnLoad: true });
-{{ end }}
 </script>

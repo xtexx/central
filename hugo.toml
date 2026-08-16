@@ -59,3 +59,11 @@ locale = 'zh-hans'
 direction = 'ltr'
 label = 'Simplified Chinese'
 weight = 1
+
+[caches]
+[caches.getresource]
+dir = ':resourceDir/_cache'
+maxAge = -1
+[caches.misc]
+dir = ':resourceDir/_cache'
+maxAge = -1
