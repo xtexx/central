@@ -158,7 +158,7 @@ http://blog.xtexx.eu.org {
 			default-src 'self';
 			base-uri 'self';
 			connect-src 'self';
-			frame-ancestors 'none';
+			frame-ancestors 'self';
 			form-action 'self';
 			script-src 'self' https://unpkg.com 'nonce-7e0bfcf7-1564-43e9-a950-95577944deca';
 			style-src 'self' https://unpkg.com;
