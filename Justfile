@@ -28,7 +28,3 @@ deploy:
 	ssh cotton.s.xvnet0.eu.org -- '\
 		systemctl --user restart xtex-home; \
 	'
-	ssh p.projectsegfau.lt -- '\
-		podman image pull codeberg.org/xtex/home; \
-		systemctl --user restart xtex-home; \
-	'
