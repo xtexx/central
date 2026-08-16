@@ -11,20 +11,21 @@ build-caddy ARCH:
 
 [parallel]
 build: (build-caddy 'amd64') (build-caddy 'loong64')
+	podman manifest rm -i codeberg.org/xtex/home
 	podman buildx build \
 		--force-rm \
 		--squash \
 		--build-arg "VERSION={{version}}" \
 		--platform linux/amd64,linux/loong64 \
 		--jobs 2 \
-		--tag codeberg.org/xtex/home \
+		--manifest codeberg.org/xtex/home \
 		.
 
 push:
-	podman image push codeberg.org/xtex/home
+	podman manifest push codeberg.org/xtex/home
 
 deploy:
-	podman image scp codeberg.org/xtex/home cotton.s.xvnet0.eu.org::
 	ssh cotton.s.xvnet0.eu.org -- '\
+		podman pull codeberg.org/xtex/home; \
 		systemctl --user restart xtex-home; \
 	'
