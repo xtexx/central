@@ -8,7 +8,7 @@
         "command": "merge.goToNextUnhandledConflict"
     },
     {
-        "key": "ctrl+enter ctrl+enter",
+        "key": "ctrl+shift+` ctrl+shift+`",
         "command": "workbench.action.toggleMaximizedPanel",
         "when": "panelAlignment == 'center' || panelPosition != 'bottom' && panelPosition != 'top'"
     }
