@@ -1,4 +1,4 @@
-{{ $locale := or page.Params.locale site.Language.LanguageCode }}{{ $isCjk := false }}<!--
+{{ $locale := or page.Params.locale site.Language.Locale }}{{ $isCjk := false }}<!--
 -->{{ if (or page.Params.cjkSymbols
     site.Params.cjkSymbols
     (hasPrefix $locale "zh")
