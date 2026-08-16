@@ -14,7 +14,7 @@
 
     {{- with resources.GetRemote $url $opts -}}
       {{- with resources.Copy (printf "%s/diagrams/%s-%s.svg" page.RelPermalink $diagramHash $theme) (. | minify) -}}
-        <img class="mermaid-{{ $theme }}" src="{{ .RelPermalink }}" alt="Diagram">
+        <img class="mermaid-{{ $theme }}" src="{{ .RelPermalink }}" alt="Diagram" loading="lazy">
       {{- end -}}
     {{- end -}}
   {{- end -}}
