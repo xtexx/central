@@ -1,8 +1,12 @@
-<script type="text/javascript" nonce="7e0bfcf7-1564-43e9-a950-95577944deca">
+<script type="module" nonce="7e0bfcf7-1564-43e9-a950-95577944deca">
   temml.renderMathInElement(document.body, {
     delimiters: [
       { left: "$$", right: "$$", display: true },
       { left: "$", right: "$", display: false },
     ],
   });
+{{ if .Store.Get "hasMermaid" }}
+  import mermaid from 'https://unpkg.com/mermaid@11.16.1/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true });
+{{ end }}
 </script>
