@@ -1,0 +1,21 @@
+{{- $diagramSrc := .Inner | strings.TrimSpace }}
+{{- $url := "https://kroki.io/mermaid/svg" }}
+{{- $diagramHash := (hash.XxHash $diagramSrc) }}
+<pre class="mermaid">
+  {{- range (slice "default" "neutral" "dark") -}}
+    {{- $theme := . -}}
+    {{- $diagramPayload := print "%%{init: {'theme':'" $theme "'}}%%\n" $diagramSrc -}}
+    {{- $opts := dict
+      "key" (print page.Path "mermaid-svg" $diagramHash $theme)
+      "method" "POST"
+      "body" $diagramPayload
+      "headers" (dict "Content-Type" "text/plain")
+    -}}
+
+    {{- with resources.GetRemote $url $opts -}}
+      {{- with resources.Copy (printf "%s/diagrams/%s-%s.svg" page.RelPermalink $diagramHash $theme) (. | minify) -}}
+        <img class="mermaid-{{ $theme }}" src="{{ .RelPermalink }}" alt="Diagram">
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+</pre>

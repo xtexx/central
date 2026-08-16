@@ -2,4 +2,5 @@
 @import "color.css";
 @import "layout.css";
 @import "content.css";
+@import "mermaid.css";
 @import "print.css" print;

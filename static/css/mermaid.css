@@ -1,0 +1,34 @@
+.mermaid>.mermaid-neutral,
+.mermaid>.mermaid-dark {
+    display: none;
+}
+
+.mermaid>.mermaid-default {
+    display: inline;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    .mermaid>.mermaid-default,
+    .mermaid>.mermaid-neutral {
+        display: none;
+    }
+
+    .mermaid>.mermaid-dark {
+        display: inline;
+    }
+
+}
+
+@media print {
+
+    .mermaid>.mermaid-default,
+    .mermaid>.mermaid-dark {
+        display: none;
+    }
+
+    .mermaid>.mermaid-neutral {
+        display: inline;
+    }
+
+}
