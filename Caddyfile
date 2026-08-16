@@ -162,7 +162,7 @@ http://blog.xtexx.eu.org {
 			form-action 'self';
 			script-src 'self' https://unpkg.com 'nonce-7e0bfcf7-1564-43e9-a950-95577944deca';
 			style-src 'self' https://unpkg.com;
-			object-src 'none';
+			object-src 'self';
 			font-src 'self' https://unpkg.com;
 			img-src 'self' https://z3.ax1x.com/;
 			"
