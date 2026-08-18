@@ -8,6 +8,8 @@ enabled:
     uuid: 75dcb385-9b1a-4065-a72b-aab05260382e
   - id: BIRDCC.bird2-lsp
     uuid: 019e6e4b-67e4-42bc-a3f2-c5b03bfd1eaf
+  - id: bmewburn.vscode-intelephense-client
+    uuid: ffda6552-0ad5-431b-a4fa-0905a7e4f3f0
   - id: budparr.language-hugo-vscode
     uuid: 0e22bd0e-8a8d-424d-b5bd-29aaf21800eb
   - id: charliermarsh.ruff
