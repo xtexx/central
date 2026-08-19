@@ -31,6 +31,7 @@ use Wikimedia\CSS\Grammar\MatcherFactory;
 use Wikimedia\CSS\Grammar\Quantifier;
 use Wikimedia\CSS\Grammar\TokenMatcher;
 use Wikimedia\CSS\Objects\CSSObject;
+use Wikimedia\CSS\Objects\Declaration;
 use Wikimedia\CSS\Objects\Token;
 use Wikimedia\CSS\Sanitizer\StylePropertySanitizer;
 
@@ -46,9 +47,8 @@ class StylePropertySanitizerExtender extends StylePropertySanitizer {
 	];
 
 	private bool $varEnabled = false;
-	private static $extendedCssSizingAdditions = false;
-	private static $extendedCss1Masking = false;
-	private static $extendedCss3Grid = false;
+	private static bool $extendedCss1Masking = false;
+	private static bool $extendedCss3Grid = false;
 
 	/**
 	 * @param MatcherFactory $matcherFactory
@@ -67,48 +67,6 @@ class StylePropertySanitizerExtender extends StylePropertySanitizer {
 	 */
 	public function setVarEnabled( bool $varEnabled ): void {
 		$this->varEnabled = $varEnabled;
-	}
-
-	/**
-	 * @inheritDoc
-	 *
-	 * Partly implement clamp, min and max
-	 */
-	protected function getSizingAdditions( MatcherFactory $matcherFactory ) {
-		// @codeCoverageIgnoreStart
-		if ( self::$extendedCssSizingAdditions && isset( $this->cache[__METHOD__] ) ) {
-			return $this->cache[__METHOD__];
-		}
-		// @codeCoverageIgnoreEnd
-
-		$calcVal = new Alternative( [
-			$matcherFactory->length(),
-			$matcherFactory->lengthPercentage(),
-			$matcherFactory->frequency(),
-			$matcherFactory->angle(),
-			$matcherFactory->anglePercentage(),
-			$matcherFactory->time(),
-			$matcherFactory->number(),
-			$matcherFactory->integer(),
-		] );
-
-		$props = parent::getSizingAdditions( $matcherFactory );
-
-		$props[] = new FunctionMatcher( 'clamp', Quantifier::hash( $calcVal, 3, 3 ) );
-
-		$props[] = new FunctionMatcher( function ( $name ) {
-			$funcNames = [
-				'min',
-				'max'
-			];
-			return in_array( $name, $funcNames );
-		}, Quantifier::hash( $calcVal ) );
-
-		$this->cache[__METHOD__] = $props;
-
-		self::$extendedCssSizingAdditions = true;
-
-		return $this->cache[__METHOD__];
 	}
 
 	/**
@@ -138,7 +96,7 @@ class StylePropertySanitizerExtender extends StylePropertySanitizer {
 	 *
 	 * Allow variables in grid-template-columns and grid-template-rows
 	 */
-	protected function cssGrid3( MatcherFactory $matcherFactory ) {
+	protected function cssGrid1( MatcherFactory $matcherFactory ) {
 		// @codeCoverageIgnoreStart
 		if ( self::$extendedCss3Grid && isset( $this->cache[__METHOD__] ) ) {
 			return $this->cache[__METHOD__];
@@ -147,7 +105,7 @@ class StylePropertySanitizerExtender extends StylePropertySanitizer {
 
 		$var = new FunctionMatcher( 'var', new CustomPropertyMatcher() );
 
-		$props = parent::cssGrid3( $matcherFactory );
+		$props = parent::cssGrid1( $matcherFactory );
 
 		$comma = $matcherFactory->comma();
 		$customIdent = $matcherFactory->customIdent( [ 'span' ] );
@@ -236,6 +194,8 @@ class StylePropertySanitizerExtender extends StylePropertySanitizer {
 		] );
 
 		$this->cache[__METHOD__] = $props;
+		self::$extendedCss3Grid = true;
+
 		return $props;
 	}
 
@@ -243,12 +203,14 @@ class StylePropertySanitizerExtender extends StylePropertySanitizer {
 	 * @inheritDoc
 	 */
 	protected function doSanitize( CSSObject $object ) {
-		if ( !$this->varEnabled ) {
+		if ( !$this->varEnabled || !$object instanceof Declaration ) {
 			return parent::doSanitize( $object );
 		}
 
+		$name = $object->getName();
+
 		// Not a CSS custom property
-		if ( !str_starts_with( $object->getName(), '--' ) ) {
+		if ( !str_starts_with( $name, '--' ) ) {
 			return parent::doSanitize( $object );
 		}
 
@@ -261,12 +223,14 @@ class StylePropertySanitizerExtender extends StylePropertySanitizer {
 					in_array( strtolower( (string)$token->value() ), self::EXTERNAL_RESOURCE_FUNCTIONS, true )
 				)
 			) {
-				$this->sanitizationError( 'bad-value-for-property', $token, [ $object->getName() ] );
+				$this->sanitizationError( 'bad-value-for-property', $token, [ $name ] );
 				return null;
 			}
 		}
 
-		$this->clearSanitizationErrors();
+		// Deliberately no clearSanitizationErrors(): the early return above means nothing
+		// here needs clearing, and it would discard earlier declarations' errors.
+		// @phan-suppress-next-line PhanTypeMismatchReturn generics weakness, see parent
 		return $object;
 	}
 }

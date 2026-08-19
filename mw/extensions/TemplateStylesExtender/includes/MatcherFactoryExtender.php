@@ -79,20 +79,12 @@ class MatcherFactoryExtender extends MatcherFactory {
 	 * @inheritDoc
 	 */
 	public function cssWideKeywords(): Matcher {
-		return $this->cache[__METHOD__]
+		$this->cache[__METHOD__]
 			??= new KeywordMatcher( [
 				'initial', 'inherit', 'unset', 'revert', 'revert-layer'
 			] );
-	}
 
-	/**
-	 * Add alpha support to hex-color
-	 */
-	public function colorHex(): TokenMatcher {
-		return $this->cache[__METHOD__]
-			??= new TokenMatcher( Token::T_HASH, static function ( Token $t ) {
-				return preg_match( '/^([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i', $t->value() );
-			} );
+		return $this->cache[__METHOD__];
 	}
 
 	/**
@@ -105,14 +97,17 @@ class MatcherFactoryExtender extends MatcherFactory {
 			return $this->cache[__METHOD__];
 		}
 
-		// Common var matcher
+		// Channels mirror upstream, which allows var() here unconditionally, except that
+		// a hue may take an angle fallback -- <hue> is <number> | <angle>, so that is
+		// spec-correct and upstream is the arbitrary one. The origin colour below is this
+		// extension's own addition, so it stays behind the flag.
 		$var = $this->varEnabled
 			? new FunctionMatcher( 'var', new CustomPropertyMatcher() )
 			: new NothingMatcher();
 
-		$n = new Alternative( [ $this->number(), $var ] );
-		$p = new Alternative( [ $this->percentage(), $var ] );
-		$a = new Alternative( [ $this->angle(), $var ] );
+		$n = $this->rawOrCustomProp( $this->number() );
+		$p = $this->rawOrCustomProp( $this->percentage() );
+		$a = $this->rawOrCustomProp( $this->angle() );
 		$nP = new Alternative( [ $n, $p ] );
 		$hueWithVar = new Alternative( [ $n, $a ] );
 
@@ -131,7 +126,7 @@ class MatcherFactoryExtender extends MatcherFactory {
 		$optionalAlpha = Quantifier::optional( new Juxtaposition(
 			[ new DelimMatcher( '/' ), new Alternative( [ $nP, $none ] ) ]
 		) );
-		$optionalLegacyAlpha = Quantifier::optional( $nP );
+		$optionalLegacyAlpha = Quantifier::optional( $nPNone );
 
 		// Absolute color syntaxes
 		$rgbSyntax = $this->buildRgbSyntax( $n, $p, $nPNone, $optionalAlpha, $optionalLegacyAlpha );
@@ -259,10 +254,12 @@ class MatcherFactoryExtender extends MatcherFactory {
 
 	/** @inheritDoc */
 	public function resolution(): Matcher {
-		return $this->cache[__METHOD__]
+		$this->cache[__METHOD__]
 			??= new TokenMatcher( Token::T_DIMENSION, static function ( Token $t ) {
 				return preg_match( '/^(dpi|dpcm|dppx|x)$/i', $t->unit() );
 			} );
+
+		return $this->cache[__METHOD__];
 	}
 
 	/**
@@ -284,6 +281,27 @@ class MatcherFactoryExtender extends MatcherFactory {
 		] );
 
 		return $this->cache[__METHOD__];
+	}
+
+	/**
+	 * A value of the given type, or a var() that may carry a fallback of that same type.
+	 *
+	 * Mirrors css-sanitizer's own rawOrCustomProp(). Restricting the fallback to the same
+	 * matcher is what makes it safe: var( --x, url( ... ) ) cannot satisfy a numeric slot.
+	 * Note the type is this factory's, so anything mathFunction() or rawNumber() admit is
+	 * admitted in a fallback too.
+	 *
+	 * @param Matcher $type
+	 * @return Matcher
+	 */
+	protected function rawOrCustomProp( Matcher $type ): Matcher {
+		return new Alternative( [
+			$type,
+			new FunctionMatcher( 'var', new Juxtaposition( [
+				new CustomPropertyMatcher(),
+				Quantifier::optional( $type ),
+			], true ) ),
+		] );
 	}
 
 	/**
@@ -385,38 +403,12 @@ class MatcherFactoryExtender extends MatcherFactory {
 	}
 
 	/**
-	 * Wraps the parent `calc` to allow using variables in the $typeMatcher
-	 *
-	 * For backward compatibility with css-sanitizer <=5.5.0.
-	 * Prefer mathFunction; it will fallback to calc.
-	 *
-	 * @param Matcher $typeMatcher
-	 * @param string $type
-	 * @return Matcher
-	 */
-	public function calc( Matcher $typeMatcher, $type ) {
-		if ( !$this->varEnabled ) {
-			return parent::calc( $typeMatcher, $type );
-		}
-
-		return parent::calc( new Alternative( [
-			$typeMatcher,
-			new FunctionMatcher( 'var', new CustomPropertyMatcher() ),
-		] ), $type );
-	}
-
-	/**
 	 * Wraps the parent `mathFunction` to allow using variables in the $typeMatcher
 	 *
 	 * @param Matcher $typeMatcher
 	 * @return Matcher
 	 */
 	public function mathFunction( Matcher $typeMatcher ) {
-		// b/c for css-sanitizer <=5.5.0.
-		if ( !method_exists( get_parent_class( $this ),  'mathFunction' ) ) {
-			return $this->calc( $typeMatcher, 'number' );
-		}
-
 		if ( !$this->varEnabled ) {
 			return parent::mathFunction( $typeMatcher );
 		}
@@ -431,41 +423,17 @@ class MatcherFactoryExtender extends MatcherFactory {
 	 * Allow variables for numbers if enabled
 	 * @return Alternative|Matcher|Matcher[]|TokenMatcher
 	 */
-   public function rawNumber() {
-	   if ( !$this->varEnabled ) {
-		   return parent::rawNumber();
-	   }
-
-	   return $this->cache[__METHOD__]
-		   ??= new Alternative( [
-			   new TokenMatcher( Token::T_NUMBER ),
-			   new FunctionMatcher( 'var', new CustomPropertyMatcher() ),
-		   ] );
-   }
-
-   /**
-	* Backport Ratio values from master branch
-	* This is not present in css-sanitizer 5.5.0
-	*
-	* @see https://github.com/wikimedia/css-sanitizer/commit/ffe10a21512f00405b4d0d124eb2c4866749e300
-	*/
-	public function ratio(): Matcher {
-		// Use the parent method if it exists
-		if ( method_exists( parent::class, 'ratio' ) ) {
-			return parent::ratio();
+	public function rawNumber() {
+		if ( !$this->varEnabled ) {
+			return parent::rawNumber();
 		}
 
-		return $this->cache[__METHOD__]
-			// <ratio> = <number [0,∞]> [ / <number [0,∞]> ]?
+		$this->cache[__METHOD__]
 			??= new Alternative( [
-				$this->rawNumber(),
-				new Juxtaposition( [
-					$this->rawNumber(),
-					$this->optionalWhitespace(),
-					new DelimMatcher( [ '/' ] ),
-					$this->optionalWhitespace(),
-					$this->rawNumber(),
-				] ),
+				new TokenMatcher( Token::T_NUMBER ),
+				new FunctionMatcher( 'var', new CustomPropertyMatcher() ),
 			] );
+
+		return $this->cache[__METHOD__];
 	}
 }

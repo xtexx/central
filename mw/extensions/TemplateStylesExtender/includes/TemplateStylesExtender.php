@@ -31,7 +31,7 @@ use Wikimedia\CSS\Grammar\FunctionMatcher;
 use Wikimedia\CSS\Grammar\Juxtaposition;
 use Wikimedia\CSS\Grammar\KeywordMatcher;
 use Wikimedia\CSS\Grammar\Quantifier;
-use Wikimedia\CSS\Grammar\UnorderedGroup;
+use Wikimedia\CSS\Sanitizer\StylePropertySanitizer;
 
 class TemplateStylesExtender {
 
@@ -42,7 +42,7 @@ class TemplateStylesExtender {
 	 * Matches 0-INF preceding CSS declarations at least one var( --content ) and 0-INF following declarations
 	 */
 	public function addVarSelector(
-		StylePropertySanitizerExtender $propertySanitizer,
+		StylePropertySanitizer $propertySanitizer,
 		MatcherFactoryExtender $factory
 	): void {
 		$anyProperty = new Alternative( [
@@ -93,88 +93,6 @@ class TemplateStylesExtender {
 	}
 
 	/**
-	 * Implements CSS Ruby Module Level 1
-	 * T277755
-	 */
-	public function addCssRuby1( StylePropertySanitizerExtender $propertySanitizer ): void {
-		try {
-			$propertySanitizer->addKnownProperties( [
-				'ruby-align' => new KeywordMatcher( [
-					'start',
-					'center',
-					'space-between',
-					'space-around',
-				] ),
-				'ruby-position' => new Alternative( [
-					UnorderedGroup::someOf( [
-						new KeywordMatcher( [ 'alternate' ] ),
-						new Alternative( [
-							new KeywordMatcher( [ 'over' ] ),
-							new KeywordMatcher( [ 'under' ] ),
-						] ),
-					] ),
-					new KeywordMatcher( [ 'inter-character' ] ),
-				] )
-			] );
-		} catch ( InvalidArgumentException $e ) {
-			// Fail silently
-		}
-	}
-
-	/**
-	 * Implements Scroll Snap Module Level 1
-	 * T271598
-	 */
-	public function addCssScrollSnap1(
-		StylePropertySanitizerExtender $propertySanitizer,
-		MatcherFactoryExtender $factory
-	): void {
-		$auto = new KeywordMatcher( 'auto' );
-		$autoLengthPct = new Alternative( [ $auto, $factory->lengthPercentage() ] );
-
-		try {
-			$propertySanitizer->addKnownProperties( [
-				'scroll-margin' => Quantifier::count( $factory->length(), 1, 4 ),
-				'scroll-margin-block' => Quantifier::count( $factory->length(), 1, 2 ),
-				'scroll-margin-block-end' => $factory->length(),
-				'scroll-margin-block-start' => $factory->length(),
-				'scroll-margin-bottom' => $factory->length(),
-				'scroll-margin-inline' => Quantifier::count( $factory->length(), 1, 2 ),
-				'scroll-margin-inline-end' => $factory->length(),
-				'scroll-margin-inline-start' => $factory->length(),
-				'scroll-margin-left' => $factory->length(),
-				'scroll-margin-right' => $factory->length(),
-				'scroll-margin-top' => $factory->length(),
-				'scroll-padding' => Quantifier::count( $autoLengthPct, 1, 4 ),
-				'scroll-padding-block' => Quantifier::count( $autoLengthPct, 1, 2 ),
-				'scroll-padding-block-end' => $autoLengthPct,
-				'scroll-padding-block-start' => $autoLengthPct,
-				'scroll-padding-bottom' => $autoLengthPct,
-				'scroll-padding-inline' => Quantifier::count( $autoLengthPct, 1, 2 ),
-				'scroll-padding-inline-end' => $autoLengthPct,
-				'scroll-padding-inline-start' => $autoLengthPct,
-				'scroll-padding-left' => $autoLengthPct,
-				'scroll-padding-right' => $autoLengthPct,
-				'scroll-padding-top' => $autoLengthPct,
-				'scroll-snap-align' => new Alternative( [
-					new KeywordMatcher( [ 'none', 'center', 'start', 'end' ] ),
-					Quantifier::count( new KeywordMatcher( [ 'start', 'end', 'center' ] ), 1, 2 ),
-				] ),
-				'scroll-snap-stop' => new KeywordMatcher( [ 'normal', 'always' ] ),
-				'scroll-snap-type' => new Alternative( [
-					new KeywordMatcher( [ 'none', 'x', 'y', 'block', 'inline', 'both' ] ),
-					new Juxtaposition( [
-						new KeywordMatcher( [ 'x', 'y', 'both' ] ),
-						new KeywordMatcher( [ 'mandatory', 'proximity' ] ),
-					] ),
-				] ),
-			] );
-		} catch ( InvalidArgumentException $e ) {
-			// Fail silently
-		}
-	}
-
-	/**
 	 * Adds the pointer-events matcher
 	 */
 	public function addPointerEvents( StylePropertySanitizerExtender $propertySanitizer ): void {
@@ -194,7 +112,7 @@ class TemplateStylesExtender {
 					'all',
 				] )
 			] );
-		} catch ( InvalidArgumentException $e ) {
+		} catch ( InvalidArgumentException ) {
 			// Fail silently
 		}
 	}
@@ -209,7 +127,7 @@ class TemplateStylesExtender {
 			$propertySanitizer->addKnownProperties( [
 				'backdrop-filter' => Quantifier::plus( $filter ),
 			] );
-		} catch ( InvalidArgumentException $e ) {
+		} catch ( InvalidArgumentException ) {
 			// Fail silently
 		}
 	}
@@ -244,7 +162,7 @@ class TemplateStylesExtender {
 					] ) )
 				] ),
 			] );
-		} catch ( InvalidArgumentException $e ) {
+		} catch ( InvalidArgumentException ) {
 			// Fail silently
 		}
 	}
@@ -263,42 +181,7 @@ class TemplateStylesExtender {
 				] ),
 				'content-visibility' => new KeywordMatcher( [ 'visible', 'hidden', 'auto' ] ),
 			] );
-		} catch ( InvalidArgumentException $e ) {
-			// Fail silently
-		}
-	}
-
-	/**
-	 * Backport CSS Box Sizing Level 4 from master branch
-	 * @see https://github.com/wikimedia/css-sanitizer/commit/ffe10a21512f00405b4d0d124eb2c4866749e300
-	 */
-	public function addCssSizing4( StylePropertySanitizerExtender $sanitizer, MatcherFactoryExtender $factory ): void {
-		try {
-			$auto = new KeywordMatcher( 'auto' );
-			$containIntrinsic = new Juxtaposition( [
-				Quantifier::optional( $auto ),
-				new Alternative( [
-					new KeywordMatcher( 'none' ),
-					$factory->lengthPercentage(),
-				] ),
-			] );
-
-			$sanitizer->addKnownProperties( [
-				'aspect-ratio' => UnorderedGroup::someOf( [ $auto, $factory->ratio() ] ),
-				'contain-intrinsic-width' => $containIntrinsic,
-				'contain-intrinsic-height' => $containIntrinsic,
-				'contain-intrinsic-block-size' => $containIntrinsic,
-				'contain-intrinsic-inline-size' => $containIntrinsic,
-				'contain-intrinsic-size' => Quantifier::count( $containIntrinsic, 1, 2 ),
-				'min-intrinsic-sizing' => new Alternative( [
-					new KeywordMatcher( 'legacy' ),
-					UnorderedGroup::someOf( [
-						new KeywordMatcher( 'zero-if-scroll' ),
-						new KeywordMatcher( 'zero-if-extrinsic' ),
-					] ),
-				] )
-			] );
-		} catch ( InvalidArgumentException $e ) {
+		} catch ( InvalidArgumentException ) {
 			// Fail silently
 		}
 	}
@@ -319,7 +202,6 @@ class TemplateStylesExtender {
 		}
 
 		try {
-			// @phan-suppress-next-line PhanPossiblyNullPropertyReal
 			$value = self::$config->get( $key );
 		} catch ( ConfigException $e ) {
 			wfLogWarning(

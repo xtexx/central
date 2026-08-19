@@ -43,14 +43,20 @@ class StylesheetSanitizerHook implements TemplateStylesStylesheetSanitizerHook {
 	): void {
 		$factory = new MatcherFactoryExtender( $matcherFactory );
 		$extended = new TemplateStylesExtender();
+
+		$extendCustomPropertyValues = TemplateStylesExtender::getConfigValue(
+			'TemplateStylesExtenderExtendCustomPropertiesValues'
+		) === true;
+
+		// Must precede constructing the sanitizer: its parent constructor memoises matchers
+		// from this factory, each capturing whether var() was enabled at that moment.
+		if ( $extendCustomPropertyValues ) {
+			$factory->setVarEnabled( true );
+		}
+
 		$extender = new StylePropertySanitizerExtender( $factory );
 
-		if (
-			TemplateStylesExtender::getConfigValue(
-				'TemplateStylesExtenderExtendCustomPropertiesValues'
-			) === true
-		) {
-			$factory->setVarEnabled( true );
+		if ( $extendCustomPropertyValues ) {
 			$extended->addVarSelector( $propertySanitizer, $factory );
 		}
 
@@ -63,7 +69,12 @@ class StylesheetSanitizerHook implements TemplateStylesStylesheetSanitizerHook {
 		}
 
 		$newRules = $sanitizer->getRuleSanitizers();
-		$newRules['@font-face'] = new FontFaceAtRuleSanitizerExtender( $factory );
+		$newRules['@font-face'] = new FontFaceAtRuleSanitizerExtender(
+			$factory,
+			(bool)TemplateStylesExtender::getConfigValue(
+				'TemplateStylesExtenderRequireFontFamilyPrefix'
+			)
+		);
 		$sanitizer->setRuleSanitizers( $newRules );
 
 		$extended->addBackdropFilter( $extender );
@@ -71,13 +82,6 @@ class StylesheetSanitizerHook implements TemplateStylesStylesheetSanitizerHook {
 
 		$extended->addCssContainment3( $extender );
 		$extended->addCssFonts4( $extender, $factory );
-		$extended->addCssRuby1( $extender );
-		$extended->addCssScrollSnap1( $extender, $factory );
-
-		// Missing in css-sanitizer 5.5.0
-		if ( !method_exists( $propertySanitizer, 'cssSizing4' ) ) {
-			$extended->addCssSizing4( $extender, $factory );
-		}
 
 		$propertySanitizer->setKnownProperties( $extender->getKnownProperties() );
 	}
