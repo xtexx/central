@@ -6,7 +6,6 @@ namespace MediaWiki\Skins\Citizen\Tests\Unit\Components;
 
 use MediaWiki\Language\Language;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentUserInfo;
-use MediaWiki\Title\Title;
 use MediaWiki\User\TempUser\TempUserConfig;
 use MediaWiki\User\User;
 use MediaWiki\User\UserGroupManager;
@@ -80,12 +79,14 @@ class CitizenComponentUserInfoTest extends MediaWikiUnitTestCase {
 
 		$lang = $this->createMock( Language::class );
 		$localizer = $this->createMockLocalizer();
-		$title = $this->createMock( Title::class );
 
-		// Simulate MediaWiki's HTML output where O'Brien becomes O&#039;Brien
+		// Taken from real skin output: core wraps portlet link text in a span, so
+		// the username is never a direct text child of the anchor. A fixture without
+		// that span passes even when the replacement cannot fire.
 		$encodedUsername = htmlspecialchars( $username, ENT_QUOTES );
-		$htmlItems = '<li id="pt-userpage"><a href="/wiki/User:'
-			. $encodedUsername . '">' . $encodedUsername . '</a></li>';
+		$htmlItems = '<li id="pt-userpage-2" class="mw-list-item"><a href="/wiki/User:'
+			. $encodedUsername . '" class="new" accesskey="."><span>'
+			. $encodedUsername . '</span></a></li>';
 
 		$userPageData = [
 			'html-items' => $htmlItems,
@@ -95,7 +96,6 @@ class CitizenComponentUserInfoTest extends MediaWikiUnitTestCase {
 			$userGroupManager,
 			$lang,
 			$localizer,
-			$title,
 			$user,
 			$this->createMockTempUserConfig( false ),
 			$userPageData
@@ -112,6 +112,69 @@ class CitizenComponentUserInfoTest extends MediaWikiUnitTestCase {
 	}
 
 	/**
+	 * Realnames ships a same-name style, so real name equal to username is a
+	 * configuration people actually run. Printing both would repeat the word.
+	 *
+	 * @covers ::getTemplateData
+	 */
+	public function testRealNameMatchingUsernameIsNotDuplicated(): void {
+		$username = 'NotifTest';
+
+		$user = $this->createMockUser( $username, $username );
+		$userGroupManager = $this->createMock( UserGroupManager::class );
+		$userGroupManager->method( 'getUserGroups' )->willReturn( [] );
+
+		$htmlItems = '<li id="pt-userpage-2" class="mw-list-item">'
+			. '<a href="/wiki/User:' . $username . '" class="new" accesskey="."><span>'
+			. $username . '</span></a></li>';
+
+		$component = new CitizenComponentUserInfo(
+			$userGroupManager,
+			$this->createMock( Language::class ),
+			$this->createMockLocalizer(),
+			$user,
+			$this->createMockTempUserConfig( false ),
+			[ 'html-items' => $htmlItems ]
+		);
+
+		$data = $component->getTemplateData();
+
+		$this->assertSame( $htmlItems, $data['data-user-page']['html-items'] );
+	}
+
+	/**
+	 * Extension:Realnames rewrites the portlet text before Citizen sees it, so the
+	 * username is no longer present verbatim and the replacement must not fire.
+	 *
+	 * @covers ::getTemplateData
+	 */
+	public function testRealNamesExtensionOutputIsLeftAlone(): void {
+		$username = 'NotifTest';
+
+		$user = $this->createMockUser( $username, 'Test Person' );
+		$userGroupManager = $this->createMock( UserGroupManager::class );
+		$userGroupManager->method( 'getUserGroups' )->willReturn( [] );
+
+		// Exactly what Realnames' paren-reverse style leaves in data-portlets.
+		$htmlItems = '<li id="pt-userpage-2" class="mw-list-item">'
+			. '<a href="/wiki/User:' . $username . '" class="new" accesskey=".">'
+			. '<span>Test Person (' . $username . ')</span></a></li>';
+
+		$component = new CitizenComponentUserInfo(
+			$userGroupManager,
+			$this->createMock( Language::class ),
+			$this->createMockLocalizer(),
+			$user,
+			$this->createMockTempUserConfig( false ),
+			[ 'html-items' => $htmlItems ]
+		);
+
+		$data = $component->getTemplateData();
+
+		$this->assertSame( $htmlItems, $data['data-user-page']['html-items'] );
+	}
+
+	/**
 	 * @covers ::getTemplateData
 	 */
 	public function testGetTemplateDataWithNoRealName(): void {
@@ -123,11 +186,11 @@ class CitizenComponentUserInfoTest extends MediaWikiUnitTestCase {
 
 		$lang = $this->createMock( Language::class );
 		$localizer = $this->createMockLocalizer();
-		$title = $this->createMock( Title::class );
 
 		$encodedUsername = htmlspecialchars( $username, ENT_QUOTES );
-		$htmlItems = '<li id="pt-userpage"><a href="/wiki/User:'
-			. $encodedUsername . '">' . $encodedUsername . '</a></li>';
+		$htmlItems = '<li id="pt-userpage-2" class="mw-list-item"><a href="/wiki/User:'
+			. $encodedUsername . '" class="new" accesskey="."><span>'
+			. $encodedUsername . '</span></a></li>';
 
 		$userPageData = [
 			'html-items' => $htmlItems,
@@ -137,7 +200,6 @@ class CitizenComponentUserInfoTest extends MediaWikiUnitTestCase {
 			$userGroupManager,
 			$lang,
 			$localizer,
-			$title,
 			$user,
 			$this->createMockTempUserConfig( false ),
 			$userPageData
@@ -164,7 +226,6 @@ class CitizenComponentUserInfoTest extends MediaWikiUnitTestCase {
 			$this->createMock( UserGroupManager::class ),
 			$this->createMock( Language::class ),
 			$this->createKeyEchoLocalizer(),
-			$this->createMock( Title::class ),
 			$user,
 			$this->createMockTempUserConfig( false ),
 			[]
@@ -186,7 +247,6 @@ class CitizenComponentUserInfoTest extends MediaWikiUnitTestCase {
 			$this->createMock( UserGroupManager::class ),
 			$this->createMock( Language::class ),
 			$this->createKeyEchoLocalizer(),
-			$this->createMock( Title::class ),
 			$user,
 			$this->createMockTempUserConfig( true ),
 			[]
