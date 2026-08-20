@@ -10,10 +10,7 @@
 	"license-name": "GPL-2.0-or-later",
 	"type": "parserhook",
 	"requires": {
-		"MediaWiki": ">= 1.43.0",
-		"platform": {
-			"php": ">=8.0"
-		},
+		"MediaWiki": ">= 1.43.9",
 		"extensions": {
 			"TemplateStyles": ">= 1.0"
 		}
@@ -24,11 +21,15 @@
 			"value": true
 		},
 		"TemplateStylesExtenderExtendCustomPropertiesValues": {
-			"description": "Allow the CSS custom properties (CSS variables) to be used as values in all properties",
+			"description": "Allow the CSS custom properties (CSS variables) to be used as values in all properties. Colour function channels such as rgb() are not affected: css-sanitizer accepts var() there whatever this is set to, and this extension does not restrict what the sanitizer already allows.",
 			"value": true
 		},
 		"TemplateStylesExtenderEnableUnscopingSupport": {
 			"description": "Allow to unscope css by changing '.mw-parser-output' to a custom class",
+			"value": false
+		},
+		"TemplateStylesExtenderRequireFontFamilyPrefix": {
+			"description": "Require @font-face family names to start with 'TemplateStyles', as TemplateStyles itself does. Off by default, which is this extension's long-standing behaviour. Note that @font-face is not scoped to .mw-parser-output, so a family declared in a TemplateStyles page applies to the whole rendered page, including skin chrome; enabling this restores TemplateStyles' namespacing. Changing this does not invalidate already-rendered pages, which keep their previous CSS until purged.",
 			"value": false
 		},
 		"TemplateStylesExtenderUnscopingPermission": {

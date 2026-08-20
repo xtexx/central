@@ -6,12 +6,13 @@ namespace MediaWiki\Skins\Citizen\Components;
 
 use MediaWiki\Html\Html;
 use MediaWiki\Language\Language;
-use MediaWiki\Title\MalformedTitleException;
-use MediaWiki\Title\Title;
 use MediaWiki\User\TempUser\TempUserConfig;
 use MediaWiki\User\User;
 use MediaWiki\User\UserGroupManager;
+use MediaWiki\User\UserGroupMembership;
 use MessageLocalizer;
+use Wikimedia\Parsoid\DOM\Element;
+use Wikimedia\Parsoid\DOM\Text;
 use Wikimedia\Parsoid\Utils\DOMCompat;
 use Wikimedia\Parsoid\Utils\DOMUtils;
 
@@ -24,7 +25,6 @@ class CitizenComponentUserInfo implements CitizenComponent {
 		private readonly UserGroupManager $userGroupManager,
 		private readonly Language $lang,
 		private readonly MessageLocalizer $localizer,
-		private readonly Title $title,
 		private readonly User $user,
 		private readonly TempUserConfig $tempUserConfig,
 		private readonly array $userPageData,
@@ -76,6 +76,16 @@ class CitizenComponentUserInfo implements CitizenComponent {
 
 	/**
 	 * Build the template data for the user groups
+	 *
+	 * Follows UserGroupMembership::getLinkHTML(), as used by Special:Preferences:
+	 * the label is the group member name in the user's interface language (with
+	 * GENDER), while the target comes from grouppage-<group> in the content
+	 * language. Groups without that message render as plain text, since there is
+	 * no page to point at.
+	 *
+	 * One deliberate difference: the label is capitalised. Core leaves it lower
+	 * case because it reads inside a sentence there ("member of: administrator"),
+	 * whereas here each name stands on its own.
 	 */
 	private function getUserGroups(): ?array {
 		$groups = $this->userGroupManager->getUserGroups( $this->user );
@@ -85,27 +95,26 @@ class CitizenComponentUserInfo implements CitizenComponent {
 		}
 
 		$listItems = [];
-		$msgKey = 'group-%s-member';
 		foreach ( $groups as $group ) {
-			$id = sprintf( $msgKey, $group );
-			$text = $this->localizer->msg( $id )->text();
-			$title = null;
-			try {
-				$title = $this->title->newFromTextThrow( $text, NS_PROJECT );
-			} catch ( MalformedTitleException ) {
-				// ignore
-			}
+			$text = $this->lang->ucfirst(
+				$this->lang->getGroupMemberName( $group, $this->user )
+			);
 
-			if ( !$text || !$title ) {
+			if ( $text === '' ) {
 				continue;
 			}
 
-			$link = new CitizenComponentLink(
-				$title->getLinkURL(),
-				ucfirst( $text )
-			);
+			$title = UserGroupMembership::getGroupPage( $group );
+			$link = $title
+				? new CitizenComponentLink( $title->getLinkURL(), $text )
+				: null;
 
-			$listItem = new CitizenComponentMenuListItem( $link, 'citizen-userInfo-usergroup', $id );
+			$listItem = new CitizenComponentMenuListItem(
+				$link,
+				'citizen-userInfo-usergroup',
+				sprintf( 'group-%s-member', $group ),
+				$link ? '' : $text
+			);
 
 			$listItems[] = $listItem->getTemplateData();
 		}
@@ -124,8 +133,10 @@ class CitizenComponentUserInfo implements CitizenComponent {
 
 		$htmlItems = $userPageData['html-items'];
 		$realname = $user->getRealName();
-		if ( $realname !== '' ) {
-			$username = $user->getName();
+		$username = $user->getName();
+		// Showing both is only useful when they differ; when they match it would
+		// print the same word twice.
+		if ( $realname !== '' && $realname !== $username ) {
 			$htmlItems = $this->replaceUsernameWithRealName( $htmlItems, $username, $realname );
 		}
 
@@ -148,25 +159,63 @@ class CitizenComponentUserInfo implements CitizenComponent {
 		$body = DOMCompat::getBody( $doc );
 
 		foreach ( DOMCompat::querySelectorAll( $body, 'a' ) as $anchor ) {
-			foreach ( $anchor->childNodes as $child ) {
-				if ( $child->nodeType === XML_TEXT_NODE && $child->textContent === $username ) {
-					$realnameSpan = $doc->createElement( 'span' );
-					$realnameSpan->setAttribute( 'id', 'pt-userpage-realname' );
-					$realnameSpan->appendChild( $doc->createTextNode( $realname ) );
+			// The username is not a direct child of the anchor: core wraps portlet
+			// link text in a span, and the keyboard hint adds a further sibling.
+			// Search descendants and replace the text node where it actually sits,
+			// which also puts both spans inside the wrapper that
+			// `#pt-userpage-2 > a > span` lays out.
+			$textNode = $this->findTextNode( $anchor, $username );
 
-					$usernameSpan = $doc->createElement( 'span' );
-					$usernameSpan->setAttribute( 'id', 'pt-userpage-username' );
-					$usernameSpan->appendChild( $doc->createTextNode( $username ) );
+			if ( !$textNode ) {
+				continue;
+			}
 
-					$anchor->replaceChild( $usernameSpan, $child );
-					$anchor->insertBefore( $realnameSpan, $usernameSpan );
-					$anchor->insertBefore( $doc->createTextNode( ' ' ), $usernameSpan );
-					break 2;
+			$realnameSpan = $doc->createElement( 'span' );
+			$realnameSpan->setAttribute( 'id', 'pt-userpage-realname' );
+			$realnameSpan->appendChild( $doc->createTextNode( $realname ) );
+
+			$usernameSpan = $doc->createElement( 'span' );
+			$usernameSpan->setAttribute( 'id', 'pt-userpage-username' );
+			$usernameSpan->appendChild( $doc->createTextNode( $username ) );
+
+			$parent = $textNode->parentNode;
+			$parent->replaceChild( $usernameSpan, $textNode );
+			$parent->insertBefore( $realnameSpan, $usernameSpan );
+			// Kept for contexts where the flex gap does not apply; a whitespace-only
+			// text node is not rendered as a flex item where it does.
+			$parent->insertBefore( $doc->createTextNode( ' ' ), $usernameSpan );
+			break;
+		}
+
+		return DOMCompat::getInnerHTML( $body );
+	}
+
+	/**
+	 * Find the first descendant text node whose content is exactly $text.
+	 *
+	 * Typed on Parsoid's DOM namespace rather than \DOMNode: PHP 8.4 introduced a
+	 * separate Dom\* hierarchy, and MediaWiki 1.46+ returns those from
+	 * parseHTML(), so a \DOMNode hint is a TypeError there.
+	 */
+	private function findTextNode( Element $node, string $text ): ?Text {
+		foreach ( $node->childNodes as $child ) {
+			if ( $child instanceof Text ) {
+				if ( $child->textContent === $text ) {
+					return $child;
+				}
+				continue;
+			}
+
+			// Only elements can hold further children worth descending into.
+			if ( $child instanceof Element ) {
+				$found = $this->findTextNode( $child, $text );
+				if ( $found ) {
+					return $found;
 				}
 			}
 		}
 
-		return DOMCompat::getInnerHTML( $body );
+		return null;
 	}
 
 	public function getTemplateData(): array {

@@ -1,0 +1,201 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\TemplateStylesExtender\Tests\Integration;
+
+use MediaWiki\Extension\TemplateStyles\Hooks as TemplateStylesHooks;
+use MediaWikiIntegrationTestCase;
+use ReflectionClass;
+use Wikimedia\CSS\Parser\Parser as CSSParser;
+
+/**
+ * The properties this extension adds must honour the wiki's $wgTemplateStylesAllowedUrls,
+ * not bypass it and not hardcode a policy of their own.
+ *
+ * Integration rather than unit: a unit test can only show the extension delegates to
+ * whatever factory it is handed, not that the configured allowlist reaches the properties
+ * added through the hook chain -- which is what a wiring mistake breaks.
+ *
+ * CssCorpusTest uses URLs the default allowlist permits and so says nothing about
+ * configuration. This sets the allowlist explicitly, so it depends on no wiki's settings.
+ *
+ * @group TemplateStylesExtender
+ * @covers \MediaWiki\Extension\TemplateStylesExtender\Hooks\PropertySanitizerHook
+ * @covers \MediaWiki\Extension\TemplateStylesExtender\Hooks\StylesheetSanitizerHook
+ * @covers \MediaWiki\Extension\TemplateStylesExtender\MatcherFactoryExtender
+ * @covers \MediaWiki\Extension\TemplateStylesExtender\TemplateStylesExtender
+ */
+class UrlPolicyConfigTest extends MediaWikiIntegrationTestCase {
+
+	private const ALLOWED = 'https://allowed.example';
+	private const BLOCKED = 'https://blocked.example';
+
+	/**
+	 * TemplateStyles memoises its matcher factory and sanitizers in private statics and
+	 * never invalidates them, so a config override does nothing until they are dropped.
+	 * PHPUnit process isolation, the obvious alternative, does not work under MediaWiki's
+	 * test bootstrap. A rename upstream makes getProperty() throw, which fails loudly
+	 * rather than asserting against a stale sanitizer.
+	 */
+	private static function resetTemplateStylesCaches(): void {
+		$reflection = new ReflectionClass( TemplateStylesHooks::class );
+		foreach ( [ 'matcherFactory' => null, 'sanitizers' => [], 'wrappers' => [] ] as $name => $empty ) {
+			// No setAccessible() call: it has been a no-op since PHP 8.1, which this
+			// extension already requires, and PHP 8.5 deprecates it -- and MediaWiki
+			// turns deprecations into test failures.
+			$reflection->getProperty( $name )->setValue( null, $empty );
+		}
+	}
+
+	protected function setUp(): void {
+		parent::setUp();
+		self::resetTemplateStylesCaches();
+		$this->overrideConfigValue( 'TemplateStylesAllowedUrls', [
+			'audio' => [],
+			'image' => [ '<^' . preg_quote( self::ALLOWED, '<' ) . '/>' ],
+			'svg' => [ '<^' . preg_quote( self::ALLOWED, '<' ) . '/>' ],
+			'font' => [],
+			'namespace' => [ '<.>' ],
+			'css' => [],
+		] );
+	}
+
+	protected function tearDown(): void {
+		try {
+			// Leave no sanitizer built from this test's allowlist behind for other tests.
+			self::resetTemplateStylesCaches();
+		} finally {
+			// parent::tearDown() must run even if the reset throws. MediaWiki skips its
+			// own teardown when tearDown() raises, and then reports every subsequent test
+			// as "mediaWikiSetUp() was called but not mediaWikiTearDown()" -- turning one
+			// real failure into a dozen misleading ones.
+			parent::tearDown();
+		}
+	}
+
+	private function isAccepted( string $declaration ): bool {
+		$sanitizer = TemplateStylesHooks::getSanitizer( 'mw-parser-output' );
+		$sanitizer->clearSanitizationErrors();
+		$sanitizer->sanitize( CSSParser::newFromString( ".test { $declaration }" )->parseStylesheet() );
+
+		return $sanitizer->getSanitizationErrors() === [];
+	}
+
+	/**
+	 * The density slot of image-set() must not accept var(), or a custom property can
+	 * smuggle a second image-set entry past the URL allowlist.
+	 *
+	 * MatcherFactoryExtender::resolution() is what prevents it. Upstream builds resolution
+	 * as mathFunction( rawResolution() ), and mathFunction() is late-bound to this
+	 * extension's var()-aware override, so inheriting it admits var() into the slot.
+	 * doSanitize() does not help: the payload is a bare string, which is neither a url()
+	 * token nor an external-resource function -- and is exactly what image-set()'s first
+	 * argument accepts as a URL.
+	 *
+	 * @dataProvider provideResolutionSlotPayloads
+	 */
+	public function testResolutionSlotRejectsSubstitution( string $declarations ): void {
+		$sanitizer = TemplateStylesHooks::getSanitizer( 'mw-parser-output' );
+		$sanitizer->clearSanitizationErrors();
+		$output = (string)$sanitizer->sanitize(
+			CSSParser::newFromString( ".test { $declarations }" )->parseStylesheet()
+		);
+
+		$this->assertStringNotContainsString(
+			'background-image',
+			$output,
+			'the referencing declaration must be dropped, not just flagged'
+		);
+		$this->assertNotSame(
+			[],
+			$sanitizer->getSanitizationErrors(),
+			'the editor must be told why, not have the rule vanish silently'
+		);
+	}
+
+	public static function provideResolutionSlotPayloads(): array {
+		$evil = self::BLOCKED . '/tracker.png';
+		// Must be a host this test's own allowlist permits, or the declaration is dropped
+		// because of the URL rather than because of the density slot, and the test passes
+		// for the wrong reason.
+		$ok = self::ALLOWED . '/i.png';
+
+		return [
+			'var() carrying a second image-set entry' => [
+				"--r: 2x, \"$evil\" 1x; background-image: image-set(\"$ok\" var(--r))",
+			],
+			'var() in the density slot at all' => [
+				"--r: 1x; background-image: image-set(\"$ok\" var(--r))",
+			],
+		];
+	}
+
+	/**
+	 * Not a bypass: this pins a deliberate narrowing. CSS Values 4 permits a math function
+	 * where a <resolution> is expected; the override does not, and that strictness is what
+	 * keeps var() out of the slot.
+	 *
+	 * Relaxing this at mathFunction() instead would not be equivalent. Upstream's calcSum()
+	 * admits var() on the reasoning that calc() forces values to be numeric, which stops
+	 * holding once the result lands where substitution is textual, as it does here.
+	 */
+	public function testMathFunctionsAreNotAllowedInTheDensitySlot(): void {
+		$ok = self::ALLOWED . '/i.png';
+		$sanitizer = TemplateStylesHooks::getSanitizer( 'mw-parser-output' );
+		$sanitizer->clearSanitizationErrors();
+		$output = (string)$sanitizer->sanitize(
+			CSSParser::newFromString( ".test { background-image: image-set(\"$ok\" calc(1dppx * 2)) }" )
+				->parseStylesheet()
+		);
+
+		$this->assertStringNotContainsString( 'background-image', $output );
+	}
+
+	/**
+	 * @dataProvider provideUrls
+	 */
+	public function testConfiguredAllowlistApplies( string $declaration, bool $allowed ): void {
+		$this->assertSame( $allowed, $this->isAccepted( $declaration ), $declaration );
+	}
+
+	public static function provideUrls(): array {
+		$allowed = self::ALLOWED;
+		$blocked = self::BLOCKED;
+		// The Wikimedia host is what the shipped default permits. Under this test's
+		// allowlist it must be refused -- that is what proves configuration took effect
+		// rather than the assertions passing against the default policy.
+		$default = 'https://upload.wikimedia.org/wikipedia/commons/a/ab';
+
+		return [
+			// image-set(), added by this extension
+			'image-set, allowed host' => [ "background-image: image-set(\"$allowed/i.png\" 1x)", true ],
+			'image-set, blocked host' => [ "background-image: image-set(\"$blocked/i.png\" 1x)", false ],
+			'image-set, url() form, allowed host' => [
+				"background-image: image-set(url(\"$allowed/i.png\") 1x)",
+				true,
+			],
+			'image-set, url() form, blocked host' => [
+				"background-image: image-set(url(\"$blocked/i.png\") 1x)",
+				false,
+			],
+			'image-set, default-policy host is not special-cased' => [
+				"background-image: image-set(\"$default/x.png\" 1x)", false,
+			],
+
+			// backdrop-filter, added by this extension, takes an SVG filter reference
+			'backdrop-filter, allowed host' => [ "backdrop-filter: url(\"$allowed/f.svg#f\")", true ],
+			'backdrop-filter, blocked host' => [ "backdrop-filter: url(\"$blocked/f.svg#f\")", false ],
+			'backdrop-filter, blocked host beside a permitted function' => [
+				"backdrop-filter: url(\"$blocked/f.svg#f\") blur(4px)", false,
+			],
+			'backdrop-filter, relative URL is not resolved into the allowlist' => [
+				'backdrop-filter: url("f.svg#f")', false,
+			],
+
+			// custom properties, where this extension does its own external-resource scan
+			'custom property, blocked host' => [ "--x: url(\"$blocked/i.png\")", false ],
+			'custom property, even an allowed host is refused' => [ "--x: url(\"$allowed/i.png\")", false ],
+		];
+	}
+}
