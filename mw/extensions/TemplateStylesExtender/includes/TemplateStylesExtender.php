@@ -187,12 +187,11 @@ class TemplateStylesExtender {
 	}
 
 	/**
-	 * Loads a config value for a given key from the main config
-	 * Returns null on if an ConfigException was thrown
+	 * Loads a config value for a given key from this extension's config
+	 *
+	 * Returns $default if the lookup throws a ConfigException, as a missing key does.
 	 *
 	 * @param string $key The config key
-	 * @param null $default
-	 * @return mixed|null
 	 */
 	public static function getConfigValue( string $key, mixed $default = null ): mixed {
 		if ( self::$config === null ) {

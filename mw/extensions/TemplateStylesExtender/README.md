@@ -6,7 +6,7 @@ Extends [Extension:TemplateStyles](https://www.mediawiki.org/wiki/Extension:Temp
 
 * Declare CSS custom properties/variables
 * Use CSS custom properties/variables in most properties
-* Implement additional properties and values as listed below
+* Implement additional selectors, properties and values as listed below
 
 | Module | Changes | Upstream task
 | - | - | - |
@@ -22,6 +22,7 @@ Extends [Extension:TemplateStyles](https://www.mediawiki.org/wiki/Extension:Temp
 | [Grid Layout Module Level 3](https://www.w3.org/TR/css-grid-3/) | Added value: `masonry`; added property: `masonry-auto-flow` | - |
 | [Images Module Level 4](https://www.w3.org/TR/css-images-4/) | Added function: [`image-set()`](https://developer.mozilla.org/en-US/docs/Web/CSS/image/image-set) | - |
 | [Masking Module Level 1](https://www.w3.org/TR/css-masking/) | Added property: `-webkit-mask-image` | - |
+| [Selectors Level 4](https://www.w3.org/TR/selectors-4/) | Added pseudo-classes: [`:has()`](https://developer.mozilla.org/en-US/docs/Web/CSS/:has), [`:is()`](https://developer.mozilla.org/en-US/docs/Web/CSS/:is), [`:where()`](https://developer.mozilla.org/en-US/docs/Web/CSS/:where), [`:focus-within`](https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-within), [`:focus-visible`](https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible), `:any-link`, and the form-state ones (`:read-only`, `:read-write`, `:placeholder-shown`, `:default`, `:required`, `:optional`, `:valid`, `:invalid`, `:in-range`, `:out-of-range`); widened [`:not()`](https://developer.mozilla.org/en-US/docs/Web/CSS/:not) to take a selector list | - |
 
 
 ## Installation
@@ -44,7 +45,15 @@ wfLoadExtension( 'TemplateStylesExtender' );
 | `$wgTemplateStylesExtenderRequireFontFamilyPrefix` | Require `@font-face` family names to start with `TemplateStyles`, as TemplateStyles itself does.[^3] | `false` |
 | `$wgTemplateStylesExtenderUnscopingPermission` | Specify a permission group that is allowed to unscope CSS. | `editinterface` |
 
-[^4]: Colour function channels such as `rgb()` are not affected. `css-sanitizer` accepts `var()` there whatever this is set to, and this extension does not restrict what the sanitizer already allows.
+[^4]: Not every `var()` depends on this. `css-sanitizer` accepts `var()` as a whole colour and inside a colour function, so `color: var(--c, red)` and `color: rgb(var(--r) 0 0)` keep working whatever this is set to. Turning it off removes `var()` from everywhere else:
+
+    ```css
+    width: var(--w);                  /* gone */
+    transform: translateX(var(--x));  /* gone */
+    color: rgb(from var(--c) r g b);  /* gone -- the colour a relative colour starts from */
+    color: rgb(var(--r) 0 0);         /* kept */
+    color: var(--c, red);             /* kept */
+    ```
 
 [^3]: `@font-face` is not scoped to `.mw-parser-output`, so a family declared on a TemplateStyles page applies to the whole rendered page, including skin chrome. Leaving this off keeps this extension's long-standing behaviour of allowing any family name. Changing it does not invalidate already-rendered pages, which keep their previous CSS until purged.
 
@@ -76,8 +85,71 @@ Wikitext
 </div>
 ```
 
+### Selectors
+`css-sanitizer` implements Selectors Level 3, and a selector it rejects costs the editor the
+whole stylesheet rather than the one rule, so this extension widens the selector grammar as
+well as the property grammar.
+
+One limitation is worth knowing. The argument of a functional pseudo-class takes Level 4
+keywords but not another functional pseudo-class:
+
+```css
+.card:has(a:focus-visible) { }  /* fine */
+.card:has(:has(.b)) { }         /* rejected */
+.a:is(.b:has(.c)) { }           /* rejected */
+```
+
+The grammar for that argument cannot be built from the grammar that contains it — it would
+recurse — so it is built one level deep on purpose. Keeping it bounded also means the
+matcher cannot be driven to backtrack, which matters for something that runs on every save.
+
+A second limitation is about scoping rather than grammar. TemplateStyles hoists a leading
+`html` or `body` so that a theme class can gate a rule — `html.night .card` becomes
+`html.night .mw-parser-output .card`. It recognises that prefix by its element name, so a
+functional pseudo-class in that position is not hoisted:
+
+```css
+html.night .card { }        /* hoisted, works */
+:is(html, body) .card { }   /* accepted, scoped under .mw-parser-output, matches nothing */
+```
+
+Note also that `:has()` widens what a hoisted prefix can test. `html.no-js .card` could
+already gate a rule on a class on `<html>`; `html:has(#some-id) .card` can gate it on
+anything in the document. The rule it applies is still scoped to the wrapper, and no CSS
+here can fetch a URL that `$wgTemplateStylesAllowedUrls` does not permit, so this widens an
+existing channel rather than opening a new one.
+
+### `image-set()`
+The density argument takes a resolution or a math function, but no `var()` — not even inside
+`calc()`:
+
+```css
+image-set(url(…) calc(1x * 2));            /* fine */
+image-set(url(…) calc(1x * var(--scale)))  /* rejected */
+```
+
+`image-set()` reads a bare string as a URL, so a custom property substituted next to one can
+add a second entry pointing anywhere, past `$wgTemplateStylesAllowedUrls`. Every other
+numeric slot takes `var()` inside `calc()` normally.
+
 ### Relative colors
 The relative colors module is quite extensive, not every feature is currently implemented.
+
+The origin colour — the value after `from` — accepts a colour word or hex, a colour
+function, `light-dark()`, or a `var()` carrying a colour fallback:
+
+```css
+color: rgb(from red r g b);
+color: rgb(from #36c r g b);
+color: rgb(from hsl(120 75% 25%) r g b);
+color: rgb(from light-dark(red, blue) r g b);
+color: rgb(from var(--c) r g b);       /* needs the config option in footnote 4 */
+color: rgb(from var(--c, red) r g b);  /* likewise */
+```
+
+The colour functions accepted there are the absolute ones only, so a relative colour cannot
+itself be an origin, directly or as a `light-dark()` argument. `calc()` on a channel is not
+implemented either. `CssCorpusTest` lists the gaps case by case.
 
 
 ## Development

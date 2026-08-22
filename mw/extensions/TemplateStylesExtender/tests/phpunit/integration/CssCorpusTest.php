@@ -110,6 +110,16 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 		$this->assertSame( $accepted, $survives, $descriptor );
 	}
 
+	/**
+	 * `@media` holds its own copy of the rule-sanitizer list, taken before the hook that
+	 * replaces `@font-face` runs, so this extension's descriptors did not reach inside it.
+	 */
+	public function testFontFaceDescriptorsInsideMedia(): void {
+		$css = "@media screen { @font-face { font-family: 'TemplateStylesCorpus'; ascent-override: 100% } }";
+
+		$this->assertTrue( $this->sanitizes( $css, 'ascent-override' ) );
+	}
+
 	public static function provideFontFaceDescriptors(): array {
 		return [
 			'ascent-override percentage' => [ 'ascent-override: 100%', true ],
@@ -200,6 +210,29 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				'color: oklch(0.5 0.1 var(--h, 40))',
 				'color: rgb(from #36c var(--r, 0) g b)',
 			] ),
+			// The origin takes a var() with a same-type fallback, as the channels do. Unlike
+			// them it needs the option this corpus assumes enabled; colorFuncs() says why.
+			self::cases( 'Color 4/5', [
+				'color: rgb(from var(--c, red) r g b)',
+				'color: rgb(from var(--c, red) r g b / 0.5)',
+				'background: hsl(from var(--c, #36c) h s l)',
+				'color: color(from var(--c, red) srgb r g b)',
+				'color: oklch(from var(--c, oklch(0.5 0.1 40)) l c h)',
+				'color: rgb(from var(--c, currentcolor) r g b)',
+				// a colour function is a colour, so one with var() channels of its own fits
+				'color: rgb(from var(--c, rgb(var(--r) 0 0)) r g b)',
+			] ),
+			// light-dark() is in upstream's color(); the origin was missing it (#63).
+			self::cases( 'Color 4/5', [
+				'color: rgb(from light-dark(red, blue) r g b)',
+				'color: rgb(from light-dark(red, blue) r g b / 0.5)',
+				'color: hsl(from light-dark(red, blue) h s l)',
+				'color: hwb(from light-dark(#36c, rgb(1 2 3)) h w b)',
+				'color: rgb(from light-dark(rgb(var(--r) 0 0), blue) r g b)',
+				// upstream's own, kept so the origin is not the only place it is asserted
+				'color: light-dark(red, blue)',
+				'color: light-dark(rgb(from red r g b), blue)',
+			] ),
 			// Regress if mathFunction() is deleted. addVarSelector's fallback reaches
 			// neither inside a function nor past a token it does not list, which is what
 			// `inset`, `opacity` and the `/` supply in the last three.
@@ -212,6 +245,36 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				'transition: opacity var(--d) ease-in-out',
 				'border-radius: var(--r) / 1px',
 				'background-image: linear-gradient(red var(--s), blue)',
+			] ),
+			// The whole-value matcher addVarSelector() installs, reached only once the
+			// property's own grammar has refused the value. It is what carries a var() into
+			// a keyword slot, and a fallback into a numeric one -- mathFunction()'s var()
+			// has no fallback slot.
+			self::cases( 'Custom properties, whole value', [
+				'border: 1px var(--border-style) black',
+				'border: var(--width) var(--style) var(--color)',
+				'border-image-source: var(--image)',
+				'box-shadow: var(--shadow-sm), var(--shadow-lg)',
+				'display: var(--display)',
+				'font-family: var(--font-stack)',
+				'padding: var(--gutter, 1rem)',
+				'text-align: var(--align)',
+				'transition: var(--property) var(--duration) var(--easing)',
+				'transition-timing-function: var(--easing)',
+				'width: var(--w, 100%)',
+				'z-index: var(--z, 10)',
+			] ),
+			// None of this extension's own properties takes a var() in a slot of its own
+			// either, so one in them arrives at that same matcher.
+			self::cases( 'Custom properties, whole value', [
+				'-webkit-mask-image: var(--mask)',
+				'backdrop-filter: var(--filter)',
+				'contain: var(--containment)',
+				'content-visibility: var(--visibility)',
+				'font-optical-sizing: var(--optical-sizing)',
+				'font-variation-settings: var(--variations)',
+				'masonry-auto-flow: var(--flow)',
+				'pointer-events: var(--pointer-events)',
 			] ),
 			// Reach rawNumber() through upstream ratio(), which calls it late-bound.
 			// `aspect-ratio: var(--r)` is deliberately absent: it passes either way via
@@ -237,6 +300,12 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				"backdrop-filter: url(\"$commons/f.svg#filter\") blur(4px) saturate(150%)",
 			] ),
 			self::cases( 'Images 4', [
+				// a math function in the density slot; refused before #62, and worth nothing
+				// to refuse, since it evaluates to a number and cannot add an entry. The
+				// shape is checked, not the unit -- upstream leaves that to the browser, so
+				// calc(1px) reaches here too.
+				"background-image: image-set(\"$commons/i1.jpg\" calc(1x * 2))",
+				"background-image: image-set(url(\"$commons/i1.jpg\") calc(1dppx * 2))",
 				"background-image: image-set(\"$commons/i1.jpg\" 1x, \"$commons/i2.jpg\" 2x)",
 				"background-image: image-set(url(\"$commons/i1.jpg\") 1x, url(\"$commons/i2.jpg\") 2x)",
 				"background-image: image-set( url(\"$commons/i1.avif\") type(\"image/avif\"), " .
@@ -543,30 +612,261 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 	}
 
 	/**
-	 * A var() fallback in a colour channel is restricted to that channel's own type, so a
-	 * fallback cannot be used to reach a value the slot would otherwise refuse.
+	 * A var() fallback is restricted to its slot's own type, so it cannot reach a value the
+	 * slot would otherwise refuse. The origin is the wider slot: it takes colour functions.
 	 *
 	 * @dataProvider provideRejectedFallbacks
 	 */
-	public function testChannelFallbacksAreTypeRestricted( string $declaration ): void {
+	public function testFallbacksAreTypeRestricted( string $declaration ): void {
 		$this->assertFalse( $this->isAccepted( $declaration ), $declaration );
 	}
 
 	public static function provideRejectedFallbacks(): array {
+		// A URL the default allowlist permits, so these are refused for their type, not
+		// their host.
+		$commons = self::COMMONS;
+
 		return [
-			'url fallback' => [ 'color: rgb(var(--r, url("https://upload.wikimedia.org/x.png")) 0 0)' ],
+			// numeric slots
+			'url fallback' => [ "color: rgb(var(--r, url(\"$commons/x.png\")) 0 0)" ],
 			'colour-word fallback in a numeric slot' => [ 'color: rgb(var(--r, red) 0 0)' ],
 			'string fallback' => [ 'color: rgb(var(--r, "0") 0 0)' ],
+
+			// the origin: a colour slot, so a different refused set, same rule
+			'url fallback in an origin' => [
+				"color: rgb(from var(--c, url(\"$commons/x.png\")) r g b)",
+			],
+			'image-set fallback in an origin' => [
+				"color: rgb(from var(--c, image-set(\"$commons/i.png\" 1x)) r g b)",
+			],
+			'string fallback in an origin' => [ 'color: rgb(from var(--c, "red") r g b)' ],
+			'length fallback in an origin' => [ 'color: rgb(from var(--c, 10px) r g b)' ],
+			'number fallback in an origin' => [ 'color: rgb(from var(--c, 0) r g b)' ],
+			'unknown keyword fallback in an origin' => [ 'color: rgb(from var(--c, notacolor) r g b)' ],
+			// one <color>, not a list: a fallback cannot supply the channels as well
+			'two-value fallback in an origin' => [ 'color: rgb(from var(--c, red 0) r g b)' ],
 		];
 	}
 
-	/** Relative colours with calc() on a channel are not implemented. */
+	/**
+	 * The origin accepts colour functions, so what light-dark() refuses there is worth
+	 * pinning rather than assuming.
+	 *
+	 * @dataProvider provideRejectedLightDarkOrigins
+	 */
+	public function testLightDarkOriginTakesTwoColours( string $declaration ): void {
+		$this->assertFalse( $this->isAccepted( $declaration ), $declaration );
+	}
+
+	public static function provideRejectedLightDarkOrigins(): array {
+		// See provideRejectedFallbacks().
+		$commons = self::COMMONS;
+
+		return [
+			'url instead of a colour' => [
+				"color: rgb(from light-dark(url(\"$commons/x.png\"), blue) r g b)",
+			],
+			'length instead of a colour' => [ 'color: rgb(from light-dark(red, 10px) r g b)' ],
+			'no arguments' => [ 'color: rgb(from light-dark() r g b)' ],
+			'one argument' => [ 'color: rgb(from light-dark(red) r g b)' ],
+			'three arguments' => [ 'color: rgb(from light-dark(red, blue, green) r g b)' ],
+			'no comma' => [ 'color: rgb(from light-dark(red blue) r g b)' ],
+		];
+	}
+
+	/**
+	 * $anyProperty, the list of value types the whole-value matcher is built from. The
+	 * vehicle is one of this extension's own keyword-only properties, so nothing else can
+	 * satisfy the slot and dropping a type from the list turns a row red. `integer()` is the
+	 * exception: `number()` matches an integer too, so no value isolates it.
+	 *
+	 * @dataProvider provideWideMatcherValueTypes
+	 */
+	public function testWideMatcherValueTypes( string $declaration, bool $accepted ): void {
+		$this->assertSame( $accepted, $this->isAccepted( $declaration ), $declaration );
+	}
+
+	public static function provideWideMatcherValueTypes(): array {
+		// A URL the default allowlist permits, so the refused rows are refused for their
+		// type rather than their host.
+		$commons = self::COMMONS;
+
+		return [
+			'colour' => [ 'pointer-events: var(--x, red)', true ],
+			'hex colour' => [ 'pointer-events: var(--x, #36c)', true ],
+			'image' => [ "pointer-events: var(--x, url(\"$commons/i.png\"))", true ],
+			'image-set' => [ "pointer-events: var(--x, image-set(\"$commons/i.png\" 1x))", true ],
+			'gradient' => [ 'pointer-events: var(--x, linear-gradient(red, blue))', true ],
+			'length' => [ 'pointer-events: var(--x, 1px)', true ],
+			'integer' => [ 'pointer-events: var(--x, 2)', true ],
+			'number' => [ 'pointer-events: var(--x, 2.5)', true ],
+			'percentage' => [ 'pointer-events: var(--x, 50%)', true ],
+			'angle' => [ 'pointer-events: var(--x, 30deg)', true ],
+			'frequency' => [ 'pointer-events: var(--x, 3khz)', true ],
+			'resolution' => [ 'pointer-events: var(--x, 2x)', true ],
+			'position' => [ 'pointer-events: var(--x, left top)', true ],
+			'easing function' => [ 'pointer-events: var(--x, ease-in-out)', true ],
+			'css-wide keyword' => [ 'pointer-events: var(--x, revert-layer)', true ],
+			'line style' => [ 'pointer-events: var(--x, solid)', true ],
+			'line style, wavy' => [ 'pointer-events: var(--x, wavy)', true ],
+
+			// Not in the list, and nor is a plain ident -- so the natural
+			// `var( --x, <the property's default> )` works only where that default happens
+			// to be a line style or a css-wide keyword.
+			'a keyword of the property itself' => [ 'pointer-events: var(--x, visible)', false ],
+			'none' => [ 'pointer-events: var(--x, none)', false ],
+			'auto' => [ 'pointer-events: var(--x, auto)', false ],
+			'a line style outside the five' => [ 'pointer-events: var(--x, groove)', false ],
+			'a line width' => [ 'pointer-events: var(--x, thin)', false ],
+			'string' => [ 'pointer-events: var(--x, "s")', false ],
+			'time' => [ 'pointer-events: var(--x, 1s)', false ],
+			'attr()' => [ 'pointer-events: var(--x, attr(data-x))', false ],
+			'a url the policy refuses' => [
+				'pointer-events: var(--x, url("https://evil.example.org/x.png"))',
+				false,
+			],
+		];
+	}
+
+	/**
+	 * What the whole-value matcher must still refuse. Its list holds no bare ident, string
+	 * or arbitrary function, and its image() is this factory's, so
+	 * $wgTemplateStylesAllowedUrls still applies to whatever reaches a slot through it.
+	 *
+	 * @dataProvider provideWideMatcherRefusals
+	 */
+	public function testWideMatcherStillRefuses( string $declaration ): void {
+		$this->assertFalse( $this->isAccepted( $declaration ), $declaration );
+	}
+
+	public static function provideWideMatcherRefusals(): array {
+		// evil.example.org matches no entry of the default allowlist. src() is not what
+		// refuses those rows: UrlMatcher takes `src` as it takes `url`, so the same URL on
+		// a permitted host is accepted.
+		return [
+			'a url the policy refuses, beside a var()' => [
+				'background: var(--x) url("https://evil.example.org/x.png")',
+			],
+			'an image-set the policy refuses' => [
+				'background: var(--x) image-set("https://evil.example.org/x.png" 1x)',
+			],
+			'an src() the policy refuses' => [
+				'background-image: var(--x) src("https://evil.example.org/x.png")',
+			],
+			'attr()' => [ 'pointer-events: var(--x) attr(data-x)' ],
+			'expression()' => [ 'width: var(--w) expression(alert(1))' ],
+			'an unknown function' => [ 'pointer-events: notafunction(1px)' ],
+			'an unknown keyword beside a var()' => [ 'border: 1px var(--style) notacolor' ],
+			'a block' => [ 'pointer-events: [auto]' ],
+			'var() with no custom property' => [ 'color: var()' ],
+		];
+	}
+
+	/**
+	 * The matcher goes on the property sanitizer TemplateStyles shares with `@media`,
+	 * `@supports` and `@keyframes`. `@font-face` builds its own, and `@page` clones the
+	 * shared one before this hook runs, so neither of those gets it.
+	 *
+	 * @dataProvider provideWideMatcherInAtRules
+	 */
+	public function testWideMatcherInsideAtRules(
+		string $css,
+		string $mustSurvive,
+		bool $accepted
+	): void {
+		$this->assertSame( $accepted, $this->sanitizes( $css, $mustSurvive ), $css );
+	}
+
+	public static function provideWideMatcherInAtRules(): array {
+		return [
+			'@media' => [ '@media screen { .a { display: var(--d) } }', 'display', true ],
+			'@supports' => [
+				'@supports (display: grid) { .a { display: var(--d) } }', 'display', true,
+			],
+			'@keyframes' => [
+				'@keyframes TemplateStylesCorpus { from { display: var(--d) } }', 'display', true,
+			],
+			'@font-face' => [
+				"@font-face { font-family: 'TemplateStylesCorpus'; font-display: var(--d) }",
+				'font-display',
+				false,
+			],
+			// The clone costs `@page` every property this extension adds as well, not only
+			// this matcher.
+			'@page' => [ '@page { color: var(--c, 10px) }', 'color', false ],
+		];
+	}
+
+	/**
+	 * The matcher is not told which property it is on, so nothing here is checked against
+	 * one: not the value's type, not how many values there are, not a fallback's type, and
+	 * not which allowlist the property's own slot would have used. Nor does it require a
+	 * var() to be present. Tightening any of that turns these red.
+	 *
+	 * @dataProvider provideAcceptedRegardlessOfProperty
+	 */
+	public function testWideMatcherIgnoresTheProperty( string $declaration ): void {
+		$this->assertTrue( $this->isAccepted( $declaration ), $declaration );
+	}
+
+	public static function provideAcceptedRegardlessOfProperty(): array {
+		$commons = self::COMMONS;
+
+		return [
+			'a colour as a width' => [ 'width: red' ],
+			'an angle as pointer-events' => [ 'pointer-events: 30deg' ],
+			'a resolution as a display' => [ 'display: 2x' ],
+			'a comma alone' => [ 'color: ,' ],
+			'more values than the property takes' => [ 'border-width: 1px 2px 3px 4px 5px' ],
+			// provideRejectedFallbacks() pins the opposite one level down: inside rgb(), a
+			// fallback is held to the slot's own type.
+			'a length as a colour fallback' => [ 'color: var(--c, 10px)' ],
+			// url( 'image' ), where the property's own slot is url( 'svg' ) -- upstream's
+			// filter included. A wiki that narrows only the svg allowlist loses it here.
+			'an image where the property wants an svg' => [
+				"backdrop-filter: url(\"$commons/x.png\")",
+			],
+		];
+	}
+
+	/**
+	 * Documented gaps. Several are shapes upstream lacks too, kept so an upstream
+	 * improvement turns a test red rather than passing unnoticed.
+	 */
 	public static function provideNotYetImplemented(): array {
+		// URLs here must pass the default allowlist, or a case is refused for its host and
+		// says nothing about the gap it is meant to document.
+		$commons = self::COMMONS;
+
 		return array_merge(
 			// A fallback inside a fallback: the inner var() is admitted, but not with a
 			// fallback of its own, since only one level goes through rawOrCustomProp().
 			self::cases( 'Color 4/5', [
 				'color: rgb(var(--r, var(--s, 0)) 0 0)',
+			] ),
+			// The origin's fallback is a <color>, and a bare var() is not one. A channel
+			// nests one because anything mathFunction() or rawNumber() admit is admitted in
+			// its fallback; no colour matcher is built through either. Upstream's color()
+			// is the same shape, so this is not a narrowing.
+			self::cases( 'Color 4/5', [
+				'color: rgb(from var(--c, var(--d)) r g b)',
+				// a relative colour is not an origin -- see colorFuncs()
+				'color: rgb(from rgb(from red r g b) r g b)',
+				'color: rgb(from var(--c, rgb(from red r g b)) r g b)',
+				'color: rgb(from light-dark(rgb(from red r g b), blue) r g b)',
+			] ),
+			// light-dark() admits no var() in its arguments and cannot be a var() fallback,
+			// in an origin as at the top level. Both mirror upstream.
+			self::cases( 'Color 4/5', [
+				'color: light-dark(var(--l), var(--d))',
+				'color: rgb(from light-dark(var(--l), var(--d)) r g b)',
+				'color: rgb(from var(--c, light-dark(red, blue)) r g b)',
+			] ),
+			// image-set() per CSS Images 4: the density is optional, and a resolution and a
+			// type() may both appear. Predates #62 and unrelated to it.
+			self::cases( 'Images 4', [
+				"background-image: image-set(\"$commons/i1.jpg\")",
+				"background-image: image-set(\"$commons/i1.jpg\" 1x type(\"image/avif\"))",
 			] ),
 			// rawNumber()'s var() wrapper takes no fallback. Unlike the colour channels,
 			// this is not a narrowing -- upstream's ratio() admits no var() at all.
@@ -574,6 +874,21 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				'aspect-ratio: 16 / var(--b, 9)',
 				// upstream ratio() is built from rawNumber(), which excludes math functions
 				'aspect-ratio: calc(16) / var(--b)',
+			] ),
+			// The fallback is one value from $anyProperty: an empty one does not fit, nor
+			// does a multi-value one, and a type the list omits does not reach a slot --
+			// `1rem` does, `0.3s` does not. A keyword the list omits blocks the whole value
+			// the same way.
+			self::cases( 'Custom properties, whole value', [
+				'background-image: var(--image, none)',
+				'border: var(--border, 1px solid red)',
+				'color: var(--x, )',
+				'content: "x" var(--suffix)',
+				'flex-flow: var(--direction) wrap',
+				'grid-template-columns: var(--tracks, 1fr)',
+				'list-style: var(--type) inside',
+				'text-decoration: underline var(--style) red',
+				'transition-duration: var(--duration, 0.3s)',
 			] ),
 			self::cases( 'Color 4/5', [
 				'background: color(from #0000FF xyz calc(x + 0.75) y calc(z - 0.35))',

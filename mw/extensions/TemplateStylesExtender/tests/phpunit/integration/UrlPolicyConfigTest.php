@@ -86,9 +86,9 @@ class UrlPolicyConfigTest extends MediaWikiIntegrationTestCase {
 	 * The density slot of image-set() must not accept var(), or a custom property can
 	 * smuggle a second image-set entry past the URL allowlist.
 	 *
-	 * MatcherFactoryExtender::resolution() is what prevents it. Upstream builds resolution
-	 * as mathFunction( rawResolution() ), and mathFunction() is late-bound to this
-	 * extension's var()-aware override, so inheriting it admits var() into the slot.
+	 * Two things prevent it. resolution() calls parent::mathFunction() rather than this
+	 * extension's override, which is what would put a bare var() in the slot; and
+	 * imageSetDensity() refuses a var() anywhere in the matched value, calc() included.
 	 * doSanitize() does not help: the payload is a bare string, which is neither a url()
 	 * token nor an external-resource function -- and is exactly what image-set()'s first
 	 * argument accepts as a URL.
@@ -128,19 +128,38 @@ class UrlPolicyConfigTest extends MediaWikiIntegrationTestCase {
 			'var() in the density slot at all' => [
 				"--r: 1x; background-image: image-set(\"$ok\" var(--r))",
 			],
+			// calc() is allowed here now, so the var() it can carry has to be refused
+			// separately. A custom property cannot close the parens it lands in, so this
+			// payload would turn the declaration invalid rather than into a second entry --
+			// but the slot sits next to a URL, so it does not get to depend on that.
+			'var() wrapped in calc()' => [
+				"--r: 2x, \"$evil\" 1x; background-image: image-set(\"$ok\" calc(var(--r)))",
+			],
+			'var() as a factor inside calc()' => [
+				"--d: 2; background-image: image-set(\"$ok\" calc(1x * var(--d)))",
+			],
+			'var() inside min()' => [
+				"--r: 2x; background-image: image-set(\"$ok\" min(var(--r), 3x))",
+			],
+			// The check compares CSSFunction::getName(), which the tokenizer has already
+			// lowercased and unescaped. Both of these would slip past a raw-source match.
+			'var() in mixed case' => [
+				"--r: 2x, \"$evil\" 1x; background-image: image-set(\"$ok\" calc(VAR(--r)))",
+			],
+			'var() spelled with an escape' => [
+				"--r: 2x, \"$evil\" 1x; background-image: image-set(\"$ok\" calc(\\76 ar(--r)))",
+			],
 		];
 	}
 
 	/**
-	 * Not a bypass: this pins a deliberate narrowing. CSS Values 4 permits a math function
-	 * where a <resolution> is expected; the override does not, and that strictness is what
-	 * keeps var() out of the slot.
+	 * A math function in the density slot is fine; only the var() one can carry is not.
 	 *
-	 * Relaxing this at mathFunction() instead would not be equivalent. Upstream's calcSum()
-	 * admits var() on the reasoning that calc() forces values to be numeric, which stops
-	 * holding once the result lands where substitution is textual, as it does here.
+	 * The two used to be refused together, because the slot took a bare TokenMatcher. That
+	 * kept var() out by keeping calc() out with it, which cost `calc(1x * 2)` for no gain --
+	 * a math function evaluates to a number and cannot introduce an entry.
 	 */
-	public function testMathFunctionsAreNotAllowedInTheDensitySlot(): void {
+	public function testMathFunctionsAreAllowedInTheDensitySlot(): void {
 		$ok = self::ALLOWED . '/i.png';
 		$sanitizer = TemplateStylesHooks::getSanitizer( 'mw-parser-output' );
 		$sanitizer->clearSanitizationErrors();
@@ -149,7 +168,8 @@ class UrlPolicyConfigTest extends MediaWikiIntegrationTestCase {
 				->parseStylesheet()
 		);
 
-		$this->assertStringNotContainsString( 'background-image', $output );
+		$this->assertStringContainsString( 'background-image', $output );
+		$this->assertSame( [], $sanitizer->getSanitizationErrors() );
 	}
 
 	/**
