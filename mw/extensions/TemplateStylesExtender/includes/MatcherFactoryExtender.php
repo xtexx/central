@@ -22,16 +22,18 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\TemplateStylesExtender;
 
 use Wikimedia\CSS\Grammar\Alternative;
+use Wikimedia\CSS\Grammar\CheckedMatcher;
 use Wikimedia\CSS\Grammar\CustomPropertyMatcher;
 use Wikimedia\CSS\Grammar\DelimMatcher;
 use Wikimedia\CSS\Grammar\FunctionMatcher;
+use Wikimedia\CSS\Grammar\GrammarMatch;
 use Wikimedia\CSS\Grammar\Juxtaposition;
 use Wikimedia\CSS\Grammar\KeywordMatcher;
 use Wikimedia\CSS\Grammar\Matcher;
 use Wikimedia\CSS\Grammar\MatcherFactory;
-use Wikimedia\CSS\Grammar\NothingMatcher;
 use Wikimedia\CSS\Grammar\Quantifier;
 use Wikimedia\CSS\Grammar\TokenMatcher;
+use Wikimedia\CSS\Objects\ComponentValueList;
 use Wikimedia\CSS\Objects\Token;
 
 class MatcherFactoryExtender extends MatcherFactory {
@@ -39,18 +41,13 @@ class MatcherFactoryExtender extends MatcherFactory {
 	private bool $varEnabled = false;
 	private MatcherFactory $baseMatcherFactory;
 
-	/**
-	 * @param MatcherFactory $baseMatcherFactory
-	 */
 	public function __construct( MatcherFactory $baseMatcherFactory ) {
 		$this->baseMatcherFactory = $baseMatcherFactory;
 	}
 
 	/**
 	 * Preserve URL validation supplied by TemplateStyles.
-	 *
-	 * @param string $type
-	 * @return Matcher
+	 * @inheritDoc
 	 */
 	public function urlstring( $type ): Matcher {
 		return $this->baseMatcherFactory->urlstring( $type );
@@ -58,18 +55,12 @@ class MatcherFactoryExtender extends MatcherFactory {
 
 	/**
 	 * Preserve URL validation supplied by TemplateStyles.
-	 *
-	 * @param string $type
-	 * @return Matcher
+	 * @inheritDoc
 	 */
 	public function url( $type ): Matcher {
 		return $this->baseMatcherFactory->url( $type );
 	}
 
-	/**
-	 * @param bool $varEnabled
-	 * @return void
-	 */
 	public function setVarEnabled( bool $varEnabled ): void {
 		$this->varEnabled = $varEnabled;
 	}
@@ -88,6 +79,166 @@ class MatcherFactoryExtender extends MatcherFactory {
 	}
 
 	/**
+	 * Pseudo-classes from Selectors Level 4 (#67)
+	 * @inheritDoc
+	 */
+	public function cssPseudo(): Matcher {
+		if ( isset( $this->cache[__METHOD__] ) ) {
+			return $this->cache[__METHOD__];
+		}
+
+		$ows = $this->optionalWhitespace();
+
+		// Not cssSelector(): it reaches cssSimpleSelectorSeq(), which calls this method, so
+		// the argument grammar is built here instead -- as colorFuncs() has to. That bounds
+		// it one level deep, which also keeps it from backtracking on hostile input.
+		$innerPseudo = new Alternative( [
+			new Juxtaposition( [ new TokenMatcher( Token::T_COLON ), $this->level4Keywords() ] ),
+			parent::cssPseudo(),
+		] );
+		$inner = $this->boundedSelectorList( $innerPseudo );
+
+		// :has() takes relative selectors, so an entry may open with a combinator
+		$relative = Quantifier::hash( new Juxtaposition( [
+			Quantifier::optional( $this->cssCombinator() ),
+			$this->boundedSelector( $innerPseudo ),
+		] ) );
+
+		$this->cache[__METHOD__] = new Alternative( [
+			new Juxtaposition( [
+				new TokenMatcher( Token::T_COLON ),
+				new Alternative( [
+					$this->level4Keywords(),
+					new FunctionMatcher( 'is', new Juxtaposition( [ $ows, $inner, $ows ] ) ),
+					new FunctionMatcher( 'where', new Juxtaposition( [ $ows, $inner, $ows ] ) ),
+					new FunctionMatcher( 'has', new Juxtaposition( [ $ows, $relative, $ows ] ) ),
+				] ),
+			] ),
+			parent::cssPseudo(),
+		] );
+		$this->cache[__METHOD__]->setDefaultOptions( [ 'skip-whitespace' => false ] );
+
+		return $this->cache[__METHOD__];
+	}
+
+	/**
+	 * `:not()` over a selector list, as Selectors Level 4 has it
+	 *
+	 * Takes a full cssPseudo() rather than the bounded one :is() gets: nothing calls back
+	 * into cssNegation(), so there is no cycle to break here.
+	 *
+	 * @inheritDoc
+	 */
+	public function cssNegation(): Matcher {
+		if ( isset( $this->cache[__METHOD__] ) ) {
+			return $this->cache[__METHOD__];
+		}
+
+		$ows = $this->optionalWhitespace();
+
+		$this->cache[__METHOD__] = new Juxtaposition( [
+			new TokenMatcher( Token::T_COLON ),
+			new FunctionMatcher( 'not', new Juxtaposition( [
+				$ows,
+				$this->boundedSelectorList( $this->cssPseudo() ),
+				$ows,
+			] ) ),
+		] );
+		$this->cache[__METHOD__]->setDefaultOptions( [ 'skip-whitespace' => false ] );
+
+		return $this->cache[__METHOD__];
+	}
+
+	/**
+	 * The pseudo-classes this extension adds that are a bare keyword.
+	 *
+	 * Scope is the web-platform baseline's "widely available".
+	 */
+	private function level4Keywords(): Matcher {
+		$this->cache[__METHOD__] ??= new KeywordMatcher( [
+			// state
+			'focus-visible', 'focus-within', 'any-link',
+			// form and input state
+			'read-only', 'read-write', 'placeholder-shown', 'default', 'required',
+			'optional', 'valid', 'invalid', 'in-range', 'out-of-range',
+		] );
+
+		return $this->cache[__METHOD__];
+	}
+
+	/**
+	 * A comma-separated list of the complex selectors boundedSelector() builds over $pseudo.
+	 */
+	private function boundedSelectorList( Matcher $pseudo ): Matcher {
+		$list = Quantifier::hash( $this->boundedSelector( $pseudo ) );
+		$list->setDefaultOptions( [ 'skip-whitespace' => false ] );
+
+		return $list;
+	}
+
+	/**
+	 * Upstream's cssSelector(), over a supplied pseudo-class matcher and without captures.
+	 *
+	 * Keep it capture-free. StyleRuleSanitizer scopes whatever it finds captured as
+	 * 'selector'; an inner one is absorbed before reaching it today, but only because
+	 * upstream happens to capture the enclosing pseudo-class.
+	 */
+	private function boundedSelector( Matcher $pseudo ): Matcher {
+		$seq = $this->boundedSimpleSelectorSeq( $pseudo );
+		$selector = new Juxtaposition( [
+			$seq,
+			Quantifier::star( new Juxtaposition( [ $this->cssCombinator(), $seq ] ) ),
+		] );
+		$selector->setDefaultOptions( [ 'skip-whitespace' => false ] );
+
+		return $selector;
+	}
+
+	/**
+	 * Upstream's cssSimpleSelectorSeq(), over a supplied pseudo-class matcher.
+	 *
+	 * cssPseudo() and cssNegation() are the only parts that reach back into this chain, so
+	 * negation is rebuilt from $pseudo and everything else comes from the factory.
+	 */
+	private function boundedSimpleSelectorSeq( Matcher $pseudo ): Matcher {
+		$ows = $this->optionalWhitespace();
+		$negation = new Juxtaposition( [
+			new TokenMatcher( Token::T_COLON ),
+			new FunctionMatcher( 'not', new Juxtaposition( [
+				$ows,
+				new Alternative( [
+					$this->cssTypeSelector(),
+					$this->cssUniversal(),
+					$this->cssID(),
+					$this->cssClass(),
+					$this->cssAttrib(),
+					$pseudo,
+				] ),
+				$ows,
+			] ) ),
+		] );
+
+		$hashEtc = new Alternative( [
+			$this->cssID(),
+			$this->cssClass(),
+			$this->cssAttrib(),
+			$pseudo,
+			$negation,
+		] );
+
+		$seq = new Alternative( [
+			new Juxtaposition( [
+				new Alternative( [ $this->cssTypeSelector(), $this->cssUniversal() ] ),
+				Quantifier::star( $hashEtc ),
+			] ),
+			Quantifier::plus( $hashEtc ),
+		] );
+		$seq->setDefaultOptions( [ 'skip-whitespace' => false ] );
+
+		return $seq;
+	}
+
+	/**
 	 * Partially implements CSS Color Module Level 4 and 5
 	 *
 	 * @return Matcher|Matcher[]
@@ -99,12 +250,7 @@ class MatcherFactoryExtender extends MatcherFactory {
 
 		// Channels mirror upstream, which allows var() here unconditionally, except that
 		// a hue may take an angle fallback -- <hue> is <number> | <angle>, so that is
-		// spec-correct and upstream is the arbitrary one. The origin colour below is this
-		// extension's own addition, so it stays behind the flag.
-		$var = $this->varEnabled
-			? new FunctionMatcher( 'var', new CustomPropertyMatcher() )
-			: new NothingMatcher();
-
+		// spec-correct and upstream is the arbitrary one.
 		$n = $this->rawOrCustomProp( $this->number() );
 		$p = $this->rawOrCustomProp( $this->percentage() );
 		$a = $this->rawOrCustomProp( $this->angle() );
@@ -157,11 +303,28 @@ class MatcherFactoryExtender extends MatcherFactory {
 		];
 
 		// Relative color syntax components
-		$originColor = new Alternative( [
+		//
+		// Shaped like upstream's color(), but built by hand: color() and safeColor() both
+		// call colorFuncs(), which is this method, so either would recurse. That is also
+		// why a relative colour cannot itself be an origin.
+		$safeOriginColor = new Alternative( [
 			$this->colorWords(),
 			$this->colorHex(),
-			$var,
 			...$absoluteColorFuncs
+		] );
+
+		// var() is gated here and not in the channels above, because of what each gate
+		// costs: css-sanitizer accepts var() in a channel, so gating one would reject CSS
+		// plain TemplateStyles takes; it accepts nothing after `from`, so gating this
+		// rejects nothing.
+		$originColor = new Alternative( [
+			$this->varEnabled ? $this->rawOrCustomProp( $safeOriginColor ) : $safeOriginColor,
+			// ungated: the option gates var(), and this is not one. Upstream has it in
+			// color() but not safeColor(), so it is an origin but not an origin's fallback.
+			new FunctionMatcher( 'light-dark', new Juxtaposition( [
+				$safeOriginColor,
+				$safeOriginColor
+			], true ) )
 		] );
 
 		$optionalAlphaCalc = new Alternative( [
@@ -254,10 +417,11 @@ class MatcherFactoryExtender extends MatcherFactory {
 
 	/** @inheritDoc */
 	public function resolution(): Matcher {
-		$this->cache[__METHOD__]
-			??= new TokenMatcher( Token::T_DIMENSION, static function ( Token $t ) {
-				return preg_match( '/^(dpi|dpcm|dppx|x)$/i', $t->unit() );
-			} );
+		// parent::mathFunction(), not $this->: the override adds a bare var(), and
+		// image-set() reads a bare string as a URL -- so `--r: 2x, "https://evil/x.png" 1x`
+		// would substitute into a second entry, past $wgTemplateStylesAllowedUrls.
+		// addVarSelector() also calls this, unaffected: it already offers a bare var().
+		$this->cache[__METHOD__] ??= parent::mathFunction( $this->rawResolution() );
 
 		return $this->cache[__METHOD__];
 	}
@@ -276,9 +440,41 @@ class MatcherFactoryExtender extends MatcherFactory {
 			$image,
 			new FunctionMatcher( 'image-set', Quantifier::hash( new Juxtaposition( [
 				new Alternative( [ $image, $this->urlstring( 'image' ) ] ),
-				new Alternative( [ $this->resolution(), new FunctionMatcher( 'type', $this->string() ) ] )
+				$this->imageSetDensity(),
 			] ) ) ),
 		] );
+
+		return $this->cache[__METHOD__];
+	}
+
+	/**
+	 * The second argument of image-set(): a resolution or a type(), with no var() in it.
+	 *
+	 * resolution() keeps a bare var() out; this keeps one inside calc() out too. That costs
+	 * `calc(1x * var(--d))` and buys not trusting the browser to reject the malformed calc
+	 * the payload above becomes. attr() is the other substitution to watch; it cannot reach
+	 * here today.
+	 */
+	private function imageSetDensity(): Matcher {
+		$this->cache[__METHOD__] ??= new CheckedMatcher(
+			new Alternative( [
+				$this->resolution(),
+				new FunctionMatcher( 'type', $this->string() ),
+			] ),
+			static function ( ComponentValueList $values, GrammarMatch $match, array $options ) {
+				foreach ( $match->getValues() as $value ) {
+					foreach ( $value->toTokenArray() as $token ) {
+						if ( $token->type() === Token::T_FUNCTION
+							&& strcasecmp( (string)$token->value(), 'var' ) === 0
+						) {
+							return false;
+						}
+					}
+				}
+
+				return true;
+			}
+		);
 
 		return $this->cache[__METHOD__];
 	}
@@ -290,9 +486,6 @@ class MatcherFactoryExtender extends MatcherFactory {
 	 * matcher is what makes it safe: var( --x, url( ... ) ) cannot satisfy a numeric slot.
 	 * Note the type is this factory's, so anything mathFunction() or rawNumber() admit is
 	 * admitted in a fallback too.
-	 *
-	 * @param Matcher $type
-	 * @return Matcher
 	 */
 	protected function rawOrCustomProp( Matcher $type ): Matcher {
 		return new Alternative( [
@@ -311,7 +504,6 @@ class MatcherFactoryExtender extends MatcherFactory {
 	 * @param Matcher $nPNone Number, percentage, or none matcher (including var)
 	 * @param Matcher $optionalAlpha Modern alpha syntax matcher
 	 * @param Matcher $optionalLegacyAlpha Legacy alpha syntax matcher
-	 * @return Alternative
 	 */
 	protected function buildRgbSyntax(
 		Matcher $n,
@@ -337,7 +529,6 @@ class MatcherFactoryExtender extends MatcherFactory {
 	 * @param Matcher $nPNone Number, percentage, or none matcher (including var)
 	 * @param Matcher $optionalAlpha Modern alpha syntax matcher
 	 * @param Matcher $optionalLegacyAlpha Legacy alpha syntax matcher
-	 * @return Alternative
 	 */
 	protected function buildHslSyntax(
 		Matcher $hueWithVar,
@@ -358,8 +549,6 @@ class MatcherFactoryExtender extends MatcherFactory {
 	/**
 	 * Helper to build standard color syntax (components + optional alpha).
 	 * @param Matcher[] $components
-	 * @param Matcher $optionalAlpha
-	 * @return Juxtaposition
 	 */
 	protected function buildStandardColorSyntax( array $components, Matcher $optionalAlpha ): Juxtaposition {
 		return new Juxtaposition( [ ...$components, $optionalAlpha ] );
@@ -369,7 +558,6 @@ class MatcherFactoryExtender extends MatcherFactory {
 	 * Helper to create a relative color channel matcher.
 	 * @param string $channel Character representing the channel (e.g., 'r', 'h')
 	 * @param Matcher $typeMatcher Matcher for the channel's type (e.g., $nPNone, $hueNone)
-	 * @return Alternative
 	 */
 	protected function createRelativeColorChannel(
 		string $channel,
@@ -387,7 +575,6 @@ class MatcherFactoryExtender extends MatcherFactory {
 	 * @param Matcher $originColor Matcher for the base color
 	 * @param Matcher[] $componentMatchers Array of matchers for the color components
 	 * @param Matcher $optionalAlphaCalc Matcher for the optional alpha calculation
-	 * @return Juxtaposition
 	 */
 	protected function buildRelativeColorSyntax(
 		Matcher $originColor,
@@ -404,9 +591,7 @@ class MatcherFactoryExtender extends MatcherFactory {
 
 	/**
 	 * Wraps the parent `mathFunction` to allow using variables in the $typeMatcher
-	 *
-	 * @param Matcher $typeMatcher
-	 * @return Matcher
+	 * @inheritDoc
 	 */
 	public function mathFunction( Matcher $typeMatcher ) {
 		if ( !$this->varEnabled ) {
@@ -421,7 +606,11 @@ class MatcherFactoryExtender extends MatcherFactory {
 
 	/**
 	 * Allow variables for numbers if enabled
-	 * @return Alternative|Matcher|Matcher[]|TokenMatcher
+	 *
+	 * Alternative and TokenMatcher are both Matchers, so the union upstream's $cache
+	 * declares -- Matcher|Matcher[] -- already covers what this returns.
+	 *
+	 * @return Matcher|Matcher[]
 	 */
 	public function rawNumber() {
 		if ( !$this->varEnabled ) {

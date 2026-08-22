@@ -95,6 +95,73 @@ describe( 'createSections', () => {
 		} );
 	} );
 
+	describe( 'sections with a body wrapper', () => {
+		const WRAPPED = `
+			<div class="mw-parser-output">
+				<section id="citizen-section-0" class="citizen-section"><p>Lead</p></section>
+				<section id="citizen-section-1" class="citizen-section">
+					<div class="mw-heading citizen-section-heading"><h2 id="Foo">Foo</h2></div>
+					<div class="citizen-section-body">
+						<p>Bar</p>
+						<section id="citizen-section-2" class="citizen-section">
+							<h3 class="citizen-section-heading" id="Sub">Sub</h3>
+							<div class="citizen-section-body"><p>Nested</p></div>
+						</section>
+					</div>
+				</section>
+			</div>
+		`;
+
+		it( 'should hide the body wrapper and nothing else', () => {
+			const bodyContent = createBodyContent( WRAPPED );
+			const section = bodyContent.querySelector( '#citizen-section-1' );
+			const heading = section.querySelector( ':scope > .mw-heading' );
+			const body = section.querySelector( ':scope > .citizen-section-body' );
+
+			click( heading );
+
+			expect( section.classList.contains( 'citizen-section--collapsed' ) ).toBe( true );
+			expect( body.hidden ).toBeTruthy();
+			expect( heading.hidden ).toBeFalsy();
+			// The content itself is untouched, which is the whole point: only a
+			// skin-owned box carries the attribute, so no wiki styling leaks out.
+			expect( body.querySelector( 'p' ).hidden ).toBeFalsy();
+
+			click( heading );
+
+			expect( section.classList.contains( 'citizen-section--collapsed' ) ).toBe( false );
+			expect( body.hidden ).toBeFalsy();
+		} );
+
+		it( 'should toggle a subsection independently of its parent', () => {
+			const bodyContent = createBodyContent( WRAPPED );
+			const nested = bodyContent.querySelector( '#citizen-section-2' );
+			const nestedBody = nested.querySelector( ':scope > .citizen-section-body' );
+			const parentBody = bodyContent.querySelector( '#citizen-section-1 > .citizen-section-body' );
+
+			click( nested.querySelector( ':scope > h3' ) );
+
+			expect( nested.classList.contains( 'citizen-section--collapsed' ) ).toBe( true );
+			expect( nestedBody.hidden ).toBeTruthy();
+			expect( parentBody.hidden ).toBeFalsy();
+		} );
+
+		it( 'should expand the whole chain on a find-in-page match', () => {
+			const bodyContent = createBodyContent( WRAPPED );
+			const parent = bodyContent.querySelector( '#citizen-section-1' );
+			const nested = bodyContent.querySelector( '#citizen-section-2' );
+
+			click( parent.querySelector( ':scope > .mw-heading' ) );
+			click( nested.querySelector( ':scope > h3' ) );
+			nested.querySelector( 'p' ).dispatchEvent( new Event( 'beforematch', { bubbles: true } ) );
+
+			expect( parent.classList.contains( 'citizen-section--collapsed' ) ).toBe( false );
+			expect( nested.classList.contains( 'citizen-section--collapsed' ) ).toBe( false );
+			expect( parent.querySelector( ':scope > .citizen-section-body' ).hidden ).toBeFalsy();
+			expect( nested.querySelector( ':scope > .citizen-section-body' ).hidden ).toBeFalsy();
+		} );
+	} );
+
 	describe( 'parsoid sections (native markup)', () => {
 		const PARSOID = `
 			<div class="mw-parser-output">
@@ -260,6 +327,20 @@ describe( 'createSections', () => {
 			</div>
 		`;
 
+		it( 'should leave the markup alone when collapsible sections are off', () => {
+			// Without the body class the feature is disabled, so the server's
+			// markup has to survive untouched — no button, and no interactive
+			// class for the styles to hand the chevron over on.
+			const bodyContent = document.createElement( 'div' );
+			bodyContent.innerHTML = WRAPPED;
+			document.body.appendChild( bodyContent );
+
+			createSections( { document, bodyContent } ).init();
+
+			expect( bodyContent.querySelector( '.citizen-section-toggle' ) ).toBeNull();
+			expect( document.body.classList.contains( 'citizen-sections-interactive' ) ).toBe( false );
+		} );
+
 		it( 'should give every collapsible heading a button', () => {
 			const bodyContent = createBodyContent( WRAPPED );
 
@@ -278,18 +359,69 @@ describe( 'createSections', () => {
 			expect( toggle.getAttribute( 'aria-labelledby' ) ).toBe( 'Foo' );
 		} );
 
-		it( 'should place the button after the heading tag when markup wraps it', () => {
+		it( 'should place the button after the edit links when markup wraps the heading', () => {
 			const bodyContent = createBodyContent( WRAPPED );
 			const h2 = bodyContent.querySelector( 'h2' );
+			const editSection = bodyContent.querySelector( '.mw-editsection' );
 
 			const toggle = bodyContent.querySelector( '.citizen-section-toggle' );
 
 			// Outside the h2, so the heading keeps a clean accessible name
 			expect( toggle.closest( 'h2' ) ).toBeNull();
 			expect( h2.hasAttribute( 'aria-labelledby' ) ).toBe( false );
-			// After it, so jumping between headings and reading on reaches
-			// the control. The styles order it first visually.
+			// Outboard of the controls that act on the section's content, and in
+			// the order the styles render it, so reading order matches
+			expect( editSection.nextElementSibling ).toBe( toggle );
+		} );
+
+		it( 'should place the button after the heading tag when there are no edit links', () => {
+			const bodyContent = createBodyContent( PARSOID_NESTED );
+			const h2 = bodyContent.querySelector( 'h2' );
+
+			const toggle = bodyContent.querySelector( '.citizen-section-toggle' );
+
 			expect( h2.nextElementSibling ).toBe( toggle );
+		} );
+
+		it( 'should carry the same Codex button classes as the edit links', () => {
+			const bodyContent = createBodyContent( WRAPPED );
+
+			const toggle = bodyContent.querySelector( '.citizen-section-toggle' );
+
+			expect( toggle.classList.contains( 'cdx-button' ) ).toBe( true );
+			expect( toggle.classList.contains( 'cdx-button--weight-quiet' ) ).toBe( true );
+			expect( toggle.classList.contains( 'cdx-button--icon-only' ) ).toBe( true );
+		} );
+
+		it( 'should not mistake a subscribe control for the edit links', () => {
+			// DiscussionTools inserts .mw-editsection-like as the heading's first
+			// child, so placing after it would land the button ahead of the title.
+			const bodyContent = createBodyContent( `
+				<div class="mw-parser-output">
+					<section data-mw-section-id="1">
+						<div class="mw-heading mw-heading2">
+							<span class="mw-editsection-like">subscribe</span>
+							<h2 id="Foo">Foo</h2>
+						</div>
+						<p>Bar</p>
+					</section>
+				</div>
+			` );
+			const h2 = bodyContent.querySelector( 'h2' );
+
+			const toggle = bodyContent.querySelector( '.citizen-section-toggle' );
+
+			expect( h2.nextElementSibling ).toBe( toggle );
+		} );
+
+		it( 'should stay a sibling of the edit links, not a descendant', () => {
+			// The delegated click handler returns early inside .mw-editsection,
+			// so a nested toggle would never fire.
+			const bodyContent = createBodyContent( WRAPPED );
+
+			const toggle = bodyContent.querySelector( '.citizen-section-toggle' );
+
+			expect( toggle.closest( '.mw-editsection' ) ).toBeNull();
 		} );
 
 		it( 'should pin the heading name when the button lands inside the heading tag', () => {
@@ -300,8 +432,8 @@ describe( 'createSections', () => {
 
 			expect( toggle.closest( 'h2' ) ).toBe( heading );
 			expect( heading.getAttribute( 'aria-labelledby' ) ).toBe( 'Foo' );
-			// First child, so it precedes the title the heading announces
-			expect( heading.firstElementChild ).toBe( toggle );
+			// Last, after the edit links it renders outboard of
+			expect( heading.lastElementChild ).toBe( toggle );
 		} );
 
 		it( 'should give every heading on the page its own button', () => {
