@@ -22,6 +22,9 @@ Extends [Extension:TemplateStyles](https://www.mediawiki.org/wiki/Extension:Temp
 | [Grid Layout Module Level 3](https://www.w3.org/TR/css-grid-3/) | Added value: `masonry`; added property: `masonry-auto-flow` | - |
 | [Images Module Level 4](https://www.w3.org/TR/css-images-4/) | Added function: [`image-set()`](https://developer.mozilla.org/en-US/docs/Web/CSS/image/image-set) | - |
 | [Masking Module Level 1](https://www.w3.org/TR/css-masking/) | Added property: `-webkit-mask-image` | - |
+| [Overscroll Behavior Module Level 1](https://www.w3.org/TR/css-overscroll-1/) | Added properties: [`overscroll-behavior`](https://developer.mozilla.org/en-US/docs/Web/CSS/overscroll-behavior) and its `-x`, `-y`, `-inline` and `-block` longhands | - |
+| [Scroll-driven Animations Module Level 1](https://www.w3.org/TR/scroll-animations-1/) | Added properties: [`animation-timeline`](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timeline) (anonymous `scroll()` and `view()` only), [`animation-range`](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-range), `animation-range-start`, `animation-range-end` | - |
+| [Scrollbars Styling Module Level 1](https://www.w3.org/TR/css-scrollbars-1/) | Added properties: [`scrollbar-color`](https://developer.mozilla.org/en-US/docs/Web/CSS/scrollbar-color), [`scrollbar-width`](https://developer.mozilla.org/en-US/docs/Web/CSS/scrollbar-width) | - |
 | [Selectors Level 4](https://www.w3.org/TR/selectors-4/) | Added pseudo-classes: [`:has()`](https://developer.mozilla.org/en-US/docs/Web/CSS/:has), [`:is()`](https://developer.mozilla.org/en-US/docs/Web/CSS/:is), [`:where()`](https://developer.mozilla.org/en-US/docs/Web/CSS/:where), [`:focus-within`](https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-within), [`:focus-visible`](https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible), `:any-link`, and the form-state ones (`:read-only`, `:read-write`, `:placeholder-shown`, `:default`, `:required`, `:optional`, `:valid`, `:invalid`, `:in-range`, `:out-of-range`); widened [`:not()`](https://developer.mozilla.org/en-US/docs/Web/CSS/:not) to take a selector list | - |
 
 
@@ -85,6 +88,28 @@ Wikitext
 </div>
 ```
 
+### `var()` in a value
+
+Where a property's own grammar has no `var()` slot, a value containing one is matched as a
+whole instead. That matcher is not told which property it is on, so it does not check the
+value against one — a `var()` may sit beside any keyword, and carry any value list as its
+fallback, including an empty one:
+
+```css
+pointer-events: var(--pe, none);        /* the property's own default as a fallback */
+border: var(--border, 1px solid red);   /* a fallback of several values */
+flex-flow: var(--direction) wrap;       /* a keyword beside a var() */
+font-family: var(--stack), "Some Font";
+color: var(--x, );                      /* the guaranteed-invalid value */
+```
+
+It applies only where a `var()` is actually present, so `width: red` is still reported to the
+editor as a bad value. And it admits no function beyond the ones this extension already
+allows, so `attr()`, `expression()` and a `url()` outside `$wgTemplateStylesAllowedUrls` are
+refused in a fallback as at the top level.
+
+Needs the config option in footnote 4.
+
 ### Selectors
 `css-sanitizer` implements Selectors Level 3, and a selector it rejects costs the editor the
 whole stylesheet rather than the one rule, so this extension widens the selector grammar as
@@ -131,6 +156,27 @@ image-set(url(…) calc(1x * var(--scale)))  /* rejected */
 `image-set()` reads a bare string as a URL, so a custom property substituted next to one can
 add a second entry pointing anywhere, past `$wgTemplateStylesAllowedUrls`. Every other
 numeric slot takes `var()` inside `calc()` normally.
+
+### Scroll-driven animations
+`animation-timeline` takes the anonymous timelines only, `scroll()` and `view()`. Named ones —
+`scroll-timeline`, `view-timeline`, `timeline-scope` — are not accepted: TemplateStyles
+concatenates every transcluded page's CSS into one scope and namespaces no identifier, so a
+timeline name would be page-global.
+
+```css
+.card {
+	animation: reveal linear both;
+	animation-timeline: view();
+	animation-range: entry 0% cover 40%;
+}
+```
+
+Both details of that order matter. `animation-timeline` and the `animation-range` properties are
+reset-only parts of the `animation` shorthand, so a shorthand written after any of them puts it
+back to its initial value, silently. And a fill mode — `both` or `forwards` — is what a browser
+without scroll-driven animations falls back on: it drops `animation-timeline` and runs the
+animation at its `0s` default duration, landing on the last keyframe with a fill mode and on the
+base state without one, which for the usual `opacity: 0` start means the content never appears.
 
 ### Relative colors
 The relative colors module is quite extensive, not every feature is currently implemented.
