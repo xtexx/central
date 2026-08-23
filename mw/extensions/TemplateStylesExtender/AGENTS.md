@@ -97,6 +97,26 @@ the whole stylesheet with it. `propagateToNestedAtRules()` pushes the replacemen
 anything added to `$newRules` in future needs to go through it too. This is why `@font-face`
 inside `@media` did not get this extension's descriptors for several releases.
 
+### The whole-value matcher answers for every property
+
+`addVarSelector()` installs a matcher TemplateStyles consults for any *known* property whose
+own grammar refused the value, and it is not told which property it is on. Two rules keep it
+from standing in for the sanitizer altogether:
+
+- It applies only where a `var()` is in the value; `testWideMatcherNeedsAVar()` pins that.
+  A corpus case meant to prove the matcher refuses something needs a `var()` in it, or it is
+  refused by this gate instead and would pass whatever the list held.
+- Every alternative in its value list must consume exactly one component value. A
+  variable-length one -- `position()` matches one, two or four -- puts the enclosing
+  `Quantifier::plus` back to enumerating every way of splitting a value that fails, which
+  `testAFailingValueIsNotEnumerated()` catches. One that can match *nothing* makes
+  `Quantifier` throw, on every declaration whose own grammar fails.
+
+The list cannot establish that a declaration is valid -- a custom property may hold any token
+stream. It establishes that the value reaches no function beyond the ones already allowed
+elsewhere, which is why keywords, strings and dimensions go in whole and an arbitrary
+function does not.
+
 ### Which css-sanitizer version you get
 
 Three places have an opinion and only one of them decides:
@@ -146,15 +166,36 @@ Note that `getSanitizer()` memoises per wrapper class, so repeated calls return 
 instance and sanitization errors accumulate — clear them before each measurement or every
 check after the first false one looks like a failure.
 
-Corpus cases are split two ways: **accepted** (a failure is a regression) and **not yet
-implemented** (a failure means someone implemented it and the case should move). When you
-add a matcher, add its declarations in the same commit.
+Corpus cases are split three ways: **accepted** (a failure is a regression), **rejected** (a
+failure means the grammar widened where it should not have) and **not yet implemented** (a
+failure means someone implemented it and the case should move). When you add a matcher, add
+its declarations in the same commit.
+
+A rejected case needs no `var()` in it, and must not have one: the whole-value matcher
+answers for any known property whose own grammar refused, so a case carrying a `var()` is
+accepted whatever the grammar holds.
 
 A `var()` case covers `addVarSelector()` only if the property's own grammar refuses the
 value. `mathFunction()` puts a bare `var()` in every numeric slot but `resolution()`, so
 `width: var(--x)` still passes with `addVarSelector()` deleted; `width: var(--x, 100%)`
 does not, because that `var()` has no fallback slot. Check a new case against both states
 before trusting it.
+
+### Which draft a value comes from
+
+An editor's draft usually carries values the published one does not, and the two commits
+that added the scroll properties settled the rule: a value goes in when it is **in the
+published draft and shipping in at least one engine**. Neither half alone is enough.
+
+| Value | Published draft | Ships | |
+| --- | --- | --- | --- |
+| `overscroll-behavior: chain` | no | Blink only, experimental | refused |
+| `animation-range: scroll` | no | nowhere | refused |
+| `animation-range: entry-crossing` | yes | Blink | accepted |
+| `scrollbar-color: light \| dark` | removed from it | — | refused |
+
+A value refused this way goes in `provideRejected()` with a comment saying why, because the
+next contributor will read the editor's draft and take it for an omission.
 
 ### Testing anything that depends on configuration
 

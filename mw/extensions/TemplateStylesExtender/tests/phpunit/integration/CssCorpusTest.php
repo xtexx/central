@@ -140,6 +140,19 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 	}
 
 	/**
+	 * A scroll-driven animation is only useful if its `@keyframes` survive with it, and
+	 * those go through a sanitizer of their own that this extension does not replace.
+	 */
+	public function testScrollDrivenAnimationAndItsKeyframesBothSurvive(): void {
+		$css = '@keyframes reveal { from { opacity: 0 } to { opacity: 1 } } '
+			. '.card { animation: reveal linear both; animation-timeline: view(); '
+			. 'animation-range: entry 0% cover 40% }';
+
+		$this->assertTrue( $this->sanitizes( $css, 'animation-timeline' ) );
+		$this->assertTrue( $this->sanitizes( $css, '@keyframes' ) );
+	}
+
+	/**
 	 * Declarations the extension exists to allow. A failure here is a regression.
 	 *
 	 * @dataProvider provideAccepted
@@ -148,6 +161,53 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 		$this->assertTrue(
 			$this->isAccepted( $declaration ),
 			"Expected to be accepted but was rejected: $declaration"
+		);
+	}
+
+	/**
+	 * Values the shipped sanitizer has to keep refusing.
+	 *
+	 * Every one is a value some draft or older spec offers, so the risk is a contributor
+	 * reading a newer document and "restoring" it. None carries a var(), which is what keeps
+	 * addVarSelector()'s whole-value matcher out of the way -- with one in, the matcher
+	 * answers for any known property and these would pass whatever the grammar held.
+	 *
+	 * @dataProvider provideRejected
+	 */
+	public function testRejected( string $declaration ): void {
+		$this->assertFalse(
+			$this->isAccepted( $declaration ),
+			"Expected to be rejected but was accepted: $declaration"
+		);
+	}
+
+	public static function provideRejected(): array {
+		return array_merge(
+			// `chain` is in the editor's draft only, and ships in no engine but Blink,
+			// where it is still experimental.
+			self::cases( 'Overscroll Behavior 1', [
+				'overscroll-behavior-x: contain none',
+				'overscroll-behavior: auto contain none',
+				'overscroll-behavior: chain',
+			] ),
+			// `light` and `dark` were dropped in favour of letting `auto` follow color-scheme.
+			self::cases( 'Scrollbars 1', [
+				'scrollbar-color: light dark',
+				'scrollbar-color: red',
+				'scrollbar-width: 8px',
+			] ),
+			// The named half of the module is deliberately absent, so a timeline can be
+			// referred to only by one of the anonymous functions. `scroll` as a named range
+			// is editor's-draft-only and ships nowhere, like `chain` above.
+			self::cases( 'Scroll-driven Animations 1', [
+				'animation-range: scroll',
+				'animation-timeline: --my-timeline',
+				'animation-timeline: view(nearest)',
+				'scroll-timeline-name: --my-timeline',
+				'scroll-timeline: --my-timeline block',
+				'timeline-scope: all',
+				'view-timeline-name: --my-timeline',
+			] )
 		);
 	}
 
@@ -233,9 +293,11 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				'color: light-dark(red, blue)',
 				'color: light-dark(rgb(from red r g b), blue)',
 			] ),
-			// Regress if mathFunction() is deleted. addVarSelector's fallback reaches
-			// neither inside a function nor past a token it does not list, which is what
-			// `inset`, `opacity` and the `/` supply in the last three.
+			// Regress if mathFunction() is deleted. The whole-value matcher does not reach
+			// inside a function, so the first four and the last isolate it whatever that
+			// matcher admits -- the gradient through the very same image() instance. Cases
+			// five to seven no longer do: `inset`, `opacity` and `/` all joined that list
+			// in #71, so they would pass through it with mathFunction() gone.
 			self::cases( 'Custom properties in math slots', [
 				'transform: translateX(var(--x))',
 				'transform: translate(var(--x), var(--y))',
@@ -252,6 +314,9 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 			// has no fallback slot.
 			self::cases( 'Custom properties, whole value', [
 				'border: 1px var(--border-style) black',
+				// the fallback is a value list, as the spec has it, and may be empty
+				'border: var(--border, 1px solid red)',
+				'color: var(--x, )',
 				'border: var(--width) var(--style) var(--color)',
 				'border-image-source: var(--image)',
 				'box-shadow: var(--shadow-sm), var(--shadow-lg)',
@@ -263,6 +328,32 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				'transition-timing-function: var(--easing)',
 				'width: var(--w, 100%)',
 				'z-index: var(--z, 10)',
+			] ),
+			// #71: which keywords a property takes is the property's business, and this
+			// matcher is not told which property it is on -- so a var() may sit beside any
+			// keyword, and carry one as its fallback. The last three are the types the
+			// list gained to go with it.
+			self::cases( 'Custom properties, whole value', [
+				'background-image: var(--image, none)',
+				'cursor: var(--cursor, pointer)',
+				'display: var(--display, block)',
+				'flex-flow: var(--direction) wrap',
+				'list-style: var(--type) inside',
+				'pointer-events: var(--pe, none)',
+				'text-decoration: underline var(--style) red',
+				'content: "x" var(--suffix)',
+				'font-family: var(--stack), "Some Font", sans-serif',
+				'grid-template-columns: var(--tracks, 1fr)',
+				'transition-duration: var(--duration, 0.3s)',
+			] ),
+			// `/` is on the list too, so a var() reaches the slots a `/` separates.
+			self::cases( 'Box Sizing 4', [
+				'aspect-ratio: 16 / var(--b, 9)',
+				'aspect-ratio: calc(16) / var(--b)',
+			] ),
+			self::cases( 'Custom properties, whole value', [
+				'font: var(--weight) 1rem/1.5 sans-serif',
+				'grid-area: var(--a) / 2 / 3 / 4',
 			] ),
 			// None of this extension's own properties takes a var() in a slot of its own
 			// either, so one in them arrives at that same matcher.
@@ -277,8 +368,10 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				'pointer-events: var(--pointer-events)',
 			] ),
 			// Reach rawNumber() through upstream ratio(), which calls it late-bound.
-			// `aspect-ratio: var(--r)` is deliberately absent: it passes either way via
-			// addVarSelector, so it would not notice rawNumber() being removed.
+			// Since #71 these no longer isolate it: `/` and `auto` are both on the
+			// whole-value matcher's list, so all four pass through that instead with
+			// rawNumber()'s var() branch gone. Nothing isolates it any more -- a value
+			// ratio() accepts is one that matcher accepts too.
 			self::cases( 'Box Sizing 4', [
 				'aspect-ratio: 16 / var(--b)',
 				'aspect-ratio: var(--a) / 9',
@@ -492,6 +585,26 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 			self::cases( 'Images 4', [
 				'background-image: image-set( linear-gradient(blue, white) 1x, linear-gradient(blue, green) 2x )',
 			] ),
+			self::cases( 'Overscroll Behavior 1', [
+				'overscroll-behavior-block: auto',
+				'overscroll-behavior-block: contain',
+				'overscroll-behavior-inline: contain',
+				'overscroll-behavior-inline: none',
+				'overscroll-behavior-x: contain',
+				'overscroll-behavior-x: none',
+				'overscroll-behavior-y: auto',
+				'overscroll-behavior-y: contain',
+				'overscroll-behavior: auto',
+				'overscroll-behavior: contain',
+				'overscroll-behavior: contain auto',
+				'overscroll-behavior: inherit',
+				'overscroll-behavior: initial',
+				'overscroll-behavior: none',
+				'overscroll-behavior: none contain',
+				'overscroll-behavior: revert',
+				'overscroll-behavior: revert-layer',
+				'overscroll-behavior: unset',
+			] ),
 			// Upstream provides these; kept because StylesheetSanitizerHook replaces the
 			// whole property map, so a wrongly-built extender would drop them.
 			self::cases( 'Ruby 1', [
@@ -591,6 +704,48 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				'scroll-snap-type: y',
 				'scroll-snap-type: y mandatory',
 			] ),
+			self::cases( 'Scroll-driven Animations 1', [
+				'animation-range-end: exit',
+				'animation-range-start: entry 25%',
+				'animation-range: contain',
+				'animation-range: cover 20%',
+				'animation-range: entry 10% exit 90%',
+				'animation-range: entry-crossing exit-crossing',
+				'animation-range: inherit',
+				'animation-range: initial',
+				'animation-range: normal',
+				'animation-range: revert',
+				'animation-range: revert-layer',
+				'animation-range: unset',
+				'animation-timeline: auto',
+				'animation-timeline: none',
+				'animation-timeline: scroll()',
+				'animation-timeline: scroll(nearest block)',
+				'animation-timeline: scroll(root)',
+				'animation-timeline: view()',
+				'animation-timeline: view(auto 10px)',
+				'animation-timeline: view(block 20%)',
+				'animation-timeline: view(inline)',
+			] ),
+			self::cases( 'Scrollbars 1', [
+				'scrollbar-color: #fff #0645ad',
+				'scrollbar-color: auto',
+				'scrollbar-color: inherit',
+				'scrollbar-color: initial',
+				'scrollbar-color: rebeccapurple green',
+				'scrollbar-color: revert',
+				'scrollbar-color: revert-layer',
+				'scrollbar-color: rgb(0 0 0 / 0.5) transparent',
+				'scrollbar-color: unset',
+				'scrollbar-width: auto',
+				'scrollbar-width: inherit',
+				'scrollbar-width: initial',
+				'scrollbar-width: none',
+				'scrollbar-width: revert',
+				'scrollbar-width: revert-layer',
+				'scrollbar-width: thin',
+				'scrollbar-width: unset',
+			] ),
 			self::cases( 'Values 4', [
 				'width: clamp(100px, 100%, 200px)',
 				'width: max(100px, 100%, 200px)',
@@ -675,10 +830,12 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 	}
 
 	/**
-	 * $anyProperty, the list of value types the whole-value matcher is built from. The
-	 * vehicle is one of this extension's own keyword-only properties, so nothing else can
-	 * satisfy the slot and dropping a type from the list turns a row red. `integer()` is the
-	 * exception: `number()` matches an integer too, so no value isolates it.
+	 * The list of value types the whole-value matcher is built from. The vehicle is one of
+	 * this extension's own keyword-only properties, so nothing else can satisfy the slot
+	 * and dropping a type turns a row red -- except where a second member covers the same
+	 * value. `number()` covers the integer row and `ident()` covers the colour one, so
+	 * those two isolate nothing. `ident()` is also the only thing covering the position,
+	 * css-wide-keyword and line-style rows, which since #71 is what they isolate.
 	 *
 	 * @dataProvider provideWideMatcherValueTypes
 	 */
@@ -705,21 +862,26 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 			'frequency' => [ 'pointer-events: var(--x, 3khz)', true ],
 			'resolution' => [ 'pointer-events: var(--x, 2x)', true ],
 			'position' => [ 'pointer-events: var(--x, left top)', true ],
-			'easing function' => [ 'pointer-events: var(--x, ease-in-out)', true ],
+			// a function form: the keyword one, `ease-in-out`, is an ident, so it would
+			// stay green with cssSingleEasingFunction() dropped from the list
+			'easing function' => [ 'pointer-events: var(--x, cubic-bezier(0, 0, 1, 1))', true ],
 			'css-wide keyword' => [ 'pointer-events: var(--x, revert-layer)', true ],
 			'line style' => [ 'pointer-events: var(--x, solid)', true ],
 			'line style, wavy' => [ 'pointer-events: var(--x, wavy)', true ],
 
-			// Not in the list, and nor is a plain ident -- so the natural
-			// `var( --x, <the property's default> )` works only where that default happens
-			// to be a line style or a css-wide keyword.
-			'a keyword of the property itself' => [ 'pointer-events: var(--x, visible)', false ],
-			'none' => [ 'pointer-events: var(--x, none)', false ],
-			'auto' => [ 'pointer-events: var(--x, auto)', false ],
-			'a line style outside the five' => [ 'pointer-events: var(--x, groove)', false ],
-			'a line width' => [ 'pointer-events: var(--x, thin)', false ],
-			'string' => [ 'pointer-events: var(--x, "s")', false ],
-			'time' => [ 'pointer-events: var(--x, 1s)', false ],
+			'time' => [ 'pointer-events: var(--x, 1s)', true ],
+			'flex' => [ 'pointer-events: var(--x, 1fr)', true ],
+			'string' => [ 'pointer-events: var(--x, "s")', true ],
+			// `var( --x, <the property's own default> )`, the shape #71 was filed about.
+			// Which keywords a property takes is its own business, and this matcher is not
+			// told which property it is on, so it takes any of them.
+			'a keyword of the property itself' => [ 'pointer-events: var(--x, visible)', true ],
+			'none' => [ 'pointer-events: var(--x, none)', true ],
+			'auto' => [ 'pointer-events: var(--x, auto)', true ],
+			'a line style outside the five' => [ 'pointer-events: var(--x, groove)', true ],
+			'a line width' => [ 'pointer-events: var(--x, thin)', true ],
+
+			// A function is not inert, so the list still holds no arbitrary one.
 			'attr()' => [ 'pointer-events: var(--x, attr(data-x))', false ],
 			'a url the policy refuses' => [
 				'pointer-events: var(--x, url("https://evil.example.org/x.png"))',
@@ -729,9 +891,13 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 	}
 
 	/**
-	 * What the whole-value matcher must still refuse. Its list holds no bare ident, string
-	 * or arbitrary function, and its image() is this factory's, so
-	 * $wgTemplateStylesAllowedUrls still applies to whatever reaches a slot through it.
+	 * What the whole-value matcher must still refuse. Keywords and strings are inert and
+	 * are admitted, but a function is not: the list holds no arbitrary one, and its image()
+	 * is this factory's, so $wgTemplateStylesAllowedUrls still applies to whatever reaches
+	 * a slot through it. Nor does it admit a block.
+	 *
+	 * Every row carries a var(), or the matcher is never consulted and the row would pass
+	 * whatever the list held.
 	 *
 	 * @dataProvider provideWideMatcherRefusals
 	 */
@@ -755,9 +921,8 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 			],
 			'attr()' => [ 'pointer-events: var(--x) attr(data-x)' ],
 			'expression()' => [ 'width: var(--w) expression(alert(1))' ],
-			'an unknown function' => [ 'pointer-events: notafunction(1px)' ],
-			'an unknown keyword beside a var()' => [ 'border: 1px var(--style) notacolor' ],
-			'a block' => [ 'pointer-events: [auto]' ],
+			'an unknown function' => [ 'pointer-events: var(--x) notafunction(1px)' ],
+			'a block' => [ 'pointer-events: var(--x) [auto]' ],
 			'var() with no custom property' => [ 'color: var()' ],
 		];
 	}
@@ -800,8 +965,8 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 	/**
 	 * The matcher is not told which property it is on, so nothing here is checked against
 	 * one: not the value's type, not how many values there are, not a fallback's type, and
-	 * not which allowlist the property's own slot would have used. Nor does it require a
-	 * var() to be present. Tightening any of that turns these red.
+	 * not which allowlist the property's own slot would have used. Tightening any of that
+	 * turns these red.
 	 *
 	 * @dataProvider provideAcceptedRegardlessOfProperty
 	 */
@@ -813,20 +978,79 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 		$commons = self::COMMONS;
 
 		return [
-			'a colour as a width' => [ 'width: red' ],
-			'an angle as pointer-events' => [ 'pointer-events: 30deg' ],
-			'a resolution as a display' => [ 'display: 2x' ],
-			'a comma alone' => [ 'color: ,' ],
-			'more values than the property takes' => [ 'border-width: 1px 2px 3px 4px 5px' ],
+			'a colour as a width' => [ 'width: var(--w) red' ],
+			'an angle as pointer-events' => [ 'pointer-events: var(--x) 30deg' ],
+			'a resolution as a display' => [ 'display: var(--d) 2x' ],
+			'a comma alone' => [ 'color: var(--c) ,' ],
+			'more values than the property takes' => [
+				'border-width: var(--w) 1px 2px 3px 4px 5px',
+			],
 			// provideRejectedFallbacks() pins the opposite one level down: inside rgb(), a
 			// fallback is held to the slot's own type.
 			'a length as a colour fallback' => [ 'color: var(--c, 10px)' ],
 			// url( 'image' ), where the property's own slot is url( 'svg' ) -- upstream's
 			// filter included. A wiki that narrows only the svg allowlist loses it here.
 			'an image where the property wants an svg' => [
+				"backdrop-filter: var(--f) url(\"$commons/x.png\")",
+			],
+			// A bare string is a URL only inside image-set(), and this matcher never
+			// reaches into a function's arguments -- image-set's own grammar matches them,
+			// where the slot is the policy-checked urlstring(). What keeps a var() from
+			// becoming a fetch is StylePropertySanitizerExtender::doSanitize() refusing
+			// url/src/image-set/attr/image tokens in a `--*` declaration, which is
+			// untouched. So these sanitize clean and the browser drops them.
+			'a string shaped like a url' => [
+				'background-image: var(--x) "https://evil.example.org/x.png"',
+			],
+			'a string shaped like a relative url' => [
+				'list-style-image: var(--i) "/w/images/x.png"',
+			],
+		];
+	}
+
+	/**
+	 * What it does check is that a var() is there at all. Every row below is a row of
+	 * provideAcceptedRegardlessOfProperty() with the var() taken out, so the property's
+	 * own grammar judges it and an editor is told the value is wrong.
+	 *
+	 * @dataProvider provideRefusedWithoutAVar
+	 */
+	public function testWideMatcherNeedsAVar( string $declaration ): void {
+		$this->assertFalse( $this->isAccepted( $declaration ), $declaration );
+	}
+
+	public static function provideRefusedWithoutAVar(): array {
+		$commons = self::COMMONS;
+
+		return [
+			'a colour as a width' => [ 'width: red' ],
+			'an angle as pointer-events' => [ 'pointer-events: 30deg' ],
+			'a resolution as a display' => [ 'display: 2x' ],
+			'a comma alone' => [ 'color: ,' ],
+			'more values than the property takes' => [ 'border-width: 1px 2px 3px 4px 5px' ],
+			'an image where the property wants an svg' => [
 				"backdrop-filter: url(\"$commons/x.png\")",
 			],
 		];
+	}
+
+	/**
+	 * Every alternative in the value list consumes exactly one component value, so a value
+	 * that fails has one decomposition. A variable-length one -- position(), which matches
+	 * one, two or four -- puts the Quantifier::plus back to enumerating every way of
+	 * splitting the value, and this takes seconds rather than milliseconds. The bound is
+	 * three orders of magnitude above what it costs today, so it is the shape that turns
+	 * this red, not the machine it runs on.
+	 */
+	public function testAFailingValueIsNotEnumerated(): void {
+		$declaration = 'pointer-events: ' . str_repeat( 'left top ', 12 ) . '[x]';
+
+		$started = hrtime( true );
+		$accepted = $this->isAccepted( $declaration );
+		$elapsedMs = ( hrtime( true ) - $started ) / 1e6;
+
+		$this->assertFalse( $accepted, $declaration );
+		$this->assertLessThan( 2000, $elapsedMs, 'the value list has a variable-length alternative' );
 	}
 
 	/**
@@ -867,28 +1091,6 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 			self::cases( 'Images 4', [
 				"background-image: image-set(\"$commons/i1.jpg\")",
 				"background-image: image-set(\"$commons/i1.jpg\" 1x type(\"image/avif\"))",
-			] ),
-			// rawNumber()'s var() wrapper takes no fallback. Unlike the colour channels,
-			// this is not a narrowing -- upstream's ratio() admits no var() at all.
-			self::cases( 'Box Sizing 4', [
-				'aspect-ratio: 16 / var(--b, 9)',
-				// upstream ratio() is built from rawNumber(), which excludes math functions
-				'aspect-ratio: calc(16) / var(--b)',
-			] ),
-			// The fallback is one value from $anyProperty: an empty one does not fit, nor
-			// does a multi-value one, and a type the list omits does not reach a slot --
-			// `1rem` does, `0.3s` does not. A keyword the list omits blocks the whole value
-			// the same way.
-			self::cases( 'Custom properties, whole value', [
-				'background-image: var(--image, none)',
-				'border: var(--border, 1px solid red)',
-				'color: var(--x, )',
-				'content: "x" var(--suffix)',
-				'flex-flow: var(--direction) wrap',
-				'grid-template-columns: var(--tracks, 1fr)',
-				'list-style: var(--type) inside',
-				'text-decoration: underline var(--style) red',
-				'transition-duration: var(--duration, 0.3s)',
 			] ),
 			self::cases( 'Color 4/5', [
 				'background: color(from #0000FF xyz calc(x + 0.75) y calc(z - 0.35))',
