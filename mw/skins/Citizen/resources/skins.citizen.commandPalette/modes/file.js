@@ -25,6 +25,7 @@ const {
 	cdxIconPlay
 } = require( '../icons.json' );
 const config = require( '../config.json' );
+const isAbortError = require( '../utils/isAbortError.js' );
 const { defineMode } = require( '../services/defineMode.js' );
 
 const FILE_NAMESPACE = 6;
@@ -362,7 +363,7 @@ function adaptListItem( page ) {
 /**
  * Factory for the file/media mode.
  *
- * @param {Function} ApiConstructor mw.Api constructor.
+ * @param {typeof mw.Api} ApiConstructor mw.Api constructor.
  * @return {Object} Mode descriptor.
  */
 function createFileMode( ApiConstructor ) {
@@ -423,7 +424,7 @@ function createFileMode( ApiConstructor ) {
 			return Object.values( pages )
 				.sort( ( a, b ) => ( a.index || 0 ) - ( b.index || 0 ) );
 		} catch ( error ) {
-			if ( error && error.name !== 'AbortError' ) {
+			if ( !isAbortError( error ) ) {
 				mw.log.error( '[commandPalette] File search failed:', error );
 			}
 			return [];

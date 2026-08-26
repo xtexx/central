@@ -11,12 +11,20 @@ Run only what's relevant to the files you changed.
 | Files changed | Command |
 | --- | --- |
 | `*.php` | `composer preflight` (lint, style, Phan, and PHPUnit) |
-| `*.js`, `*.vue` | `npm run lint:js` then `npm test` |
+| `*.js`, `*.vue` | `npm run lint:js`, `npm run lint:types`, then `npm test` |
 | `*.less`, `*.css`, `*.vue` | `npm run lint:styles` |
 | `i18n/` | `npm run lint:i18n` |
 | `*.md` | `npm run lint:md` |
 
 Auto-fix commands: `composer fix` (PHP), `npm run lint:fix:js` (JS), `npm run lint:fix:styles` (styles), `npm run lint:fix:md` (markdown).
+
+**Type checking**: `npm run lint:types` runs `tsc --checkJs` over the JSDoc annotations; CI runs it via the shared lint workflow's `lint-types` input. Note that workflow invokes each `lint:*` script individually and never `npm run lint`, so adding a new lint script to the `lint` chain does not put it in CI — it needs an input on the shared workflow as well.
+
+`tsconfig.json`'s `include` names every checked path explicitly rather than relying on imports to pull files in, so coverage does not shrink silently when an import is removed. Vue SFC script bodies are not covered — those need `vue-tsc`.
+
+`strict` is enabled a flag at a time rather than as a bundle, because its members cost very different amounts here. All are on except `noImplicitAny`, which is 524 diagnostics of missing parameter annotations rather than defects. Do not switch on bare `strict` — it turns that one on too.
+
+Two idioms the checker cannot follow, both of which appear in this codebase: a parameter defaulted with `x = x || {}` in the body does not stay narrowed inside a closure, so use a default parameter; and a `typeof obj.method === 'function'` guard does not survive into a callback, so bind the method to a local first.
 
 **Preflight**: Run `npm run preflight` to execute all Node-based lints and JS tests in one command. Run `composer preflight` from within a MediaWiki installation to execute all PHP lints, style checks, Phan static analysis, and PHPUnit tests.
 
@@ -86,12 +94,14 @@ To add a new skill, create `.agents/skills/<name>/SKILL.md` with frontmatter (`n
 
 - Use the Codex version bundled with MediaWiki — do not assume a specific version. The minimum is v1.14.0 (bundled with MW 1.43), but newer MW versions may provide a newer Codex.
 - Codex components requiring JS must be listed in `skin.json` under the appropriate `CodexModule`
+- A module's `codex.js` is generated at request time and has no on-disk counterpart, so Vitest resolves the components' `require( '…/codex.js' )` to `tests/vitest/mocks/codex.js`. Register stubs with `setCodexStubs()` **before** importing the component — it destructures at module-evaluation time.
 
 ### skin.json
 
 `skin.json` is the source of truth for how the skin is wired — ResourceLoader modules, hooks, config variables, and extension skin styles are all declared here.
 
 - When adding or removing files under `resources/`, update the corresponding `packageFiles` or `styles` list in `skin.json`
+- ResourceLoader replaces `config.json` and `icons.json` per request, so the checked-in copies are dev stubs and the real shape lives in the `.json.d.ts` beside each. Changing a `callbackParam` icon list or a config callback means updating that declaration too — nothing checks it for you.
 - When a new i18n message key is read by JS via `mw.message()`, also add it to the relevant ResourceLoader module's `messages` array in `skin.json` — adding the key only to `i18n/en.json` and `i18n/qqq.json` is not enough; messages not listed in the module render as `⧼key⧽` in the UI
 - When adding support for a new extension, add a LESS file under `skinStyles/` and register it in `skin.json` under `ResourceModuleSkinStyles`
 - Config variables are declared under `config` in `skin.json` (prefixed `wgCitizen`). In PHP they are accessed via `$this->getConfig()->get( 'CitizenFoo' )`, and can be injected into JS via `ResourceLoaderHooks`
@@ -446,15 +456,15 @@ Breaking changes never ship unguarded — they ride the preview channel until th
 
 Vue and per-module bundles are not part of the initial page load — they're loaded on intent via `mw.loader`. Any control that mounts a Vue app needs:
 
-- **Intent prefetch** via `bindIntentPrefetch()` on the trigger so hover/focus/touch starts the network round-trip before the click. Its optional `onReady` callback fires when the module is ready and can be used to also pre-mount the app during idle time, so the eventual click only pays for the first render — see `createCommandPalette` for the reference implementation (it skips `touchstart` intents, where the tap follows too closely for an idle mount to win).
-- **Lazy load on activation** via `mw.loader.using()` on the actual click/toggle event.
+- **Intent prefetch** via `bindIntentPrefetch()` on the trigger so hover/focus/touch starts the network round-trip before the click. Pass `{ vue: true }` so Vue is claimed as its own request. Its optional `onReady` callback fires when the module is ready and can be used to also pre-mount the app during idle time, so the eventual click only pays for the first render — see `createCommandPalette` for the reference implementation (it skips `touchstart` intents, where the tap follows too closely for an idle mount to win).
+- **Lazy load on activation** via `usingWithVue()` from `vueBatch.js` on the actual click/toggle event — never `mw.loader.using()` directly. `mw.loader` batches a module with every dependency still in state `registered`, so a bare `using()` welds a private copy of Vue into that panel's `load.php` URL. Vue is past `mw.loader.store`'s 100 kB cap, so such a copy is reusable by neither the module store nor the browser's URL-keyed HTTP cache, and every panel re-downloads Vue. `vueBatch.js` documents the ordering invariant that keeps the split free.
 - **Server-rendered skeleton** inside the mount target for in-place panels (Preferences, Share). Vue's `mount()` replaces it on success. The skeleton must be server-rendered because the JS that would render it isn't there yet.
 - **A failure path** sized to the UI's tolerance for staying broken. Pick what fits:
   - Retry the load in place (Preferences renders a retry button beside the skeleton).
   - Degrade to a non-Vue path that achieves the same goal (Share closes the panel and triggers the browser's native share sheet).
   - Surface a toast and dismiss the UI (Command palette uses `mw.notify`; the overlay sits empty during the load and disappears on failure).
 
-See `createPreferences`, `createShare`, and `createCommandPalette` for the patterns.
+See `createPreferences`, `createShare`, and `createCommandPalette` for the patterns, and `vueBatch.js` for why Vue is requested separately.
 
 ### i18n
 
