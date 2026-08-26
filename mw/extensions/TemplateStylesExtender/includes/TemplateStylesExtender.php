@@ -224,11 +224,16 @@ class TemplateStylesExtender {
 	public function addCssContainment3( StylePropertySanitizerExtender $sanitizer ): void {
 		try {
 			$sanitizer->addKnownProperties( [
-				'contain' => new KeywordMatcher( [
-					// Level 1
-					'none', 'strict', 'content', 'size', 'layout', 'paint',
-					// Level 3
-					'style', 'inline-size'
+				// none | strict | content | [ [size | inline-size] || layout || style || paint ]
+				'contain' => new Alternative( [
+					new KeywordMatcher( [ 'none', 'strict', 'content' ] ),
+					UnorderedGroup::someOf( [
+						// Level 3 adds inline-size, an alternative to size rather than a sibling
+						new KeywordMatcher( [ 'size', 'inline-size' ] ),
+						new KeywordMatcher( 'layout' ),
+						new KeywordMatcher( 'style' ),
+						new KeywordMatcher( 'paint' ),
+					] ),
 				] ),
 				'content-visibility' => new KeywordMatcher( [ 'visible', 'hidden', 'auto' ] ),
 			] );
@@ -352,6 +357,40 @@ class TemplateStylesExtender {
 		} catch ( InvalidArgumentException ) {
 			// Fail silently
 		}
+	}
+
+	/**
+	 * Re-apply `$wgTemplateStylesDisallowedProperties`.
+	 *
+	 * TemplateStyles narrows the property list before it fires either hook, so a sanitizer
+	 * built here starts from the full set again and hands back what an operator disallowed.
+	 * Every path that overwrites the *style* property list has to come through here after it.
+	 * `@font-face` descriptors are a separate list that upstream does not narrow.
+	 *
+	 * A `-webkit-` alias goes with its target: `-webkit-mask-image` is `mask-image` under
+	 * another name, so disallowing one has to take the other.
+	 */
+	public static function removeDisallowedProperties( StylePropertySanitizer $sanitizer ): void {
+		// TemplateStyles' own setting, read from its config registry so a failure is not
+		// reported against this extension's.
+		$disallowed = MediaWikiServices::getInstance()
+			->getConfigFactory()
+			->makeConfig( 'templatestyles' )
+			->get( 'TemplateStylesDisallowedProperties' );
+
+		if ( !$disallowed ) {
+			return;
+		}
+
+		$disallowed = array_merge(
+			$disallowed,
+			array_map( static fn ( $property ) => '-webkit-' . $property, $disallowed )
+		);
+
+		$sanitizer->setKnownProperties( array_diff_key(
+			$sanitizer->getKnownProperties(),
+			array_flip( $disallowed )
+		) );
 	}
 
 	/**

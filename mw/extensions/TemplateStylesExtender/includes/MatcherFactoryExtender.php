@@ -33,6 +33,7 @@ use Wikimedia\CSS\Grammar\Matcher;
 use Wikimedia\CSS\Grammar\MatcherFactory;
 use Wikimedia\CSS\Grammar\Quantifier;
 use Wikimedia\CSS\Grammar\TokenMatcher;
+use Wikimedia\CSS\Grammar\UnorderedGroup;
 use Wikimedia\CSS\Objects\ComponentValueList;
 use Wikimedia\CSS\Objects\Token;
 
@@ -407,10 +408,106 @@ class MatcherFactoryExtender extends MatcherFactory {
 			),
 		];
 
+		// color-mix() = color-mix( <color-interpolation-method>? , [ <color> && <percentage [0,100]>? ]# )
+		//
+		// After $relativeColorFuncs, so an argument can be any colour this method makes.
+		// A color-mix() cannot be one: it is the matcher being built, the same bound the
+		// relative-colour origin is under.
+		$mixColor = new Alternative( [ $originColor, ...$relativeColorFuncs ] );
+
+		// Not $predefinedRgb, which is color()'s: it carries the rec2100-* spaces and
+		// lacks lab, oklab and the polar four. A hue method follows a polar space only.
+		$colorInterpolationMethod = new Juxtaposition( [
+			new KeywordMatcher( [ 'in' ] ),
+			new Alternative( [
+				new KeywordMatcher( [
+					'srgb', 'srgb-linear', 'display-p3', 'display-p3-linear', 'a98-rgb',
+					'prophoto-rgb', 'rec2020', 'lab', 'oklab'
+				] ),
+				$xyzSpace,
+				new Juxtaposition( [
+					new KeywordMatcher( [ 'hsl', 'hwb', 'lch', 'oklch' ] ),
+					Quantifier::optional( new Juxtaposition( [
+						new KeywordMatcher( [ 'shorter', 'longer', 'increasing', 'decreasing' ] ),
+						new KeywordMatcher( [ 'hue' ] )
+					] ) )
+				] )
+			] )
+		] );
+
+		// allOf(), not someOf(): someOf() yields on a partial match, taking a lone
+		// percentage for a whole argument. `#` is one or more, not two. The optional
+		// method takes its comma with it, which Juxtaposition's comma mode already does.
+		// An out-of-range percentage is left for the browser to refuse.
+		$colorMixSyntax = new Juxtaposition( [
+			Quantifier::optional( $colorInterpolationMethod ),
+			Quantifier::hash( UnorderedGroup::allOf( [ $mixColor, Quantifier::optional( $p ) ] ) )
+		], true );
+
 		$this->cache[__METHOD__] = [
 			...$absoluteColorFuncs,
-			...$relativeColorFuncs
+			...$relativeColorFuncs,
+			new FunctionMatcher( 'color-mix', $colorMixSyntax )
 		];
+
+		return $this->cache[__METHOD__];
+	}
+
+	/**
+	 * @inheritDoc
+	 *
+	 * Widens the arguments of light-dark(), which upstream builds from safeColor() and so
+	 * takes no var() -- though the whole-colour var() sitting beside it in this very
+	 * alternative does.
+	 *
+	 * Wrapped, not rebuilt: Alternative dedupes on GrammarMatch::getUniqueID() and
+	 * FunctionMatcher returns after its first whole-content match, so the narrow copy
+	 * beside this one costs an attempt and yields nothing extra. Replicating the parent
+	 * instead would silently refuse any branch upstream adds to color().
+	 *
+	 * The fallback stays the same colour type as the slot, which is what keeps
+	 * `light-dark( var( --l, url( ... ) ), blue )` out.
+	 */
+	public function color(): Matcher {
+		if ( isset( $this->cache[__METHOD__] ) ) {
+			return $this->cache[__METHOD__];
+		}
+
+		// Gated: upstream accepts no var() here, so gating rejects nothing it takes.
+		if ( !$this->varEnabled ) {
+			$this->cache[__METHOD__] = parent::color();
+
+			return $this->cache[__METHOD__];
+		}
+
+		$this->cache[__METHOD__] = new Alternative( [
+			parent::color(),
+			$this->lightDark(),
+		] );
+
+		return $this->cache[__METHOD__];
+	}
+
+	/**
+	 * light-dark(), with a var() in either argument where the option allows one.
+	 *
+	 * Not an override: upstream builds this inline inside color(), so there is nothing to
+	 * extend. Exposed because border-color needs the same matcher without the rest of
+	 * color() -- see StylePropertySanitizerExtender::cssBackgrounds3().
+	 */
+	public function lightDark(): Matcher {
+		if ( isset( $this->cache[__METHOD__] ) ) {
+			return $this->cache[__METHOD__];
+		}
+
+		$arg = $this->varEnabled
+			? $this->rawOrCustomProp( $this->safeColor() )
+			: $this->safeColor();
+
+		$this->cache[__METHOD__] = new FunctionMatcher( 'light-dark', new Juxtaposition( [
+			$arg,
+			$arg,
+		], true ) );
 
 		return $this->cache[__METHOD__];
 	}
@@ -440,7 +537,7 @@ class MatcherFactoryExtender extends MatcherFactory {
 			$image,
 			new FunctionMatcher( 'image-set', Quantifier::hash( new Juxtaposition( [
 				new Alternative( [ $image, $this->urlstring( 'image' ) ] ),
-				$this->imageSetDensity(),
+				Quantifier::optional( $this->imageSetOptions() ),
 			] ) ) ),
 		] );
 
@@ -448,16 +545,19 @@ class MatcherFactoryExtender extends MatcherFactory {
 	}
 
 	/**
-	 * The second argument of image-set(): a resolution or a type(), with no var() in it.
+	 * What may follow the URL in an image-set() entry: `[ <resolution> || type(<string>) ]`,
+	 * so either, both, in either order -- and no var() in any of it.
+	 *
+	 * The caller makes the whole group optional, per CSS Images 4.
 	 *
 	 * resolution() keeps a bare var() out; this keeps one inside calc() out too. That costs
 	 * `calc(1x * var(--d))` and buys not trusting the browser to reject the malformed calc
-	 * the payload above becomes. attr() is the other substitution to watch; it cannot reach
-	 * here today.
+	 * the payload above becomes. The check spans the whole group, so `type(var(--t))` goes
+	 * with it. attr() is the other substitution to watch; it cannot reach here today.
 	 */
-	private function imageSetDensity(): Matcher {
+	private function imageSetOptions(): Matcher {
 		$this->cache[__METHOD__] ??= new CheckedMatcher(
-			new Alternative( [
+			UnorderedGroup::someOf( [
 				$this->resolution(),
 				new FunctionMatcher( 'type', $this->string() ),
 			] ),

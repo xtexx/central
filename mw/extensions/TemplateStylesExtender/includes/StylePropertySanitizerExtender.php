@@ -47,8 +47,16 @@ class StylePropertySanitizerExtender extends StylePropertySanitizer {
 	];
 
 	private bool $varEnabled = false;
+
+	/**
+	 * When true, the a9043c4 external-resource rejection below is skipped, so a custom
+	 * property may hold url()/image-set()/etc. and CSP is relied on instead. See #45.
+	 */
+	private bool $allowExternalResources = false;
+
 	private static bool $extendedCss1Masking = false;
 	private static bool $extendedCss3Grid = false;
+	private static bool $extendedCss3Backgrounds = false;
 
 	public function __construct( MatcherFactory $matcherFactory ) {
 		$extendedMatcherFactory = $matcherFactory instanceof MatcherFactoryExtender
@@ -60,6 +68,51 @@ class StylePropertySanitizerExtender extends StylePropertySanitizer {
 
 	public function setVarEnabled( bool $varEnabled ): void {
 		$this->varEnabled = $varEnabled;
+	}
+
+	/**
+	 * Permit external-resource functions (url, image-set, ...) inside custom-property
+	 * values, lifting the rejection wholesale. Only for deployments whose CSP governs
+	 * these fetches -- see the config documentation.
+	 */
+	public function setAllowExternalResources( bool $allow ): void {
+		$this->allowExternalResources = $allow;
+	}
+
+	/**
+	 * @inheritDoc
+	 *
+	 * Let border-color take a light-dark().
+	 *
+	 * Upstream builds it from safeColor() rather than color(), because the property
+	 * concatenates up to four colours and a var() could expand to more than one of them.
+	 * That reasoning does not reach light-dark(), which is a single function and yields
+	 * exactly one colour whatever it holds, so it is refused here only as a side effect of
+	 * keeping var() out. The per-side longhands, which do not concatenate, take it already.
+	 */
+	protected function cssBackgrounds3( MatcherFactory $matcherFactory ) {
+		// @codeCoverageIgnoreStart
+		if ( self::$extendedCss3Backgrounds && isset( $this->cache[__METHOD__] ) ) {
+			return $this->cache[__METHOD__];
+		}
+		// @codeCoverageIgnoreEnd
+
+		$props = parent::cssBackgrounds3( $matcherFactory );
+
+		$factory = $matcherFactory instanceof MatcherFactoryExtender
+			? $matcherFactory
+			: new MatcherFactoryExtender( $matcherFactory );
+
+		// Still no bare var(), which is the part of upstream's caution that holds.
+		$props['border-color'] = Quantifier::count( new Alternative( [
+			$factory->safeColor(),
+			$factory->lightDark(),
+		] ), 1, 4 );
+
+		$this->cache[__METHOD__] = $props;
+		self::$extendedCss3Backgrounds = true;
+
+		return $props;
 	}
 
 	/**
@@ -207,17 +260,19 @@ class StylePropertySanitizerExtender extends StylePropertySanitizer {
 			return parent::doSanitize( $object );
 		}
 
-		foreach ( $object->toTokenArray() as $token ) {
-			if (
-				$token->type() === Token::T_URL ||
-				$token->type() === Token::T_BAD_URL ||
-				(
-					$token->type() === Token::T_FUNCTION &&
-					in_array( strtolower( (string)$token->value() ), self::EXTERNAL_RESOURCE_FUNCTIONS, true )
-				)
-			) {
-				$this->sanitizationError( 'bad-value-for-property', $token, [ $name ] );
-				return null;
+		if ( !$this->allowExternalResources ) {
+			foreach ( $object->toTokenArray() as $token ) {
+				if (
+					$token->type() === Token::T_URL ||
+					$token->type() === Token::T_BAD_URL ||
+					(
+						$token->type() === Token::T_FUNCTION &&
+						in_array( strtolower( (string)$token->value() ), self::EXTERNAL_RESOURCE_FUNCTIONS, true )
+					)
+				) {
+					$this->sanitizationError( 'bad-value-for-property', $token, [ $name ] );
+					return null;
+				}
 			}
 		}
 
