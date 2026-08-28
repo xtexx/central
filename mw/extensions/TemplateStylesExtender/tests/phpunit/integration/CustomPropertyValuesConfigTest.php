@@ -78,6 +78,27 @@ class CustomPropertyValuesConfigTest extends MediaWikiIntegrationTestCase {
 			'origin var()' => [ 'color: rgb(from var(--c) r g b)', false ],
 			'origin var() carrying a fallback' => [ 'color: rgb(from var(--c, red) r g b)', false ],
 
+			// A color-mix() colour argument is the origin's matcher, so its var() is the
+			// same gated slot. The percentage beside it is a colour channel and is not.
+			'color-mix() colour var()' => [ 'color: color-mix(in srgb, var(--c), blue)', false ],
+
+			'color-mix() colour var() carrying a fallback' => [
+				'color: color-mix(in srgb, var(--c, red), blue)',
+				false,
+			],
+
+			// Upstream's light-dark() takes safeColor(), which has no var() slot, so a
+			// var() in one is this extension's and goes with the option.
+			'light-dark() var()' => [ 'color: light-dark(var(--l), var(--d))', false ],
+			'light-dark() var() with a fallback' => [
+				'color: light-dark(var(--l, red), var(--d, blue))', false,
+			],
+			'color-mix() percentage var()' => [
+				'color: color-mix(in srgb, red var(--pct), blue)',
+				true,
+			],
+			'color-mix() with no var() in it' => [ 'color: color-mix(in srgb, red, blue)', true ],
+
 			// The rest of the origin is not this option's business.
 			'origin colour word' => [ 'color: rgb(from red r g b)', true ],
 			'origin colour function' => [ 'color: rgb(from rgb(1 2 3) r g b)', true ],
@@ -91,6 +112,8 @@ class CustomPropertyValuesConfigTest extends MediaWikiIntegrationTestCase {
 			'colour channel var() carrying a fallback' => [ 'color: rgb(var(--r, 0) 0 0)', true ],
 			'var() as a whole colour' => [ 'color: var(--c, red)', true ],
 			'light-dark() outside an origin' => [ 'color: light-dark(red, blue)', true ],
+			// No var() in it, so a var() option must not gate it.
+			'light-dark() in border-color' => [ 'border-color: light-dark(red, blue)', true ],
 			// border takes a <color>, so upstream's color() admits the var() here too
 			'var() where a shorthand takes a colour' => [ 'border: var(--shorthand)', true ],
 			// upstream's calcSum() admits var(); UrlPolicyConfigTest pins where that stops

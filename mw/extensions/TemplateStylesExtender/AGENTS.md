@@ -87,6 +87,10 @@ It also reaches two protected properties. A renamed one is worth particular care
 to a property that no longer exists creates a dynamic property, which PHP only deprecates,
 so hoisting would silently stop. `OverrideIntegrityTest` asserts both still exist.
 
+Widening the selector grammar widens what a hoisted prefix can test -- `html:has(#some-id)
+.card` gates a rule on anything in the document. The rule still applies only inside the
+wrapper; `CssSelectorCorpusTest::provideScopeEscapeAttempts()` pins that, and must stay green.
+
 ### `@media` and `@supports` keep their own copy of the rule-sanitizer list
 
 `StylesheetSanitizerHook` swaps entries in the stylesheet's rule-sanitizer list, but
@@ -96,6 +100,22 @@ sanitizes at the top level and is refused one line deeper -- and a refused selec
 the whole stylesheet with it. `propagateToNestedAtRules()` pushes the replacements down;
 anything added to `$newRules` in future needs to go through it too. This is why `@font-face`
 inside `@media` did not get this extension's descriptors for several releases.
+
+### TemplateStyles narrows before it hands anything over
+
+Both `$wgTemplateStylesDisallowedProperties` and `$wgTemplateStylesDisallowedAtRules` are
+applied *before* the hooks here run, so a narrowed property list and a rule-sanitizer list
+missing an at-rule are what arrive. Anything that rebuilds either one puts back what an
+operator removed, and nothing upstream complains.
+
+`TemplateStylesExtender::removeDisallowedProperties()` re-applies the property list; call it
+after any `setKnownProperties()` on the style property sanitizer. For at-rules the key's
+presence is the signal, so replace an entry only where it is already set -- assigning
+`$newRules['@font-face']` unconditionally is what re-enabled it.
+
+Only the config half is restored. `PropertySanitizerHook` still replaces the object it is
+given, so a narrowing another extension made through the same hook is discarded, load-order
+dependent. Carrying that forward means carrying its matchers forward too.
 
 ### The whole-value matcher answers for every property
 
@@ -117,6 +137,16 @@ stream. It establishes that the value reaches no function beyond the ones alread
 elsewhere, which is why keywords, strings and dimensions go in whole and an arbitrary
 function does not.
 
+### Upstream
+
+- css-sanitizer workboard: https://phabricator.wikimedia.org/tag/css-sanitizer
+- css-sanitizer repo: https://github.com/wikimedia/css-sanitizer
+- TemplateStyles repo: https://github.com/wikimedia/mediawiki-extensions-TemplateStyles
+
+The module index in `docs/css-support.md` carries the tasks tracking upstream adoption. When
+one lands, the override here can shadow the wider upstream copy -- which is what
+`NotNarrowerThanUpstreamTest` catches.
+
 ### Which css-sanitizer version you get
 
 Three places have an opinion and only one of them decides:
@@ -135,7 +165,7 @@ This extension deliberately declares no css-sanitizer dependency, even though it
 
 `extension.json` cannot express it either: TemplateStyles' own `version` has been `1.0` for its entire history, so `requires.extensions.TemplateStyles` can never encode a css-sanitizer floor.
 
-The support policy is: this extension targets the css-sanitizer shipped by the **current MediaWiki LTS**, and support for older css-sanitizer versions is dropped once the LTS moves past them — which can happen in a *point* release of the LTS, not only at a major upgrade. When you drop such support, raise `requires.MediaWiki` in `extension.json` to the first point release carrying the new css-sanitizer, or wikis on older point releases take a fatal rather than degrading.
+The support policy itself is stated in README.md, which is the copy wiki operators read. The maintainer half is not: when you drop support for a css-sanitizer version, raise `requires.MediaWiki` in `extension.json` to the first point release carrying the new one, or wikis on older point releases take a fatal rather than degrading.
 
 The practical consequence is that **the available parent API is whatever the target MediaWiki branch ships**, and nothing will tell you at install time if that changes. Check what is actually installed — that is what Phan and the tests see, and it may differ from the constraint if the checkout is stale:
 
@@ -169,11 +199,25 @@ check after the first false one looks like a failure.
 Corpus cases are split three ways: **accepted** (a failure is a regression), **rejected** (a
 failure means the grammar widened where it should not have) and **not yet implemented** (a
 failure means someone implemented it and the case should move). When you add a matcher, add
-its declarations in the same commit.
+its declarations in the same commit, and list it in the module index of `docs/css-support.md`
+-- extending that module's existing row, or adding a row for a new module. A section in the
+body of that file is for a limit or a surprise, not for every addition.
 
-A rejected case needs no `var()` in it, and must not have one: the whole-value matcher
-answers for any known property whose own grammar refused, so a case carrying a `var()` is
-accepted whatever the grammar holds.
+Selectors have their own corpus, `CssSelectorCorpusTest.php`. `NotNarrowerThanUpstreamTest.php`
+asserts the other direction: several classes here replace an upstream method wholesale, so an
+upstream improvement can be shadowed by an older, narrower copy that no test of this extension
+alone would notice.
+
+A rejected case must carry no `var()` at the top level of its value: the whole-value matcher
+answers for any known property whose own grammar refused, so such a case is accepted whatever
+the grammar holds. A `var()` nested inside a function is fine, and `provideRejected()` and
+`provideRejectedFallbacks()` both have some -- the matcher must match that function whole, so
+only the property's own grammar can, and the case still pins what it claims to.
+
+A property that combines values needs a combination in the corpus, and a refusal beside it.
+The `contain` cases tested one keyword at a time, which its single-keyword matcher accepted
+anyway; a combination on its own would have passed a matcher taking any of those keywords
+any number of times, which is just as wrong.
 
 A `var()` case covers `addVarSelector()` only if the property's own grammar refuses the
 value. `mathFunction()` puts a bare `var()` in every numeric slot but `resolution()`, so
@@ -199,8 +243,8 @@ next contributor will read the editor's draft and take it for an omission.
 
 ### Testing anything that depends on configuration
 
-The corpus deliberately uses URLs the default `$wgTemplateStylesAllowedUrls` permits, so it
-asserts nothing about configuration. `tests/phpunit/integration/UrlPolicyConfigTest.php`
+The corpus deliberately uses URLs the default `$wgTemplateStylesAllowedUrls` permits, and
+asserts that assumption once in `testCorpusAssumptionsHold()` rather than in 200 failures. `tests/phpunit/integration/UrlPolicyConfigTest.php`
 handles that case and shows the pattern.
 
 Two things make it awkward, and both are worth knowing before writing a similar test.

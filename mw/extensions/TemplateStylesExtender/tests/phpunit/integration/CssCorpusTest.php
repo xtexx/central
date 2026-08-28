@@ -167,10 +167,15 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 	/**
 	 * Values the shipped sanitizer has to keep refusing.
 	 *
-	 * Every one is a value some draft or older spec offers, so the risk is a contributor
-	 * reading a newer document and "restoring" it. None carries a var(), which is what keeps
-	 * addVarSelector()'s whole-value matcher out of the way -- with one in, the matcher
-	 * answers for any known property and these would pass whatever the grammar held.
+	 * Most are a value some draft or older spec offers, so the risk is a contributor reading
+	 * a newer document and "restoring" it; the rest are simply malformed.
+	 *
+	 * None carries a var() at the top level of its value, which is what keeps
+	 * addVarSelector()'s whole-value matcher out of the way -- with one there, the matcher
+	 * answers for any known property and the case would pass whatever the grammar held. A
+	 * var() nested inside a function is safe, and several cases have one: the matcher has to
+	 * match that function whole, and only the property's own grammar can. provideRejectedFallbacks()
+	 * relies on the same thing.
 	 *
 	 * @dataProvider provideRejected
 	 */
@@ -182,6 +187,9 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 	}
 
 	public static function provideRejected(): array {
+		// Must stay a host the default allowlist permits, or these pass for the wrong reason.
+		$commons = self::COMMONS;
+
 		return array_merge(
 			// `chain` is in the editor's draft only, and ships in no engine but Blink,
 			// where it is still experimental.
@@ -190,11 +198,34 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				'overscroll-behavior: auto contain none',
 				'overscroll-behavior: chain',
 			] ),
+			// An optional slot must not become a second URL slot, nor let a var() in.
+			// image-set() reads a bare string as a URL, so a substituted entry would be
+			// fetched without ever meeting $wgTemplateStylesAllowedUrls.
+			self::cases( 'Images 4', [
+				'background-image: image-set(var(--x))',
+				"background-image: image-set(\"$commons/i1.jpg\" var(--d))",
+				"background-image: image-set(\"$commons/i1.jpg\" calc(1x * var(--d)))",
+				"background-image: image-set(\"$commons/i1.jpg\" type(var(--t)))",
+				// each of the two may appear once
+				"background-image: image-set(\"$commons/i1.jpg\" 1x 2x)",
+				"background-image: image-set(\"$commons/i1.jpg\" type(\"image/avif\") type(\"image/jpeg\"))",
+				// a second bare string is not a second entry without a comma
+				"background-image: image-set(\"$commons/i1.jpg\" \"$commons/i2.jpg\")",
+				// the URL is still required, which is the question an optional slot raises
+				'background-image: image-set()',
+				'background-image: image-set(1x)',
+			] ),
 			// `light` and `dark` were dropped in favour of letting `auto` follow color-scheme.
 			self::cases( 'Scrollbars 1', [
 				'scrollbar-color: light dark',
 				'scrollbar-color: red',
 				'scrollbar-width: 8px',
+			] ),
+			// `in <dashed-ident>` names an @color-profile, which is in the published
+			// draft but ships in no engine and has no at-rule sanitizer here to name --
+			// its src is an external ICC fetch with no URL policy over it.
+			self::cases( 'Color 5', [
+				'color: color-mix(in --swopc, red, blue)',
 			] ),
 			// The named half of the module is deliberately absent, so a timeline can be
 			// referred to only by one of the anonymous functions. `scroll` as a named range
@@ -214,7 +245,7 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 	/**
 	 * Declarations the extension does not support yet. These are documented rather than
 	 * silently missing, so implementing one turns this test red and prompts moving the
-	 * case into provideAccepted() -- see the note on relative colours in README.md.
+	 * case into provideAccepted() -- see the note on relative colours in docs/css-support.md.
 	 *
 	 * @dataProvider provideNotYetImplemented
 	 */
@@ -292,6 +323,64 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				// upstream's own, kept so the origin is not the only place it is asserted
 				'color: light-dark(red, blue)',
 				'color: light-dark(rgb(from red r g b), blue)',
+				// upstream builds light-dark() from safeColor(), which has no var() slot,
+				// though the whole-colour var() beside it in color() does
+				'color: light-dark(var(--l), var(--d))',
+				'color: light-dark(var(--l, red), var(--d, blue))',
+				'color: light-dark(var(--l), blue)',
+				// border-color concatenates, so upstream keeps var() out of it and takes
+				// light-dark() with it. A light-dark() is one value and cannot concatenate.
+				'border-color: light-dark(red, blue)',
+				'border-color: light-dark(red, blue) light-dark(#123456, #654321)',
+				'border-color: red light-dark(red, blue) blue',
+				'border-color: light-dark(var(--l), var(--d))',
+			] ),
+			// color-mix() (#46). Two things about it are newer than the function, which
+			// has been interoperable since 2023, and neither is where a reader would look
+			// for it: the interpolation method became optional, defaulting to oklab (CSSWG
+			// 2025-08-19, shipped Safari 26.2 / Firefox 147 / Chrome 145), and the colour
+			// list went from exactly two to one or more (CSSWG 2025-04-01, Firefox 150).
+			self::cases( 'Color 5', [
+				// #46's own shape, and the same without a var(): the whole-value matcher
+				// refuses an arbitrary function, so only this grammar can accept either.
+				'background-color: color-mix(in oklch, var(--button-ground) 88%, #000)',
+				'background-color: color-mix(in srgb, #206484 88%, #000)',
+				'color: color-mix(in srgb, red, blue)',
+				// the method omitted, and its comma with it
+				'color: color-mix(red, blue)',
+				// a hue method follows a polar space, and `hue` closes it
+				'color: color-mix(in hsl shorter hue, red, blue)',
+				'color: color-mix(in oklch longer hue, red, blue)',
+				'color: color-mix(in lch increasing hue, red, blue)',
+				'color: color-mix(in hwb decreasing hue, red, blue)',
+				// the interpolation list is not color()'s
+				'color: color-mix(in lab, red, blue)',
+				'color: color-mix(in oklab, red, blue)',
+				'color: color-mix(in display-p3-linear, red, blue)',
+				'color: color-mix(in xyz-d65, red, blue)',
+				// `&&`, so the percentage may lead
+				'color: color-mix(in srgb, 25% red, blue)',
+				'color: color-mix(in srgb, red 40%, blue 60%)',
+				'color: color-mix(in srgb, red calc(50% / 2), blue)',
+				// an argument is any colour colorFuncs() makes, one level deep
+				'color: color-mix(in srgb, rgb(from #36c r g b), blue)',
+				'color: color-mix(in srgb, light-dark(red, blue), white)',
+				'color: color-mix(in hsl, currentcolor, blue)',
+				'color: color-mix(in srgb, transparent, blue)',
+				'color: color-mix(in oklab, var(--brand) 20%, transparent)',
+				// `#` is one or more, not two
+				'color: color-mix(in srgb, red)',
+				'color: color-mix(in srgb, red, green, blue)',
+				// <percentage [0,100]> is not enforced, and a browser refuses the whole
+				// declaration rather than clamping it: css-values-4 clamps the result of
+				// a math function, not a literal. Pinned as the gap it is.
+				'color: color-mix(in srgb, red 150%, blue)',
+				'color: color-mix(in srgb, red -10%, blue)',
+				// the slots colorFuncs() reaches through safeColor() and color()
+				'border-color: color-mix(in srgb, red, blue)',
+				'background: linear-gradient(color-mix(in srgb, red, blue), white)',
+				'color: light-dark(color-mix(in srgb, red, blue), white)',
+				'color: var(--c, color-mix(in srgb, red, blue))',
 			] ),
 			// Regress if mathFunction() is deleted. The whole-value matcher does not reach
 			// inside a function, so the first four and the last isolate it whatever that
@@ -403,6 +492,13 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				"background-image: image-set(url(\"$commons/i1.jpg\") 1x, url(\"$commons/i2.jpg\") 2x)",
 				"background-image: image-set( url(\"$commons/i1.avif\") type(\"image/avif\"), " .
 					"url(\"$commons/i2.jpg\") type(\"image/jpeg\") )",
+				// `[ <resolution> || type(<string>) ]?`: neither, either, or both in either
+				// order. The density was required here until CSS Images 4 made it optional.
+				"background-image: image-set(\"$commons/i1.jpg\")",
+				"background-image: image-set(url(\"$commons/i1.jpg\"))",
+				"background-image: image-set(\"$commons/i1.jpg\" 1x type(\"image/avif\"))",
+				"background-image: image-set(\"$commons/i1.jpg\" type(\"image/avif\") 1x)",
+				"background-image: image-set(\"$commons/i1.jpg\", \"$commons/i2.jpg\" 2x)",
 			] ),
 			self::cases( 'UI 4', [
 				'pointer-events: all',
@@ -504,10 +600,15 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 			self::cases( 'Containment 3', [
 				'contain: content',
 				'contain: inline-size',
+				'contain: inline-size layout',
 				'contain: layout',
+				'contain: layout paint style',
 				'contain: none',
 				'contain: paint',
+				'contain: paint layout',
 				'contain: size',
+				'contain: size layout',
+				'contain: size layout paint style',
 				'contain: strict',
 				'contain: style',
 				'content-visibility: auto',
@@ -767,6 +868,88 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 	}
 
 	/**
+	 * The accepted cases pin only that the combinations are taken. They pass just as well
+	 * against a matcher taking any of the eight keywords, any number of times, in any
+	 * order, which is wrong. These pin the other side.
+	 *
+	 * @dataProvider provideRejectedContainCombinations
+	 */
+	public function testContainKeywordsDoNotCombineFreely( string $declaration ): void {
+		$this->assertFalse( $this->isAccepted( $declaration ), $declaration );
+	}
+
+	public static function provideRejectedContainCombinations(): array {
+		return [
+			// none, strict and content stand alone
+			'none beside a feature' => [ 'contain: none layout' ],
+			'strict beside a feature' => [ 'contain: strict layout' ],
+			'content beside a feature' => [ 'contain: content paint' ],
+			// size and inline-size are alternatives to each other, not siblings
+			'both sizes' => [ 'contain: size inline-size' ],
+			// and each feature appears at most once
+			'a repeated feature' => [ 'contain: layout layout' ],
+		];
+	}
+
+	/**
+	 * What color-mix() refuses is where its shape is actually pinned. Every row is a form
+	 * some plausible transcription of the production would take, and none carries a var().
+	 *
+	 * @dataProvider provideRejectedColorMix
+	 */
+	public function testColorMixShape( string $declaration ): void {
+		$this->assertFalse( $this->isAccepted( $declaration ), $declaration );
+	}
+
+	public static function provideRejectedColorMix(): array {
+		return [
+			// The comma sits outside the `?` in the production, so a literal reading
+			// demands it. Juxtaposition's comma mode elides it with the empty match.
+			'a leading comma' => [ 'color: color-mix(, red, blue)' ],
+			'the method without its comma' => [ 'color: color-mix(in srgb red, blue)' ],
+			'the method last' => [ 'color: color-mix(red, blue, in oklab)' ],
+
+			// <hue-interpolation-method> is two keywords, and follows a polar space only
+			'a hue method without `hue`' => [ 'color: color-mix(in hsl shorter, red, blue)' ],
+			'`hue` without a hue method' => [ 'color: color-mix(in hsl hue, red, blue)' ],
+			'a hue method after a rectangular space' => [
+				'color: color-mix(in lab longer hue, red, blue)',
+			],
+			'a hue method after srgb' => [ 'color: color-mix(in srgb longer hue, red, blue)' ],
+			'a hue method after xyz' => [ 'color: color-mix(in xyz shorter hue, red, blue)' ],
+
+			// the interpolation slot is not color()'s keyword list
+			'a color() space that is not an interpolation space' => [
+				'color: color-mix(in rec2100-pq, red, blue)',
+			],
+			'an unknown space' => [ 'color: color-mix(in foo, red, blue)' ],
+
+			// `&&` takes both in either order, not either alone
+			'a percentage with no colour' => [ 'color: color-mix(in srgb, 50%, 50%)' ],
+			'something that is not a colour' => [ 'color: color-mix(in srgb, red, 10px)' ],
+
+			// `#` is comma-separated, and one argument holds one colour
+			'two colours in one argument' => [ 'color: color-mix(in srgb, red blue, white)' ],
+			'the whole list unseparated' => [ 'color: color-mix(in srgb, red 50% blue 50%)' ],
+			'no arguments at all' => [ 'color: color-mix()' ],
+			'a method and nothing to mix' => [ 'color: color-mix(in srgb)' ],
+
+			// the argument is a colour, so neither of these reaches a fetch
+			'a url where a colour goes' => [
+				'color: color-mix(in srgb, url("https://upload.wikimedia.org/wikipedia/commons/a/ab/x.png"), blue)',
+			],
+			'an attr() where a colour goes' => [ 'color: color-mix(in srgb, attr(data-x), blue)' ],
+
+			// Each `?` in the production is one or none. Quantifier::star in either place
+			// leaves every other row here green, so these are the two that pin them.
+			'two percentages on one argument' => [
+				'color: color-mix(in srgb, red 40% 60%, blue)',
+			],
+			'two interpolation methods' => [ 'color: color-mix(in srgb in oklab, red, blue)' ],
+		];
+	}
+
+	/**
 	 * A var() fallback is restricted to its slot's own type, so it cannot reach a value the
 	 * slot would otherwise refuse. The origin is the wider slot: it takes colour functions.
 	 *
@@ -796,6 +979,15 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 			],
 			'string fallback in an origin' => [ 'color: rgb(from var(--c, "red") r g b)' ],
 			'length fallback in an origin' => [ 'color: rgb(from var(--c, 10px) r g b)' ],
+
+			// a light-dark() argument is a colour slot too, and its var() is this
+			// extension's, so the same rule has to hold there
+			'url fallback in a light-dark() argument' => [
+				"color: light-dark(var(--l, url(\"$commons/x.png\")), blue)",
+			],
+			'length fallback in a light-dark() argument' => [
+				'color: light-dark(var(--l, 10px), blue)',
+			],
 			'number fallback in an origin' => [ 'color: rgb(from var(--c, 0) r g b)' ],
 			'unknown keyword fallback in an origin' => [ 'color: rgb(from var(--c, notacolor) r g b)' ],
 			// one <color>, not a list: a fallback cannot supply the channels as well
@@ -1079,18 +1271,25 @@ class CssCorpusTest extends MediaWikiIntegrationTestCase {
 				'color: rgb(from var(--c, rgb(from red r g b)) r g b)',
 				'color: rgb(from light-dark(rgb(from red r g b), blue) r g b)',
 			] ),
-			// light-dark() admits no var() in its arguments and cannot be a var() fallback,
-			// in an origin as at the top level. Both mirror upstream.
+			// A color-mix() argument is every colour colorFuncs() makes except a
+			// color-mix(), which is the matcher being built -- and one is not a relative
+			// colour's origin either, since the origin is built from the absolute
+			// functions and predates it. The same bound as the two cases above.
+			self::cases( 'Color 5', [
+				'color: color-mix(in srgb, color-mix(in srgb, red, blue), white)',
+				'color: rgb(from color-mix(in srgb, red, blue) r g b)',
+				'color: rgb(from var(--c, color-mix(in srgb, red, blue)) r g b)',
+				'color: color-mix(in srgb, var(--c, color-mix(in srgb, red, blue)), white)',
+			] ),
+			// An origin's light-dark() stays narrower than a top-level one: it takes a
+			// colour word, a hex or an absolute colour function, and no var(). light-dark()
+			// is also not a var() fallback, which mirrors upstream.
 			self::cases( 'Color 4/5', [
-				'color: light-dark(var(--l), var(--d))',
 				'color: rgb(from light-dark(var(--l), var(--d)) r g b)',
 				'color: rgb(from var(--c, light-dark(red, blue)) r g b)',
-			] ),
-			// image-set() per CSS Images 4: the density is optional, and a resolution and a
-			// type() may both appear. Predates #62 and unrelated to it.
-			self::cases( 'Images 4', [
-				"background-image: image-set(\"$commons/i1.jpg\")",
-				"background-image: image-set(\"$commons/i1.jpg\" 1x type(\"image/avif\"))",
+				// color-mix() builds its colour arguments from the origin's matcher, so a
+				// light-dark() there is the narrow one even at the top level
+				'color: color-mix(in srgb, light-dark(var(--l), var(--d)), blue)',
 			] ),
 			self::cases( 'Color 4/5', [
 				'background: color(from #0000FF xyz calc(x + 0.75) y calc(z - 0.35))',
