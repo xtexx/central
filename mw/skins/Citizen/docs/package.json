@@ -6,6 +6,7 @@
 	"scripts": {
 		"docs:dev": "vitepress dev",
 		"docs:build": "node scripts/build.js",
+		"docs:reference": "node scripts/generate-preferences-reference.js",
 		"docs:preview": "vitepress preview",
 		"format": "oxfmt \"**/*.{ts,js,vue}\"",
 		"format:check": "oxfmt --check \"**/*.{ts,js,vue}\"",
@@ -21,13 +22,13 @@
 	"devDependencies": {
 		"@itznotabug/routex": "^0.0.5",
 		"@octokit/rest": "^22.0.1",
-		"@octokit/types": "^17.0.0",
-		"@types/node": "^26.3.0",
+		"@octokit/types": "^18.0.0",
+		"@types/node": "^26.4.0",
 		"@vitejs/plugin-vue": "^6.0.8",
-		"@vue/test-utils": "^2.4.11",
+		"@vue/test-utils": "^2.5.0",
 		"jsdom": "^30.0.1",
 		"less": "^4.9.0",
-		"markdown-it": "15.0.0",
+		"markdown-it": "15.0.1",
 		"markdownlint-cli": "^0.49.1",
 		"oxfmt": "^0.65.0",
 		"oxlint": "^1.80.0",
@@ -37,6 +38,6 @@
 		"vitepress-plugin-llms": "^1.13.5",
 		"vitepress-plugin-tabs": "^0.9.1",
 		"vitest": "^4.1.11",
-		"vue": "^3.5.41"
+		"vue": "^3.5.42"
 	}
 }
