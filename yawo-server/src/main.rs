@@ -13,7 +13,7 @@ use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 use tokio::{
     io::AsyncWriteExt,
-    net::{TcpListener, TcpStream},
+    net::{TcpListener, TcpStream, UdpSocket},
     spawn,
     sync::{Notify, mpsc},
     task::JoinSet,
@@ -63,6 +63,25 @@ async fn main() -> Result<()> {
                         spawn(serve_inbound_conn(socket, addr));
                     }
                     Err(err) => println!("cannot accept inbound conn: {:?}", err),
+                }
+            }
+        });
+        let mut udp_listen_addr = listen_addr.clone();
+        udp_listen_addr.set_port(udp_listen_addr.port() + 1);
+        let udp_socket = UdpSocket::bind(udp_listen_addr).await?;
+        tasks.spawn(async move {
+            loop {
+                let mut buf = vec![0; 1024];
+                match udp_socket.recv_from(&mut buf).await {
+                    Ok((size, addr)) => {
+                        println!(
+                            "UDP packet form {addr}: {:?}",
+                            str::from_utf8(&buf[..size])
+                                .map(|s| s.trim_ascii())
+                                .unwrap_or("(invalid UTF-8)")
+                        );
+                    }
+                    Err(err) => println!("cannot read UDP packet: {:?}", err),
                 }
             }
         });

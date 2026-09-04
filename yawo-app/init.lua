@@ -1,4 +1,16 @@
 print("YAWO Init\n")
+
+function remoteLog(msg)
+    logUdpSocket = net.createUDPSocket()
+    logUdpSocket:listen(5000)
+    logUdpSocket:send(client.serverPort + 1, client.serverHost, "LOG " .. msg)
+    logUdpSocket:close()
+end
+function log(msg)
+    print(msg)
+    pcall(remoteLog, msg)
+end
+
 netconf = dofile('netconf.lua')
 switch = dofile('switch.lua')
 client = dofile('client.lua')
@@ -8,8 +20,8 @@ function initAfterNetSetup()
     client.init()
 end
 
-print('init: files: ' .. sjson.encode(file.list()) .. '\n')
+log('init: files: ' .. sjson.encode(file.list()) .. '\n')
 
-print('init: loaded modules\n')
+log('init: loaded modules\n')
 netconf.init()
-print('init: init completed\n')
+log('init: init completed\n')
