@@ -58,7 +58,7 @@ Surface colors form the depth hierarchy of the UI — lower numbers sit further 
 
 ## Typography
 
-Citizen ships with [Roboto Flex](https://fonts.google.com/specimen/Roboto+Flex) as its default typeface. You can swap it out by overriding the font family variables:
+Citizen ships with [Roboto Flex](https://fonts.google.com/specimen/Roboto+Flex) as its default typeface. Citizen prefers a locally installed Roboto over its bundled copy. You can swap it out by overriding the font family variables:
 
 | Property | Description | Default value |
 | :--- | :--- | :--- |
@@ -184,7 +184,6 @@ Add a block to `MediaWiki:Citizen.css` keyed to your theme's value, starting wit
     /* Dark baseline for effects light-dark() can't express — copy as-is */
     --opacity-glass: 0.8;
     --shadow-opacity: 0.44;
-    --font-grade: 0;
     --filter-invert: invert( 1 ) hue-rotate( 180deg );
 
     /* Your palette — override only what differs from the default dark theme */
