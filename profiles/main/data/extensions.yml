@@ -1,8 +1,6 @@
 disabled:
   - id: ccls-project.ccls
     uuid: 8e21d425-1e30-4072-8436-786a9017e5c7
-  - id: streetsidesoftware.code-spell-checker
-    uuid: f6dbd813-b0a0-42c1-90ea-10dde9d925a7
 enabled:
   - id: asciidoctor.asciidoctor-vscode
     uuid: c1309cc2-f420-46a3-b2be-ca04f4d9e51b
@@ -82,6 +80,8 @@ enabled:
     uuid: 4d059c6e-aaea-42e3-97f5-f4fd35b70d3d
   - id: nsarrazin.pep723-uv-interpreter
     uuid: 053eb5da-dc16-49f0-837f-d627da0dc8c5
+  - id: pascal-lab.vide-code-extension
+    uuid: e4d63179-943d-4383-9b02-ca60b7dcf1b1
   - id: redhat.vscode-xml
     uuid: 6703768d-d42f-474e-9f6e-5f288d53f6e8
   - id: redhat.vscode-yaml
@@ -90,6 +90,8 @@ enabled:
     uuid: 06574cb4-e5dc-4631-8174-a543a4533621
   - id: slevesque.shader
     uuid: 3a63675f-7987-4cff-a411-d4a9568f560c
+  - id: streetsidesoftware.code-spell-checker
+    uuid: f6dbd813-b0a0-42c1-90ea-10dde9d925a7
   - id: tamasfe.even-better-toml
     uuid: b2215d5f-675e-4a2b-b6ac-1ca737518b78
   - id: timonwong.shellcheck
