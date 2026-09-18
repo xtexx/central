@@ -135,4 +135,5 @@
         "settings",
         "tasks",
     ],
+    "explorer.confirmDragAndDrop": false,
 }
