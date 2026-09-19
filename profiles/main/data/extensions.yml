@@ -14,6 +14,8 @@ enabled:
     uuid: 0e22bd0e-8a8d-424d-b5bd-29aaf21800eb
   - id: charliermarsh.ruff
     uuid: c2ca9b43-fa38-44fc-928e-5125970b9c00
+  - id: chipsalliance.verible
+    uuid: bbc90840-c688-45b9-8f68-67fbb679cb44
   - id: cschlosser.doxdocgen
     uuid: da7e26d5-d57c-4742-ab47-d77fb189e195
   - id: DavidAnson.vscode-markdownlint

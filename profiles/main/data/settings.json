@@ -136,4 +136,7 @@
         "tasks",
     ],
     "explorer.confirmDragAndDrop": false,
+    "[systemverilog]": {
+        "editor.defaultFormatter": "chipsalliance.verible"
+    },
 }
