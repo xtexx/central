@@ -48,6 +48,7 @@ function toGrouped( deps ) {
 			findModeByTrigger: deps.findModeByTrigger,
 			onEnterMode: deps.onEnterMode,
 			onExitMode: deps.onExitMode,
+			onExitModeToLiteral: deps.onExitModeToLiteral,
 			onPopModeContext: deps.onPopModeContext
 		},
 		tokens: {
@@ -58,6 +59,7 @@ function toGrouped( deps ) {
 		},
 		help: {
 			helpVisible: deps.helpVisible,
+			helpAvailable: deps.helpAvailable,
 			onToggleHelp: deps.onToggleHelp,
 			onCloseHelp: deps.onCloseHelp
 		}
@@ -222,6 +224,41 @@ describe( 'useKeyboard', () => {
 			);
 		} );
 
+		// iOS reports every key on its `#+=` symbol layer as shifted, so tapping
+		// Return straight after typing `#`, `~` or `>` arrives as Shift+Enter.
+		it( 'should select on Shift+Enter in the current tab, as Enter does', () => {
+			listNav.highlightedIndex.value = 0;
+			const event = createKeyEvent( 'Enter' );
+			event.shiftKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onSelect ).toHaveBeenCalledWith( { id: '1', actions: [ { id: 'edit' } ] } );
+			expect( event.preventDefault ).toHaveBeenCalled();
+		} );
+
+		it( 'should run the fulltext row on Shift+Enter', () => {
+			deps.items.value = [ { id: 'fulltext', source: 'queryAction:fulltext-search' } ];
+			listNav.highlightedIndex.value = 0;
+			const event = createKeyEvent( 'Enter' );
+			event.shiftKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onSelect ).toHaveBeenCalledWith( deps.items.value[ 0 ] );
+		} );
+
+		it( 'should hold a Shift+Enter as a plain activation while results load', () => {
+			listNav.highlightedIndex.value = -1;
+			deps.canQueueActivation.value = true;
+			const event = createKeyEvent( 'Enter' );
+			event.shiftKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onQueueActivation ).toHaveBeenCalledWith();
+		} );
+
 		it( 'should carry the new-tab request into a held activation', () => {
 			listNav.highlightedIndex.value = -1;
 			deps.canQueueActivation.value = true;
@@ -322,7 +359,7 @@ describe( 'useKeyboard', () => {
 
 			keyboard.handleKeydown( event );
 
-			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode );
+			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode, '@' );
 		} );
 	} );
 
@@ -343,7 +380,7 @@ describe( 'useKeyboard', () => {
 
 			keyboard.handleKeydown( event );
 
-			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode );
+			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode, '@' );
 		} );
 
 		it( 'should still ignore Ctrl+Alt with a non-printable key', () => {
@@ -389,7 +426,7 @@ describe( 'useKeyboard', () => {
 
 			keyboard.handleKeydown( event );
 
-			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode );
+			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode, '@' );
 		} );
 
 		it( 'should not let Ctrl+Alt+Space activate the focused action', () => {
@@ -1011,7 +1048,20 @@ describe( 'useKeyboard', () => {
 			keyboard.handleKeydown( event );
 
 			expect( event.preventDefault ).toHaveBeenCalled();
-			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode );
+			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode, '@' );
+		} );
+
+		it( 'forwards the typed trigger so it can be restored as literal text', () => {
+			deps.query = ref( '' );
+			deps.activeMode = ref( null );
+			const mode = { id: 'category', triggers: [ '#' ] };
+			deps.findModeByTrigger = vi.fn( () => mode );
+			deps.onEnterMode = vi.fn();
+			keyboard = useKeyboard( toGrouped( deps ) );
+
+			keyboard.handleKeydown( createKeyEvent( '#' ) );
+
+			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode, '#' );
 		} );
 
 		it( 'does not intercept trigger when mode is already active', () => {
@@ -1055,7 +1105,7 @@ describe( 'useKeyboard', () => {
 	} );
 
 	describe( 'Backspace with mode context', () => {
-		function setupBackspace( { tokens, query, modeContext } ) {
+		function setupBackspace( { tokens, query, modeContext, activeMode } ) {
 			const inputEl = {
 				selectionStart: 0,
 				selectionEnd: 0,
@@ -1069,9 +1119,14 @@ describe( 'useKeyboard', () => {
 			deps.onSelectToken = vi.fn();
 			deps.onRemoveToken = vi.fn();
 			deps.query = ref( query );
-			deps.activeMode = ref( modeContext.length > 0 ? { id: 'm' } : null );
+			deps.activeMode = ref(
+				activeMode === undefined ?
+					( modeContext.length > 0 ? { id: 'm' } : null ) :
+					activeMode
+			);
 			deps.activeModeContext = ref( modeContext );
 			deps.onPopModeContext = vi.fn();
+			deps.onExitModeToLiteral = vi.fn();
 			keyboard = useKeyboard( toGrouped( deps ) );
 			return { inputEl };
 		}
@@ -1117,21 +1172,150 @@ describe( 'useKeyboard', () => {
 			expect( deps.onPopModeContext ).not.toHaveBeenCalled();
 			expect( deps.onSelectToken ).toHaveBeenCalledWith( 0 );
 		} );
+
+		it( 'exits an empty mode to literal text when nothing else is left to pop', () => {
+			const { inputEl } = setupBackspace( {
+				tokens: [],
+				query: '',
+				modeContext: [],
+				activeMode: { id: 'user' }
+			} );
+			const event = createKeyEvent( 'Backspace', inputEl );
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onExitModeToLiteral ).toHaveBeenCalledTimes( 1 );
+			expect( event.preventDefault ).toHaveBeenCalled();
+		} );
+
+		it( 'pops the context stack before exiting the mode', () => {
+			const { inputEl } = setupBackspace( {
+				tokens: [],
+				query: '',
+				modeContext: [ { name: 'A' } ],
+				activeMode: { id: 'user' }
+			} );
+			const event = createKeyEvent( 'Backspace', inputEl );
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onPopModeContext ).toHaveBeenCalledTimes( 1 );
+			expect( deps.onExitModeToLiteral ).not.toHaveBeenCalled();
+		} );
+
+		it( 'leaves a non-empty mode query to the native caret', () => {
+			const { inputEl } = setupBackspace( {
+				tokens: [],
+				query: 'ali',
+				modeContext: [],
+				activeMode: { id: 'user' }
+			} );
+			const event = createKeyEvent( 'Backspace', inputEl );
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onExitModeToLiteral ).not.toHaveBeenCalled();
+			expect( event.preventDefault ).not.toHaveBeenCalled();
+		} );
+
+		// iOS reports its `#+=` symbol layer as the shifted `123` layer, so a
+		// Backspace typed there carries shiftKey — and Shift+Backspace edits a
+		// text field exactly as Backspace does everywhere else.
+		it( 'exits an empty mode to literal text on Shift+Backspace', () => {
+			const { inputEl } = setupBackspace( {
+				tokens: [],
+				query: '',
+				modeContext: [],
+				activeMode: { id: 'category' }
+			} );
+			const event = createKeyEvent( 'Backspace', inputEl );
+			event.shiftKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onExitModeToLiteral ).toHaveBeenCalledTimes( 1 );
+			expect( event.preventDefault ).toHaveBeenCalled();
+		} );
+
+		it( 'pops context on Shift+Backspace', () => {
+			const { inputEl } = setupBackspace( {
+				tokens: [],
+				query: '',
+				modeContext: [ { name: 'A' } ]
+			} );
+			const event = createKeyEvent( 'Backspace', inputEl );
+			event.shiftKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onPopModeContext ).toHaveBeenCalledTimes( 1 );
+		} );
+
+		it( 'selects the last chip on Shift+Backspace', () => {
+			const { inputEl } = setupBackspace( {
+				tokens: [ { id: 't1', label: 'Talk' } ],
+				query: '',
+				modeContext: []
+			} );
+			const event = createKeyEvent( 'Backspace', inputEl );
+			event.shiftKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onSelectToken ).toHaveBeenCalledWith( 0 );
+		} );
+
+		it( 'removes the selected chip on Shift+Backspace', () => {
+			const { inputEl } = setupBackspace( {
+				tokens: [ { id: 't1', label: 'Talk' } ],
+				query: '',
+				modeContext: []
+			} );
+			deps.selectedTokenIndex.value = 0;
+			const event = createKeyEvent( 'Backspace', inputEl );
+			event.shiftKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onRemoveToken ).toHaveBeenCalledWith( 0 );
+		} );
+
+		it( 'selects a surviving chip rather than exiting the mode', () => {
+			const { inputEl } = setupBackspace( {
+				tokens: [ { id: 't1', label: 'Talk' } ],
+				query: '',
+				modeContext: [],
+				activeMode: { id: 'user' }
+			} );
+			const event = createKeyEvent( 'Backspace', inputEl );
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onSelectToken ).toHaveBeenCalledWith( 0 );
+			expect( deps.onExitModeToLiteral ).not.toHaveBeenCalled();
+		} );
 	} );
 
 	describe( 'help overlay', () => {
-		function setupHelp( { helpVisible = false, query = '', tokens = [], activeMode = null } = {} ) {
+		function setupHelp( {
+			helpVisible = false,
+			helpAvailable = false,
+			query = '',
+			tokens = [],
+			activeMode = null
+		} = {} ) {
 			deps.query = ref( query );
 			deps.tokens = ref( tokens );
 			deps.activeMode = ref( activeMode );
 			deps.helpVisible = ref( helpVisible );
+			deps.helpAvailable = ref( helpAvailable );
 			deps.onToggleHelp = vi.fn();
 			deps.onCloseHelp = vi.fn();
 			keyboard = useKeyboard( toGrouped( deps ) );
 		}
 
 		it( '"?" at empty input toggles help', () => {
-			setupHelp( { query: '', tokens: [] } );
+			setupHelp( { activeMode: { id: 'category' }, helpAvailable: true } );
 			const event = createKeyEvent( '?' );
 
 			keyboard.handleKeydown( event );
@@ -1140,17 +1324,34 @@ describe( 'useKeyboard', () => {
 			expect( event.preventDefault ).toHaveBeenCalled();
 		} );
 
-		it( '"?" toggles help even when a mode is active, as long as input is empty', () => {
-			setupHelp( { query: '', tokens: [], activeMode: { id: 'category' } } );
+		it( '"?" at root is left to the mode-trigger fallback', () => {
+			setupHelp();
+			const helpMode = { id: 'help', triggers: [ '/help', '?' ] };
+			deps.findModeByTrigger = vi.fn( ( key ) => ( key === '?' ? helpMode : null ) );
+			deps.onEnterMode = vi.fn();
+			keyboard = useKeyboard( toGrouped( deps ) );
 			const event = createKeyEvent( '?' );
 
 			keyboard.handleKeydown( event );
 
-			expect( deps.onToggleHelp ).toHaveBeenCalledTimes( 1 );
+			expect( deps.onEnterMode ).toHaveBeenCalledWith( helpMode, '?' );
+			expect( deps.onToggleHelp ).not.toHaveBeenCalled();
+			expect( event.preventDefault ).toHaveBeenCalled();
+		} );
+
+		it( '"?" inside help mode is text', () => {
+			setupHelp( { activeMode: { id: 'help' } } );
+			const event = createKeyEvent( '?' );
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onToggleHelp ).not.toHaveBeenCalled();
+			expect( deps.onEnterMode ).not.toHaveBeenCalled();
+			expect( event.preventDefault ).not.toHaveBeenCalled();
 		} );
 
 		it( '"?" mid-typing does NOT toggle help', () => {
-			setupHelp( { query: 'cat', tokens: [] } );
+			setupHelp( { query: 'cat', activeMode: { id: 'category' }, helpAvailable: true } );
 			const event = createKeyEvent( '?' );
 
 			keyboard.handleKeydown( event );
@@ -1159,12 +1360,46 @@ describe( 'useKeyboard', () => {
 		} );
 
 		it( '"?" with tokens present does NOT toggle help', () => {
-			setupHelp( { query: '', tokens: [ { id: 't1', label: 'Talk:' } ] } );
+			setupHelp( {
+				tokens: [ { id: 't1', label: 'Talk:' } ],
+				activeMode: { id: 'category' },
+				helpAvailable: true
+			} );
 			const event = createKeyEvent( '?' );
 
 			keyboard.handleKeydown( event );
 
 			expect( deps.onToggleHelp ).not.toHaveBeenCalled();
+		} );
+
+		describe( 'the "?" footer hint', () => {
+			const hasHelpHint = () => keyboard.keyboardHints.value.some(
+				( hint ) => hint.msgKey === 'citizen-command-palette-command-help-label'
+			);
+
+			it( 'shows at root with an empty input, where "?" enters help mode', () => {
+				setupHelp();
+
+				expect( hasHelpHint() ).toBe( true );
+			} );
+
+			it( 'shows inside a mode the overlay can describe', () => {
+				setupHelp( { activeMode: { id: 'category' }, helpAvailable: true } );
+
+				expect( hasHelpHint() ).toBe( true );
+			} );
+
+			it( 'hides inside help mode, where "?" is text', () => {
+				setupHelp( { activeMode: { id: 'help' }, helpAvailable: false } );
+
+				expect( hasHelpHint() ).toBe( false );
+			} );
+
+			it( 'hides once something is typed', () => {
+				setupHelp( { query: 'cat' } );
+
+				expect( hasHelpHint() ).toBe( false );
+			} );
 		} );
 
 		it( 'Escape closes help when help is visible (precedence over 3-level ladder)', () => {
@@ -1180,7 +1415,7 @@ describe( 'useKeyboard', () => {
 		} );
 
 		it( '"?" closes help when help is visible', () => {
-			setupHelp( { helpVisible: true } );
+			setupHelp( { helpVisible: true, activeMode: { id: 'category' }, helpAvailable: true } );
 			const event = createKeyEvent( '?' );
 
 			keyboard.handleKeydown( event );
@@ -1207,10 +1442,18 @@ describe( 'useKeyboard', () => {
 			expect( deps.onSelect ).toHaveBeenCalledWith( deps.items.value[ 0 ] );
 		} );
 
-		it( 'mode-trigger keys are swallowed while help is visible', () => {
-			setupHelp( { helpVisible: true } );
-			const mode = { id: 'user', triggers: [ '@' ] };
-			deps.findModeByTrigger = vi.fn( () => mode );
+		it( 'lets a letter through to the input while help is visible', () => {
+			setupHelp( { helpVisible: true, activeMode: { id: 'category' } } );
+			const event = createKeyEvent( 'a' );
+
+			keyboard.handleKeydown( event );
+
+			expect( event.preventDefault ).not.toHaveBeenCalled();
+		} );
+
+		it( 'types a mode trigger as text while help is visible', () => {
+			setupHelp( { helpVisible: true, activeMode: { id: 'category' } } );
+			deps.findModeByTrigger = vi.fn( () => ( { id: 'user', triggers: [ '@' ] } ) );
 			deps.onEnterMode = vi.fn();
 			keyboard = useKeyboard( toGrouped( deps ) );
 			const event = createKeyEvent( '@' );
@@ -1218,28 +1461,11 @@ describe( 'useKeyboard', () => {
 			keyboard.handleKeydown( event );
 
 			expect( deps.onEnterMode ).not.toHaveBeenCalled();
-			expect( event.preventDefault ).toHaveBeenCalled();
+			expect( event.preventDefault ).not.toHaveBeenCalled();
 		} );
 
-		it( 'Backspace is swallowed while help is visible (does not pop mode context)', () => {
-			setupHelp( { helpVisible: true } );
-			deps.activeModeContext = ref( [ { name: 'A' } ] );
-			deps.onPopModeContext = vi.fn();
-			keyboard = useKeyboard( toGrouped( deps ) );
-			const event = createKeyEvent( 'Backspace' );
-
-			keyboard.handleKeydown( event );
-
-			expect( deps.onPopModeContext ).not.toHaveBeenCalled();
-			expect( event.preventDefault ).toHaveBeenCalled();
-		} );
-
-		it( 'Backspace is swallowed while help is visible (does not remove or select tokens)', () => {
-			setupHelp( { helpVisible: true } );
-			deps.tokens = ref( [ { id: 't1', label: 'Talk:' } ] );
-			deps.selectedTokenIndex = ref( 0 );
-			deps.onRemoveToken = vi.fn();
-			deps.onSelectToken = vi.fn();
+		it( 'Backspace on the empty input closes help', () => {
+			setupHelp( { helpVisible: true, activeMode: { id: 'category' } } );
 			deps.inputRef.value.getInputElement = vi.fn( () => ( {
 				selectionStart: 0,
 				selectionEnd: 0,
@@ -1247,14 +1473,29 @@ describe( 'useKeyboard', () => {
 				focus: vi.fn(),
 				closest: vi.fn( () => null )
 			} ) );
-			keyboard = useKeyboard( toGrouped( deps ) );
 			const event = createKeyEvent( 'Backspace' );
 
 			keyboard.handleKeydown( event );
 
-			expect( deps.onRemoveToken ).not.toHaveBeenCalled();
-			expect( deps.onSelectToken ).not.toHaveBeenCalled();
+			expect( deps.onCloseHelp ).toHaveBeenCalledTimes( 1 );
 			expect( event.preventDefault ).toHaveBeenCalled();
+		} );
+
+		it( 'Backspace with text before the caret edits the text', () => {
+			setupHelp( { helpVisible: true, activeMode: { id: 'category' }, query: 'ab' } );
+			deps.inputRef.value.getInputElement = vi.fn( () => ( {
+				selectionStart: 2,
+				selectionEnd: 2,
+				value: 'ab',
+				focus: vi.fn(),
+				closest: vi.fn( () => null )
+			} ) );
+			const event = createKeyEvent( 'Backspace' );
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onCloseHelp ).not.toHaveBeenCalled();
+			expect( event.preventDefault ).not.toHaveBeenCalled();
 		} );
 
 		it( 'escHintMsgKey is "close" while help is visible, even with non-empty query', () => {

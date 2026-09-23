@@ -1,6 +1,10 @@
 const mw = require( '../../mocks/mw.js' );
 globalThis.mw = mw;
 
+const useTokenizedInput = require(
+	'../../../../resources/skins.citizen.commandPalette/composables/useTokenizedInput.js'
+);
+
 const useProviderOrchestration = require(
 	'../../../../resources/skins.citizen.commandPalette/composables/useProviderOrchestration.js'
 );
@@ -504,30 +508,13 @@ describe( 'useProviderOrchestration', () => {
 			expect( orch.helpVisible.value ).toBe( false );
 		} );
 
-		it( 'openHelp loads the catalog into displayedItems at root', () => {
-			const catalogItems = [
-				{ id: 'cmd-a', source: 'command:a' },
-				{ id: 'cmd-b', source: 'command:b' }
-			];
-			const getHelpCatalogItems = vi.fn( () => catalogItems );
-			const orch = useProviderOrchestration( [], mockDecorator, { getHelpCatalogItems } );
-
-			orch.openHelp();
-
-			expect( orch.helpVisible.value ).toBe( true );
-			expect( orch.displayedItems.value ).toHaveLength( 1 );
-			expect( orch.displayedItems.value[ 0 ].heading ).toBe( 'citizen-command-palette-help-section-modes' );
-			expect( orch.displayedItems.value[ 0 ].items ).toEqual( catalogItems );
-		} );
-
-		it( 'openHelp inside an active mode preserves the mode and does not load the catalog', async () => {
-			const getHelpCatalogItems = vi.fn( () => [] );
+		it( 'openHelp inside an active mode preserves the mode', async () => {
 			const mode = {
 				id: 'cat',
 				triggers: [ '#' ],
 				getResults: vi.fn( () => [ { id: 'r1', label: 'In-mode result' } ] )
 			};
-			const orch = useProviderOrchestration( [], mockDecorator, { getHelpCatalogItems } );
+			const orch = useProviderOrchestration( [], mockDecorator );
 
 			orch.enterMode( mode );
 			await vi.runAllTimersAsync();
@@ -535,23 +522,58 @@ describe( 'useProviderOrchestration', () => {
 
 			expect( orch.helpVisible.value ).toBe( true );
 			expect( orch.activeMode.value ).toBe( mode );
-			expect( getHelpCatalogItems ).not.toHaveBeenCalled();
 		} );
 
-		it( 'closeHelp at root with no query restores presults via clearSearch', () => {
-			const recentItems = [ { id: 'recent-1', url: '/Recent', source: 'recent' } ];
-			const orch = useProviderOrchestration( [], mockDecorator, {
-				getHelpCatalogItems: () => [ { id: 'cmd', source: 'command:x' } ],
-				recentItemsProvider: { getResults: () => ( { items: recentItems } ) }
-			} );
+		it( 'does not open the overlay without a mode to describe', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
 
 			orch.openHelp();
-			orch.closeHelp();
 
 			expect( orch.helpVisible.value ).toBe( false );
-			expect( orch.displayedItems.value ).toEqual( [
-				{ heading: 'citizen-command-palette-heading-recent', items: recentItems }
-			] );
+		} );
+
+		it( 'shows no results while the overlay describes the mode', async () => {
+			const mode = { id: 'cat', getResults: vi.fn( () => [ { id: 'r1', label: 'R' } ] ) };
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( mode );
+			await vi.runAllTimersAsync();
+
+			orch.openHelp();
+
+			expect( orch.displayedItems.value ).toEqual( [] );
+		} );
+
+		it( 'drops the overlay when the mode changes', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( { id: 'cat', getResults: () => [] } );
+			orch.openHelp();
+
+			orch.exitMode();
+
+			expect( orch.helpVisible.value ).toBe( false );
+		} );
+
+		it( 'drops the overlay when another mode is entered', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( { id: 'cat', getResults: () => [] } );
+			orch.openHelp();
+
+			orch.enterMode( { id: 'user', getResults: () => [] } );
+
+			expect( orch.helpVisible.value ).toBe( false );
+		} );
+
+		it( 'brings the mode results back when the overlay closes', async () => {
+			const mode = { id: 'cat', getResults: vi.fn( () => [ { id: 'r1', label: 'R' } ] ) };
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( mode );
+			await vi.runAllTimersAsync();
+			orch.openHelp();
+
+			orch.closeHelp();
+			await vi.runAllTimersAsync();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r1' ] );
 		} );
 
 		it( 'closeHelp inside an active mode preserves activeMode and modeContext', async () => {
@@ -560,9 +582,7 @@ describe( 'useProviderOrchestration', () => {
 				triggers: [ '#' ],
 				getResults: vi.fn( () => [ { id: 'r1', label: 'A' } ] )
 			};
-			const orch = useProviderOrchestration( [], mockDecorator, {
-				getHelpCatalogItems: () => []
-			} );
+			const orch = useProviderOrchestration( [], mockDecorator );
 
 			orch.enterMode( mode );
 			await vi.runAllTimersAsync();
@@ -578,9 +598,8 @@ describe( 'useProviderOrchestration', () => {
 		} );
 
 		it( 'toggleHelp flips the flag both directions', () => {
-			const orch = useProviderOrchestration( [], mockDecorator, {
-				getHelpCatalogItems: () => []
-			} );
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( { id: 'cat', getResults: () => [] } );
 
 			orch.toggleHelp();
 			expect( orch.helpVisible.value ).toBe( true );
@@ -590,9 +609,8 @@ describe( 'useProviderOrchestration', () => {
 		} );
 
 		it( 'open/close are idempotent', () => {
-			const orch = useProviderOrchestration( [], mockDecorator, {
-				getHelpCatalogItems: vi.fn( () => [ { id: 'a', source: 'command:a' } ] )
-			} );
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( { id: 'cat', getResults: () => [] } );
 
 			orch.openHelp();
 			orch.openHelp();
@@ -601,42 +619,6 @@ describe( 'useProviderOrchestration', () => {
 			orch.closeHelp();
 			orch.closeHelp();
 			expect( orch.helpVisible.value ).toBe( false );
-		} );
-
-		it( 'updateQuery does not overwrite the help catalog while help is visible', () => {
-			// Regression: selecting `/help` calls openHelp, then tokenInput.clear()
-			// triggers the fullQuery watcher, which calls updateQuery(''). Without
-			// the helpVisible guard, clearSearch overwrites the catalog with recents.
-			const catalogItems = [ { id: 'cmd-a', source: 'command:a' } ];
-			const recentItems = [ { id: 'r1', url: '/R', source: 'recent' } ];
-			const orch = useProviderOrchestration( [], mockDecorator, {
-				getHelpCatalogItems: () => catalogItems,
-				recentItemsProvider: { getResults: () => ( { items: recentItems } ) }
-			} );
-
-			orch.updateQuery( '/help' );
-			orch.openHelp();
-			orch.updateQuery( '' );
-
-			expect( orch.helpVisible.value ).toBe( true );
-			expect( orch.displayedItems.value ).toHaveLength( 1 );
-			expect( orch.displayedItems.value[ 0 ].items ).toEqual( catalogItems );
-		} );
-
-		it( 'closeHelp at root with empty query restores presults', async () => {
-			const recentItems = [ { id: 'r1', url: '/R', source: 'recent' } ];
-			const orch = useProviderOrchestration( [], mockDecorator, {
-				getHelpCatalogItems: () => [ { id: 'cmd-a', source: 'command:a' } ],
-				recentItemsProvider: { getResults: () => ( { items: recentItems } ) }
-			} );
-
-			orch.openHelp();
-			orch.closeHelp();
-
-			expect( orch.helpVisible.value ).toBe( false );
-			expect( orch.displayedItems.value ).toEqual( [
-				{ heading: 'citizen-command-palette-heading-recent', items: recentItems }
-			] );
 		} );
 	} );
 
@@ -734,28 +716,6 @@ describe( 'useProviderOrchestration', () => {
 	} );
 
 	describe( 'surface isolation', () => {
-		it( 'does not leave the help catalog behind when help closes over a query', async () => {
-			const provider = {
-				id: 'search',
-				canProvide: ( q ) => !!q,
-				getResults: () => ( { items: [ { id: 's1', label: 'Real', source: 'search' } ] } ),
-				onResultSelect: vi.fn(),
-				debounceMs: 0,
-				keepStaleResults: false
-			};
-			const orch = useProviderOrchestration( [ provider ], mockDecorator, {
-				getHelpCatalogItems: () => [ { id: 'cmd-x', source: 'command:x' } ]
-			} );
-
-			orch.openHelp();
-			orch.updateQuery( 'hello' );
-			orch.closeHelp();
-			await vi.runAllTimersAsync();
-
-			expect( orch.flatItems.value.map( ( i ) => i.source ) )
-				.not.toContain( 'command:x' );
-		} );
-
 		it( 'drops a mode result that lands after the mode context changed', async () => {
 			// One resolver per call: the drilled level's request is the one
 			// that must be ignored, and it is not the most recent.
@@ -780,6 +740,105 @@ describe( 'useProviderOrchestration', () => {
 
 			expect( orch.flatItems.value.map( ( i ) => i.id ) )
 				.not.toContain( 'abandoned' );
+		} );
+	} );
+
+	describe( 'enteredTrigger', () => {
+		function makeMode() {
+			return { id: 'user', getResults: vi.fn().mockResolvedValue( [] ) };
+		}
+
+		it( 'records the trigger that entered the mode', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+
+			orch.enterMode( makeMode(), '@' );
+
+			expect( orch.enteredTrigger.value ).toBe( '@' );
+		} );
+
+		it( 'is empty for a mode entered without a trigger', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+
+			orch.enterMode( makeMode() );
+
+			expect( orch.enteredTrigger.value ).toBe( '' );
+		} );
+
+		it( 'clears when the mode exits', async () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( makeMode(), '@' );
+
+			await orch.exitMode();
+
+			expect( orch.enteredTrigger.value ).toBe( '' );
+		} );
+
+		it( 'does not carry a trigger over from a previous mode', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( makeMode(), '@' );
+
+			orch.enterMode( makeMode() );
+
+			expect( orch.enteredTrigger.value ).toBe( '' );
+		} );
+	} );
+
+	describe( 'literal query routing', () => {
+		const triggerProvider = {
+			id: 'command',
+			canProvide: ( q ) => q.startsWith( '#' ),
+			getResults: () => ( { items: [ { id: 'c1', label: 'Cat', source: 'command:cat' } ] } ),
+			onResultSelect: vi.fn(),
+			debounceMs: 0,
+			keepStaleResults: false,
+			readsTriggers: true
+		};
+		const textProvider = {
+			id: 'search',
+			canProvide: ( q ) => !!q,
+			getResults: () => ( { items: [ { id: 'p1', label: 'Page', source: 'search' } ] } ),
+			onResultSelect: vi.fn(),
+			debounceMs: 0,
+			keepStaleResults: false
+		};
+
+		// Drives the real tokenizer rather than a stand-in predicate: the
+		// latch and the provider skip are the two halves of one contract, and
+		// a hand-written stub here would pass even if they disagreed.
+		async function sourcesFor( literal, query ) {
+			const tokenInput = useTokenizedInput( () => [] );
+			if ( literal ) {
+				tokenInput.setLiteralPrefix( literal );
+			}
+			const orch = useProviderOrchestration(
+				[ triggerProvider, textProvider ],
+				mockDecorator,
+				{ isHeldLiteral: tokenInput.isHeldLiteral }
+			);
+
+			orch.updateQuery( query );
+			await vi.runAllTimersAsync();
+
+			return orch.flatItems.value.map( ( i ) => i.source );
+		}
+
+		it( 'sends a query held literal past the trigger-reading provider', async () => {
+			const sources = await sourcesFor( '#', '#cat' );
+
+			expect( sources ).toContain( 'search' );
+			expect( sources ).not.toContain( 'command:cat' );
+		} );
+
+		it( 'lets the trigger-reading provider claim the query with no latch', async () => {
+			const sources = await sourcesFor( '', '#cat' );
+
+			expect( sources ).toContain( 'command:cat' );
+		} );
+
+		it( 'only holds back the provider for queries the latch actually covers', async () => {
+			const sources = await sourcesFor( '@', '#cat' );
+
+			expect( sources ).toContain( 'command:cat' );
 		} );
 	} );
 

@@ -23,6 +23,13 @@ const NEW_TAB_ACTIVATION = { modifierClick: true, newTab: true };
 const hasHighlight = ( state ) => state.highlightedIndex >= 0;
 const canQueue = ( state ) => state.highlightedIndex < 0 && state.canQueueActivation;
 
+// iOS reports every key on its `#+=` symbol layer as shifted, Return and
+// Backspace included, so a binding for either that claimed only `none` would
+// be dead on the layer `#`, `~` and `>` are typed from. Shift carries no
+// meaning of its own on those two keys here: Shift+Backspace edits a text
+// field as Backspace does, and Shift+Enter is read as Enter.
+const SHIFT_AGNOSTIC = [ 'none', 'shift' ];
+
 // Arrow keys are physical; the bindings below are logical (previous/next, and
 // input → action row). CSSJanus mirrors the inline axis for RTL interface
 // languages, so on an RTL wiki the two horizontal arrows have to be swapped
@@ -367,6 +374,7 @@ const coreBindings = [
 		id: 'input-enter-select-search',
 		zone: 'input',
 		keys: [ 'Enter' ],
+		modifiers: SHIFT_AGNOSTIC,
 		when: ( state ) => state.highlightedIndex >= 0 &&
 			Boolean( state.highlightedItem ) &&
 			state.highlightedItem.source === 'queryAction:fulltext-search',
@@ -381,6 +389,7 @@ const coreBindings = [
 		id: 'input-enter-select',
 		zone: 'input',
 		keys: [ 'Enter' ],
+		modifiers: SHIFT_AGNOSTIC,
 		when: hasHighlight,
 		worksDuringHelp: true,
 		handle: ( state, event ) => {
@@ -395,6 +404,7 @@ const coreBindings = [
 		id: 'input-enter-queue',
 		zone: 'input',
 		keys: [ 'Enter' ],
+		modifiers: SHIFT_AGNOSTIC,
 		when: canQueue,
 		handle: ( state, event ) => {
 			event.preventDefault();
@@ -490,7 +500,8 @@ const coreBindings = [
 		id: 'input-toggle-help',
 		zone: 'input',
 		keys: [ '?' ],
-		when: ( state ) => Boolean( state.onToggleHelp ) &&
+		when: ( state ) => state.helpAvailable &&
+			Boolean( state.onToggleHelp ) &&
 			!state.query &&
 			state.tokens.length === 0,
 		worksDuringHelp: true,
@@ -500,13 +511,16 @@ const coreBindings = [
 		},
 		hint: null
 	},
+	// At root the `?` it advertises is help mode's trigger, which the
+	// mode-trigger fallback in handleKeydown takes, not the binding above.
 	{
 		id: 'input-toggle-help-hint',
 		zone: 'input',
 		keys: [],
 		when: ( state ) => Boolean( state.onToggleHelp ) &&
 			!state.query &&
-			state.tokens.length === 0,
+			state.tokens.length === 0 &&
+			( !state.activeMode || state.helpAvailable ),
 		handle: () => {},
 		hint: { msgKey: 'citizen-command-palette-command-help-label', kbd: '?', order: 40 }
 	},
@@ -577,11 +591,31 @@ const coreBindings = [
 		hint: { msgKey: 'citizen-command-palette-keyhint-close', kbd: 'esc', order: 999 }
 	},
 
-	// --- INPUT ZONE: Backspace (3 disjoint cases) ---
+	// --- INPUT ZONE: Backspace (5 disjoint cases) ---
+	// Backing out of the overlay from an empty input returns to the mode it
+	// describes.
+	{
+		id: 'input-close-help',
+		zone: 'input',
+		keys: [ 'Backspace' ],
+		modifiers: SHIFT_AGNOSTIC,
+		when: ( state ) => state.helpVisible &&
+			!state.query &&
+			state.tokens.length === 0 &&
+			cursorAtStart( state ) &&
+			Boolean( state.onCloseHelp ),
+		worksDuringHelp: true,
+		handle: ( state, event ) => {
+			event.preventDefault();
+			state.onCloseHelp();
+		},
+		hint: null
+	},
 	{
 		id: 'input-pop-mode-context',
 		zone: 'input',
 		keys: [ 'Backspace' ],
+		modifiers: SHIFT_AGNOSTIC,
 		when: ( state ) => {
 			if ( !cursorAtStart( state ) ) {
 				return false;
@@ -598,9 +632,34 @@ const coreBindings = [
 		hint: { msgKey: 'citizen-command-palette-keyhint-back', kbd: '⌫', order: 200 }
 	},
 	{
+		// Leaving a mode this way restores the trigger the user typed to get
+		// in, as literal text, which is the only route to searching for a
+		// title that starts with a trigger character.
+		id: 'input-exit-mode-to-literal',
+		zone: 'input',
+		keys: [ 'Backspace' ],
+		modifiers: SHIFT_AGNOSTIC,
+		when: ( state ) => {
+			if ( !cursorAtStart( state ) ) {
+				return false;
+			}
+			return Boolean( state.activeMode ) &&
+				!state.query &&
+				state.tokens.length === 0 &&
+				state.modeContext.length === 0 &&
+				Boolean( state.onExitModeToLiteral );
+		},
+		handle: ( state, event ) => {
+			event.preventDefault();
+			state.onExitModeToLiteral();
+		},
+		hint: { msgKey: 'citizen-command-palette-keyhint-exit-literal', kbd: '⌫', order: 200 }
+	},
+	{
 		id: 'input-remove-selected-token',
 		zone: 'input',
 		keys: [ 'Backspace' ],
+		modifiers: SHIFT_AGNOSTIC,
 		when: ( state ) => {
 			if ( !cursorAtStart( state ) ) {
 				return false;
@@ -619,6 +678,7 @@ const coreBindings = [
 		id: 'input-select-last-token',
 		zone: 'input',
 		keys: [ 'Backspace' ],
+		modifiers: SHIFT_AGNOSTIC,
 		when: ( state ) => {
 			if ( !cursorAtStart( state ) ) {
 				return false;
@@ -668,7 +728,8 @@ function actionCount( state ) {
  *  - `mode`       — active-mode refs, mode-context stack, mode-trigger
  *                   callbacks, and the cross-mode lookup.
  *  - `tokens`     — token state + selection callbacks for chip handling.
- *  - `help`       — help overlay visibility flag and toggle/close callbacks.
+ *  - `help`       — help overlay visibility and availability flags, and
+ *                   toggle/close callbacks.
  *
  * Optionality contract:
  *  - `tokens` and `help` are entire-bucket-optional — callers without
@@ -687,10 +748,11 @@ function actionCount( state ) {
  *   isGalleryLayout, actionNav.
  * @param {Object} options.mode Required. activeMode, findModeByTrigger,
  *   onEnterMode, onExitMode, onPopModeContext, plus optional
- *   activeModeContext.
+ *   activeModeContext and onExitModeToLiteral.
  * @param {Object} [options.tokens] tokens, selectedTokenIndex,
  *   onSelectToken, onRemoveToken.
- * @param {Object} [options.help] helpVisible, onToggleHelp, onCloseHelp.
+ * @param {Object} [options.help] helpVisible, helpAvailable (whether the
+ *   active mode is one the overlay can describe), onToggleHelp, onCloseHelp.
  * @return {Object} Keyboard handler and focus management methods.
  */
 function useKeyboard( options ) {
@@ -851,6 +913,7 @@ function useKeyboard( options ) {
 				highlightedItem.detail.header.copyValue
 			),
 			helpVisible: help.helpVisible ? help.helpVisible.value : false,
+			helpAvailable: help.helpAvailable ? help.helpAvailable.value : false,
 			actionsFocused: actionNav.isActive.value,
 			canQueueActivation: Boolean(
 				core.canQueueActivation && core.canQueueActivation.value
@@ -859,6 +922,7 @@ function useKeyboard( options ) {
 			onClose: core.onClose,
 			onClearQuery: core.onClearQuery,
 			onExitMode: mode.onExitMode,
+			onExitModeToLiteral: mode.onExitModeToLiteral,
 			onEnterMode: mode.onEnterMode,
 			onSelect: core.onSelect,
 			onToggleHelp: help.onToggleHelp,
@@ -982,16 +1046,6 @@ function useKeyboard( options ) {
 			return;
 		}
 
-		// Help-mode swallow: while the overlay is up, eat printable keys and
-		// Backspace so they neither modify input nor trigger modes/tokens.
-		if (
-			isTypedText && state.helpVisible &&
-			( event.key.length === 1 || event.key === 'Backspace' )
-		) {
-			event.preventDefault();
-			return;
-		}
-
 		// Action-zone fallback: typing redirects to the input field.
 		if (
 			isTypedText &&
@@ -1010,9 +1064,8 @@ function useKeyboard( options ) {
 		// Mode-trigger fallback (Note C): a printable single-char with no active
 		// mode and empty query routes through findModeByTrigger. The set of
 		// trigger characters is open-ended, so it can't be enumerated as bindings.
-		// The `!state.helpVisible` guard makes help-mode protection explicit at
-		// this fallback rather than relying on the help-swallow fallback above
-		// firing first.
+		// While help is up, a trigger character is text, so it types rather
+		// than entering its mode.
 		if (
 			isTypedText &&
 			!state.actionsFocused &&
@@ -1025,7 +1078,7 @@ function useKeyboard( options ) {
 			const matched = mode.findModeByTrigger( event.key );
 			if ( matched ) {
 				event.preventDefault();
-				mode.onEnterMode( matched );
+				mode.onEnterMode( matched, event.key );
 			}
 		}
 	}

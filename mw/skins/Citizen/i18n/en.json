@@ -37,6 +37,7 @@
 	"citizen-sitestats-images-label": "files",
 	"citizen-sitestats-users-label": "users",
 	"citizen-sitestats-edits-label": "edits",
+	"citizen-page-aside-label": "Side column",
 	"citizen-page-associated-pages": "Related pages",
 	"citizen-page-info-copyright": "Copyright",
 	"citizen-page-info-credits": "Credits",
@@ -79,7 +80,6 @@
 
 	"citizen-theme-name": "Color",
 	"citizen-theme-name-v4": "Theme",
-	"citizen-theme-description": "Switch between light and dark mode",
 	"citizen-theme-day-label": "Light",
 	"citizen-theme-night-label": "Dark",
 	"citizen-theme-black-label": "Black",
@@ -139,6 +139,7 @@
 	"citizen-command-palette-keyhint-clear": "Clear",
 	"citizen-command-palette-keyhint-close": "Close",
 	"citizen-command-palette-keyhint-exit": "Exit",
+	"citizen-command-palette-keyhint-exit-literal": "Search as text",
 	"citizen-command-palette-keyhint-actions": "Actions",
 	"citizen-command-palette-keyhint-return": "Return",
 	"citizen-command-palette-keyhint-back": "Back",
@@ -166,8 +167,8 @@
 	"citizen-command-palette-command-user-description": "Search for a user",
 	"citizen-command-palette-command-user-label": "Users",
 
+	"citizen-command-palette-help-placeholder": "Search modes",
 	"citizen-command-palette-help-section-description": "Description",
-	"citizen-command-palette-help-section-modes": "Modes",
 	"citizen-command-palette-help-section-triggers": "Triggers",
 
 	"citizen-command-palette-mode-action-description-help": "Find admin actions, special pages, and links pulled from the page menus.",
