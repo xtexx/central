@@ -126,13 +126,14 @@ describe( 'dispatcher modifier policy', () => {
 			},
 			help: {
 				helpVisible: ref( false ),
+				helpAvailable: ref( false ),
 				onToggleHelp: spies.onToggleHelp,
 				onCloseHelp: vi.fn()
 			},
 			mode: {
 				activeMode: ref( null ),
 				activeModeContext: ref( [] ),
-				findModeByTrigger: vi.fn( ( char ) => ( char === '@' ? { id: 'user' } : null ) ),
+				findModeByTrigger: vi.fn( ( char ) => ( { '@': { id: 'user' }, '?': { id: 'help' } }[ char ] || null ) ),
 				onEnterMode: spies.onEnterMode,
 				onExitMode: vi.fn(),
 				onPopModeContext: vi.fn()
@@ -170,6 +171,10 @@ describe( 'dispatcher modifier policy', () => {
 		[ 'Tab', 'shift', 'input', 'onClose (claimed)' ],
 		[ '@', 'shift', 'input', 'onEnterMode (claimed)' ],
 
+		// iOS reports every key on its `#+=` symbol layer as shifted, Return
+		// included, so Shift+Enter is read as Enter — never as a new tab.
+		[ 'Enter', 'shift', 'input', 'onSelect (claimed)' ],
+
 		// AltGr composes printable characters, so it is not a chord — but a
 		// plain space is excluded, or Ctrl+Alt+Space clicks the focused action.
 		[ '@', 'altgr', 'input', 'onEnterMode (claimed)' ],
@@ -181,9 +186,10 @@ describe( 'dispatcher modifier policy', () => {
 		[ 'a', 'ctrl', 'action', 'ignored' ],
 		[ 'Tab', 'none', 'action', 'deactivate (claimed)' ],
 
-		// `?` is Shift+/ on a US layout, so Shift must not suppress it.
-		[ '?', 'none', 'input', 'onToggleHelp (claimed)' ],
-		[ '?', 'shift', 'input', 'onToggleHelp (claimed)' ],
+		// `?` is Shift+/ on a US layout, so Shift must not suppress it. At root
+		// it is help mode's trigger.
+		[ '?', 'none', 'input', 'onEnterMode (claimed)' ],
+		[ '?', 'shift', 'input', 'onEnterMode (claimed)' ],
 
 		// Chords belong to the browser and the text field.
 		[ 'Tab', 'ctrl', 'input', 'ignored' ],
@@ -192,16 +198,16 @@ describe( 'dispatcher modifier policy', () => {
 		[ 'ArrowLeft', 'shift', 'input', 'ignored' ],
 		[ 'ArrowLeft', 'alt', 'input', 'ignored' ],
 		[ 'ArrowLeft', 'ctrl', 'input', 'ignored' ],
-		[ 'Enter', 'shift', 'input', 'ignored' ],
 		[ 'Enter', 'meta', 'input', 'ignored' ],
 		[ 'Backspace', 'ctrl', 'input', 'ignored' ],
 		[ '@', 'meta', 'input', 'ignored' ],
 
 		// Two rows that record a defect rather than an intention. The guards
-		// classify by key shape, not by what the binding wants, so a real chord
-		// reaches a binding that only ever meant to claim a bare key.
-		// `Ctrl+Alt+?` is not AltGr on a US layout — it is a chord.
-		[ '?', 'altgr', 'input', 'onToggleHelp (claimed)' ],
+		// classify by key shape, not by what the handler wants, so a real chord
+		// is read as the bare key a handler only ever meant to take.
+		// `Ctrl+Alt+?` is not AltGr on a US layout — it is a chord, yet it
+		// reaches the mode-trigger fallback as a typed `?`.
+		[ '?', 'altgr', 'input', 'onEnterMode (claimed)' ],
 		// `action-select` lists `Enter` and `' '` together; the space picks up
 		// Shift because Guard B exempts single-character keys.
 		[ ' ', 'shift', 'action', 'clickFocused (claimed)' ]
@@ -226,5 +232,146 @@ describe( 'dispatcher modifier policy', () => {
 		keyboard = useKeyboard( deps );
 
 		expect( outcome( 'c', 'ctrl', 'input' ) ).toBe( 'ignored' );
+	} );
+} );
+
+// iOS reports every key on its `#+=` symbol layer as shifted, Return and
+// Backspace included, so any Enter or Backspace binding that claims only a
+// bare key is dead there. This pins the invariant across the states those
+// bindings are split by, rather than binding by binding, so a new one that
+// forgets to claim Shift fails here.
+describe( 'Shift never changes what Enter or Backspace does', () => {
+	const TOKEN = { id: 't1', label: 'Talk', raw: 'Talk:', modeId: 'namespace' };
+	const STATES = {
+		'a highlighted result': {},
+		'the fulltext row highlighted': {
+			items: [ { id: 'fulltext', source: 'queryAction:fulltext-search' } ]
+		},
+		'results still loading': { highlightedIndex: -1, canQueueActivation: true },
+		'an empty mode': { activeMode: { id: 'category' } },
+		'a drilled-in mode': { activeMode: { id: 'category' }, modeContext: [ { name: 'A' } ] },
+		'a chip, none selected': { tokens: [ TOKEN ] },
+		'a selected chip': { tokens: [ TOKEN ], selectedTokenIndex: 0 },
+		'the help overlay': { helpVisible: true, activeMode: { id: 'category' } },
+		'text before the caret': { query: 'abc', caret: 3 }
+	};
+
+	/**
+	 * @param {Object} state One of STATES.
+	 * @param {string} key
+	 * @param {boolean} shiftKey
+	 * @return {string} Which callbacks fired, and whether the key was claimed.
+	 */
+	function outcome( state, key, shiftKey ) {
+		const spies = {
+			onSelect: vi.fn(),
+			onQueueActivation: vi.fn(),
+			onExitModeToLiteral: vi.fn(),
+			onPopModeContext: vi.fn(),
+			onSelectToken: vi.fn(),
+			onRemoveToken: vi.fn(),
+			onCloseHelp: vi.fn()
+		};
+		const caret = state.caret || 0;
+		const inputEl = {
+			selectionStart: caret,
+			selectionEnd: caret,
+			value: state.query || '',
+			focus: vi.fn(),
+			closest: vi.fn( () => null )
+		};
+		const keyboard = useKeyboard( {
+			core: {
+				inputRef: ref( { focus: vi.fn(), getInputElement: () => inputEl } ),
+				itemRefs: ref( new Map() ),
+				items: ref( state.items || [ { id: '1' } ] ),
+				query: ref( state.query || '' ),
+				canQueueActivation: ref( Boolean( state.canQueueActivation ) ),
+				onQueueActivation: spies.onQueueActivation,
+				onSelect: spies.onSelect,
+				onClose: vi.fn(),
+				onClearQuery: vi.fn()
+			},
+			navigation: {
+				listNav: {
+					highlightedIndex: ref( state.highlightedIndex === undefined ? 0 : state.highlightedIndex ),
+					highlightNext: vi.fn(),
+					highlightPrevious: vi.fn(),
+					highlightFirst: vi.fn(),
+					highlightLast: vi.fn(),
+					resetHighlight: vi.fn(),
+					scrollToHighlighted: vi.fn()
+				},
+				actionNav: {
+					isActive: ref( false ),
+					focusedIndex: ref( -1 ),
+					focusFirst: vi.fn(),
+					focusNext: vi.fn(),
+					focusPrevious: vi.fn(),
+					deactivate: vi.fn(),
+					clickFocused: vi.fn()
+				}
+			},
+			mode: {
+				activeMode: ref( state.activeMode || null ),
+				activeModeContext: ref( state.modeContext || [] ),
+				findModeByTrigger: vi.fn( () => null ),
+				onEnterMode: vi.fn(),
+				onExitMode: vi.fn(),
+				onExitModeToLiteral: spies.onExitModeToLiteral,
+				onPopModeContext: spies.onPopModeContext
+			},
+			tokens: {
+				tokens: ref( state.tokens || [] ),
+				selectedTokenIndex: ref( state.selectedTokenIndex === undefined ? -1 : state.selectedTokenIndex ),
+				onSelectToken: spies.onSelectToken,
+				onRemoveToken: spies.onRemoveToken
+			},
+			help: {
+				helpVisible: ref( Boolean( state.helpVisible ) ),
+				helpAvailable: ref( false ),
+				onToggleHelp: vi.fn(),
+				onCloseHelp: spies.onCloseHelp
+			}
+		} );
+		const event = {
+			key,
+			target: inputEl,
+			preventDefault: vi.fn(),
+			stopPropagation: vi.fn(),
+			altKey: false,
+			ctrlKey: false,
+			metaKey: false,
+			shiftKey,
+			getModifierState: vi.fn( () => false )
+		};
+
+		keyboard.handleKeydown( event );
+
+		const fired = Object.keys( spies )
+			.filter( ( name ) => spies[ name ].mock.calls.length > 0 )
+			.map( ( name ) => name + JSON.stringify( spies[ name ].mock.calls ) );
+		return ( fired.join( '+' ) || 'nothing' ) +
+			( event.preventDefault.mock.calls.length ? ' (claimed)' : '' );
+	}
+
+	Object.keys( STATES ).forEach( ( name ) => {
+		[ 'Enter', 'Backspace' ].forEach( ( key ) => {
+			it( `${ key } with ${ name }`, () => {
+				const bare = outcome( STATES[ name ], key, false );
+
+				const shifted = outcome( STATES[ name ], key, true );
+
+				expect( shifted ).toBe( bare );
+			} );
+		} );
+	} );
+
+	it( 'exercises a binding in every state it is meant to guard', () => {
+		// A matrix where the bare key did nothing would pass vacuously.
+		const claimedStates = Object.keys( STATES ).filter( ( name ) => [ 'Enter', 'Backspace' ]
+			.some( ( key ) => outcome( STATES[ name ], key, false ) !== 'nothing' ) );
+
+		expect( claimedStates ).toEqual( Object.keys( STATES ) );
 	} );
 } );

@@ -48,17 +48,11 @@
 						'citizen-command-palette__body-viewport--has-detail': viewportHasDetail
 					}"
 				>
-					<command-palette-help-view
-						v-if="helpVisible"
-						:active-mode="activeMode"
-						:highlighted-help-mode="highlightedHelpMode"
-						:displayed-items="displayedItems"
-						:highlighted-item-index="highlightedItemIndex"
-						:search-query="query"
-						:set-item-ref="setItemRef"
-						@select="selectResult"
-						@hover="handleHover"
-					></command-palette-help-view>
+					<command-palette-detail-panel
+						v-if="helpVisible && activeModeHelpDetail"
+						class="citizen-command-palette__results"
+						:detail="activeModeHelpDetail"
+					></command-palette-detail-panel>
 					<template v-else>
 						<div class="citizen-command-palette__results">
 							<command-palette-empty-state
@@ -113,6 +107,7 @@ const useBodyHeightAnimation = require( '../composables/useBodyHeightAnimation.j
 const useGalleryColumnCount = require( '../composables/useGalleryColumnCount.js' );
 const useListNavigation = require( '../composables/useListNavigation.js' );
 const useGridNavigation = require( '../composables/useGridNavigation.js' );
+const useHelpInput = require( '../composables/useHelpInput.js' );
 const useKeyboard = require( '../composables/useKeyboard.js' );
 const usePendingActivation = require( '../composables/usePendingActivation.js' );
 const useProviderOrchestration = require( '../composables/useProviderOrchestration.js' );
@@ -124,7 +119,7 @@ const CommandPaletteEmptyState = require( './CommandPaletteEmptyState.vue' );
 const CommandPaletteFooter = require( './CommandPaletteFooter.vue' );
 const CommandPaletteHeader = require( './CommandPaletteHeader.vue' );
 const CommandPaletteDetailPanel = require( './CommandPaletteDetailPanel.vue' );
-const CommandPaletteHelpView = require( './CommandPaletteHelpView.vue' );
+const modeHelpDetail = require( '../utils/modeHelpDetail.js' );
 const { cdxIconArticleNotFound, cdxIconArticlesSearch } = require( '../icons.json' );
 
 // @vue/component
@@ -139,8 +134,7 @@ module.exports = exports = defineComponent( {
 		CommandPaletteEmptyState,
 		CommandPaletteDetailPanel,
 		CommandPaletteFooter,
-		CommandPaletteHeader,
-		CommandPaletteHelpView
+		CommandPaletteHeader
 	},
 	props: {},
 	setup() {
@@ -153,8 +147,7 @@ module.exports = exports = defineComponent( {
 		const findModeByTrigger = inject( 'findModeByTrigger' );
 		const findModeByQuery = inject( 'findModeByQuery' );
 		const getTokenPatterns = inject( 'getTokenPatterns' );
-		const getHelpCatalogItems = inject( 'getHelpCatalogItems', null );
-		const getHandler = inject( 'getHandler', null );
+		const getHandler = inject( 'getHandler' );
 		// Duck-typed { isAvailable, processContext, triggerForAnchor, onReady }
 		// service — today the InstantDiffs gadget bridge, swappable via init.js.
 		const previewService = inject( 'previewService' );
@@ -182,14 +175,17 @@ module.exports = exports = defineComponent( {
 		const orchDeps = {
 			recentItemsProvider,
 			relatedArticlesProvider,
-			recentItemsService,
-			getHelpCatalogItems
+			recentItemsService
 		};
 		const orch = useProviderOrchestration( providers, resultDecorator, orchDeps );
 
 		const tokenInput = useTokenizedInput( getTokenPatterns, orch.activeMode );
+		const helpInput = useHelpInput( { orchestrator: orch, tokenInput } );
 		// Late-bind tokens so handleModeQuery can read them at call time
 		orchDeps.tokens = tokenInput.tokens;
+		// Same late bind: provider selection has to see the literal latch, or
+		// a trigger the user backed out of would still route to its mode.
+		orchDeps.isHeldLiteral = tokenInput.isHeldLiteral;
 
 		const flatItems = computed( () => orch.flatItems.value );
 
@@ -263,39 +259,14 @@ module.exports = exports = defineComponent( {
 			}
 		}, { immediate: true } );
 
-		// While help is open at root, the highlighted catalog row's source
-		// (e.g. "command:category") tells us which registered handler to
-		// surface in the right pane. Outside the help-at-root case there is
-		// no help-detail to render.
-		const highlightedHelpMode = computed( () => {
-			if ( !orch.helpVisible.value || orch.activeMode.value || !getHandler ) {
-				return null;
-			}
-			const idx = listNav.highlightedIndex.value;
-			const items = orch.flatItems.value;
-			if ( idx < 0 || idx >= items.length ) {
-				return null;
-			}
-			const item = items[ idx ];
-			if ( !item || !item.source ) {
-				return null;
-			}
-			const match = ( /^command:(.+)$/ ).exec( item.source );
-			if ( !match ) {
-				return null;
-			}
-			return getHandler( match[ 1 ] ) || null;
-		} );
+		// The help overlay is a single pane that fills the dialog.
+		const viewportHasDetail = computed(
+			() => orch.helpVisible.value ? false : highlightedItemDetail.value !== null
+		);
 
-		// Two-pane layout activates when:
-		//   - a regular result has structured detail data (existing behaviour), OR
-		//   - help is open at root with a highlighted mode to describe.
-		const viewportHasDetail = computed( () => {
-			if ( orch.helpVisible.value ) {
-				return !orch.activeMode.value && highlightedHelpMode.value !== null;
-			}
-			return highlightedItemDetail.value !== null;
-		} );
+		const activeModeHelpDetail = computed(
+			() => orch.activeMode.value ? modeHelpDetail( orch.activeMode.value ) : null
+		);
 
 		const actionNav = useActionNavigation( {
 			items: orch.flatItems,
@@ -325,7 +296,7 @@ module.exports = exports = defineComponent( {
 		const { selectResult, handleAction } = useResultRouter( {
 			orchestrator: orch,
 			tokenInput,
-			navigation: { findModeByQuery },
+			navigation: { findModeByQuery, getHandler },
 			control: { focusInput, close, paletteRoot },
 			preview: previewService
 		} );
@@ -351,8 +322,23 @@ module.exports = exports = defineComponent( {
 				return;
 			}
 			tokenInput.removeToken( index );
-			// Prepend the raw text back to freeText (detection is suppressed)
+			// Prepend the raw text back to freeText. removeToken latched that
+			// text as literal, so detection leaves it alone.
 			tokenInput.setFreeText( token.raw + tokenInput.freeText.value );
+		};
+
+		// Backing out of a mode from an empty input hands the trigger the user
+		// typed back as literal text, so a title that starts with a trigger
+		// character is reachable. A mode entered from the list has no trigger
+		// to restore, and just exits.
+		const handleExitModeToLiteral = () => {
+			const trigger = orch.enteredTrigger.value;
+			orch.exitMode();
+			if ( trigger ) {
+				tokenInput.setLiteralPrefix( trigger );
+				tokenInput.setFreeText( trigger );
+			}
+			nextTick( focusInput );
 		};
 
 		// Bumped by the keyboard's Cmd/Ctrl+C handler so the detail panel
@@ -393,8 +379,9 @@ module.exports = exports = defineComponent( {
 				activeMode: orch.activeMode,
 				activeModeContext: orch.activeModeContext,
 				findModeByTrigger,
-				onEnterMode: ( m ) => orch.enterMode( m ),
+				onEnterMode: ( m, trigger ) => orch.enterMode( m, trigger ),
 				onExitMode: () => orch.exitMode(),
+				onExitModeToLiteral: handleExitModeToLiteral,
 				onPopModeContext: () => orch.popModeContext()
 			},
 			tokens: {
@@ -405,6 +392,7 @@ module.exports = exports = defineComponent( {
 			},
 			help: {
 				helpVisible: orch.helpVisible,
+				helpAvailable: helpInput.helpAvailable,
 				onToggleHelp: () => orch.toggleHelp(),
 				onCloseHelp: () => orch.closeHelp()
 			}
@@ -432,10 +420,13 @@ module.exports = exports = defineComponent( {
 		};
 
 		const handleFreeTextUpdate = ( text ) => {
-			tokenInput.setFreeText( text );
-			// When detection consumed part of the text (creating tokens),
-			// the DOM input still holds the old value until Vue flushes.
-			// Force-sync it so the next keystroke event carries the correct value.
+			if ( !helpInput.handleText( text ) ) {
+				tokenInput.setFreeText( text );
+			}
+			// When the text was consumed (by the help toggle, or by detection
+			// creating tokens), the DOM input still holds the old value until
+			// Vue flushes. Force-sync it so the next keystroke event carries
+			// the correct value.
 			if ( tokenInput.freeText.value !== text ) {
 				nextTick( () => {
 					const el = searchHeader.value?.getInputElement?.();
@@ -449,11 +440,20 @@ module.exports = exports = defineComponent( {
 		// Sync tokenized fullQuery to orchestrator
 		// Auto-enter mode when typed query matches a multi-char trigger (e.g. '/smw:')
 		watch( tokenInput.fullQuery, ( newQuery ) => {
-			if ( !orch.activeMode.value && newQuery ) {
+			// A latched literal occupies the front of the query, so a trigger
+			// sitting there is text the user asked to search for, not a mode
+			// to re-enter.
+			if ( !orch.activeMode.value && newQuery &&
+				!tokenInput.isHeldLiteral( newQuery ) ) {
 				const match = findModeByQuery( newQuery );
 				if ( match ) {
 					const subQuery = newQuery.slice( match.trigger.length );
-					orch.enterMode( match.mode );
+					// Triggers match case-insensitively, so record what was
+					// typed rather than the registered spelling — backing out
+					// of the mode types this straight back into the input.
+					orch.enterMode(
+						match.mode, newQuery.slice( 0, match.trigger.length )
+					);
 					tokenInput.setFreeText( subQuery );
 					nextTick( focusInput );
 					return;
@@ -514,7 +514,6 @@ module.exports = exports = defineComponent( {
 		// This function is called externally from commandPalette.js
 		const open = ( prefillText ) => {
 			isOpen.value = true;
-			orch.closeHelp();
 			if ( orch.activeMode.value ) {
 				orch.exitMode();
 			} else {
@@ -563,8 +562,8 @@ module.exports = exports = defineComponent( {
 			// Reading it off `keyboard` would bind the Ref object itself, which
 			// renders as "[object Object]" and resolves to no element.
 			activeDescendantId: keyboard.activeDescendantId,
-			highlightedHelpMode,
 			viewportHasDetail,
+			activeModeHelpDetail,
 			// List nav
 			highlightedItemIndex: listNav.highlightedIndex,
 			// Empty state

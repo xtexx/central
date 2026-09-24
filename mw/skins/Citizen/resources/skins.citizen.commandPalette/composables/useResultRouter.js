@@ -1,4 +1,10 @@
 const { nextTick } = require( 'vue' );
+const { HELP_MODE_ID } = require( '../modes/help.js' );
+
+// Actions that act on whichever mode is active. Help mode only lists commands,
+// so a command picked from it leaves help first and acts as it would at root,
+// rather than filtering, tokenizing or drilling into the help list.
+const CURRENT_MODE_ACTIONS = [ 'updateQuery', 'addToken', 'pushModeContext' ];
 
 /**
  * Open a URL in a new browsing context, severing the opener.
@@ -34,8 +40,8 @@ function openInNewTab( url ) {
  *  - `orchestrator` and `tokenInput` are passed through opaquely; the
  *    composable consumes their public surfaces as documented in the
  *    design (handleSelection, enterMode, addToken, setFreeText, etc.).
- *  - `navigation` exposes cross-mode lookups (currently
- *    `findModeByQuery`).
+ *  - `navigation` exposes cross-mode lookups (`findModeByQuery`,
+ *    `getHandler`).
  *  - `control` carries the DOM and lifecycle handles
  *    (`focusInput`, `close`, `paletteRoot`).
  *  - `preview` is the injected preview-handler service; the duck-typed
@@ -48,6 +54,7 @@ function openInNewTab( url ) {
  * @param {Object} options.tokenInput
  * @param {Object} options.navigation
  * @param {Function} options.navigation.findModeByQuery
+ * @param {Function} options.navigation.getHandler
  * @param {Object} options.control
  * @param {() => void} options.control.focusInput
  * @param {() => void} options.control.close
@@ -64,7 +71,7 @@ function useResultRouter( {
 	control,
 	preview
 } ) {
-	const { findModeByQuery } = navigation;
+	const { findModeByQuery, getHandler } = navigation;
 	const { focusInput, close, paletteRoot } = control;
 
 	/**
@@ -75,8 +82,14 @@ function useResultRouter( {
 	 * @param {Object} result The selected item.
 	 */
 	async function selectResult( result ) {
-		const wasHelpVisible = orchestrator.helpVisible.value;
 		const action = await orchestrator.handleSelection( result );
+
+		if (
+			CURRENT_MODE_ACTIONS.includes( action.action ) &&
+			orchestrator.activeMode.value?.id === HELP_MODE_ID
+		) {
+			orchestrator.exitMode();
+		}
 
 		switch ( action.action ) {
 			case 'navigate':
@@ -118,26 +131,25 @@ function useResultRouter( {
 					close();
 				}
 				break;
-			case 'exitWithQuery':
-				if ( orchestrator.activeMode.value ) {
-					// From within a mode: exit and seed the freeText.
-					orchestrator.exitMode();
-					tokenInput.setFreeText( action.payload );
+			case 'exitWithQuery': {
+				// A payload that is exactly a mode's trigger names that mode, so
+				// switch to it as if it were picked from the `/` list. Anything
+				// else, even text that only starts with a trigger — a namespace
+				// called `!Archive`, say — goes into the input whole rather than
+				// switching modes from here.
+				const match = findModeByQuery( action.payload );
+				if ( match && match.trigger.toLowerCase() === action.payload.toLowerCase() ) {
+					tokenInput.clear();
+					orchestrator.enterMode( match.mode );
 				} else {
-					// From root: try to enter a matching mode.
-					const match = findModeByQuery( action.payload );
-					if ( match ) {
-						tokenInput.clear();
-						// Closing help before entering the mode keeps openHelp's
-						// catalog from being preserved across the enterMode reset.
-						if ( wasHelpVisible ) {
-							orchestrator.closeHelp();
-						}
-						orchestrator.enterMode( match.mode );
+					if ( orchestrator.activeMode.value ) {
+						orchestrator.exitMode();
 					}
+					tokenInput.setFreeText( action.payload );
 				}
 				nextTick( focusInput );
 				break;
+			}
 			case 'updateQuery':
 				tokenInput.setFreeText( action.payload );
 				nextTick( focusInput );
@@ -159,27 +171,28 @@ function useResultRouter( {
 				tokenInput.clear();
 				nextTick( focusInput );
 				break;
-			case 'toggleHelp':
-				orchestrator.toggleHelp();
+			case 'toggleHelp': {
 				tokenInput.clear();
+				// Help at root is a mode, so toggling there enters it and
+				// toggling inside it leaves it. Inside any other mode, help is
+				// an overlay that describes that mode without leaving it.
+				const activeMode = orchestrator.activeMode.value;
+				if ( !activeMode ) {
+					const helpMode = getHandler( HELP_MODE_ID );
+					if ( helpMode ) {
+						orchestrator.enterMode( helpMode );
+					}
+				} else if ( activeMode.id === HELP_MODE_ID ) {
+					orchestrator.exitMode();
+				} else {
+					orchestrator.toggleHelp();
+				}
 				nextTick( focusInput );
 				break;
+			}
 			case 'none':
 			default:
 				break;
-		}
-
-		// Auto-dismiss help after any non-toggle selection from inside
-		// the help overlay. Skipped for 'navigate' (the palette closes)
-		// and 'exitWithQuery' (which already closed help before
-		// entering mode).
-		if (
-			wasHelpVisible &&
-			action.action !== 'toggleHelp' &&
-			action.action !== 'navigate' &&
-			action.action !== 'exitWithQuery'
-		) {
-			orchestrator.closeHelp();
 		}
 	}
 

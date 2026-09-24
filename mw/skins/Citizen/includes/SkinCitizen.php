@@ -13,16 +13,17 @@ use MediaWiki\MainConfigNames;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Output\OutputPage;
 use MediaWiki\Permissions\PermissionManager;
+use MediaWiki\Skins\Citizen\Components\CitizenAsidePanelLastModified;
+use MediaWiki\Skins\Citizen\Components\CitizenAsidePanelTableOfContents;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentBodyContent;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentFooter;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentMainMenu;
+use MediaWiki\Skins\Citizen\Components\CitizenComponentPageAside;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentPageFooter;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentPageHeading;
-use MediaWiki\Skins\Citizen\Components\CitizenComponentPageSidebar;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentPageTools;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentSiteStats;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentStickyHeader;
-use MediaWiki\Skins\Citizen\Components\CitizenComponentTableOfContents;
 use MediaWiki\Skins\Citizen\Components\CitizenComponentUserInfo;
 use MediaWiki\Skins\Citizen\Menu\NavigationMenuTransformer;
 use MediaWiki\SpecialPage\SpecialPageFactory;
@@ -232,6 +233,18 @@ class SkinCitizen extends SkinMustache {
 			$parentData['data-portlets-sidebar']
 		);
 
+		// Held in a variable because two decisions need it: the aside renders it
+		// as a panel, and the scroll spy is queued only when it has sections.
+		$tocPanel = new CitizenAsidePanelTableOfContents(
+			$parentData['data-toc'] ?? [],
+			$localizer,
+			$config
+		);
+		// Captured before the loop below runs the panel's getTemplateData(),
+		// which decorates the section list in place. Asking afterwards reads
+		// mutated state and only happens to give the same answer.
+		$tocHasContent = $tocPanel->hasContent();
+
 		$components = [
 			'data-footer' => new CitizenComponentFooter(
 				$localizer,
@@ -256,11 +269,14 @@ class SkinCitizen extends SkinMustache {
 				$title,
 				$parentData['html-title-heading']
 			),
-			'data-page-sidebar' => new CitizenComponentPageSidebar(
-				$localizer,
-				$title,
-				$parentData['data-last-modified']
-			),
+			'data-page-aside' => new CitizenComponentPageAside( [
+				new CitizenAsidePanelLastModified(
+					$localizer,
+					$title,
+					$parentData['data-last-modified']
+				),
+				$tocPanel,
+			] ),
 			'data-page-tools' => new CitizenComponentPageTools(
 				$config,
 				$localizer,
@@ -297,16 +313,18 @@ class SkinCitizen extends SkinMustache {
 				$parentData['html-body-content'],
 				$this->shouldMakeSections( $config, $title )
 			),
-			'data-toc' => new CitizenComponentTableOfContents(
-				$parentData['data-toc'] ?? [],
-				$localizer,
-				$config
-			),
 		];
 
 		foreach ( $components as $key => $component ) {
 			$parentData[$key] = $component->getTemplateData();
 		}
+
+		// The outline panel returns core's data enriched, nested under its own
+		// `data-toc` key inside `array-panels`. Removed so core's un-enriched
+		// copy cannot survive at root, where a future partial opening
+		// `{{#data-toc}}` outside `{{#is-toc}}` would silently render it in
+		// place of the enriched one.
+		unset( $parentData['data-toc'] );
 
 		// TODO: Pass tagline through the component instead of reaching across template data
 		$parentData['data-sticky-header']['html-sticky-header-tagline'] =
@@ -323,7 +341,8 @@ class SkinCitizen extends SkinMustache {
 		// Scope matches the .page-Main_Page.action-view main-page styles.
 		// skin.mustache renders the page header after the content on the main
 		// page so its bottom placement holds from the first streamed paint.
-		$parentData['is-mainpage'] = $title->isMainPage() && $this->getActionName() === 'view';
+		$isMainPageView = $title->isMainPage() && $this->getActionName() === 'view';
+		$parentData['is-mainpage'] = $isMainPageView;
 
 		// Core has no message for the associated-pages menu, so SkinComponentMenu
 		// falls back to the raw menu name (T252727) and the heading reads
@@ -336,16 +355,20 @@ class SkinCitizen extends SkinMustache {
 				$this->msg( 'citizen-page-associated-pages' )->text();
 		}
 
-		$parentData['toc-enabled'] = !empty( $parentData['data-toc'][ 'array-sections' ] );
-		if ( $parentData['toc-enabled'] ) {
+		$parentData['aside-enabled'] = !$isMainPageView
+			&& $parentData['data-page-aside']['array-panels'] !== [];
+
+		if ( $parentData['aside-enabled'] ) {
 			// This body class depends on template data so it can't move to
 			// getHtmlElementAttributes(). Safe here because getTemplateData()
-			// only runs for the active rendering skin.
+			// only runs for the active rendering skin. Its name still says
+			// "toc" because renaming a class in cached HTML needs a compat
+			// slice; its meaning is "the aside is rendered".
 			$out->addBodyClasses( 'citizen-toc-enabled' );
-			// Queue the scroll spy with the initial module batch. Cached HTML
-			// from before this condition existed is covered by the client-side
-			// element check in setupObservers.js, which mw.loader dedupes.
-			$out->addModules( [ 'skins.citizen.toc' ] );
+
+			if ( $tocHasContent ) {
+				$out->addModules( [ 'skins.citizen.toc' ] );
+			}
 		}
 
 		return $parentData;

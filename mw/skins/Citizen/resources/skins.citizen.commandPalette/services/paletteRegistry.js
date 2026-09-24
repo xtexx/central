@@ -20,6 +20,62 @@ function triggersOf( handler ) {
 	return Array.isArray( handler?.triggers ) ? handler.triggers : [];
 }
 
+/**
+ * How directly a lowercased query names a handler: 0 when it begins one of
+ * the triggers, 1 when it occurs in the name, 2 when it occurs in the
+ * description, and -1 when it does neither.
+ *
+ * Triggers match only at their start, or a bare `:` would match every
+ * `/x:` trigger — but a slash trigger also matches at the word after its
+ * slash, which is the only place `ns` or `smw` appears. Name and
+ * description match anywhere, because not every language puts spaces
+ * between words.
+ *
+ * @param {import('../types.js').PaletteHandler} handler
+ * @param {string} needle
+ * @return {number}
+ */
+function matchRank( handler, needle ) {
+	const beginsTrigger = ( trigger ) => {
+		const lower = trigger.toLowerCase();
+		return lower.startsWith( needle ) ||
+			( lower.startsWith( '/' ) && lower.startsWith( needle, 1 ) );
+	};
+	if ( triggersOf( handler ).some( beginsTrigger ) ) {
+		return 0;
+	}
+	if ( typeof handler.label === 'string' && handler.label.toLowerCase().includes( needle ) ) {
+		return 1;
+	}
+	if ( typeof handler.description === 'string' && handler.description.toLowerCase().includes( needle ) ) {
+		return 2;
+	}
+	return -1;
+}
+
+/**
+ * @param {import('../types.js').PaletteHandler|undefined} handler
+ * @return {boolean} Whether the handler is a mode, which produces results.
+ */
+function isMode( handler ) {
+	return handler !== undefined && 'getResults' in handler &&
+		typeof handler.getResults === 'function';
+}
+
+/**
+ * @param {string} modeId
+ * @param {string} modeTrigger
+ * @param {string} otherId
+ * @param {string} otherTrigger A trigger that starts with `modeTrigger`.
+ */
+function warnShadowedTrigger( modeId, modeTrigger, otherId, otherTrigger ) {
+	mw.log.warn(
+		`[paletteRegistry] Mode "${ modeId }" trigger "${ modeTrigger }" is a prefix of ` +
+		`handler "${ otherId }" trigger "${ otherTrigger }". ` +
+		`Typing "${ otherTrigger }" enters "${ modeId }" first.`
+	);
+}
+
 function createPaletteRegistry() {
 	/** @type {Map<string, import('../types.js').PaletteHandler>} */
 	const handlers = new Map();
@@ -78,8 +134,9 @@ function createPaletteRegistry() {
 			);
 		} else {
 			handler.triggers.forEach( ( trigger ) => {
+				const lowerTrigger = trigger.toLowerCase();
 				const conflict = flatTriggerList.find(
-					( t ) => t.lowerTrigger === trigger.toLowerCase() && t.id !== handlerId
+					( t ) => t.lowerTrigger === lowerTrigger && t.id !== handlerId
 				);
 				if ( conflict ) {
 					mw.log.warn(
@@ -87,6 +144,19 @@ function createPaletteRegistry() {
 						`collides with existing handler "${ conflict.id }". Last registration wins.`
 					);
 				}
+				// A mode opens as soon as the input matches its trigger, so a
+				// longer trigger that starts with a mode's is entered through that
+				// mode before it can be typed out.
+				flatTriggerList.forEach( ( t ) => {
+					if ( t.id === handlerId || t.lowerTrigger === lowerTrigger ) {
+						return;
+					}
+					if ( isMode( handler ) && t.lowerTrigger.startsWith( lowerTrigger ) ) {
+						warnShadowedTrigger( handlerId, trigger, t.id, t.trigger );
+					} else if ( lowerTrigger.startsWith( t.lowerTrigger ) && isMode( handlers.get( t.id ) ) ) {
+						warnShadowedTrigger( t.id, t.trigger, handlerId, trigger );
+					}
+				} );
 			} );
 		}
 
@@ -159,25 +229,100 @@ function createPaletteRegistry() {
 			entries = Array.from( handlers.entries() );
 		}
 
-		return entries.flatMap( ( [ id, handler ] ) => {
-			const triggers = triggersOf( handler );
-			if ( !triggers.length ) {
-				return [];
+		return entries.flatMap( ( [ id, handler ] ) => toListItems( id, handler ) );
+	}
+
+	/**
+	 * The command list narrowed to the entries a free-text query describes,
+	 * ranked by how directly the query names them (see `matchRank`), in
+	 * registration order within a rank.
+	 *
+	 * @param {string} query
+	 * @return {Array<import('../types.js').CommandPaletteItem>}
+	 */
+	function searchCommandListItems( query ) {
+		const needle = query.trim().toLowerCase();
+		if ( !needle ) {
+			return getCommandListItems();
+		}
+		/** @type {Array<Array<import('../types.js').CommandPaletteItem>>} */
+		const ranks = [ [], [], [] ];
+		for ( const [ id, handler ] of handlers ) {
+			const rank = matchRank( handler, needle );
+			if ( rank >= 0 ) {
+				ranks[ rank ].push( ...toListItems( id, handler ) );
 			}
-			return [ {
-				id: `citizen-command-palette-item-command-${ id }`,
-				type: 'command',
-				label: triggers[ 0 ],
-				description: handler.description,
-				thumbnailIcon: cdxIconCode,
-				value: triggers[ 0 ],
-				metadata: triggers.length > 1 ?
-					triggers.slice( 1 ).map( ( trigger ) => ( { label: trigger } ) ) :
-					undefined,
-				source: `command:${ id }`,
-				highlightQuery: true
-			} ];
-		} );
+		}
+		return ranks.flat();
+	}
+
+	/**
+	 * A handler's command list row, as a list of one — or of none, when it
+	 * has no trigger to show.
+	 *
+	 * @param {string} id
+	 * @param {import('../types.js').PaletteHandler} handler
+	 * @return {Array<import('../types.js').CommandPaletteItem>}
+	 */
+	function toListItems( id, handler ) {
+		const triggers = triggersOf( handler );
+		if ( !triggers.length ) {
+			return [];
+		}
+		return [ {
+			id: `citizen-command-palette-item-command-${ id }`,
+			type: 'command',
+			label: triggers[ 0 ],
+			description: handler.description,
+			thumbnailIcon: cdxIconCode,
+			value: triggers[ 0 ],
+			metadata: triggers.length > 1 ?
+				triggers.slice( 1 ).map( ( trigger ) => ( { label: trigger } ) ) :
+				undefined,
+			source: `command:${ id }`,
+			highlightQuery: true
+		} ];
+	}
+
+	/**
+	 * What selecting a command-list row does: a mode opens with its first
+	 * trigger, and a plain command runs its own selection handler.
+	 *
+	 * @param {import('../types.js').CommandPaletteItem} item
+	 * @return {Promise<Object>} An action result.
+	 */
+	async function selectCommandListItem( item ) {
+		const sourceParts = item.source?.split( ':' );
+		if ( sourceParts?.[ 0 ] !== 'command' || sourceParts.length < 2 ) {
+			return { action: 'none' };
+		}
+
+		const handlerId = sourceParts[ 1 ];
+		const handler = handlers.get( handlerId );
+
+		if ( !handler ) {
+			return { action: 'none' };
+		}
+
+		try {
+			// Commands with getResults expand the query on select
+			if ( item.type === 'command' &&
+				'getResults' in handler && typeof handler.getResults === 'function' ) {
+				return { action: 'exitWithQuery', payload: item.value };
+			}
+
+			if ( typeof handler.onResultSelect === 'function' ) {
+				// Awaited so an async handler's rejection lands in the catch
+				// below, which names the handler, rather than escaping it.
+				return await handler.onResultSelect( item );
+			}
+			return { action: 'none' };
+		} catch ( err ) {
+			mw.log.error(
+				'[commandPalette] Selection handler "' + handlerId + '" failed:', err
+			);
+			return { action: 'none' };
+		}
 	}
 
 	/**
@@ -261,6 +406,8 @@ function createPaletteRegistry() {
 		register,
 		findMatchingCommand,
 		getCommandListItems,
+		searchCommandListItems,
+		selectCommandListItem,
 		getHandler,
 		getTokenPatterns,
 		hasMatchingTrigger,

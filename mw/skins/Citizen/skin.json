@@ -1,6 +1,6 @@
 {
 	"name": "Citizen",
-	"version": "3.22.0",
+	"version": "3.23.0",
 	"author": [
 		"[https://www.mediawiki.org/wiki/User:Alistair3149 Alistair3149]",
 		"[https://www.mediawiki.org/wiki/User:Octfx Octfx]",
@@ -90,6 +90,7 @@
 						"citizen-notifications-retry",
 						"citizen-notifications-see-all",
 						"citizen-notifications-preferences",
+						"citizen-page-aside-label",
 						"citizen-preferences-load-error",
 						"citizen-preferences-load-retry",
 						"citizen-preferences-toggle",
@@ -290,7 +291,9 @@
 					"name": "resources/skins.citizen.preferences/icons.json",
 					"callback": "MediaWiki\\ResourceLoader\\CodexModule::getIcons",
 					"callbackParam": [
-						"cdxIconAlignRight"
+						"cdxIconBright",
+						"cdxIconHalfBright",
+						"cdxIconMoon"
 					]
 				},
 				{
@@ -331,7 +334,6 @@
 				"citizen-preferences-font-size-sample",
 				"citizen-preferences-section-appearance",
 				"citizen-preferences-section-behavior",
-				"citizen-theme-description",
 				"citizen-theme-black-label",
 				"citizen-theme-day-label",
 				"citizen-theme-name",
@@ -429,6 +431,7 @@
 				"resources/skins.citizen.commandPalette/composables/useGalleryColumnCount.js",
 				"resources/skins.citizen.commandPalette/composables/useListNavigation.js",
 				"resources/skins.citizen.commandPalette/composables/useGridNavigation.js",
+				"resources/skins.citizen.commandPalette/composables/useHelpInput.js",
 				"resources/skins.citizen.commandPalette/composables/useOperationLifecycle.js",
 				"resources/skins.citizen.commandPalette/composables/usePendingActivation.js",
 				"resources/skins.citizen.commandPalette/composables/useProviderOrchestration.js",
@@ -439,6 +442,7 @@
 				"resources/skins.citizen.commandPalette/utils/fetch.js",
 				"resources/skins.citizen.commandPalette/utils/isAbortError.js",
 				"resources/skins.citizen.commandPalette/utils/providerActions.js",
+				"resources/skins.citizen.commandPalette/utils/modeHelpDetail.js",
 				"resources/skins.citizen.commandPalette/utils/appendQueryActions.js",
 				"resources/skins.citizen.commandPalette/services/instantDiffs.js",
 				"resources/skins.citizen.commandPalette/services/recentItems.js",
@@ -461,9 +465,6 @@
 				"resources/skins.citizen.commandPalette/components/CommandPaletteEmptyState.vue",
 				"resources/skins.citizen.commandPalette/components/CommandPaletteFooter.vue",
 				"resources/skins.citizen.commandPalette/components/CommandPaletteHeader.vue",
-				"resources/skins.citizen.commandPalette/components/CommandPaletteHelpModeSummary.vue",
-				"resources/skins.citizen.commandPalette/components/CommandPaletteHelpTriggers.vue",
-				"resources/skins.citizen.commandPalette/components/CommandPaletteHelpView.vue",
 				"resources/skins.citizen.commandPalette/components/CommandPaletteKeyboardHints.vue",
 				"resources/skins.citizen.commandPalette/components/CommandPaletteList.vue",
 				"resources/skins.citizen.commandPalette/components/CommandPaletteListItem.vue",
@@ -508,6 +509,10 @@
 					"name": "resources/skins.citizen.commandPalette/config.json",
 					"callback": "MediaWiki\\Skins\\Citizen\\Hooks\\ResourceLoaderHooks::getCitizenCommandPaletteResourceLoaderConfig"
 				},
+				{
+					"name": "resources/skins.citizen.commandPalette/specialPages.json",
+					"callback": "MediaWiki\\Skins\\Citizen\\Hooks\\ResourceLoaderHooks::getCitizenCommandPaletteSpecialPages"
+				},
 				"resources/skins.citizen.scripts/keyboardLayout.js"
 			],
 			"messages": [
@@ -535,8 +540,8 @@
 				"citizen-command-palette-detail-copy-feedback",
 				"citizen-command-palette-heading-recent",
 				"citizen-command-palette-heading-related",
+				"citizen-command-palette-help-placeholder",
 				"citizen-command-palette-help-section-description",
-				"citizen-command-palette-help-section-modes",
 				"citizen-command-palette-help-section-triggers",
 				"citizen-command-palette-keyhint-actions",
 				"citizen-command-palette-keyhint-back",
@@ -547,6 +552,7 @@
 				"citizen-command-palette-keyhint-close",
 				"citizen-command-palette-keyhint-edit-token",
 				"citizen-command-palette-keyhint-exit",
+				"citizen-command-palette-keyhint-exit-literal",
 				"citizen-command-palette-keyhint-navigate",
 				"citizen-command-palette-keyhint-return",
 				"citizen-command-palette-keyhint-select-token",
@@ -753,6 +759,7 @@
 				"article",
 				"articleNotFound",
 				"articleRedirect",
+				"articles",
 				"articleSearch",
 				"articlesSearch",
 				"bell",
@@ -782,6 +789,7 @@
 				"message",
 				"move",
 				"printer",
+				"puzzle",
 				"qrCode",
 				"quotes",
 				"recentChanges",
@@ -807,6 +815,7 @@
 				"userAvatar",
 				"userContributions",
 				"userGroup",
+				"userRights",
 				"userTalk",
 				"watchlist",
 				"wikiText"
@@ -846,12 +855,15 @@
 			"+ext.cleanchanges.uls": "skinStyles/extensions/CleanChanges/ext.cleanchanges.uls.less",
 			"+ext.codeEditor.ace": "skinStyles/extensions/CodeEditor/ext.codeEditor.ace.less",
 			"+jquery.codeEditor": "skinStyles/extensions/CodeEditor/jquery.codeEditor.less",
+			"+ext.CodeMirror": "skinStyles/extensions/CodeMirror/ext.CodeMirror.v6.less",
 			"+ext.CodeMirror.lib": "skinStyles/extensions/CodeMirror/ext.CodeMirror.lib.less",
 			"+ext.CodeMirror.mode.mediawiki": "skinStyles/extensions/CodeMirror/codemirror.mediawiki.less",
 			"+ext.CodeMirror.v6": "skinStyles/extensions/CodeMirror/ext.CodeMirror.v6.less",
 			"+ext.CodeMirror.v6.mode.mediawiki": "skinStyles/extensions/CodeMirror/codemirror.mediawiki.less",
 			"+ext.CodeMirror.v6.visualEditor": "skinStyles/extensions/CodeMirror/ext.CodeMirror.v6.visualEditor.less",
 			"+ext.CodeMirror.v6.WikiEditor": "skinStyles/extensions/CodeMirror/ext.CodeMirror.v6.WikiEditor.less",
+			"+ext.CodeMirror.visualEditor": "skinStyles/extensions/CodeMirror/ext.CodeMirror.v6.visualEditor.less",
+			"+ext.CodeMirror.WikiEditor": "skinStyles/extensions/CodeMirror/ext.CodeMirror.v6.WikiEditor.less",
 			"+ext.CommentStreams": "skinStyles/extensions/CommentStreams/ext.CommentStreams.less",
 			"+ext.datamaps.core": "skinStyles/extensions/DataMaps/ext.datamaps.core.less",
 			"+ext.datamaps.core.styles": "skinStyles/extensions/DataMaps/ext.datamaps.core.styles.less",
