@@ -3,7 +3,7 @@
 
 	&-contents {
 		position: relative;
-		margin: 0 0 0 var( --space-xs );
+		margin: var( --space-xxs ) 0 var( --space-xxs ) var( --space-xs );
 		border-left: var( --border-width-thick ) solid var( --border-color-base );
 
 		// Reset padding on the direct child list since indentation is only for sublists
@@ -20,17 +20,18 @@
 		list-style: none;
 	}
 
-	// Use .citizen-toc .citizen-toc-link to beat Codex .cdx-button specificity
+	// The row layout on top of the quiet Codex button comes from
+	// .citizen-page-aside__link, which these anchors also carry. What is left
+	// here is what the indicator rail needs: a row that fills the track and
+	// meets the rail with square corners. Scoped under .citizen-toc to beat
+	// Codex .cdx-button specificity.
 	.citizen-toc-link {
-		display: flex;
 		flex-grow: 1;
-		gap: var( --space-xs );
-		align-items: center;
-		justify-content: normal;
-		max-width: none;
-		font-size: inherit; // unset CdxButton font-size
-		font-weight: var( --font-weight-medium );
-		text-wrap: auto; // unset CdxButton text-wrap
+		// The outline is a dense list, so its rows sit at the interactive
+		// minimum rather than the taller panel-link height. Same specificity as
+		// that rule, so this wins by skin.less importing this file after
+		// PageAside.less.
+		min-height: @min-size-interactive-pointer;
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
 
@@ -42,7 +43,7 @@
 			opacity: 0;
 			transition-timing-function: var( --transition-timing-function-ease-out );
 			transition-duration: var( --transition-duration-medium );
-			transition-property: opacity, height, padding;
+			transition-property: opacity, padding;
 		}
 	}
 
@@ -130,8 +131,9 @@
 // up, because below tablet that bar does not exist and the row still should.
 .citizen-below-page-title {
 	.citizen-toc .citizen-toc-top.citizen-toc-link {
-		height: 2rem; // 1rem text + 1rem padding
-		padding-block: var( --space-xs );
+		height: auto;
+		min-height: 2rem;
+		padding-block: var( --space-xxs );
 		overflow: visible;
 		opacity: 1;
 	}
@@ -147,6 +149,12 @@
 		bottom: ~'calc( var( --header-size-block-end ) + max( env( safe-area-inset-bottom ), var( --space-xs ) ) )';
 		left: var( --space-xs );
 		z-index: @z-index-sticky; // Keep ToC above sticky header and page action, but below site header
+
+		// The pill is the control at this width; the panel heading would be a
+		// second label for it, standing outside the popover.
+		> .citizen-page-aside__heading {
+			display: none;
+		}
 
 		&-card {
 			// Sits on the control with the gap stated here rather than left to
@@ -211,32 +219,32 @@
 
 @media ( min-width: @min-width-breakpoint-desktop ) {
 	.citizen-toc {
-		.mixin-citizen-header-offset-block-start();
-		position: -webkit-sticky;
-		position: sticky;
-		top: var( --header-offset-block-start );
-		max-height: ~'calc( 100vh - var( --header-offset-block-start ) )';
+		// The heading is the panel's first child by contract, but the "Back to
+		// top" row reads better above it. The card wrappers only exist for the
+		// below-desktop popover, so at this width they contribute no box and
+		// the row, heading and list become siblings that `order` can arrange.
+		display: flex;
+		flex-direction: column;
 		padding: var( --space-xs ) 0;
 		overflow-y: auto;
 		overscroll-behavior: contain;
 
-		.citizen-menu__card {
-			position: relative;
-			min-width: auto;
-			margin: 0;
-			contain: none;
-			content-visibility: visible;
-			background: transparent;
-			border: 0;
-			border-radius: 0;
-			box-shadow: none;
-			clip-path: none;
-			transform: none;
+		// The dropdown card's closed-state styles (opacity, transform, clip-path,
+		// border and the like) have nothing to paint while these have no box,
+		// so if `contents` ever goes they need resetting here again. HTML cached
+		// before this generation has the old nav#mw-panel-toc here; new markup
+		// makes it a plain div, so the difference ends with the compat window.
+		.citizen-menu__card,
+		.citizen-menu__card-content {
+			display: contents;
+		}
 
-			.citizen-menu__card-content {
-				overflow: visible;
-				opacity: 1;
-			}
+		.citizen-toc-top {
+			// A long outline overflows this scrolling column. The heading and list
+			// cannot shrink below their content, but the row's explicit min-height
+			// replaces that floor, so without this the row alone absorbs the overflow.
+			flex-shrink: 0;
+			order: -1;
 		}
 
 		// Hide button in desktop viewport

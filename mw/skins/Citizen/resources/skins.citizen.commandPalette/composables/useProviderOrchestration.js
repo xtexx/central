@@ -1,5 +1,6 @@
 const { ref, shallowRef, computed } = require( 'vue' );
 const useOperationLifecycle = require( './useOperationLifecycle.js' );
+const destinationKey = require( '../utils/destinationKey.js' );
 const { DEFAULT_DEBOUNCE_MS } = require( '../providers/createProvider.js' );
 
 const SHOW_PENDING_DELAY_MS = 300;
@@ -47,9 +48,8 @@ function normalizeProviderResult( result ) {
  * Replaces the Pinia searchStore.
  *
  * @param {Array<Object>} providers Array of validated provider objects.
- * @param {{leadActions: ( query: string ) => Array<Object>, trailActions: ( query: string ) => Array<Object>}} resultDecorator
- *   `createAppendQueryActions()`'s return. Only its two attached action
- *   builders are used here; the decorator itself is applied by the caller.
+ * @param {{queryActions: ( query: string, options?: { leads?: boolean, results?: Array<Object> } ) => { lead: Array<Object>, trail: Array<Object> }}} resultDecorator
+ *   `createAppendQueryActions()`'s return.
  * @param {Object} [deps={}] Optional dependencies for presults.
  * @param {Object} [deps.recentItemsProvider] Provider for recent items (presults).
  * @param {Object} [deps.relatedArticlesProvider] Provider for related articles (presults).
@@ -106,13 +106,13 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 	const queryActionQuery = computed(
 		() => activeMode.value ? '' : query.value
 	);
-	const leadActions = computed( () => content.value.providerId === 'search' ?
-		resultDecorator.leadActions( queryActionQuery.value ) :
-		[] );
-	const trailActions = computed( () => content.value.providerId === 'search' ?
-		resultDecorator.trailActions( queryActionQuery.value ) :
-		resultDecorator.leadActions( queryActionQuery.value )
-			.concat( resultDecorator.trailActions( queryActionQuery.value ) ) );
+	const queryActions = computed( () => resultDecorator.queryActions(
+		queryActionQuery.value,
+		{
+			leads: content.value.providerId === 'search',
+			results: content.value.items
+		}
+	) );
 
 	/**
 	 * @param {?string} heading
@@ -133,8 +133,10 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 		}
 
 		if ( isPresultsSurface.value ) {
-			const relatedUrls = new Set(
-				related.value.items.map( ( item ) => item.url ).filter( Boolean )
+			// A page Related already lists is not repeated under Recent,
+			// however each of them links to it.
+			const relatedPages = new Set(
+				related.value.items.filter( ( item ) => item.url ).map( destinationKey )
 			);
 			return [
 				section(
@@ -143,16 +145,20 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 				section(
 					'citizen-command-palette-heading-recent',
 					recents.value.filter(
-						( item ) => !item.url || !relatedUrls.has( item.url )
+						( item ) => !item.url || !relatedPages.has( destinationKey( item ) )
 					)
 				)
 			].filter( Boolean );
 		}
 
+		const { lead, trail } = queryActions.value;
+		// The lead can stand in for one of the results, which is then not
+		// repeated below it.
+		const inLead = new Set( lead.map( ( item ) => item.id ) );
 		return [
-			section( null, leadActions.value ),
-			section( null, content.value.items ),
-			section( null, trailActions.value )
+			section( null, lead ),
+			section( null, content.value.items.filter( ( item ) => !inLead.has( item.id ) ) ),
+			section( null, trail )
 		].filter( Boolean );
 	} );
 
@@ -161,8 +167,8 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 	);
 	const hasDisplayedItems = computed( () => flatItems.value.length > 0 );
 
-	// The lead group owns the default highlight: the synchronous fulltext row
-	// when there is one, otherwise the async content group.
+	// The lead group owns the default highlight: the synchronous query-action
+	// row when there is one, otherwise the async content group.
 	const isLeadReady = computed( () => {
 		if ( helpVisible.value ) {
 			return true;
@@ -170,7 +176,7 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 		if ( isPresultsSurface.value ) {
 			return related.value.settled;
 		}
-		return leadActions.value.length > 0 || isContentCurrent.value;
+		return queryActions.value.lead.length > 0 || isContentCurrent.value;
 	} );
 
 	const isLoading = computed( () => {
@@ -545,7 +551,13 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 
 		if ( actionResult.action === 'navigate' && result.type !== 'command' ) {
 			if ( deps.recentItemsService ) {
-				deps.recentItemsService.saveRecentItem( result );
+				// A lead row standing in for a result carries that result's id
+				// but not its link. Recent keeps the result itself, so the saved
+				// entry links to the page and not through Special:Search.
+				const standsFor = content.value.items.find(
+					( item ) => item.id === result.id
+				);
+				deps.recentItemsService.saveRecentItem( standsFor || result );
 			}
 		}
 

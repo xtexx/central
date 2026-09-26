@@ -237,6 +237,17 @@ describe( 'useKeyboard', () => {
 			expect( event.preventDefault ).toHaveBeenCalled();
 		} );
 
+		it( 'should run the go row on Shift+Enter', () => {
+			deps.items.value = [ { id: 'go', source: 'queryAction:go' } ];
+			listNav.highlightedIndex.value = 0;
+			const event = createKeyEvent( 'Enter' );
+			event.shiftKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.onSelect ).toHaveBeenCalledWith( deps.items.value[ 0 ] );
+		} );
+
 		it( 'should run the fulltext row on Shift+Enter', () => {
 			deps.items.value = [ { id: 'fulltext', source: 'queryAction:fulltext-search' } ];
 			listNav.highlightedIndex.value = 0;
@@ -776,6 +787,23 @@ describe( 'useKeyboard', () => {
 			);
 		} );
 
+		it( 'should name Enter as Go when the go row is highlighted', () => {
+			deps.items.value = [
+				{ id: 1, type: 'action', source: 'queryAction:go' },
+				{ id: 2, type: 'page' }
+			];
+			listNav.highlightedIndex.value = 0;
+
+			const hints = keyboard.keyboardHints.value;
+
+			expect( hints ).toContainEqual(
+				{ msgKey: 'citizen-command-palette-keyhint-enter-go', kbd: '↵', keys: [ '↵' ] }
+			);
+			expect( hints ).not.toContainEqual(
+				{ msgKey: 'citizen-command-palette-keyhint-enter-select', kbd: '↵', keys: [ '↵' ] }
+			);
+		} );
+
 		it( 'should return Enter/Select, Navigate, and Exit when item is highlighted with no actions', () => {
 			deps.items.value = [ { id: 1, type: 'page' }, { id: 2, type: 'page' } ];
 			listNav.highlightedIndex.value = 0;
@@ -1032,6 +1060,99 @@ describe( 'useKeyboard', () => {
 			keyboard.handleKeydown( event );
 
 			expect( deps.onClose ).toHaveBeenCalled();
+		} );
+	} );
+
+	describe( 'focus parked outside the input', () => {
+		let palette;
+
+		// The handler is bound to the palette, so a key pressed while focus
+		// rests on the palette itself arrives with it as both targets.
+		function createParkedKeyEvent( key, target ) {
+			const event = createKeyEvent( key, target || palette );
+			event.currentTarget = palette;
+			return event;
+		}
+
+		beforeEach( () => {
+			document.body.innerHTML = `
+				<div class="citizen-command-palette" tabindex="-1">
+					<div role="listbox" tabindex="-1"></div>
+					<button type="button">Copy</button>
+				</div>
+			`;
+			palette = document.querySelector( '.citizen-command-palette' );
+		} );
+
+		it( 'returns focus to the input for a typed character, and leaves the character to land there', () => {
+			const event = createParkedKeyEvent( 'a' );
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.inputRef.value.focus ).toHaveBeenCalled();
+			expect( event.preventDefault ).not.toHaveBeenCalled();
+		} );
+
+		it.each( [ 'Backspace', 'Delete' ] )( 'returns focus to the input for %s', ( key ) => {
+			deps.query.value = 'hello';
+			keyboard = useKeyboard( toGrouped( deps ) );
+			const event = createParkedKeyEvent( key );
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.inputRef.value.focus ).toHaveBeenCalled();
+			expect( event.preventDefault ).not.toHaveBeenCalled();
+		} );
+
+		it( 'returns focus to the input for a key the palette claims, and still acts on it', () => {
+			keyboard.handleKeydown( createParkedKeyEvent( 'ArrowDown' ) );
+
+			expect( deps.inputRef.value.focus ).toHaveBeenCalled();
+			expect( listNav.highlightNext ).toHaveBeenCalled();
+		} );
+
+		it( 'treats focus on the results listbox the same way', () => {
+			keyboard.handleKeydown(
+				createParkedKeyEvent( 'a', palette.querySelector( '[role="listbox"]' ) )
+			);
+
+			expect( deps.inputRef.value.focus ).toHaveBeenCalled();
+		} );
+
+		it( 'still enters a mode from its trigger character', () => {
+			const mode = { id: 'user', triggers: [ '@' ] };
+			deps.findModeByTrigger = vi.fn( () => mode );
+			keyboard = useKeyboard( toGrouped( deps ) );
+			const event = createParkedKeyEvent( '@' );
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.inputRef.value.focus ).toHaveBeenCalled();
+			expect( event.preventDefault ).toHaveBeenCalled();
+			expect( deps.onEnterMode ).toHaveBeenCalledWith( mode, '@' );
+		} );
+
+		it( 'leaves a chord where it is, so a selection in the palette can still be copied', () => {
+			const event = createParkedKeyEvent( 'c' );
+			event.ctrlKey = true;
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.inputRef.value.focus ).not.toHaveBeenCalled();
+		} );
+
+		it( 'leaves a key the palette does not act on where it is', () => {
+			keyboard.handleKeydown( createParkedKeyEvent( 'PageDown' ) );
+
+			expect( deps.inputRef.value.focus ).not.toHaveBeenCalled();
+		} );
+
+		it( 'leaves Space with a focused button, which it activates', () => {
+			const event = createParkedKeyEvent( ' ', palette.querySelector( 'button' ) );
+
+			keyboard.handleKeydown( event );
+
+			expect( deps.inputRef.value.focus ).not.toHaveBeenCalled();
 		} );
 	} );
 
