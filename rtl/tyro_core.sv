@@ -1,0 +1,66 @@
+`timescale 1ns / 1ps
+`default_nettype none
+
+module tyro_core (
+    input wire clk,
+    input wire rst,
+    taxi_axil_if.wr_mst pmem_wr,
+    taxi_axil_if.rd_mst pmem_rd
+);
+
+  parameter int unsigned PADDR_W = pmem_rd.ADDR_W;
+  parameter int unsigned VADDR_W = 40;
+
+  logic pipeline_flush = 0;
+
+  // FTQ
+  ftq_addr_if #(.ADDR_W(VADDR_W))
+      ftq_out (
+          .clk(clk),
+          .rst(rst)
+      ),
+      ftq_redir (
+          .clk(clk),
+          .rst(rst)
+      );
+  seq_pc_gen seq_pc_gen (
+      .clk(clk),
+      .rst(rst),
+      .out_if(ftq_out),
+      .redir_if(ftq_redir)
+  );
+
+  // IFU
+  ifu_out_if #(.ADDR_W(VADDR_W))
+      ifu_out (
+          .clk(clk),
+          .rst(rst)
+      ),
+      inst_buf_out (
+          .clk(clk),
+          .rst(rst)
+      );
+  ifu ifu (
+      .clk(clk),
+      .rst(rst),
+      .pmem_rd(pmem_rd),
+      .ifu_if(ifu_out),
+      .ftq_if(ftq_out)
+  );
+
+  // InstBuf
+  inst_buf #(
+      .DEPTH(4)
+  ) inst_buf (
+      .clk(clk),
+      .rst(rst),
+      .rx(ifu_out),
+      .tx(inst_buf_out),
+      .flush(pipeline_flush)
+  );
+
+  assign inst_buf_out.ready = 1;
+
+  // ID
+
+endmodule

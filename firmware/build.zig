@@ -1,0 +1,34 @@
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.resolveTargetQuery(.{
+        .cpu_arch = .loongarch64,
+        .cpu_model = .{ .explicit = &std.Target.loongarch.cpu.generic_la64 },
+        .abi = .muslsf,
+        .ofmt = .elf,
+        .os_tag = .freestanding,
+    });
+
+    const obj = b.addObject(.{
+        .name = "tyro-core-firmware",
+        .use_llvm = true,
+        .use_lld = true,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = .small,
+            .code_model = .normal,
+            .pic = false,
+            .single_threaded = true,
+            .imports = &.{},
+            .link_libc = false,
+            .link_libcpp = false,
+            .strip = true,
+        }),
+    });
+    obj.setLinkerScript(b.path("src/linker.ld"));
+    b.getInstallStep().dependOn(&b.addInstallFile(obj.getEmittedBin(), "tyro-core-firmware.o").step);
+
+    const objcopy = obj.addObjCopy(.{ .format = .binary, .only_section = ".text" });
+    b.getInstallStep().dependOn(&b.addInstallFile(objcopy.getOutput(), "tyro-core-firmware.bin").step);
+}

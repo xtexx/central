@@ -1,0 +1,6 @@
+/build
+/.cache
+*.fst
+*.log
+/firmware/.zig-cache
+/firmware/zig-out

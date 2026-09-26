@@ -1,0 +1,9 @@
+`verilator_config
+
+lint_off -rule PROCASSINIT -file "vendor/taxi/*"
+lint_off -rule GENUNNAMED -file "vendor/taxi/*"
+
+lint_off -rule SYNCASYNCNET -file "vendor/common_cells/*"
+
+public_flat_rd -module "tyro_core" -var "*"
+public_flat_rd -module "*_if" -var "*"

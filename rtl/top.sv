@@ -1,0 +1,48 @@
+`timescale 1ns / 1ps
+`default_nettype none
+
+module top (
+    input clk,
+    input rst
+);
+  // Memory Controller
+  taxi_axil_if #(
+      .DATA_W(64),
+      .ADDR_W(32)
+  ) pmem_region_axil_if[1] ();
+  taxi_axil_ram sram_mc (
+      .clk(clk),
+      .rst(rst),
+      .s_axil_wr(pmem_region_axil_if[0]),
+      .s_axil_rd(pmem_region_axil_if[0])
+  );
+
+  // Memory Interconnect
+  taxi_axil_if #(
+      .DATA_W(64),
+      .ADDR_W(40)
+  ) pmem_axil_if[1] ();
+  taxi_axil_interconnect #(
+      .S_COUNT(1),
+      .M_COUNT(1),
+      .ADDR_W(40),
+      .M_ADDR_W(32),
+      .M_REGIONS(1),
+      .M_BASE_ADDR({40'h0000000000})
+  ) mem_interconnect (
+      .clk(clk),
+      .rst(rst),
+      .s_axil_wr(pmem_axil_if),
+      .s_axil_rd(pmem_axil_if),
+      .m_axil_wr(pmem_region_axil_if),
+      .m_axil_rd(pmem_region_axil_if)
+  );
+
+  // Cores
+  tyro_core core (
+      .clk(clk),
+      .rst(rst),
+      .pmem_wr(pmem_axil_if[0]),
+      .pmem_rd(pmem_axil_if[0])
+  );
+endmodule
