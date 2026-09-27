@@ -19,8 +19,7 @@ this is one of the places where [xtex](https://xtexx.eu.org) writes things rando
 
 - [exozyme](https://exozy.me/)
 - [molyuu](https://molyuu.cyou/)
-- [sugarmgp](https://blog.sugarmgp.icu/)
-- [xvnet](https://w.xvnet.eu.org/)
+- [梓瑶](https://blog.ziyao.cc/)
 
 {{</hlist>}}
 
