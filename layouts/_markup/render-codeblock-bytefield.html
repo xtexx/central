@@ -1,0 +1,15 @@
+{{- $diagramSrc := .Inner | strings.TrimSpace }}
+{{- $url := "https://kroki.io/bytefield/svg" }}
+{{- $diagramHash := (hash.XxHash $diagramSrc) }}
+{{- $opts := dict
+    "key" (print page.Path "bytefield-svg" $diagramHash)
+    "method" "POST"
+    "body" $diagramSrc
+    "headers" (dict "Content-Type" "text/plain")
+-}}
+
+{{- with resources.GetRemote $url $opts -}}
+    {{- with resources.Copy (printf "%s/diagrams/bytefield-%s.svg" page.RelPermalink $diagramHash) (. | minify) -}}
+        <img class="diagram bytefield" src="{{ .RelPermalink }}" alt="Diagram" loading="lazy">
+    {{- end -}}
+{{- end -}}

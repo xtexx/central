@@ -1,0 +1,15 @@
+{{- $diagramSrc := .Inner | strings.TrimSpace }}
+{{- $url := "https://kroki.io/pikchr/svg" }}
+{{- $diagramHash := (hash.XxHash $diagramSrc) }}
+{{- $opts := dict
+    "key" (print page.Path "pikchr-svg" $diagramHash)
+    "method" "POST"
+    "body" $diagramSrc
+    "headers" (dict "Content-Type" "text/plain")
+-}}
+
+{{- with resources.GetRemote $url $opts -}}
+    {{- with resources.Copy (printf "%s/diagrams/pikchr-%s.svg" page.RelPermalink $diagramHash) (. | minify) -}}
+        <img class="diagram pikchr" src="{{ .RelPermalink }}" alt="Diagram" loading="lazy">
+    {{- end -}}
+{{- end -}}

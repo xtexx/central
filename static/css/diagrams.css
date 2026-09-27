@@ -1,0 +1,78 @@
+/* Color scheme */
+
+.mermaid>.mermaid-neutral,
+.mermaid>.mermaid-dark {
+    display: none;
+}
+
+.mermaid>.mermaid-default {
+    display: inline;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    .mermaid>.mermaid-default,
+    .mermaid>.mermaid-neutral {
+        display: none;
+    }
+
+    .mermaid>.mermaid-dark {
+        display: inline;
+    }
+
+}
+
+@media print {
+
+    .mermaid>.mermaid-default,
+    .mermaid>.mermaid-dark {
+        display: none;
+    }
+
+    .mermaid>.mermaid-neutral {
+        display: inline;
+    }
+
+}
+
+/* Styles for diagrams without theme support */
+
+.diagram.blockdiag,
+.diagram.bytefield,
+.diagram.packetdiag,
+.diagram.pikchr,
+.diagram.tikz,
+.diagram.wavedrom {
+    color-scheme: light;
+    background-color: #f0f0f0;
+    border: 1pt dashed #333;
+}
+
+.diagram.bytefield,
+.diagram.pikchr,
+.diagram.tikz {
+    padding: 10pt;
+}
+
+@media print {
+
+    .diagram.blockdiag,
+    .diagram.bytefield,
+    .diagram.packetdiag,
+    .diagram.pikchr,
+    .diagram.tikz,
+    .diagram.wavedrom {
+        color-scheme: light;
+        background-color: initial;
+    }
+
+}
+
+/* Width limitation */
+
+.diagram.blockdiag,
+.diagram.bytefield,
+.diagram.packetdiag,
+.diagram.pikchr {
+    max-width: 65%;
+}

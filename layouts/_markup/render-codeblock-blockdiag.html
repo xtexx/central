@@ -1,0 +1,15 @@
+{{- $diagramSrc := .Inner | strings.TrimSpace }}
+{{- $url := "https://kroki.io/blockdiag/svg" }}
+{{- $diagramHash := (hash.XxHash $diagramSrc) }}
+{{- $opts := dict
+    "key" (print page.Path "blockdiag-svg" $diagramHash)
+    "method" "POST"
+    "body" $diagramSrc
+    "headers" (dict "Content-Type" "text/plain")
+-}}
+
+{{- with resources.GetRemote $url $opts -}}
+    {{- with resources.Copy (printf "%s/diagrams/blockdiag-%s.svg" page.RelPermalink $diagramHash) (. | minify) -}}
+        <img class="diagram blockdiag" src="{{ .RelPermalink }}" alt="Diagram" loading="lazy">
+    {{- end -}}
+{{- end -}}
