@@ -367,9 +367,24 @@ const coreBindings = [
 	},
 
 	// --- INPUT ZONE: Enter ---
-	// Three disjoint cases, most specific first. The fulltext row and an
+	// Four disjoint cases, most specific first. The query-action rows and an
 	// ordinary result activate identically; the split exists so the footer can
 	// name which meaning Enter currently carries.
+	{
+		id: 'input-enter-select-go',
+		zone: 'input',
+		keys: [ 'Enter' ],
+		modifiers: SHIFT_AGNOSTIC,
+		when: ( state ) => state.highlightedIndex >= 0 &&
+			Boolean( state.highlightedItem ) &&
+			state.highlightedItem.source === 'queryAction:go',
+		worksDuringHelp: true,
+		handle: ( state, event ) => {
+			event.preventDefault();
+			state.onSelect( state.items[ state.highlightedIndex ] );
+		},
+		hint: { msgKey: 'citizen-command-palette-keyhint-enter-go', kbd: '↵', order: 10 }
+	},
 	{
 		id: 'input-enter-select-search',
 		zone: 'input',
@@ -712,6 +727,25 @@ function actionCount( state ) {
 }
 
 /**
+ * Whether focus is resting on a container rather than a control. The palette
+ * and its results listbox are focusable only so that a click on a part of the
+ * palette that takes no focus keeps it inside the palette, where this handler
+ * is bound. Neither does anything with a key itself.
+ *
+ * @param {KeyboardEvent} event
+ * @return {boolean}
+ */
+function isFocusParked( event ) {
+	const target = event.target;
+	if ( !target ) {
+		return false;
+	}
+	return target === event.currentTarget || (
+		target instanceof Element && target.getAttribute( 'role' ) === 'listbox'
+	);
+}
+
+/**
  * Centralized keyboard routing composable for the command palette.
  *
  * Internally this wires reactive Vue refs into a plain state snapshot the
@@ -1040,16 +1074,25 @@ function useKeyboard( options ) {
 		const logicalKey = MIRRORED_KEYS[ event.key ] ?
 			toLogicalKey( event.key, isRtlDirection( state.inputElement ) ) :
 			event.key;
+		// A key the palette acts on takes parked focus back to the input first,
+		// so the input's aria-activedescendant is what a screen reader follows.
+		const focusParked = isFocusParked( event );
 		const binding = resolveBinding( state, logicalKey, activeBindings.value, modifiers );
 		if ( binding ) {
+			if ( focusParked ) {
+				focusInput();
+			}
 			binding.handle( state, event );
 			return;
 		}
 
-		// Action-zone fallback: typing redirects to the input field.
+		// Typing from an action button or from parked focus redirects to the
+		// input. Focus moves before the keystroke's default action, so the
+		// character or deletion lands in the input — unless the fallback below
+		// takes the character as a mode trigger.
 		if (
 			isTypedText &&
-			state.actionsFocused &&
+			( state.actionsFocused || focusParked ) &&
 			(
 				event.key.length === 1 ||
 				event.key === 'Backspace' ||
@@ -1058,7 +1101,6 @@ function useKeyboard( options ) {
 		) {
 			actionNav.deactivate();
 			focusInput();
-			return;
 		}
 
 		// Mode-trigger fallback (Note C): a printable single-char with no active

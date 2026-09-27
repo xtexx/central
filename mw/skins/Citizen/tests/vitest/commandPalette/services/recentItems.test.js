@@ -1,9 +1,18 @@
+// @vitest-environment jsdom
 /* global globalThis */
 
 const mw = require( '../../mocks/mw.js' );
 globalThis.mw = mw;
 
+const mwTitle = require( '../../mocks/mwTitle.js' );
+
 const createRecentItems = require( '../../../../resources/skins.citizen.commandPalette/services/recentItems.js' );
+
+const RECENT_ITEMS_KEY = 'skin-citizen-command-palette-recent-items';
+
+function stored() {
+	return mw.storage.getObject( RECENT_ITEMS_KEY );
+}
 
 describe( 'createRecentItems', () => {
 	let service;
@@ -11,6 +20,11 @@ describe( 'createRecentItems', () => {
 
 	beforeEach( () => {
 		vi.restoreAllMocks();
+		mw.config.get = vi.fn( ( key ) => ( {
+			wgArticlePath: '/wiki/$1',
+			wgScript: '/w/index.php'
+		} )[ key ] ?? null );
+		mw.Title = mwTitle;
 
 		storage = {};
 		mw.storage.getObject = vi.fn( ( key ) => {
@@ -23,7 +37,6 @@ describe( 'createRecentItems', () => {
 		mw.storage.remove = vi.fn( ( key ) => {
 			delete storage[ key ];
 		} );
-		mw.util.escapeIdForAttribute = vi.fn( ( str ) => str.replace( /[^a-zA-Z0-9-_:.]/g, '_' ) );
 
 		service = createRecentItems();
 	} );
@@ -86,6 +99,80 @@ describe( 'createRecentItems', () => {
 		} );
 	} );
 
+	describe( 'one entry per destination', () => {
+		const searchResult = {
+			id: 'citizen-command-palette-item-page-User:Alistair3149',
+			type: 'page',
+			label: 'User:Alistair3149',
+			url: '/wiki/User:Alistair3149'
+		};
+		const userResult = {
+			id: 'citizen-command-palette-item-user-7',
+			type: 'user',
+			label: 'Alistair3149',
+			url: '/wiki/User:Alistair3149'
+		};
+		const other = { id: 'other', type: 'page', label: 'Other', url: '/wiki/Other' };
+
+		it( 'keeps a mode\'s own entry over a page result for the same page', () => {
+			service.saveRecentItem( searchResult );
+
+			service.saveRecentItem( userResult );
+
+			expect( stored() ).toEqual( [ userResult ] );
+		} );
+
+		it( 'keeps the mode\'s entry, moved to the top, when the page result is opened later', () => {
+			service.saveRecentItem( userResult );
+			service.saveRecentItem( other );
+
+			service.saveRecentItem( searchResult );
+
+			expect( stored() ).toEqual( [ userResult, other ] );
+		} );
+
+		it( 'shows the newest of two entries that are equally specific', () => {
+			const categoryMember = { ...searchResult, id: 'citizen-command-palette-item-categorymember-User:Alistair3149' };
+			service.saveRecentItem( searchResult );
+
+			service.saveRecentItem( categoryMember );
+
+			expect( stored() ).toEqual( [ categoryMember ] );
+		} );
+
+		it( 'counts a go row as the page its query names', () => {
+			const go = {
+				id: 'citizen-command-palette-item-go-akita',
+				type: 'action',
+				label: 'akita',
+				url: '/w/index.php?title=Special:Search&search=akita'
+			};
+			const page = { id: 'page-Akita', type: 'page', label: 'Akita', url: '/wiki/Akita' };
+			service.saveRecentItem( page );
+			service.saveRecentItem( other );
+
+			service.saveRecentItem( go );
+
+			expect( stored() ).toEqual( [ page, other ] );
+		} );
+
+		it( 'keeps each full-text search as its own entry', () => {
+			const fulltext = ( query ) => ( {
+				id: `citizen-command-palette-item-fulltext-search-${ query }`,
+				type: 'action',
+				label: query,
+				url: `/w/index.php?title=Special:Search&search=${ query }&fulltext=1`
+			} );
+			service.saveRecentItem( fulltext( 'sun' ) );
+			service.saveRecentItem( fulltext( 'moon' ) );
+
+			service.saveRecentItem( fulltext( 'sun' ) );
+
+			expect( stored().map( ( i ) => i.label ) ).toEqual( [ 'sun', 'moon' ] );
+		} );
+
+	} );
+
 	describe( 'getRecentItems', () => {
 		it( 'returns empty array when no items saved', () => {
 			const result = service.getRecentItems();
@@ -118,6 +205,18 @@ describe( 'createRecentItems', () => {
 			expect( result[ 0 ].modifierClick ).toBeUndefined();
 		} );
 
+		it( 'keeps one entry per page from a history an earlier version saved', () => {
+			mw.storage.setObject( RECENT_ITEMS_KEY, [
+				{ id: 'page', type: 'page', label: 'User:Foo', url: '/wiki/User:Foo' },
+				{ id: 'user', type: 'user', label: 'Foo', url: '/wiki/User:Foo' },
+				{ id: 'bar', type: 'page', label: 'Bar', url: '/wiki/Bar' }
+			] );
+
+			const result = service.getRecentItems();
+
+			expect( result.map( ( i ) => i.id ) ).toEqual( [ 'user', 'bar' ] );
+		} );
+
 		it( 'does not duplicate dismiss action if already present', () => {
 			const existingDismiss = { id: 'dismiss', label: 'Already there', icon: 'some-icon' };
 			service.saveRecentItem( { id: 'item-1', label: 'Page 1', actions: [ existingDismiss ] } );
@@ -143,6 +242,20 @@ describe( 'createRecentItems', () => {
 		} );
 	} );
 
+	describe( 'removeRecentItem — by destination', () => {
+		it( 'removes every entry for the dismissed page, however it was saved', () => {
+			mw.storage.setObject( RECENT_ITEMS_KEY, [
+				{ id: 'page', type: 'page', label: 'User:Foo', url: '/wiki/User:Foo' },
+				{ id: 'user', type: 'user', label: 'Foo', url: '/wiki/User:Foo' }
+			] );
+			const [ shown ] = service.getRecentItems();
+
+			service.removeRecentItem( shown );
+
+			expect( stored() ).toEqual( [] );
+		} );
+	} );
+
 	describe( 'clearHistory', () => {
 		it( 'removes all items', () => {
 			service.saveRecentItem( { id: 'item-1', label: 'Page 1' } );
@@ -153,22 +266,6 @@ describe( 'createRecentItems', () => {
 			expect( mw.storage.remove ).toHaveBeenCalledWith( 'skin-citizen-command-palette-recent-items' );
 			const stored = mw.storage.getObject( 'skin-citizen-command-palette-recent-items' );
 			expect( stored ).toBeNull();
-		} );
-	} );
-
-	describe( 'saveSearchQuery', () => {
-		it( 'saves a search query with correct format', () => {
-			service.saveSearchQuery( 'test query', '/wiki/Special:Search?search=test+query' );
-
-			const stored = mw.storage.getObject( 'skin-citizen-command-palette-recent-items' );
-			expect( stored ).toHaveLength( 1 );
-
-			const item = stored[ 0 ];
-			expect( item.type ).toBe( 'fulltext-search' );
-			expect( item.id ).toBe( 'citizen-command-palette-result-search-test_query' );
-			expect( item.label ).toBe( 'test query' );
-			expect( item.url ).toBe( '/wiki/Special:Search?search=test+query' );
-			expect( item.thumbnailIcon ).toBeDefined();
 		} );
 	} );
 } );

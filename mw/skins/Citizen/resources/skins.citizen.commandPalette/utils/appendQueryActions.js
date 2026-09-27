@@ -1,19 +1,28 @@
-const { cdxIconArticleSearch, cdxIconEdit } = require( '../icons.json' );
+const { cdxIconArticleSearch, cdxIconEdit, cdxIconSearch } = require( '../icons.json' );
 
 /**
- * Creates a decorator function that appends query action items to search results.
+ * Creates the query actions: rows that act on the typed query as a whole
+ * rather than on one result (go to the page, full-text search, page edit).
  *
- * This replaces the former QueryActionProvider by converting its logic from a
- * provider into a pure result decorator. The returned function can be applied
- * to any items array to append contextual action items (fulltext search,
- * page edit) based on the current query.
- *
- * @return {Function} A decorator function `(items, query) => decoratedItems`.
+ * @return {{queryActions: Function}}
  */
 function createAppendQueryActions() {
 	const isPageEditable = !!mw.config.get( 'wgRelevantPageIsProbablyEditable' );
+	// Whether Special:Search sends a query that names an existing page straight
+	// to it. Off when the wiki or the reader has turned that off.
+	const goesToExactMatch = !!mw.user.options.get( 'search-match-redirect' );
 
 	const queryActionDefinitions = [
+		{
+			id: 'go',
+			description: mw.message( 'citizen-command-palette-queryaction-go-description' ).text(),
+			icon: cdxIconSearch,
+			showItem: goesToExactMatch,
+			// Special:Search decides on the server whether the query names a
+			// page, from the query alone, so this row leads to the same place
+			// whether or not the results have arrived.
+			getUrl: ( query ) => mw.util.getUrl( 'Special:Search', { search: query } )
+		},
 		{
 			id: 'fulltext-search',
 			description: mw.message( 'citizen-command-palette-queryaction-fulltext-search-description' ).text(),
@@ -21,8 +30,7 @@ function createAppendQueryActions() {
 			showItem: true,
 			// Without `fulltext`, Special:Search does a near-match "go" and
 			// redirects whenever the query is an exact title, so this row
-			// would sometimes navigate rather than search. That page is
-			// already listed as a result directly below.
+			// would sometimes navigate rather than search.
 			getUrl: ( query ) => mw.util.getUrl(
 				'Special:Search', { search: query, fulltext: 1 }
 			)
@@ -52,7 +60,8 @@ function createAppendQueryActions() {
 		return queryActionDefinitions
 			.filter( ( def ) => def.showItem && ids.includes( def.id ) )
 			.map( ( def ) => ( {
-				id: `citizen-command-palette-item-${ def.id }`,
+				// Per query, so the rows for two queries stay two entries in Recent.
+				id: `citizen-command-palette-item-${ def.id }-${ encodeURIComponent( query ) }`,
 				type: 'action',
 				label: query,
 				description: def.description,
@@ -64,47 +73,68 @@ function createAppendQueryActions() {
 	}
 
 	/**
-	 * The action that restates the typed query as a search. It is derived
-	 * synchronously from the query, so unlike fetched results it always
-	 * matches what is currently in the input — which is what lets it be the
-	 * one row Enter can commit to without waiting.
+	 * The result that is the page the query names, if there is one.
+	 *
+	 * Results are compared by link: a result reached through a redirect links
+	 * to the redirect, so this finds the page whether the query names it
+	 * directly or through one of its redirects.
 	 *
 	 * @param {string} query The current search query.
-	 * @return {Array} Lead action items.
+	 * @param {Array} results Rows shown below the lead.
+	 * @return {Object|undefined} The matching result.
 	 */
-	function leadActions( query ) {
-		return buildActions( query, [ 'fulltext-search' ] );
+	function findNamedPage( query, results ) {
+		const title = mw.Title.newFromText( query );
+		if ( !title ) {
+			return undefined;
+		}
+		const url = mw.util.getUrl( title.getPrefixedText() );
+		return results.find( ( item ) => item.url === url );
 	}
 
 	/**
-	 * Actions that belong after the results.
+	 * Splits the query actions into the row that leads the list and the rows
+	 * that trail the results.
+	 *
+	 * The lead is derived synchronously from the query, so unlike fetched
+	 * results it always matches what is currently in the input — which is
+	 * what lets it be the one row Enter can commit to without waiting. When a
+	 * result is the page the query names, the lead takes that result's place
+	 * and presentation but keeps its own link, so Enter still goes where it
+	 * would have gone before the results arrived. The lead then carries the
+	 * result's id, which is how the caller knows not to repeat it.
 	 *
 	 * @param {string} query The current search query.
-	 * @return {Array} Trailing action items.
+	 * @param {Object} [options]
+	 * @param {boolean} [options.leads=false] Whether the query is a search, and so
+	 *   gets a lead row. A query some other provider claimed only gets the trail.
+	 * @param {Array} [options.results=[]] Rows shown below the lead.
+	 * @return {{lead: Array, trail: Array}}
 	 */
-	function trailActions( query ) {
-		return buildActions( query, [ 'page-edit' ] );
-	}
-
-	/**
-	 * Appends query action items to the given results array.
-	 *
-	 * @param {Array} items The existing result items.
-	 * @param {string} query The current search query.
-	 * @return {Array} A new array with action items appended after the original items.
-	 */
-	function appendQueryActions( items, query ) {
+	function queryActions( query, { leads = false, results = [] } = {} ) {
 		if ( !query ) {
-			return items;
+			return { lead: [], trail: [] };
+		}
+		if ( !leads ) {
+			return {
+				lead: [],
+				trail: buildActions( query, [ 'fulltext-search', 'page-edit' ] )
+			};
 		}
 
-		return [ ...items, ...leadActions( query ), ...trailActions( query ) ];
+		const [ lead, ...trail ] = buildActions(
+			query, [ 'go', 'fulltext-search', 'page-edit' ]
+		);
+		const namedPage = lead.source === 'queryAction:go' ?
+			findNamedPage( query, results ) :
+			undefined;
+		return {
+			lead: [ namedPage ? Object.assign( {}, namedPage, { url: lead.url } ) : lead ],
+			trail
+		};
 	}
 
-	appendQueryActions.leadActions = leadActions;
-	appendQueryActions.trailActions = trailActions;
-
-	return appendQueryActions;
+	return { queryActions };
 }
 
 module.exports = createAppendQueryActions;

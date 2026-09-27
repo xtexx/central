@@ -1,4 +1,5 @@
-const { cdxIconArticleSearch, cdxIconTrash } = require( '../icons.json' );
+const { cdxIconTrash } = require( '../icons.json' );
+const destinationKey = require( '../utils/destinationKey.js' );
 const RECENT_ITEMS_KEY = 'skin-citizen-command-palette-recent-items';
 const MAX_RECENT_ITEMS = 5;
 
@@ -26,6 +27,41 @@ function withoutActivationFlags( item ) {
 }
 
 /**
+ * How much an entry says about what it opens. A row acting on the typed
+ * query (go, full-text search, edit) says least; a mode's own entry (a
+ * user, a file, a special page) says more than a plain page result.
+ *
+ * @param {Object} entry
+ * @return {number}
+ */
+function specificityOf( entry ) {
+	if ( entry.type === 'action' ) {
+		return 0;
+	}
+	return entry.type === 'page' ? 1 : 2;
+}
+
+/**
+ * Keeps one entry per destination, at the place of its newest save, showing
+ * its most specific version and the newest of equally specific ones.
+ *
+ * @param {Object[]} entries Newest first.
+ * @return {Object[]}
+ */
+function collapse( entries ) {
+	const kept = new Map();
+	for ( const entry of entries ) {
+		const key = destinationKey( entry );
+		const current = kept.get( key );
+		// Setting an existing key keeps its place in the Map's order.
+		if ( !current || specificityOf( entry ) > specificityOf( current ) ) {
+			kept.set( key, entry );
+		}
+	}
+	return Array.from( kept.values() );
+}
+
+/**
  * @return {Object} Recent items service
  */
 function createRecentItems() {
@@ -36,34 +72,11 @@ function createRecentItems() {
 	 */
 	function saveRecentItem( item ) {
 		const recentItems = mw.storage.getObject( RECENT_ITEMS_KEY ) || [];
-		// Remove if already exists
-		const existingIndex = recentItems.findIndex( ( i ) => i.id === item.id );
-		if ( existingIndex !== -1 ) {
-			recentItems.splice( existingIndex, 1 );
-		}
-		// Add to beginning
-		recentItems.unshift( withoutActivationFlags( item ) );
-		// Keep only MAX_RECENT_ITEMS
-		if ( recentItems.length > MAX_RECENT_ITEMS ) {
-			recentItems.pop();
-		}
-		mw.storage.setObject( RECENT_ITEMS_KEY, recentItems );
-	}
-
-	/**
-	 * Saves a search query to recent history
-	 *
-	 * @param {string} query - The search query to save
-	 * @param {string} searchUrl - The URL to the search page
-	 */
-	function saveSearchQuery( query, searchUrl ) {
-		saveRecentItem( {
-			type: 'fulltext-search',
-			id: `citizen-command-palette-result-search-${ mw.util.escapeIdForAttribute( query ) }`,
-			label: query,
-			url: searchUrl,
-			thumbnailIcon: cdxIconArticleSearch
-		} );
+		mw.storage.setObject(
+			RECENT_ITEMS_KEY,
+			collapse( [ withoutActivationFlags( item ), ...recentItems ] )
+				.slice( 0, MAX_RECENT_ITEMS )
+		);
 	}
 
 	/**
@@ -79,7 +92,8 @@ function createRecentItems() {
 			icon: cdxIconTrash
 		};
 
-		return items.map( ( item ) => {
+		// An earlier version kept one entry per row rather than per destination.
+		return collapse( items ).map( ( item ) => {
 			const actions = Array.isArray( item.actions ) ? [ ...item.actions ] : [];
 			if ( !actions.some( ( action ) => action.id === 'dismiss' ) ) {
 				actions.push( dismissAction );
@@ -93,16 +107,16 @@ function createRecentItems() {
 	}
 
 	/**
-	 * Removes a specific item from recent history
+	 * Removes every entry for what the given item opens.
 	 *
 	 * @param {Object} item - The item to remove
 	 */
 	function removeRecentItem( item ) {
 		const recentItems = mw.storage.getObject( RECENT_ITEMS_KEY ) || [];
-		const index = recentItems.findIndex( ( i ) => i.id === item.id );
-		if ( index !== -1 ) {
-			recentItems.splice( index, 1 );
-			mw.storage.setObject( RECENT_ITEMS_KEY, recentItems );
+		const key = destinationKey( item );
+		const remaining = recentItems.filter( ( entry ) => destinationKey( entry ) !== key );
+		if ( remaining.length !== recentItems.length ) {
+			mw.storage.setObject( RECENT_ITEMS_KEY, remaining );
 		}
 	}
 
@@ -115,7 +129,6 @@ function createRecentItems() {
 
 	return {
 		saveRecentItem,
-		saveSearchQuery,
 		getRecentItems,
 		removeRecentItem,
 		clearHistory

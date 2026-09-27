@@ -1,16 +1,10 @@
-// The component is the page aside; the class is still `citizen-page-sidebar`.
-// Renaming a class that lives in cached HTML needs a compat slice, and a
-// rename on its own is not worth one. It rides the next change to this
-// component that needs a slice anyway — a pinned-group wrapper for a second
-// pinned panel, or the 4.0 flip, whichever comes first.
-
-.citizen-page-sidebar {
+.citizen-page-aside {
 	--size-icon: 1rem;
 
 	@media ( min-width: @min-width-breakpoint-desktop ) {
 		display: flex;
 		flex-direction: column;
-		grid-area: sidebar;
+		grid-area: aside;
 		gap: var( --space-sm );
 		margin-top: var( --space-sm ); // align with first paragraph
 		contain: paint style;
@@ -20,7 +14,8 @@
 		// of its own, so the row is sized by the article alone and paint
 		// containment clips any rail taller than it. A heading-less article has
 		// no outline, is shorter than its own rail, and would be clipped — so
-		// the size half only applies where the outline is.
+		// the size half only applies where the outline is. Not wherever there
+		// is a sticky block: a script can create one on a page with no outline.
 		// Not `strict`: pairing `layout` with `size` makes this a reflow root
 		// in Firefox, which strands the sticky ToC at its static position
 		// mid-scroll (#1175). Do not add `layout` back.
@@ -29,31 +24,83 @@
 		}
 	}
 
-	.citizen-menu__heading,
-	.citizen-menu .mw-list-item a {
-		padding-inline: var( --space-xs );
+	// Sticky panels ride along in one block. The outline inside it is the
+	// block's scroller and yields height to its siblings, so a panel below
+	// the outline stays on screen instead of sliding under it.
+	&__sticky {
+		@media ( min-width: @min-width-breakpoint-desktop ) {
+			.mixin-citizen-header-offset-block-start();
+			position: sticky;
+			top: var( --header-offset-block-start );
+			display: flex;
+			flex-direction: column;
+			gap: var( --space-sm );
+			// Must shrink below its content so the outline stays the scroller; at
+			// its content height it overflows the size-contained aside and is clipped.
+			min-height: 0;
+			max-height: ~'calc( 100vh - var( --header-offset-block-start ) - var( --header-offset-block-end ) )';
+
+			> .citizen-page-aside__panel {
+				flex-shrink: 0;
+			}
+
+			> .citizen-toc {
+				flex-shrink: 1;
+				min-height: 0;
+			}
+		}
 	}
 
-	.citizen-menu .mw-list-item a {
+	// Panel chrome: root, heading, body — the shape every panel shares,
+	// whatever renders it. What a body contains is the panel's own; nothing
+	// here reaches into it.
+	&__heading {
+		padding: var( --space-xs ) var( --space-xs ) var( --space-xxs );
+		color: var( --color-subtle );
+		.mixin-citizen-font-styles( 'overline' );
+	}
+
+	&__body {
+		.mixin-citizen-font-styles( 'small' );
+	}
+
+	// A quiet Codex button laid out as a row: what every link in a panel adds
+	// on top of `cdx-button--weight-quiet`. Codex keeps its padding, colour and
+	// states; this turns the centred button into a start-aligned row and gives
+	// it the roomier height a panel link stands at. Scoped under the aside for
+	// (0,2,0), which is what beats `.cdx-button`.
+	& &__link {
+		display: flex;
 		gap: var( --space-xs );
-		border-radius: var( --border-radius-base );
+		align-items: center;
+		justify-content: normal;
+		max-width: none;
+		min-height: 2.25rem;
+		font-size: inherit;
+		font-weight: var( --font-weight-medium );
+		text-wrap: auto;
 	}
-}
 
-#citizen-sidebar-lastmod {
-	@media ( max-width: @max-width-breakpoint-tablet ) {
-		// Duplicated with footer already
-		display: none;
+	// A panel link without role="button" is a real link, so Citizen's link
+	// mixin still reaches it. Codex's button rules already outrank the mixin's
+	// state colours and its hover/focus underline; the one thing they leave
+	// uncovered is the underline the mixin adds while a link is pressed.
+	& a&__link:not( [ role='button' ] ):active {
+		text-decoration: none;
 	}
 }
 
 @media ( max-width: @max-width-breakpoint-tablet ) {
-	// Last modified is hidden just above and the outline is the only other
-	// panel, so a rail without an outline holds nothing perceivable at this
-	// width — a named `complementary` landmark with no content in it. Old HTML
-	// only ever rendered the rail alongside `.citizen-toc`, so `:not( :has() )`
-	// never matches a cached page.
-	.citizen-page-sidebar:not( :has( .citizen-toc ) ) {
+	// Only the outline's control survives below tablet; every other panel,
+	// built-in or registered, is desktop-column content until the column has
+	// a presentation for small screens.
+	.citizen-page-aside__panel:not( .citizen-toc ) {
+		display: none;
+	}
+
+	// With every other panel hidden, a rail without an outline holds nothing
+	// perceivable — a named `complementary` landmark with no content in it.
+	.citizen-page-aside:not( :has( .citizen-toc ) ) {
 		display: none;
 	}
 }
