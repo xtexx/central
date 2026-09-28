@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`default_nettype none
+`default_nettype wire
 
 module mux_key_with_default #(
     parameter int NR_KEY = 2,

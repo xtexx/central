@@ -1,9 +1,9 @@
 `timescale 1ns / 1ps
-`default_nettype none
+`default_nettype wire
 
 module top (
-    input clk,
-    input rst
+    input logic clk,
+    input logic rst
 );
   // Memory Controller
   taxi_axil_if #(

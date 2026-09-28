@@ -18,18 +18,12 @@ set_target_properties(tyro-emu PROPERTIES
 
 verilate(tyro-emu
   TRACE_FST THREADS
-  INCLUDE_DIRS
-    rtl rtl/utils rtl/interface
-    rtl/mem rtl/frontend
-    vendor/common_cells/include vendor/common_cells/src
-    vendor/taxi/src/axi/rtl
   PREFIX Vtyro
   SOURCES
     config.vlt
-    vendor/common_cells/src/cc_pkg.sv
-    rtl/frontend/ifu_pkg.sv
-    rtl/top.sv
   VERILATOR_ARGS
+    -f tyro-core.f
+
     -Werror-LATCH
     -Werror-BLKANDNBLK
     -Werror-CASEINCOMPLETE

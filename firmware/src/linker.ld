@@ -1,7 +1,7 @@
 OUTPUT_ARCH("loongarch")
 OUTPUT_FORMAT("elf64-loongarch")
 
-ENTRY(_start)
+ENTRY(start)
 
 MEMORY {
 	ram (rwx) : ORIGIN = 0x00000000, LENGTH = 64K
@@ -12,8 +12,6 @@ PHDRS {
 	data	PT_LOAD;
 	bss	    PT_LOAD;
 }
-
-ENTRY (start)
 
 SECTIONS {
 	.text : {

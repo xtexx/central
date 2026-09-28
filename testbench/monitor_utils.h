@@ -1,4 +1,5 @@
 #pragma once
+#include "testbench.h"
 #include "verilated.h"
 
 namespace tyro {
@@ -27,6 +28,17 @@ public:
 
 inline std::ostream &operator<<(std::ostream &os, const FmtQAddr &h) {
   return os << std::format("0x{:0{}X}", h.addr, (h.bits + 3) / 4);
+}
+
+class FmtVReg {
+public:
+  const virt_reg_t &reg;
+
+  inline explicit FmtVReg(const virt_reg_t &reg) : reg(reg) {}
+};
+
+inline std::ostream &operator<<(std::ostream &os, const FmtVReg &h) {
+  return os << "$r" << (unsigned int)h.reg.idx;
 }
 
 } // namespace monitor_utils

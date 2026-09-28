@@ -1,0 +1,26 @@
+---
+config:
+  theme: redux-dark-color
+  layout: elk
+---
+stateDiagram-v2
+    fetch_addr: Wait for PC
+    state check_alignment <<choice>>
+    send_mem_addr: Send memory address for read
+    read_data: Receive data beat from memory bus
+    state check_read_resp <<choice>>
+    send_ifu_out: Send to IFU output channel
+    set_resp_succ: Set response to Success
+    set_resp_macherr: Set response to MachErr
+
+    [*] --> fetch_addr
+    fetch_addr --> check_alignment
+    check_alignment --> send_mem_addr: if PC is 4-byte aligned
+    check_alignment --> set_resp_macherr: if PC is unaligned
+    send_mem_addr --> read_data
+    read_data --> check_read_resp
+    check_read_resp --> set_resp_succ: if no error is reported
+    check_read_resp --> set_resp_macherr: if read didn't succeed
+    set_resp_succ --> send_ifu_out
+    set_resp_macherr --> send_ifu_out
+    send_ifu_out --> [*]

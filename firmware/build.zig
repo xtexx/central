@@ -8,6 +8,7 @@ pub fn build(b: *std.Build) void {
         .ofmt = .elf,
         .os_tag = .freestanding,
     });
+    const host_target = b.resolveTargetQuery(.{});
 
     const obj = b.addObject(.{
         .name = "tyro-core-firmware",
@@ -31,4 +32,17 @@ pub fn build(b: *std.Build) void {
 
     const objcopy = obj.addObjCopy(.{ .format = .binary, .only_section = ".text" });
     b.getInstallStep().dependOn(&b.addInstallFile(objcopy.getOutput(), "tyro-core-firmware.bin").step);
+
+    const bin2hex = b.addExecutable(.{
+        .name = "bin2hex",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/bin2hex.zig"),
+            .target = host_target,
+        }),
+    });
+    const run_bin2hex = b.addRunArtifact(bin2hex);
+    run_bin2hex.addFileArg(objcopy.getOutput());
+    const hex_out = run_bin2hex.addOutputFileArg2("firmware.hex", .{});
+
+    b.getInstallStep().dependOn(&b.addInstallFile(hex_out, "tyro-core-firmware.hex").step);
 }

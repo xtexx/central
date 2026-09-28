@@ -1,6 +1,5 @@
 #include "Vtyro.h"
 #include "Vtyro___024root.h"
-#include "Vtyro_top.h"
 #include "core_mon.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"

@@ -1,19 +1,17 @@
 `timescale 1ns / 1ps
 `default_nettype wire
 
-// Instruction Fetch Unit output interface
-interface ifu_out_if
-  import ifu_pkg::*;
-#(
-    parameter int unsigned ADDR_W = 40
-) (
+// Register Renamer output interface
+interface rr_out_if (
     input logic clk,
     input logic rst
 );
 
+  import ifu_pkg::*;
+
   ifu_pkg::ifu_out_resp_t resp;
   logic [31:0] inst;
-  logic [ADDR_W-1:0] pc;
+  logic [63:0] pc;
   logic valid;
   logic ready;
 

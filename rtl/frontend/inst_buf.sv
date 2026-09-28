@@ -1,17 +1,18 @@
 `timescale 1ns / 1ps
-`default_nettype none
+`default_nettype wire
 
-module inst_buf #(
+// FIFO Instruction Buffer
+module inst_buf
+  import ifu_pkg::*;
+#(
     parameter int unsigned DEPTH = 4
 ) (
-    input wire clk,
-    input wire rst,
+    input logic clk,
+    input logic rst,
     ifu_out_if.rx rx,
     ifu_out_if.tx tx,
     input logic flush
 );
-
-  import ifu_pkg::*;
 
   parameter int unsigned ADDR_W = rx.ADDR_W;
   initial assert (rx.ADDR_W == tx.ADDR_W);

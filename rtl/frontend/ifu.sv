@@ -1,15 +1,16 @@
 `timescale 1ns / 1ps
-`default_nettype none
+`default_nettype wire
 
-module ifu (
+// Instruction Fetch Unit
+module ifu
+  import ifu_pkg::*;
+(
     input wire clk,
     input wire rst,
     taxi_axil_if.rd_mst pmem_rd,
     ifu_out_if.tx ifu_if,
     ftq_addr_if.rx ftq_if
 );
-
-  import ifu_pkg::*;
 
   logic pc_valid;
   logic [pmem_rd.ADDR_W-1:0] pc;
@@ -19,6 +20,8 @@ module ifu (
   always_comb begin
     pmem_rd.araddr = pc;
     pmem_rd.arprot = 3'b100;
+    pmem_rd.aruser = '0;
+    pmem_rd.rready = '1;
 
     ifu_if.pc = ifu_if.ADDR_W'(pc);
 

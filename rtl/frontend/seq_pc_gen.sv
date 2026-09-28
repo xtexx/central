@@ -1,6 +1,7 @@
 `timescale 1ns / 1ps
-`default_nettype none
+`default_nettype wire
 
+// Sequential PC generator
 module seq_pc_gen (
     input wire clk,
     input wire rst,
@@ -16,6 +17,8 @@ module seq_pc_gen (
   always_comb begin
     out_if.addr  = pc;
     out_if.valid = !redir_hold && !rst;
+
+    redir_if.ready = 1;
   end
 
   always_ff @(posedge clk) begin

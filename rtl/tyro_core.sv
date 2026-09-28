@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`default_nettype none
+`default_nettype wire
 
 module tyro_core (
     input wire clk,
@@ -29,6 +29,7 @@ module tyro_core (
       .out_if(ftq_out),
       .redir_if(ftq_redir)
   );
+  assign ftq_redir.valid = 0;
 
   // IFU
   ifu_out_if #(.ADDR_W(VADDR_W))
@@ -59,8 +60,18 @@ module tyro_core (
       .flush(pipeline_flush)
   );
 
-  assign inst_buf_out.ready = 1;
+  // Decoder
+  inst_dec_out_if inst_dec_out (
+      .clk(clk),
+      .rst(rst)
+  );
+  inst_decoder idu (
+      .clk(clk),
+      .rst(rst),
+      .in (inst_buf_out),
+      .out(inst_dec_out)
+  );
 
-  // ID
+  assign inst_dec_out.ready = 1;
 
 endmodule

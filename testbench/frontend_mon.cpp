@@ -19,6 +19,7 @@ void Monitor::dumpState(std::ostream &log) {
   dumpFTQAddr(log, ftq_redir, "FTQ redir");
   dumpIFUOut(log, ifu_out, "IFU out");
   dumpIFUOut(log, inst_buf_out, "IB out");
+  dumpIDUOut(log, inst_dec_out, "ID out");
 }
 
 void Monitor::dumpFTQAddr(std::ostream &log, FTQAddrWires &out,
@@ -57,6 +58,49 @@ void Monitor::dumpIFUOut(std::ostream &log, IFUOutWires &out,
     default:
       throw "Unexpected ifu_out.resp";
     }
+  }
+}
+
+void Monitor::dumpIDUOut(std::ostream &log, InstDecOutWires &out,
+                         const std::string &label) {
+  if (out.rst)
+    log << FmtRst(label);
+  else if (out.valid && out.ready) {
+    decoded_inst_t inst;
+    inst.set(out.inst);
+    auto opcode = static_cast<inst_pkg::inst_opcode_t>(inst.op);
+
+    log << label << " @" << FmtQAddr(inst.pc, 64) << ": ";
+
+    switch (opcode) {
+    case inst_pkg::UOpException: {
+      auto ecode = inst.pl & 0b111111;
+      log << std::format("exception Ecode={:02X} EsubCode={:02X}", ecode,
+                         inst.pl >> 6);
+      switch (ecode) {
+      case 0x0B: {
+        log << " SYS";
+        break;
+      }
+      case 0x0C: {
+        log << " BRK";
+        break;
+      }
+      case 0x0D: {
+        log << " INE";
+        break;
+      }
+      }
+      break;
+    }
+    default:
+      throw "Unexpected idu_out.op";
+    }
+
+    log << " (R=" << FmtVReg(inst.vregs_r[0]) << " " << FmtVReg(inst.vregs_r[1])
+        << ", W=" << FmtVReg(inst.vregs_w[0]) << " " << FmtVReg(inst.vregs_w[1])
+        << ")";
+    log << '\n';
   }
 }
 

@@ -4,3 +4,10 @@
 *.log
 /firmware/.zig-cache
 /firmware/zig-out
+
+# Questa
+/questa
+/transcript
+/*.mpf
+/*.wlf
+/*.mti

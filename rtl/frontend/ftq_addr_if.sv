@@ -1,6 +1,7 @@
 `timescale 1ns / 1ps
-`default_nettype none
+`default_nettype wire
 
+// Fetch Target Queue address interface
 interface ftq_addr_if #(
     parameter int unsigned ADDR_W = 40
 ) (
