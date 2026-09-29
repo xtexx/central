@@ -29,8 +29,5 @@ verilate(tyro-emu
     -Werror-CASEINCOMPLETE
     -Wall
     -Wpedantic
-    -Wno-UNDRIVEN
-    -Wno-UNUSEDSIGNAL
-    -Wno-UNUSEDPARAM
     --timescale "1ns / 1ps"
 )

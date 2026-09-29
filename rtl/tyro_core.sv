@@ -8,7 +8,7 @@ module tyro_core (
     taxi_axil_if.rd_mst pmem_rd
 );
 
-  parameter int unsigned PADDR_W = pmem_rd.ADDR_W;
+  // parameter int unsigned PADDR_W = pmem_rd.ADDR_W;
   parameter int unsigned VADDR_W = 40;
 
   logic pipeline_flush = 0;
@@ -66,7 +66,6 @@ module tyro_core (
       .rst(rst)
   );
   inst_decoder idu (
-      .clk(clk),
       .rst(rst),
       .in (inst_buf_out),
       .out(inst_dec_out)

@@ -33,9 +33,7 @@ module inst_buf
   assign tx.inst = buf_out.inst;
   assign tx.pc   = buf_out.pc;
 
-  logic [cc_pkg::cnt_width(DEPTH)-1:0] fifo_usage;
-
-  logic rst_ni, clr_i;
+  logic [cc_pkg::cnt_width(DEPTH)-1:0] unused_fifo_usage;
 
   cc_stream_fifo #(
       .FallThrough(1),
@@ -43,10 +41,10 @@ module inst_buf
       .data_t(inst_buf_entry_t)
   ) fifo (
       .clk_i  (clk),
-      .rst_ni (rst_ni),
-      .clr_i  (clr_i),
+      .rst_ni ('1),
+      .clr_i  ('0),
       .flush_i(rst | flush),
-      .usage_o(fifo_usage),
+      .usage_o(unused_fifo_usage),
       .data_i (ifu_out),
       .valid_i(rx.valid),
       .ready_o(rx.ready),
