@@ -12,13 +12,13 @@ interface rob_alloc_if (
   import inst_pkg::*;
 
   logic [63:0] pc;
-  inst_pkg::rob_entry_t rr[inst_pkg::ROB_ENTRY_REGS];
+  inst_pkg::rob_rr_entry_t rr[inst_pkg::ROB_ENTRY_REGS];
   logic valid;
   logic ready;
   inst_pkg::rob_idx_t idx;
 
-  modport requester(output pc, output rr, output ready, input ready, input idx);
-  modport rob(input pc, input rr, input ready, output ready, output idx);
+  modport requester(output pc, output rr, output valid, input ready, input idx);
+  modport rob(input pc, input rr, input valid, output ready, output idx);
 
   `ASSERT_KNOWN_IF(ROBAllocKnown, {pc, rr, idx}, valid & ready, clk, rst);
 

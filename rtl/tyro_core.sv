@@ -73,4 +73,32 @@ module tyro_core (
 
   assign inst_dec_out.ready = 1;
 
+  // ROB
+  rob_alloc_if rob_alloc (
+      .clk(clk),
+      .rst(rst)
+  );
+  rob_commit_if rob_commit (
+      .clk(clk),
+      .rst(rst)
+  );
+  rob_execute_if rob_exec[1] (
+      .clk(clk),
+      .rst(rst)
+  );
+  rob #(
+      .DEPTH(8),
+      .EXEC_PORTS(1)
+  ) rob (
+      .clk(clk),
+      .rst(rst),
+      .alloc_if(rob_alloc),
+      .commit_if(rob_commit),
+      .exec_if(rob_exec)
+  );
+
+  assign rob_alloc.ready = '0;
+  assign rob_commit.ready = '0;
+  assign rob_exec[0].valid = '0;
+
 endmodule

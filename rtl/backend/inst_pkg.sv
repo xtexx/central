@@ -10,7 +10,7 @@ package inst_pkg;
 
   // Re-Order Buffer
 
-  typedef logic [3:0] rob_idx_t;
+  typedef logic [2:0] rob_idx_t;
 
   typedef enum logic [1:0] {
     InstCommitNop = '0,

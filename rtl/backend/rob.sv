@@ -20,7 +20,7 @@ module rob
 
   parameter int unsigned ADDR_W = cc_pkg::idx_width(DEPTH);
 
-  rob_entry_t [DEPTH-1:0] mem_q, mem_d;
+  inst_pkg::rob_entry_t [DEPTH-1:0] mem_q, mem_d;
   // r/wptr[ADDR_W] = generation; r/wptr[ADDR_W-1:0] = ROB index
   logic [ADDR_W:0] rptr_q, rptr_d;
   logic [ADDR_W:0] wptr_q, wptr_d;
@@ -43,6 +43,19 @@ module rob
   assign is_empty = wptr_q == rptr_q;
   assign is_full = (wptr_q[ADDR_W-1:0] == rptr_q[ADDR_W-1:0]) && (wptr_q[ADDR_W] != rptr_q[ADDR_W]);
 
+  // Executor write ports
+  inst_pkg::rob_idx_t [EXEC_PORTS-1:0] exec_idx;
+  inst_pkg::inst_commit_type_t [EXEC_PORTS-1:0] exec_commit_type;
+  inst_pkg::inst_commit_data_t [EXEC_PORTS-1:0] exec_data;
+  logic [EXEC_PORTS-1:0] exec_valid;
+
+  for (genvar i = 0; i < EXEC_PORTS; i++) begin : gen_exec_ports
+    assign exec_idx[i]         = exec_if[i].idx;
+    assign exec_commit_type[i] = exec_if[i].commit_type;
+    assign exec_data[i]        = exec_if[i].data;
+    assign exec_valid[i]       = exec_if[i].valid;
+  end
+
   always_comb begin
     // Default assignments
     mem_d = mem_q;
@@ -55,7 +68,9 @@ module rob
     if (alloc_if.valid && alloc_if.ready) begin
       mem_d[wptr_q[ADDR_W-1:0]] = '0;
       mem_d[wptr_q[ADDR_W-1:0]].pc = alloc_if.pc;
-      mem_d[wptr_q[ADDR_W-1:0]].rr = alloc_if.rr;
+      for (int i = 0; i < inst_pkg::ROB_ENTRY_REGS; i++) begin
+        mem_d[wptr_q[ADDR_W-1:0]].rr[i] = alloc_if.rr[i];
+      end
       wptr_d = wptr_q + 1;
     end
 
@@ -68,10 +83,10 @@ module rob
 
     // Executor write interface
     for (int i = 0; i < EXEC_PORTS; i++) begin
-      if (exec_if[i].valid && exec_if[i].ready) begin
-        mem_d[exec_if[i].idx].ready = 1;
-        mem_d[exec_if[i].idx].commit_type = exec_if[i].commit_type;
-        mem_d[exec_if[i].idx].data = exec_if[i].data;
+      if (exec_valid[i]) begin
+        mem_d[exec_idx[i]].ready = 1;
+        mem_d[exec_idx[i]].commit_type = exec_commit_type[i];
+        mem_d[exec_idx[i]].commit_data = exec_data[i];
       end
     end
   end
