@@ -97,8 +97,38 @@ module tyro_core (
       .exec_if(rob_exec)
   );
 
-  assign rob_alloc.ready = '0;
-  assign rob_commit.ready = '0;
+  assign rob_alloc.ready   = '0;
+  assign rob_commit.ready  = '0;
   assign rob_exec[0].valid = '0;
+
+  // Integer PRF
+  prf_alloc_if prf_alloc (
+      .clk(clk),
+      .rst(rst)
+  );
+  prf_read_if prf_rd[1] (
+      .clk(clk),
+      .rst(rst)
+  );
+  prf_write_if prf_wr[1] (
+      .clk(clk),
+      .rst(rst)
+  );
+  reg_file #(
+      .DATA_W(64),
+      .REG_N(64),
+      .READ_PORTS(1),
+      .WRITE_PORTS(1)
+  ) int_prf (
+      .clk(clk),
+      .rst(rst),
+      .alloc_if(prf_alloc),
+      .rd_if(prf_rd),
+      .wr_if(prf_wr)
+  );
+
+  assign prf_alloc.valid = '0;
+  assign prf_rd[0].preg = 0;
+  assign prf_wr[0].valid = '0;
 
 endmodule

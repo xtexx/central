@@ -19,6 +19,6 @@ interface prf_read_if
   modport prf(input preg, output data, output ready);
 
   `ASSERT_KNOWN(PRFReadReqKnown, {preg, ready}, clk, rst);
-  `ASSERT_KNOWN_IF(PRFReadRespKnown, data, valid & ready, clk, rst);
+  `ASSERT_KNOWN_IF(PRFReadRespKnown, data, ready, clk, rst);
 
 endinterface

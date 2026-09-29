@@ -27,6 +27,18 @@ module reg_file
   // reg[DATA_W] = ready; reg[DATA_W-1:0] = data
   logic [DATA_W:0] mem[REG_N];
 
+  // Extract write ports
+  inst_pkg::phy_reg_t wr_preg[WRITE_PORTS];
+  logic [63:0] wr_data[WRITE_PORTS];
+  logic wr_valid[WRITE_PORTS];
+
+  for (genvar i = 0; i < WRITE_PORTS; i++) begin : gen_wr_ports
+    assign wr_preg[i]  = wr_if[i].preg;
+    assign wr_data[i]  = wr_if[i].data;
+    assign wr_valid[i] = wr_if[i].valid;
+  end
+
+  // Interface logic
   always_ff @(posedge clk) begin
     if (rst) begin
       // Reset logic
@@ -38,21 +50,17 @@ module reg_file
       end
     end else begin
       // Write ports
-      mem <= mem;
       for (int i = 0; i < WRITE_PORTS; i++) begin
-        if (wr_if[i].valid) begin
-          mem[wr_if[i].preg] <= {1'b1, wr_if[i].data};
+        if (wr_valid[i] && (wr_preg[i] != 0)) begin
+          mem[wr_preg[i]] <= {1'b1, DATA_W'(wr_data[i])};
         end
       end
     end
   end
 
-  always_comb begin
-    // Read ports
-    for (int i = 0; i < READ_PORTS; i++) begin
-      rd_if[i].data  = mem[rd_if[i].preg][DATA_W-1:0];
-      rd_if[i].ready = mem[rd_if[i].preg][DATA_W];
-    end
+  for (genvar i = 0; i < READ_PORTS; i++) begin : gen_rd_ports
+    assign rd_if[i].data  = mem[rd_if[i].preg][DATA_W-1:0];
+    assign rd_if[i].ready = mem[rd_if[i].preg][DATA_W];
   end
 
 endmodule
