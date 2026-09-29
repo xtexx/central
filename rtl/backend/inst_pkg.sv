@@ -60,8 +60,12 @@ package inst_pkg;
   typedef logic [13:0] inst_csr_t;
 
   typedef enum logic [8:0] {
-    // Add or sub, R0 = R1 +- R2, uop_add_sub_pl_t
+    // Add or sub, Rw0 = Rr0 +- Rr1, uop_add_sub_pl_t
     UOpAdd,
+    // Add or sub, Rw0 = Rr0 +- pl.si12, uop_add_sub_pl_t
+    UOpAddImm,
+    // Bit op, Rw0 = Rr0 |&^ pl.ui12, uop_bitop_imm_pl_t
+    UOpBitOpImm,
     // Trigger an exception
     // pl[5:0] = Ecode
     // pl[14:6] = EsubCode
@@ -85,8 +89,16 @@ package inst_pkg;
   } rr_inst_t  /*verilator public*/;
 
   typedef struct packed {
-    logic is_sub; // Is SUB.[W/D]
-    logic is_w; // Is [ADD/SUB].W
-  } uop_add_pl_t;
+    logic is_sub;  // Is SUB.[W/D]
+    logic is_w;  // Is [ADD/SUB].W
+    logic signed [11:0] si12;
+  } uop_add_pl_t  /*verilator public*/;
+
+  typedef struct packed {
+    logic unsigned [11:0] ui12;
+    logic is_andi;
+    logic is_ori;
+    logic is_xori;
+  } uop_bitop_imm_pl_t  /*verilator public*/;
 
 endpackage

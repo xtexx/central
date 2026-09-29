@@ -14,6 +14,8 @@ typedef Vtyro_inst_dec_out_if InstDecOutWires;
 typedef Vtyro_virt_reg_t__struct__0 virt_reg_t;
 typedef Vtyro_decoded_inst_t__struct__0 decoded_inst_t;
 typedef Vtyro_inst_pkg inst_pkg;
+typedef Vtyro_uop_add_pl_t__struct__0 uop_add_pl_t;
+typedef Vtyro_uop_bitop_imm_pl_t__struct__0 uop_bitop_imm_pl_t;
 
 } // namespace testbench
 } // namespace tyro
