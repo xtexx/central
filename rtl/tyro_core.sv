@@ -66,7 +66,6 @@ module tyro_core (
       .rst(rst)
   );
   inst_decoder idu (
-      .rst(rst),
       .in (inst_buf_out),
       .out(inst_dec_out)
   );

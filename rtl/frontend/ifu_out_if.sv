@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 `default_nettype wire
 
+`include "common_cells/assertions.svh"
+
 // Instruction Fetch Unit output interface
 interface ifu_out_if
   import ifu_pkg::*;
@@ -20,9 +22,6 @@ interface ifu_out_if
   modport tx(output resp, inst, pc, valid, input ready);
   modport rx(input resp, inst, pc, valid, output ready);
 
-  a_data_known :
-  assert property (@(posedge clk) disable iff (rst) (valid & ready) |-> !$isunknown(
-      {resp, inst, pc}
-  ));
+  `ASSERT_KNOWN_IF(FTQOutKnown, {resp, inst, pc}, valid && ready, clk, rst);
 
 endinterface

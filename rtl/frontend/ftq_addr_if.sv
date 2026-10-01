@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 `default_nettype wire
 
+`include "common_cells/assertions.svh"
+
 // Fetch Target Queue address interface
 interface ftq_addr_if #(
     parameter int unsigned ADDR_W = 40
@@ -16,7 +18,6 @@ interface ftq_addr_if #(
   modport tx(output addr, valid, input ready);
   modport rx(input addr, valid, output ready);
 
-  a_addr_known :
-  assert property (@(posedge clk) disable iff (rst) (valid & ready) |-> !$isunknown(addr));
+  `ASSERT_KNOWN_IF(FTQAddrKnown, addr, valid && ready, clk, rst);
 
 endinterface

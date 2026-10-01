@@ -1,0 +1,3 @@
+read_slang -f tyro-core.f --top top -D SYNTHESIS
+
+synth_xilinx -top top -family xc7 -flatten -abc9 -json soc.json
