@@ -3,7 +3,7 @@
 
 `include "common_cells/assertions.svh"
 
-// Physical Register File reader interface
+// Physical Register File combinational reader interface
 interface prf_read_if
   import inst_pkg::*;
 (

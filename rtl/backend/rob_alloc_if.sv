@@ -3,7 +3,7 @@
 
 `include "common_cells/assertions.svh"
 
-// Re-Order Buffer entry allocation interface
+// Re-Order Buffer entry synchronous handshake allocator interface
 interface rob_alloc_if (
     input logic clk,
     input logic rst

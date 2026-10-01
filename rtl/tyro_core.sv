@@ -102,10 +102,6 @@ module tyro_core (
   assign rob_exec[0].valid = '0;
 
   // Integer PRF
-  prf_alloc_if prf_alloc (
-      .clk(clk),
-      .rst(rst)
-  );
   prf_read_if prf_rd[1] (
       .clk(clk),
       .rst(rst)
@@ -120,15 +116,36 @@ module tyro_core (
       .READ_PORTS(1),
       .WRITE_PORTS(1)
   ) int_prf (
-      .clk(clk),
-      .rst(rst),
-      .alloc_if(prf_alloc),
+      .clk  (clk),
+      .rst  (rst),
       .rd_if(prf_rd),
       .wr_if(prf_wr)
   );
 
-  assign prf_alloc.valid = '0;
-  assign prf_rd[0].preg = 0;
+  assign prf_rd[0].preg  = 0;
   assign prf_wr[0].valid = '0;
+
+  // Integer register free list
+  preg_alloc_if #(
+      .BATCH_SIZE(2)
+  ) free_list_alloc (
+      .clk(clk),
+      .rst(rst)
+  );
+  preg_free_if #(
+      .BATCH_SIZE(2)
+  ) free_list_free (
+      .clk(clk),
+      .rst(rst)
+  );
+  preg_free_list free_list (
+      .clk(clk),
+      .rst(rst),
+      .alloc_if(free_list_alloc),
+      .free_if(free_list_free)
+  );
+
+  assign free_list_alloc.used = 0;
+  assign free_list_free.valid = 2'b00;
 
 endmodule

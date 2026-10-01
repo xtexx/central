@@ -3,7 +3,7 @@
 
 `include "common_cells/assertions.svh"
 
-// Re-Order Buffer committer interface
+// Re-Order Buffer synchronous handshake committer interface
 interface rob_commit_if (
     input logic clk,
     input logic rst

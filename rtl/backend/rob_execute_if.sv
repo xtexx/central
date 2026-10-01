@@ -3,7 +3,7 @@
 
 `include "common_cells/assertions.svh"
 
-// Re-Order Buffer execution interface
+// Re-Order Buffer executor synchronous writer interface
 interface rob_execute_if (
     input logic clk,
     input logic rst

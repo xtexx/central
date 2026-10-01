@@ -19,7 +19,6 @@ module reg_file
     input logic clk,
     input logic rst,
 
-    prf_alloc_if.prf alloc_if,
     prf_read_if.prf rd_if[READ_PORTS],
     prf_write_if.prf wr_if[WRITE_PORTS]
 );

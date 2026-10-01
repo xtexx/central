@@ -3,7 +3,7 @@
 
 `include "common_cells/assertions.svh"
 
-// Physical Register File writer interface
+// Physical Register File synchronous writer interface
 interface prf_write_if
   import inst_pkg::*;
 (

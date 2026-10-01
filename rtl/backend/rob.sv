@@ -1,7 +1,6 @@
 `timescale 1ns / 1ps
 `default_nettype wire
 
-`include "common_cells/registers.svh"
 `include "common_cells/assertions.svh"
 
 module rob
