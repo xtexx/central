@@ -69,6 +69,7 @@ module inst_decoder
   import ifu_pkg::*;
   import inst_pkg::*;
 (
+    input logic rst,
     ifu_out_if.rx in,
     inst_dec_out_if.tx out
 );
