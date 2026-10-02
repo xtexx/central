@@ -7,11 +7,11 @@
   out.inst.op = (UOp``__op); \
   out.inst.pl = 32'(unsigned'(__pl)); \
 
-`define LA_DEC_REG_R(__slot, __r) \
-  out.inst.vregs_r[__slot] = (__r);
+`define LA_DEC_REG_R_GPR(__slot, __r) \
+  out.inst.vregs_r[__slot].idx = (__r);
 
-`define LA_DEC_REG_W(__slot, __r) \
-  out.inst.vregs_w[__slot] = (__r);
+`define LA_DEC_REG_W_GPR(__slot, __r) \
+  out.inst.vregs_w[__slot].idx = (__r);
 
 // Decoders
 
@@ -20,9 +20,9 @@
     uop_add_pl.is_sub = __is_sub; \
     uop_add_pl.is_w = __is_w; \
     `LA_DEC(Add, uop_add_pl) \
-    `LA_DEC_REG_W(0, op_rd) \
-    `LA_DEC_REG_R(0, op_rj) \
-    `LA_DEC_REG_R(1, op_rk) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+    `LA_DEC_REG_R_GPR(1, op_rk) \
   end
 
 `define LA_DECODE_INST_ADD_W `LA_DEC_ADD_SUB(0, 1)
@@ -36,8 +36,8 @@
     uop_add_pl.is_w = __is_w; \
     uop_add_pl.si12 = op_sk12; \
     `LA_DEC(AddImm, uop_add_pl) \
-    `LA_DEC_REG_W(0, op_rd) \
-    `LA_DEC_REG_R(0, op_rj) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
   end
 
 `define LA_DECODE_INST_ADDI_W `LA_DEC_ADD_SUB_IMM(0, 1)
@@ -50,8 +50,8 @@
     uop_bitop_imm_pl.is_``__op = '1; \
     uop_bitop_imm_pl.ui12 = op_uk12; \
     `LA_DEC(BitOpImm, uop_bitop_imm_pl) \
-    `LA_DEC_REG_W(0, op_rd) \
-    `LA_DEC_REG_R(0, op_rj) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
   end
 
 `define LA_DECODE_INST_ANDI `LA_DEC_BITOP_IMM12(andi)

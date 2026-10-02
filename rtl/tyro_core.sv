@@ -71,8 +71,6 @@ module tyro_core (
       .out(inst_dec_out)
   );
 
-  assign inst_dec_out.ready = 1;
-
   // ROB
   rob_alloc_if rob_alloc (
       .clk(clk),
@@ -97,7 +95,6 @@ module tyro_core (
       .exec_if(rob_exec)
   );
 
-  assign rob_alloc.ready   = '0;
   assign rob_commit.ready  = '0;
   assign rob_exec[0].valid = '0;
 
@@ -145,7 +142,24 @@ module tyro_core (
       .free_if(free_list_free)
   );
 
-  assign free_list_alloc.used = 0;
   assign free_list_free.valid = 2'b00;
+
+  // Register rename
+  rr_out_if rr_out (
+      .clk(clk),
+      .rst(rst)
+  );
+  register_renamer #(
+      .VREGS(32)
+  ) rr (
+      .clk(clk),
+      .rst(rst),
+      .idu_if(inst_dec_out),
+      .free_list_if(free_list_alloc),
+      .rob_if(rob_alloc),
+      .out_if(rr_out)
+  );
+
+  assign rr_out.ready = 1;
 
 endmodule

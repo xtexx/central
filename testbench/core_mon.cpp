@@ -6,6 +6,7 @@ namespace testbench {
 
 void Monitor::dumpState(std::ostream &log) {
   this->frontend_mon.dumpState(log);
+  this->backend_mon.dumpState(log);
 }
 
 } // namespace testbench

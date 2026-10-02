@@ -6,7 +6,8 @@
 module preg_free_list
   import inst_pkg::*;
 #(
-    parameter int unsigned DEPTH = 32
+    parameter int unsigned DEPTH = 32,
+    parameter int unsigned FIRST_FREE_REG = 32
 ) (
     input logic clk,
     input logic rst,
@@ -24,8 +25,12 @@ module preg_free_list
   // Flip-flop
   always_ff @(posedge clk) begin
     if (rst) begin
+      list_q <= '0;
+      for (int i = 0; i < DEPTH; i++) begin
+        list_q[i] <= ($bits(inst_pkg::phy_reg_t))'(FIRST_FREE_REG + i);
+      end
       rptr_q <= '0;
-      wptr_q <= '0;
+      wptr_q <= {1'b1, PtrW'(0)};
     end else begin
       list_q <= list_d;
       rptr_q <= rptr_d;

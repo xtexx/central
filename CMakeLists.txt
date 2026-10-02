@@ -9,6 +9,8 @@ add_executable(tyro-emu
   testbench/main.cpp
   testbench/core_mon.cpp
   testbench/frontend_mon.cpp
+  testbench/backend_mon.cpp
+  testbench/monitor_utils.cpp
 )
 set_target_properties(tyro-emu PROPERTIES
   CXX_STANDARD 23

@@ -16,6 +16,7 @@ interface preg_alloc_if
 );
 
   parameter int unsigned NUM_W = cc_pkg::cnt_width(BATCH_SIZE);
+  parameter int unsigned IDX_W = cc_pkg::idx_width(BATCH_SIZE);
 
   inst_pkg::phy_reg_t preg[BATCH_SIZE];
   logic [BATCH_SIZE-1:0] valid;

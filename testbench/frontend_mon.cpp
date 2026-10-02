@@ -20,6 +20,7 @@ void Monitor::dumpState(std::ostream &log) {
   dumpIFUOut(log, ifu_out, "IFU out");
   dumpIFUOut(log, inst_buf_out, "IB out");
   dumpIDUOut(log, inst_dec_out, "ID out");
+  dumpRROut(log, rr_out, "RR out");
 }
 
 void Monitor::dumpFTQAddr(std::ostream &log, FTQAddrWires &out,
@@ -68,55 +69,29 @@ void Monitor::dumpIDUOut(std::ostream &log, InstDecOutWires &out,
   else if (out.valid && out.ready) {
     decoded_inst_t inst;
     inst.set(out.inst);
-    auto opcode = static_cast<inst_pkg::inst_opcode_t>(inst.op);
 
     log << label << " @" << FmtQAddr(inst.pc, 64) << ": ";
-
-    switch (opcode) {
-    case inst_pkg::UOpException: {
-      auto ecode = inst.pl & 0b111111;
-      log << std::format("Exception Ecode={:02X} EsubCode={:02X}", ecode,
-                         inst.pl >> 6);
-      switch (ecode) {
-      case 0x0B: {
-        log << " SYS";
-        break;
-      }
-      case 0x0C: {
-        log << " BRK";
-        break;
-      }
-      case 0x0D: {
-        log << " INE";
-        break;
-      }
-      }
-      break;
-    }
-    case inst_pkg::UOpAdd:
-    case inst_pkg::UOpAddImm: {
-      uop_add_pl_t pl;
-      pl.set(inst.pl);
-      log << (opcode == inst_pkg::UOpAdd ? "Add" : "AddImm")
-          << std::format(" is_sub={} is_w={} si12={}", pl.is_sub, pl.is_w,
-                         pl.si12);
-      break;
-    }
-    case inst_pkg::UOpBitOpImm: {
-      uop_bitop_imm_pl_t pl;
-      pl.set(inst.pl);
-      log << std::format("BitOpImm is_andi={} is_ori={} is_xori={} ui12={}",
-                         pl.is_andi, pl.is_ori, pl.is_xori, pl.ui12);
-      break;
-    }
-    default:
-      throw "Unexpected idu_out.op";
-    }
-
+    dumpDecodedInstructionOp(log, inst.op, inst.pl);
     log << " (R=" << FmtVReg(inst.vregs_r[0]) << " " << FmtVReg(inst.vregs_r[1])
         << ", W=" << FmtVReg(inst.vregs_w[0]) << " " << FmtVReg(inst.vregs_w[1])
-        << ")";
-    log << '\n';
+        << ")\n";
+  }
+}
+
+void Monitor::dumpRROut(std::ostream &log, RROutWires &out,
+                        const std::string &label) {
+  if (out.rst)
+    log << FmtRst(label);
+  else if (out.valid && out.ready) {
+    rr_inst_t inst;
+    inst.set(out.inst);
+
+    log << label << ": ROB idx=" << (unsigned int)inst.rob_idx << ", op=";
+    dumpDecodedInstructionOp(log, inst.op, inst.pl);
+    log << " (R=pr" << (unsigned int)inst.pregs_r[0] << " pr"
+        << (unsigned int)inst.pregs_r[1] << ", W=pr"
+        << (unsigned int)inst.pregs_w[0] << " pr"
+        << (unsigned int)inst.pregs_w[1] << ")\n";
   }
 }
 

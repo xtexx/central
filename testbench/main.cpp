@@ -33,7 +33,7 @@ int main(int argc, char **argv, char **env) {
     trace->open("wave.fst");
 
     // Setup monitor
-    Monitor *mon = TYRO_TB_NEW_MONITOR(top->rootp, __PVT__top__DOT__core);
+    Monitor *mon = TYRO_TB_NEW_MONITOR(top->rootp, __PVT__top__DOT__core__DOT__);
 
     // Load firmware
     top->eval();

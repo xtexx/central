@@ -41,6 +41,9 @@ inline std::ostream &operator<<(std::ostream &os, const FmtVReg &h) {
   return os << "$r" << (unsigned int)h.reg.idx;
 }
 
+void dumpDecodedInstructionOp(std::ostream &log, const SData op,
+                              const IData raw_pl);
+
 } // namespace monitor_utils
 } // namespace testbench
 } // namespace tyro

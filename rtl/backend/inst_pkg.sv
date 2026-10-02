@@ -24,9 +24,8 @@ package inst_pkg;
   parameter int unsigned ROB_ENTRY_REGS = 2;
 
   typedef struct packed {
-    logic valid;
     virt_reg_t vreg;
-    phy_reg_t new_preg;
+    phy_reg_t  new_preg;
   } rob_rr_entry_t  /*verilator public*/;
 
   typedef struct packed {
@@ -59,7 +58,7 @@ package inst_pkg;
   typedef logic [4:0] inst_gpr_t;
   typedef logic [13:0] inst_csr_t;
 
-  typedef enum logic [8:0] {
+  typedef enum logic [7:0] {
     // Add or sub, Rw0 = Rr0 +- Rr1, uop_add_sub_pl_t
     UOpAdd,
     // Add or sub, Rw0 = Rr0 +- pl.si12, uop_add_sub_pl_t
@@ -72,9 +71,11 @@ package inst_pkg;
     UOpException
   } inst_opcode_t  /*verilator public*/;
 
+  typedef logic [31:0] inst_payload_t;
+
   typedef struct packed {
     inst_opcode_t op;
-    logic [31:0] pl;
+    inst_payload_t pl;
     virt_reg_t [1:0] vregs_r;
     virt_reg_t [1:0] vregs_w;
     logic [63:0] pc;
@@ -82,7 +83,7 @@ package inst_pkg;
 
   typedef struct packed {
     inst_opcode_t op;
-    logic [31:0] pl;
+    inst_payload_t pl;
     phy_reg_t [1:0] pregs_r;
     phy_reg_t [1:0] pregs_w;
     rob_idx_t rob_idx;

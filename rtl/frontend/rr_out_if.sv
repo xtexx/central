@@ -1,26 +1,24 @@
 `timescale 1ns / 1ps
 `default_nettype wire
 
-// Register Renamer output interface
-interface rr_out_if (
+`include "common_cells/assertions.svh"
+
+// Register Rename output interface, synchronous handshake
+interface rr_out_if
+  import inst_pkg::*;
+(
     input logic clk,
     input logic rst
 );
 
-  import ifu_pkg::*;
-
-  ifu_pkg::ifu_out_resp_t resp;
-  logic [31:0] inst;
-  logic [63:0] pc;
+  inst_pkg::rr_inst_t inst;
   logic valid;
   logic ready;
 
-  modport tx(output resp, inst, pc, valid, input ready);
-  modport rx(input resp, inst, pc, valid, output ready);
+  modport tx(output inst, valid, input ready);
+  modport rx(input inst, valid, output ready);
 
-  a_data_known :
-  assert property (@(posedge clk) disable iff (rst) (valid & ready) |-> !$isunknown(
-      {resp, inst, pc}
-  ));
+  `ASSERT_KNOWN(RROutHandshakeKnown, {valid, ready}, clk, rst);
+  `ASSERT_KNOWN_IF(RROutInstKnown, inst, valid && ready, clk, rst);
 
 endinterface
