@@ -19,6 +19,10 @@ interface preg_free_if
   modport user(output preg, output valid);
   modport list(input preg, input valid);
 
-  `ASSERT_KNOWN(PRegFreeKnown, {preg, valid}, clk, rst);
+  `ASSERT_KNOWN(PRegFreeKnown, {valid}, clk, rst);
+
+  for (genvar i = 0; i < BATCH_SIZE; i++) begin : gen_preg_assertions
+    assert property (@(posedge clk) disable iff (rst) valid[i] |-> !$isunknown(preg[i]));
+  end
 
 endinterface

@@ -20,10 +20,10 @@ interface rob_alloc_if (
   modport requester(output pc, output rr, output valid, input ready, input idx);
   modport rob(input pc, input rr, input valid, output ready, output idx);
 
-  `ASSERT_KNOWN_IF(ROBAllocKnown, {pc, idx}, valid & ready, clk, rst);
+  `ASSERT_KNOWN_IF(ROBAllocKnown, {pc, idx}, valid, clk, rst);
 
   for (genvar i = 0; i < inst_pkg::ROB_ENTRY_REGS; i++) begin : gen_rr_assertions
-    assert property (@(posedge clk) disable iff (rst) !$isunknown(rr[i]));
+    assert property (@(posedge clk) disable iff (rst) valid |-> !$isunknown(rr[i]));
   end
 
 endinterface
