@@ -25,6 +25,10 @@ interface preg_alloc_if
   modport user(input preg, input valid, output used);
   modport list(output preg, output valid, input used);
 
-  `ASSERT_KNOWN(PRegAllocKnown, {preg, valid, used}, clk, rst);
+  `ASSERT_KNOWN(PRegAllocKnown, {valid, used}, clk, rst);
+
+  for (genvar i = 0; i < BATCH_SIZE; i++) begin : gen_preg_assertions
+    assert property (@(posedge clk) disable iff (rst) !$isunknown(preg[i]));
+  end
 
 endinterface
