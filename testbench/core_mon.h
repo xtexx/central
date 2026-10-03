@@ -27,7 +27,8 @@ public:
       ::tyro::testbench::backend::Monitor(                                     \
           top->prefix##free_list_alloc, top->prefix##free_list_free,           \
           top->prefix##rob_alloc, top->prefix##rob_commit,                     \
-          top->prefix##rob_exec__BRA__0__KET__))
+          top->prefix##rob_exec__BRA__0__KET__, top->prefix##dp_o_alu,         \
+          top->prefix##dp_o_ctl, top->prefix##alu_dq_out))
 
 } // namespace testbench
 } // namespace tyro

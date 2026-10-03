@@ -160,6 +160,39 @@ module tyro_core (
       .out_if(rr_out)
   );
 
-  assign rr_out.ready = 1;
+  // Instruction Dispatcher
+  rr_out_if
+      dp_o_alu (
+          .clk(clk),
+          .rst(rst)
+      ),
+      dp_o_ctl (
+          .clk(clk),
+          .rst(rst)
+      );
+  inst_dispatcher inst_dp (
+      .in(rr_out),
+      .o_alu(dp_o_alu),
+      .o_ctl(dp_o_ctl)
+  );
+
+  assign dp_o_ctl.ready = 1;
+
+  // ALU Dispatch Queue
+  rr_out_if alu_dq_out (
+      .clk(clk),
+      .rst(rst)
+  );
+  rr_inst_buf #(
+      .DEPTH(2)
+  ) alu_dq (
+      .clk(clk),
+      .rst(rst),
+      .rx(dp_o_alu),
+      .tx(alu_dq_out),
+      .flush(pipeline_flush)
+  );
+
+  assign alu_dq_out.ready = 1;
 
 endmodule

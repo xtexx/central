@@ -1,4 +1,5 @@
 #include "backend_mon.h"
+#include "frontend_mon.h"
 #include "monitor_utils.h"
 #include "testbench.h"
 
@@ -11,10 +12,16 @@ using namespace monitor_utils;
 void Monitor::dumpState(std::ostream &log) {
   dumpPRegAlloc(log, free_list_alloc, "Free List");
   dumpPRegFree(log, free_list_free, "Free List");
+
   dumpROBAlloc(log, rob_alloc, "ROB alloc");
   dumpROBCommit(log, rob_commit, "ROB commit");
   for (unsigned int i = 0; i < rob_execute.size(); i++)
     dumpROBExecute(log, *rob_execute[i], "ROB execute", i);
+
+  frontend::Monitor::dumpRROut(log, dp_o_alu, "Dispatch to ALU");
+  frontend::Monitor::dumpRROut(log, dp_o_ctl, "Dispatch to CTL");
+
+  frontend::Monitor::dumpRROut(log, alu_dq_out, "ALU DQ out");
 }
 
 void Monitor::dumpPRegAlloc(std::ostream &log, PRegAllocWires &wires,

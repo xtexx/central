@@ -30,7 +30,8 @@ public:
                   const std::string &label);
   void dumpIDUOut(std::ostream &log, InstDecOutWires &out,
                   const std::string &label);
-  void dumpRROut(std::ostream &log, RROutWires &out, const std::string &label);
+  static void dumpRROut(std::ostream &log, RROutWires &out,
+                        const std::string &label);
 };
 
 } // namespace frontend
