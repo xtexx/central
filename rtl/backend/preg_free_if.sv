@@ -22,7 +22,7 @@ interface preg_free_if
   `ASSERT_KNOWN(PRegFreeKnown, {valid}, clk, rst);
 
   for (genvar i = 0; i < BATCH_SIZE; i++) begin : gen_preg_assertions
-    assert property (@(posedge clk) disable iff (rst) valid[i] |-> !$isunknown(preg[i]));
+    `ASSERT_KNOWN_IF(PRegFreeRegKnown, preg[i], valid, clk, rst);
   end
 
 endinterface

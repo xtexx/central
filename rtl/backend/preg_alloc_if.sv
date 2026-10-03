@@ -28,7 +28,7 @@ interface preg_alloc_if
   `ASSERT_KNOWN(PRegAllocKnown, {valid, used}, clk, rst);
 
   for (genvar i = 0; i < BATCH_SIZE; i++) begin : gen_preg_assertions
-    assert property (@(posedge clk) disable iff (rst) !$isunknown(preg[i]));
+    `ASSERT_KNOWN(PRegAllocRegKnown, preg[i], clk, rst);
   end
 
 endinterface

@@ -17,6 +17,10 @@ module top (
       .s_axil_rd(pmem_region_axil_if[0])
   );
 
+`ifdef PRELD_FIRMWARE
+  $readmemh("firmware/zig-out/tyro-core-firmware.hex", sram_mc.mem);
+`endif
+
   // Memory Interconnect
   taxi_axil_if #(
       .DATA_W(64),
