@@ -5,9 +5,19 @@ comptime {
 }
 
 fn start() callconv(.naked) noreturn {
-    asm volatile ("addi.d $r1, $r0, 1\naddi.d $r2, $r1, 1");
-    while (true) {
-        asm volatile ("");
-    }
+    asm volatile (
+        \\li.d $sp, 0xff00
+        \\b %[main]
+        :
+        : [main] "X" (&main),
+    );
+}
+
+fn main() noreturn {
+    @call(.never_inline, b, .{});
+    while (true) {}
+}
+
+export fn b() void {
     asm volatile ("break 1");
 }
