@@ -1,4 +1,5 @@
 #include "monitor_utils.h"
+#include "testbench.h"
 
 namespace tyro {
 namespace testbench {
@@ -42,6 +43,13 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
     pl.set(raw_pl);
     log << std::format("BitOpImm is_andi={} is_ori={} is_xori={} ui12={}",
                        pl.is_andi, pl.is_ori, pl.is_xori, pl.ui12);
+    break;
+  }
+  case inst_pkg::UOpBr: {
+    uop_br_pl_t pl;
+    pl.set(raw_pl);
+    log << std::format("Br base_reg={} offs26=", pl.base_reg)
+        << FmtQAddr(pl.offs26, 26);
     break;
   }
   default:

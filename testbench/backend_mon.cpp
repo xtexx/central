@@ -10,6 +10,9 @@ namespace backend {
 using namespace monitor_utils;
 
 void Monitor::dumpState(std::ostream &log) {
+  if (flush_pipeline)
+    log << "backend: pipeline flush\n";
+
   dumpPRegAlloc(log, free_list_alloc, "Free List");
   dumpPRegFree(log, free_list_free, "Free List");
 
@@ -20,6 +23,7 @@ void Monitor::dumpState(std::ostream &log) {
 
   frontend::Monitor::dumpRROut(log, dp_o_alu, "Dispatch to ALU");
   frontend::Monitor::dumpRROut(log, dp_o_ctl, "Dispatch to CTL");
+  frontend::Monitor::dumpRROut(log, dp_o_bru, "Dispatch to BRU");
 
   frontend::Monitor::dumpRROut(log, alu_dq_out, "ALU DQ out");
 }
@@ -75,8 +79,7 @@ static void dumpROBCommitPayload(std::ostream &log, CData raw_type,
     break;
   }
   case inst_pkg::InstCommitBranch: {
-    log << "branch";
-    // TODO commit data
+    log << "branch vaddr_lo32=" << FmtQAddr(raw_data, 32);
     break;
   }
   case inst_pkg::InstCommitException: {

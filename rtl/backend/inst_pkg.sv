@@ -14,6 +14,7 @@ package inst_pkg;
 
   typedef enum logic [1:0] {
     InstCommitNop = '0,
+    // Data is the low 32 bits of target virtual address.
     InstCommitBranch,
     InstCommitException,
     InstCommitPhyMem
@@ -41,12 +42,6 @@ package inst_pkg;
     rob_rr_entry_t [ROB_ENTRY_REGS-1:0] rr;
   } rob_entry_t  /*verilator public*/;
 
-  // BTQ entry
-  typedef struct packed {
-    logic hit;
-    logic [63:0] addr;
-  } branch_result_t  /*verilator public*/;
-
   // LSQ entry
   typedef struct packed {
     logic is_store;
@@ -68,7 +63,10 @@ package inst_pkg;
     // Trigger an exception, to CTL
     // pl[5:0] = Ecode
     // pl[14:6] = EsubCode
-    UOpException
+    UOpException,
+    // Branch unconditionally, uop_br_pl_t, to BRU
+    // Rw0 = PC + 4
+    UOpBr
   } inst_opcode_t  /*verilator public*/;
 
   typedef logic [31:0] inst_payload_t;
@@ -101,5 +99,10 @@ package inst_pkg;
     logic is_ori;
     logic is_xori;
   } uop_bitop_imm_pl_t  /*verilator public*/;
+
+  typedef struct packed {
+    logic signed [25:0] offs26;
+    logic base_reg;  // PC = (base_reg ? Rr0 : PC) + offset
+  } uop_br_pl_t  /*verilator public*/;
 
 endpackage

@@ -31,6 +31,7 @@ typedef Vtyro_rob_rr_entry_t__struct__0 rob_rr_entry_t;
 typedef Vtyro_rob_entry_t__struct__0 rob_entry_t;
 typedef Vtyro_uop_add_pl_t__struct__0 uop_add_pl_t;
 typedef Vtyro_uop_bitop_imm_pl_t__struct__0 uop_bitop_imm_pl_t;
+typedef Vtyro_uop_br_pl_t__struct__0 uop_br_pl_t;
 
 // Backend
 typedef Vtyro_preg_alloc_if__B2 PRegAllocWires;

@@ -12,7 +12,8 @@ module register_renamer #(
     preg_alloc_if.user free_list_if,
     prf_reset_if.user prf_rst_if[2],
     rob_alloc_if.requester rob_if,
-    rr_out_if.tx out_if
+    rr_out_if.tx out_if,
+    rat_sync_if.rx rat_sync
 );
 
   import ifu_pkg::*;
@@ -138,6 +139,8 @@ module register_renamer #(
       if (state == RRFSMOutput && out_if.ready) begin
         state <= RRFSMFetchInst;
       end
+      // RAT sync
+      if (rat_sync.valid) reg_aliases <= rat_sync.pregs;
     end
   end
 

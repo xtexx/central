@@ -5,5 +5,9 @@ comptime {
 }
 
 fn start() callconv(.naked) noreturn {
-    asm volatile ("addi.d $r1, $r0, 1\naddi.d $r2, $r1, 1\nbreak 1");
+    asm volatile ("addi.d $r1, $r0, 1\naddi.d $r2, $r1, 1");
+    while (true) {
+        asm volatile ("");
+    }
+    asm volatile ("break 1");
 }

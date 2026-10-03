@@ -21,14 +21,19 @@ public:
 #define TYRO_TB_NEW_MONITOR(top, prefix)                                       \
   new ::tyro::testbench::Monitor(                                              \
       ::tyro::testbench::frontend::Monitor(                                    \
-          top->prefix##ftq_out, top->prefix##ftq_redir, top->prefix##ifu_out,  \
-          top->prefix##inst_buf_out, top->prefix##inst_dec_out,                \
-          top->prefix##rr_out),                                                \
+          top->__PVT__##prefix##ftq_out, top->__PVT__##prefix##ftq_redir,      \
+          top->__PVT__##prefix##ifu_out, top->__PVT__##prefix##inst_buf_out,   \
+          top->__PVT__##prefix##inst_dec_out, top->__PVT__##prefix##rr_out),   \
       ::tyro::testbench::backend::Monitor(                                     \
-          top->prefix##free_list_alloc, top->prefix##free_list_free,           \
-          top->prefix##rob_alloc, top->prefix##rob_commit,                     \
-          top->prefix##rob_exec__BRA__0__KET__, top->prefix##dp_o_alu,         \
-          top->prefix##dp_o_ctl, top->prefix##alu_dq_out))
+          top->__PVT__##prefix##free_list_alloc,                               \
+          top->__PVT__##prefix##free_list_free,                                \
+          top->__PVT__##prefix##rob_alloc, top->__PVT__##prefix##rob_commit,   \
+          top->__PVT__##prefix##rob_exec__BRA__0__KET__,                       \
+          top->__PVT__##prefix##rob_exec__BRA__1__KET__,                       \
+          top->__PVT__##prefix##rob_exec__BRA__2__KET__,                       \
+          top->__PVT__##prefix##dp_o_alu, top->__PVT__##prefix##dp_o_ctl,      \
+          top->__PVT__##prefix##dp_o_bru, top->__PVT__##prefix##alu_dq_out,    \
+          &top->prefix##flush_pipeline))
 
 } // namespace testbench
 } // namespace tyro

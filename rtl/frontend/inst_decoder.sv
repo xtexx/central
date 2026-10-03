@@ -62,6 +62,28 @@
     `LA_DEC(Exception, 'h0C) \
   end
 
+`define LA_DECODE_INST_B begin \
+    uop_br_pl.offs26 = op_offs26; \
+    uop_br_pl.base_reg = 0; \
+    `LA_DEC(Br, uop_br_pl) \
+    `LA_DEC_REG_W_GPR(0, 0) \
+  end
+
+`define LA_DECODE_INST_BL begin \
+    uop_br_pl.offs26 = op_offs26; \
+    uop_br_pl.base_reg = 0; \
+    `LA_DEC(Br, uop_br_pl) \
+    `LA_DEC_REG_W_GPR(0, 1) \
+  end
+
+`define LA_DECODE_INST_JIRL begin \
+    uop_br_pl.offs26 = 26'(signed'(op_offs16)); \
+    uop_br_pl.base_reg = 1; \
+    `LA_DEC(Br, uop_br_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+  end
+
 `include "../gen/decode_tree.svh"
 
 // Instruction Decoder Unit
@@ -79,18 +101,24 @@ module inst_decoder
   virt_reg_t op_rd, op_rj, op_rk;
   logic unsigned [11:0] op_uk12;
   logic signed   [11:0] op_sk12;
+  logic signed   [25:0] op_offs26;
+  logic signed   [15:0] op_offs16;
 
   always_comb begin
-    op_rd   = in.inst[4:0];
-    op_rj   = in.inst[9:5];
-    op_rk   = in.inst[14:10];
+    op_rd = in.inst[4:0];
+    op_rj = in.inst[9:5];
+    op_rk = in.inst[14:10];
 
     op_uk12 = in.inst[21:10];
     op_sk12 = signed'(op_uk12);
+
+    op_offs26 = signed'({in.inst[9:0], in.inst[25:10]});
+    op_offs16 = signed'(in.inst[25:10]);
   end
 
   inst_pkg::uop_add_pl_t uop_add_pl;
   inst_pkg::uop_bitop_imm_pl_t uop_bitop_imm_pl;
+  inst_pkg::uop_br_pl_t uop_br_pl;
 
   always_comb begin
     // Handshake passthrough
@@ -108,6 +136,7 @@ module inst_decoder
 
     uop_add_pl = '0;
     uop_bitop_imm_pl = '0;
+    uop_br_pl = '0;
 
     // Decoder tree
     `LA_DECODE_TREE

@@ -7,14 +7,17 @@ module rob
   import inst_pkg::*;
 #(
     parameter int unsigned DEPTH = 8,
-    parameter int unsigned EXEC_PORTS = 1
+    parameter int unsigned EXEC_PORTS = 1,
+    parameter int unsigned PC_READ_PORTS = 1
 ) (
     input logic clk,
     input logic rst,
+    input logic flush,
 
-    rob_alloc_if.rob   alloc_if,
-    rob_commit_if.rob  commit_if,
-    rob_execute_if.rob exec_if  [EXEC_PORTS]
+    rob_alloc_if.rob alloc_if,
+    rob_commit_if.rob commit_if,
+    rob_execute_if.rob exec_if[EXEC_PORTS],
+    rob_pc_read_if.rob pc_rd_if[PC_READ_PORTS]
 );
 
   parameter int unsigned ADDR_W = cc_pkg::idx_width(DEPTH);
@@ -55,6 +58,15 @@ module rob
     assign exec_valid[i]       = exec_if[i].valid;
   end
 
+  // PC read wires
+  inst_pkg::rob_idx_t pc_rd_idx[PC_READ_PORTS];
+  logic [63:0] pc_rd_pc[PC_READ_PORTS];
+
+  for (genvar i = 0; i < PC_READ_PORTS; i++) begin : gen_pc_rd_wires
+    assign pc_rd_idx[i]   = pc_rd_if[i].idx;
+    assign pc_rd_if[i].pc = pc_rd_pc[i];
+  end
+
   always_comb begin
     // Default assignments
     mem_d = mem_q;
@@ -75,7 +87,7 @@ module rob
 
     // Committer interface
     commit_if.entry = mem_d[rptr_q[ADDR_W-1:0]];
-    commit_if.valid = !is_empty && commit_if.entry.ready;
+    commit_if.valid = !is_empty && (commit_if.entry.ready || flush);
     if (commit_if.valid && commit_if.ready) begin
       rptr_d = rptr_q + 1;
     end
@@ -87,6 +99,11 @@ module rob
         mem_d[exec_idx[i]].commit_type = exec_commit_type[i];
         mem_d[exec_idx[i]].commit_data = exec_data[i];
       end
+    end
+
+    // PC reader interface
+    for (int i = 0; i < PC_READ_PORTS; i++) begin
+      pc_rd_pc[i] = mem_q[pc_rd_idx[i]].pc;
     end
   end
 
