@@ -16,7 +16,7 @@ interface rob_execute_if (
   inst_pkg::inst_commit_data_t data;
   logic valid;
 
-  modport executor(output idx, output commit_type, output data, output valid);
+  modport exec(output idx, output commit_type, output data, output valid);
   modport rob(input idx, input commit_type, input data, input valid);
 
   `ASSERT_KNOWN_IF(ROBExecuteKnown, {idx, commit_type, data}, valid, clk, rst);

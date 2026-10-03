@@ -3,7 +3,7 @@
 
 `include "common_cells/assertions.svh"
 
-// Physical Register File combinational reader interface
+// Physical Register File combinational logic reader interface
 interface prf_read_if
   import inst_pkg::*;
 (
@@ -15,7 +15,7 @@ interface prf_read_if
   logic [63:0] data;
   logic ready;
 
-  modport writer(output preg, input data, input ready);
+  modport user(output preg, input data, input ready);
   modport prf(input preg, output data, output ready);
 
   `ASSERT_KNOWN(PRFReadReqKnown, {preg, ready}, clk, rst);

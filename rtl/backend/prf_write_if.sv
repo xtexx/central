@@ -15,7 +15,7 @@ interface prf_write_if
   logic [63:0] data;
   logic valid;
 
-  modport writer(output preg, output data, output valid);
+  modport user(output preg, output data, output valid);
   modport prf(input preg, input data, input valid);
 
   `ASSERT_KNOWN_IF(PRFWriteKnown, {preg, data}, valid, clk, rst);

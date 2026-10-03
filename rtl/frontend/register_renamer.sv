@@ -10,6 +10,7 @@ module register_renamer #(
     input wire rst,
     inst_dec_out_if.rx idu_if,
     preg_alloc_if.user free_list_if,
+    prf_reset_if.user prf_rst_if[2],
     rob_alloc_if.requester rob_if,
     rr_out_if.tx out_if
 );
@@ -64,6 +65,12 @@ module register_renamer #(
     rob_if.rr[0].new_preg = pregs_w[0];
     rob_if.rr[1].vreg = vregs_w[1];
     rob_if.rr[1].new_preg = pregs_w[1];
+
+    // Reset physical register ready bit
+    prf_rst_if[0].preg = pregs_w[0];
+    prf_rst_if[0].valid = (state == RRFSMROBAlloc && rob_if.ready);
+    prf_rst_if[1].preg = pregs_w[1];
+    prf_rst_if[1].valid = (state == RRFSMROBAlloc && rob_if.ready);
   end
 
   inst_pkg::phy_reg_t pregs_w_d[2];

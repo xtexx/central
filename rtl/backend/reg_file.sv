@@ -14,13 +14,15 @@ module reg_file
     parameter int unsigned REG_N = 64,
     parameter int unsigned READ_PORTS = 1,
     parameter int unsigned WRITE_PORTS = 1,
+    parameter int unsigned RESET_PORTS = 1,
     parameter int unsigned INIT_READY_REG_N = 32
 ) (
     input logic clk,
     input logic rst,
 
-    prf_read_if.prf rd_if[READ_PORTS],
-    prf_write_if.prf wr_if[WRITE_PORTS]
+    prf_read_if.prf  rd_if [ READ_PORTS],
+    prf_write_if.prf wr_if [WRITE_PORTS],
+    prf_reset_if.prf rst_if[RESET_PORTS]
 );
 
   // reg[DATA_W] = ready; reg[DATA_W-1:0] = data
@@ -35,6 +37,15 @@ module reg_file
     assign wr_preg[i]  = wr_if[i].preg;
     assign wr_data[i]  = wr_if[i].data;
     assign wr_valid[i] = wr_if[i].valid;
+  end
+
+  // Extract reset ports
+  inst_pkg::phy_reg_t rst_preg[RESET_PORTS];
+  logic rst_valid[RESET_PORTS];
+
+  for (genvar i = 0; i < RESET_PORTS; i++) begin : gen_rst_ports
+    assign rst_preg[i]  = rst_if[i].preg;
+    assign rst_valid[i] = rst_if[i].valid;
   end
 
   // Interface logic
@@ -52,6 +63,13 @@ module reg_file
       for (int i = 0; i < WRITE_PORTS; i++) begin
         if (wr_valid[i] && (wr_preg[i] != 0)) begin
           mem[wr_preg[i]] <= {1'b1, DATA_W'(wr_data[i])};
+        end
+      end
+
+      // Reset ports
+      for (int i = 0; i < RESET_PORTS; i++) begin
+        if (rst_valid[i] && (rst_preg[i] != 0)) begin
+          mem[rst_preg[i]] <= '0;
         end
       end
     end

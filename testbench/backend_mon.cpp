@@ -123,7 +123,8 @@ void Monitor::dumpROBExecute(std::ostream &log, ROBExecuteWires &wires,
   if (wires.rst)
     log << FmtRst(label);
   else if (wires.valid) {
-    log << label << "#" << channel << ": entry=" << wires.idx << ", commit=";
+    log << label << "#" << channel << ": entry=" << (unsigned int)wires.idx
+        << ", commit=";
     dumpROBCommitPayload(log, wires.commit_type, wires.data);
     log << '\n';
   }

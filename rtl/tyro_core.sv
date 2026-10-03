@@ -80,6 +80,7 @@ module tyro_core (
       .clk(clk),
       .rst(rst)
   );
+  // [0] -> ALU Exec
   rob_execute_if rob_exec[1] (
       .clk(clk),
       .rst(rst)
@@ -95,32 +96,36 @@ module tyro_core (
       .exec_if(rob_exec)
   );
 
-  assign rob_commit.ready  = '0;
-  assign rob_exec[0].valid = '0;
+  assign rob_commit.ready = '0;
 
   // Integer PRF
-  prf_read_if prf_rd[1] (
+  // [0] [1] -> ALU Exec
+  prf_read_if prf_rd[2] (
       .clk(clk),
       .rst(rst)
   );
+  // [0] -> ALU Exec
   prf_write_if prf_wr[1] (
+      .clk(clk),
+      .rst(rst)
+  );
+  prf_reset_if prf_rst[2] (
       .clk(clk),
       .rst(rst)
   );
   reg_file #(
       .DATA_W(64),
       .REG_N(64),
-      .READ_PORTS(1),
-      .WRITE_PORTS(1)
+      .READ_PORTS(2),
+      .WRITE_PORTS(1),
+      .RESET_PORTS(2)
   ) int_prf (
-      .clk  (clk),
-      .rst  (rst),
+      .clk(clk),
+      .rst(rst),
       .rd_if(prf_rd),
-      .wr_if(prf_wr)
+      .wr_if(prf_wr),
+      .rst_if(prf_rst)
   );
-
-  assign prf_rd[0].preg  = 0;
-  assign prf_wr[0].valid = '0;
 
   // Integer register free list
   preg_alloc_if #(
@@ -156,6 +161,7 @@ module tyro_core (
       .rst(rst),
       .idu_if(inst_dec_out),
       .free_list_if(free_list_alloc),
+      .prf_rst_if(prf_rst),
       .rob_if(rob_alloc),
       .out_if(rr_out)
   );
@@ -193,6 +199,14 @@ module tyro_core (
       .flush(pipeline_flush)
   );
 
-  assign alu_dq_out.ready = 1;
+  // ALU Executor
+  alu_exec alu_ex (
+      .clk(clk),
+      .rst(rst),
+      .in(alu_dq_out),
+      .prf_rd(prf_rd[0:1]),
+      .prf_wr(prf_wr[0]),
+      .rob_ex(rob_exec[0])
+  );
 
 endmodule
