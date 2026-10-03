@@ -139,4 +139,7 @@
     "[systemverilog]": {
         "editor.defaultFormatter": "chipsalliance.verible"
     },
+    "cSpell.userWords": [
+        "combinational"
+    ],
 }
