@@ -59,13 +59,13 @@ package inst_pkg;
   typedef logic [13:0] inst_csr_t;
 
   typedef enum logic [7:0] {
-    // Add or sub, Rw0 = Rr0 +- Rr1, uop_add_sub_pl_t
+    // Add or sub, Rw0 = Rr0 +- Rr1, uop_add_sub_pl_t, to ALU
     UOpAdd,
-    // Add or sub, Rw0 = Rr0 +- pl.si12, uop_add_sub_pl_t
+    // Add or sub, Rw0 = Rr0 +- pl.si12, uop_add_sub_pl_t, to ALU
     UOpAddImm,
-    // Bit op, Rw0 = Rr0 |&^ pl.ui12, uop_bitop_imm_pl_t
+    // Bit op, Rw0 = Rr0 |&^ pl.ui12, uop_bitop_imm_pl_t, to ALU
     UOpBitOpImm,
-    // Trigger an exception
+    // Trigger an exception, to CTL
     // pl[5:0] = Ecode
     // pl[14:6] = EsubCode
     UOpException
