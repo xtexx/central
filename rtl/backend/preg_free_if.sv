@@ -22,7 +22,7 @@ interface preg_free_if
   `ASSERT_KNOWN(PRegFreeKnown, {valid}, clk, rst);
 
   for (genvar i = 0; i < BATCH_SIZE; i++) begin : gen_preg_assertions
-    `ASSERT_KNOWN_IF(PRegFreeRegKnown, preg[i], valid, clk, rst);
+    `ASSERT_KNOWN_IF(PRegFreeRegKnown, preg[i], valid[i], clk, rst);
   end
 
 endinterface
