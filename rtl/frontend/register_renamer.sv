@@ -22,7 +22,7 @@ module register_renamer #(
 
   inst_pkg::phy_reg_t reg_aliases[VREGS];
 
-  typedef enum logic [2:0] {
+  typedef enum logic [1:0] {
     RRFSMFetchInst,
     RRFSMOutput,
     RRFSMAllocPReg,

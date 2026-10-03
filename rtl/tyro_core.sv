@@ -96,8 +96,6 @@ module tyro_core (
       .exec_if(rob_exec)
   );
 
-  assign rob_commit.ready = '0;
-
   // Integer PRF
   // [0] [1] -> ALU Exec
   prf_read_if prf_rd[2] (
@@ -146,8 +144,6 @@ module tyro_core (
       .alloc_if(free_list_alloc),
       .free_if(free_list_free)
   );
-
-  assign free_list_free.valid = 2'b00;
 
   // Register rename
   rr_out_if rr_out (
@@ -207,6 +203,16 @@ module tyro_core (
       .prf_rd(prf_rd[0:1]),
       .prf_wr(prf_wr[0]),
       .rob_ex(rob_exec[0])
+  );
+
+  // Committer
+  committer #(
+      .VREGS(32)
+  ) committer (
+      .clk(clk),
+      .rst(rst),
+      .rob_co(rob_commit),
+      .free_list_free(free_list_free)
   );
 
 endmodule

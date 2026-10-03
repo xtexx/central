@@ -18,6 +18,6 @@ interface rob_commit_if (
   modport committer(input entry, input valid, output ready);
   modport rob(output entry, output valid, input ready);
 
-  `ASSERT_KNOWN_IF(ROBCommitKnown, entry, valid & ready, clk, rst);
+  `ASSERT_KNOWN_IF(ROBCommitKnown, entry, valid, clk, rst);
 
 endinterface

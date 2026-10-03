@@ -108,7 +108,8 @@ void Monitor::dumpROBCommit(std::ostream &log, ROBCommitWires &wires,
         sizeof(entry.rr) / sizeof(rob_rr_entry_t);
     for (unsigned int i = 0; i < ROB_ENTRY_REGS; i++) {
       rob_rr_entry_t rr_entry = entry.rr[i];
-      log << ", rr=" << FmtVReg(rr_entry.vreg) << "=pr" << rr_entry.new_preg;
+      log << ", rr=" << FmtVReg(rr_entry.vreg) << "=pr"
+          << (unsigned int)rr_entry.new_preg;
     }
 
     log << ", commit=";
