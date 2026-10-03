@@ -14,7 +14,7 @@ module ctl_exec
     rob_execute_if.exec rob_ex
 );
 
-  `ASSERT_STABLE(ALUInStable, in.valid, in.ready, in.inst, '0, clk, rst);
+  `ASSERT_STABLE(InstStable, in.valid, in.ready, in.inst, '0, clk, rst);
 
   logic ready;
 

@@ -16,7 +16,7 @@ module alu_exec
     rob_execute_if.exec rob_ex
 );
 
-  `ASSERT_STABLE(ALUInStable, in.valid, in.ready, in.inst, '0, clk, rst);
+  `ASSERT_STABLE(InstStable, in.valid, in.ready, in.inst, '0, clk, rst);
 
   logic is_bin_op, ready;
   logic [63:0] rd, rj, rk;
