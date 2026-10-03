@@ -8,7 +8,7 @@
  * @property {string} id Action identifier (e.g., 'edit').
  * @property {string} label Localized action label.
  * @property {string} icon SVG icon string or object.
- * @property {string} url URL for the action.
+ * @property {string} [url] URL for the action.
  */
 
 /**
@@ -85,7 +85,7 @@
  *
  * @typedef {Object} CommandPaletteItem
  * @property {string} id Unique identifier for the item (used as :key and element id).
- * @property {string} type Type identifier (e.g., 'page', 'user', 'command'). Used for styling and to route the item on selection. When two Recent entries open the same page, Recent keeps one with a mode's own type over 'page', and 'page' over 'action'.
+ * @property {string} type Type identifier (e.g., 'page', 'user', 'command'). Used for styling and to route the item on selection.
  * @property {string} label The primary display label (e.g., page title, command name).
  * @property {string} [url] The primary URL to navigate to when the item is selected. May not apply to all types (e.g., commands that trigger other actions).
  * @property {string} [description] Optional secondary description text.
@@ -148,7 +148,17 @@
  * @property {( query: string, signal?: AbortSignal, tokens?: CommandPaletteToken[], modeContext?: Object[] ) => Promise<CommandPaletteItem[]>} getResults Returns result items for the given sub-query. Optional signal for abort, optional tokens array, optional mode context array (only meaningful for modes that opt in to drill-down state). The signal is honoured by mw.Api on MediaWiki 1.44+ and ignored on 1.43.
  * @property {( item: CommandPaletteItem, signal?: AbortSignal ) => Promise<Object>} [getItemDetail] Lazy detail-pane data for the highlighted item, resolving to `{ description, pairs }` — each field is merged into the item's `detail` when present. Use when the data is too heavy to compute for every item upfront. Same signal caveat as `getResults`.
  * @property {( item: CommandPaletteItem ) => (CommandPaletteActionResult|Promise<CommandPaletteActionResult>)} [onResultSelect] Handles selection of a result item.
+ * @property {( item: CommandPaletteItem ) => (RecentRemembered|null|undefined)} [remember] Internal for now, not part of the documented mode API: how Recent remembers a row this mode opened. Return null to leave the row out of Recent, or nothing to let Recent read the place from the row's link.
  * @property {( modeContext: Object[] ) => string} [headerLabel] Optional breadcrumb label rendered in the header. Receives the current modeContext stack. Falls back to the input placeholder when absent.
+ */
+
+/**
+ * What a mode tells Recent about a row it opened. Internal for now.
+ *
+ * @typedef {Object} RecentRemembered
+ * @property {'user'|'revision'|'file'} kind
+ * @property {string} label
+ * @property {Object<string, string>} [data] What Recent draws the row with, so it need not ask the wiki again: a revision's author, timestamp and summary, a file's media type and the link to the thumbnail the row showed.
  */
 
 /**
