@@ -18,22 +18,26 @@ module alu_exec
 
   `ASSERT_STABLE(InstStable, in.valid, in.ready, in.inst, '0, clk, rst);
 
-  logic is_bin_op, ready;
+  logic ready;
+  logic [1:0] has_rr;
   logic [63:0] rd, rj, rk;
 
   inst_pkg::uop_add_pl_t uop_add_pl;
   inst_pkg::uop_bitop_imm_pl_t uop_bitop_imm_pl;
+  inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
 
   always_comb begin
     // Payload decode
     uop_add_pl = in.inst.pl[$bits(inst_pkg::uop_add_pl_t)-1:0];
     uop_bitop_imm_pl = in.inst.pl[$bits(inst_pkg::uop_bitop_imm_pl_t)-1:0];
+    uop_ld_imm_pl = in.inst.pl[$bits(inst_pkg::uop_ld_imm_pl_t)-1:0];
 
     // Classify binary operators
-    is_bin_op = 0;
+    has_rr = '0;
     unique case (in.inst.op)
-      UOpAdd: is_bin_op = 1;
-      UOpAddImm, UOpBitOpImm: is_bin_op = 0;
+      UOpAdd: has_rr = 2'b11;
+      UOpAddImm, UOpBitOpImm: has_rr = 2'b01;
+      UOpLdImm: has_rr[0] = uop_ld_imm_pl.is_lu32id || uop_ld_imm_pl.is_lu52id;
       default: if (!rst) `ERROR("ALU Exec: bad op");
     endcase
 
@@ -44,7 +48,7 @@ module alu_exec
     rk = prf_rd[1].data;
 
     // Wait for operand
-    ready = !rst && in.valid && prf_rd[0].ready && (prf_rd[1].ready || !is_bin_op);
+    ready = !rst && in.valid && (prf_rd[0].ready || !has_rr[0]) && (prf_rd[1].ready || !has_rr[1]);
 
     // Perform calculation
     rd = '0;
@@ -65,6 +69,21 @@ module alu_exec
         end else if (uop_bitop_imm_pl.is_xori) begin
           rd = rj ^ 64'(uop_bitop_imm_pl.ui12);
         end else if (ready) `ERROR("ALU Exec: UOpBitOpImm nop");
+      end
+      UOpLdImm: begin
+        if (uop_ld_imm_pl.is_lu32id) begin
+          // LU32I.W:
+          // GR[rd] = {SignExtend(si20, 32), GR[rd][31:0]}
+          rd = {unsigned'(32'(signed'(uop_ld_imm_pl.imm[19:0]))), rj[31:0]};
+        end else if (uop_ld_imm_pl.is_lu52id) begin
+          // LU52I.D:
+          // GR[rd] = {si12, GR[rj][51:0]}
+          rd = {uop_ld_imm_pl.imm[11:0], rj[51:0]};
+        end else begin
+          // LU12I.W:
+          // GR[rd] = SignExtend({si20, 12'b0}, GRLEN)
+          rd = 64'(signed'({uop_ld_imm_pl.imm[19:0], 12'b0}));
+        end
       end
       default: if (ready) `ERROR("ALU Exec: bad op");
     endcase

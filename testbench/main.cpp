@@ -40,7 +40,7 @@ int main(int argc, char **argv, char **env) {
     auto &sram = top->rootp->top__DOT__sram_mc__DOT__mem;
     sram.fill(0);
     auto fw_path = path("../firmware/zig-out/tyro-core-firmware.bin");
-    cout << "Loading firmware ...\n";
+    cerr << "Loading firmware ...\n";
     auto fw_ifs = ifstream(fw_path, std::ios::binary);
     fw_ifs.read(reinterpret_cast<char *>(&sram.m_storage[0]),
                 sizeof(sram.m_storage));
@@ -48,20 +48,16 @@ int main(int argc, char **argv, char **env) {
       for (auto &v : sram.m_storage)
         v = std::byteswap(v);
     }
-    cout << "Firmware loaded\n";
+    cerr << "Firmware loaded\n";
 
     // Simulation loop
     auto cycles = 0ULL;
-    auto last_dump_cycles = 0ULL;
     while (!vctx->gotFinish()) {
       {
         std::ostringstream dump_buf;
         mon->dumpState(dump_buf);
         if (!dump_buf.view().empty()) {
-          auto delta_time = cycles - last_dump_cycles;
-          cout << "@ " << cycles << " (+" << delta_time << ")\n";
-          cout << dump_buf.view();
-          last_dump_cycles = cycles;
+          cerr << "@ " << cycles << "\n" << dump_buf.view();
         }
       }
 
@@ -73,7 +69,7 @@ int main(int argc, char **argv, char **env) {
 
       if (cycles == 10) {
         top->rst = 0;
-        cout << "Reset completed\n";
+        cerr << "Reset completed\n";
       }
 
       top->clk = 0;
@@ -87,16 +83,33 @@ int main(int argc, char **argv, char **env) {
     top->final();
     trace->close();
 
-    cout << "Simulation end after " << cycles << " cycles\n";
+    cerr << "Simulation end after " << cycles << " cycles\n";
 
     delete top;
     delete vctx;
     return 0;
   } catch (std::string &err) {
-    cout << "Testbench error: " << err << '\n';
+    cerr << "Testbench error: " << err << '\n';
     return 1;
   } catch (char const *err) {
-    cout << "Testbench error: " << err << '\n';
+    cerr << "Testbench error: " << err << '\n';
     return 1;
   }
 }
+
+namespace tyro {
+
+int vl_printf(const char *format, ...) {
+  char buf[1024];
+  std::va_list args;
+  va_start(args, format);
+  int ret = std::vsnprintf(buf, sizeof(buf), format, args);
+  va_end(args);
+  if (ret >= 0) {
+    std::cerr << "[VL] ";
+    std::cerr.write(buf, ret);
+  }
+  return ret;
+}
+
+} // namespace tyro

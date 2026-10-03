@@ -60,6 +60,8 @@ package inst_pkg;
     UOpAddImm,
     // Bit op, Rw0 = Rr0 |&^ pl.ui12, uop_bitop_imm_pl_t, to ALU
     UOpBitOpImm,
+    // Load immediate parts, uop_ld_imm_pl_t, to ALU
+    UOpLdImm,
     // Trigger an exception, to CTL
     // pl[5:0] = Ecode
     // pl[14:6] = EsubCode
@@ -99,6 +101,12 @@ package inst_pkg;
     logic is_ori;
     logic is_xori;
   } uop_bitop_imm_pl_t  /*verilator public*/;
+
+  typedef struct packed {
+    logic unsigned [19:0] imm;
+    logic is_lu32id;
+    logic is_lu52id;
+  } uop_ld_imm_pl_t  /*verilator public*/;
 
   typedef struct packed {
     logic signed [25:0] offs26;

@@ -58,6 +58,27 @@
 `define LA_DECODE_INST_ORI `LA_DEC_BITOP_IMM12(ori)
 `define LA_DECODE_INST_XORI `LA_DEC_BITOP_IMM12(xori)
 
+`define LA_DECODE_INST_LU12I_W begin \
+    uop_ld_imm_pl.imm = op_sj20; \
+    `LA_DEC(LdImm, uop_ld_imm_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+  end
+
+`define LA_DECODE_INST_CU32I_D begin \
+    uop_ld_imm_pl.imm = op_sj20; \
+    uop_ld_imm_pl.is_lu32id = 1; \
+    `LA_DEC(LdImm, uop_ld_imm_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rd) \
+  end
+
+`define LA_DECODE_INST_CU52I_D begin \
+    uop_ld_imm_pl.imm = 20'(op_uk12); \
+    `LA_DEC(LdImm, uop_ld_imm_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+  end
+
 `define LA_DECODE_INST_BREAK begin \
     `LA_DEC(Exception, 'h0C) \
   end
@@ -101,6 +122,7 @@ module inst_decoder
   virt_reg_t op_rd, op_rj, op_rk;
   logic unsigned [11:0] op_uk12;
   logic signed   [11:0] op_sk12;
+  logic signed   [19:0] op_sj20;
   logic signed   [25:0] op_offs26;
   logic signed   [15:0] op_offs16;
 
@@ -111,6 +133,7 @@ module inst_decoder
 
     op_uk12 = in.inst[21:10];
     op_sk12 = signed'(op_uk12);
+    op_sj20 = signed'(in.inst[24:5]);
 
     op_offs26 = signed'({in.inst[9:0], in.inst[25:10]});
     op_offs16 = signed'(in.inst[25:10]);
@@ -118,6 +141,7 @@ module inst_decoder
 
   inst_pkg::uop_add_pl_t uop_add_pl;
   inst_pkg::uop_bitop_imm_pl_t uop_bitop_imm_pl;
+  inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
   inst_pkg::uop_br_pl_t uop_br_pl;
 
   always_comb begin
@@ -136,6 +160,7 @@ module inst_decoder
 
     uop_add_pl = '0;
     uop_bitop_imm_pl = '0;
+    uop_ld_imm_pl = '0;
     uop_br_pl = '0;
 
     // Decoder tree

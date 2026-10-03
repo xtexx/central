@@ -4,6 +4,7 @@
 *.log
 /firmware/.zig-cache
 /firmware/zig-out
+/soc.json
 
 # Questa
 /questa
