@@ -18,6 +18,6 @@ interface ftq_addr_if #(
   modport tx(output addr, valid, input ready);
   modport rx(input addr, valid, output ready);
 
-  `ASSERT_KNOWN_IF(FTQAddrKnown, addr, valid && ready, clk, rst);
+  `ASSERT_KNOWN_IF(FTQAddrKnown, addr, valid, clk, rst);
 
 endinterface

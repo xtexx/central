@@ -22,6 +22,6 @@ interface ifu_out_if
   modport tx(output resp, inst, pc, valid, input ready);
   modport rx(input resp, inst, pc, valid, output ready);
 
-  `ASSERT_KNOWN_IF(FTQOutKnown, {resp, inst, pc}, valid && ready, clk, rst);
+  `ASSERT_KNOWN_IF(IFUOutKnown, {resp, inst, pc}, valid, clk, rst);
 
 endinterface
