@@ -44,7 +44,7 @@ module alu_exec
     rk = prf_rd[1].data;
 
     // Wait for operand
-    ready = in.valid && prf_rd[0].ready && (prf_rd[1].ready || !is_bin_op);
+    ready = !rst && in.valid && prf_rd[0].ready && (prf_rd[1].ready || !is_bin_op);
 
     // Perform calculation
     rd = '0;
@@ -64,9 +64,9 @@ module alu_exec
           rd = rj | 64'(uop_bitop_imm_pl.ui12);
         end else if (uop_bitop_imm_pl.is_xori) begin
           rd = rj ^ 64'(uop_bitop_imm_pl.ui12);
-        end else if (!rst) `ERROR("ALU Exec: UOpBitOpImm nop");
+        end else if (ready) `ERROR("ALU Exec: UOpBitOpImm nop");
       end
-      default: if (!rst) `ERROR("ALU Exec: bad op");
+      default: if (ready) `ERROR("ALU Exec: bad op");
     endcase
 
     // Write to destination register

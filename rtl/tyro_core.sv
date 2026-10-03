@@ -81,13 +81,14 @@ module tyro_core (
       .rst(rst)
   );
   // [0] -> ALU Exec
-  rob_execute_if rob_exec[1] (
+  // [1] -> CTL Exec
+  rob_execute_if rob_exec[2] (
       .clk(clk),
       .rst(rst)
   );
   rob #(
       .DEPTH(8),
-      .EXEC_PORTS(1)
+      .EXEC_PORTS(2)
   ) rob (
       .clk(clk),
       .rst(rst),
@@ -178,8 +179,6 @@ module tyro_core (
       .o_ctl(dp_o_ctl)
   );
 
-  assign dp_o_ctl.ready = 1;
-
   // ALU Dispatch Queue
   rr_out_if alu_dq_out (
       .clk(clk),
@@ -203,6 +202,29 @@ module tyro_core (
       .prf_rd(prf_rd[0:1]),
       .prf_wr(prf_wr[0]),
       .rob_ex(rob_exec[0])
+  );
+
+  // CTL Dispatch Queue
+  rr_out_if ctl_dq_out (
+      .clk(clk),
+      .rst(rst)
+  );
+  rr_inst_buf #(
+      .DEPTH(2)
+  ) ctl_dq (
+      .clk(clk),
+      .rst(rst),
+      .rx(dp_o_ctl),
+      .tx(ctl_dq_out),
+      .flush(pipeline_flush)
+  );
+
+  // ALU Executor
+  ctl_exec ctl_ex (
+      .clk(clk),
+      .rst(rst),
+      .in(ctl_dq_out),
+      .rob_ex(rob_exec[1])
   );
 
   // Committer
