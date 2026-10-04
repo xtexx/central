@@ -69,7 +69,7 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
     break;
   }
   default:
-    throw "Unexpected idu_out.op";
+    log << "???";
   }
 }
 
