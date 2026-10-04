@@ -52,9 +52,10 @@ module preg_free_list
     // Allocator interface
     rptr_d = rptr_d + (PtrW + 1)'(alloc_if.used);
 
+    alloc_if.valid = '0;
     for (int i = 0; i < alloc_if.BATCH_SIZE; i++) begin
-      alloc_if.preg[i]  = list_q[rptr_q+((PtrW+1)'(i))];
-      alloc_if.valid[i] = (((PtrW + 1)'(rptr_q + i)) != wptr_q);
+      alloc_if.preg[i]  = list_q[(rptr_q[PtrW-1:0]+(PtrW'(i)))];
+      alloc_if.valid[i] = ((rptr_q + (PtrW + 1)'(i)) != wptr_q);
       if (i != 0) begin
         alloc_if.valid[i] = alloc_if.valid[i] & alloc_if.valid[i-1];
       end
@@ -63,7 +64,7 @@ module preg_free_list
     // Free interface
     for (int i = 0; i < free_if.BATCH_SIZE; i++) begin
       if (free_if.valid[i]) begin
-        list_d[wptr_d] = free_if.preg[i];
+        list_d[wptr_d[PtrW-1:0]] = free_if.preg[i];
         wptr_d = wptr_d + 1;
         assert (wptr_d != rptr_q);
       end

@@ -8,12 +8,14 @@ module register_renamer #(
 ) (
     input wire clk,
     input wire rst,
+    input logic flush,
     inst_dec_out_if.rx idu_if,
     preg_alloc_if.user free_list_if,
     prf_reset_if.user prf_rst_if[2],
     rob_alloc_if.requester rob_if,
     rr_out_if.tx out_if,
-    rat_sync_if.rx rat_sync
+    rat_sync_if.rx rat_sync,
+    output logic rr_idle
 );
 
   import ifu_pkg::*;
@@ -31,6 +33,7 @@ module register_renamer #(
   } fsm_state_t;
 
   fsm_state_t state;
+  logic flush_abort;
   inst_pkg::rr_inst_t rr_inst;
   inst_pkg::rob_idx_t rob_idx;
 
@@ -56,7 +59,7 @@ module register_renamer #(
     rr_inst.rob_idx = rob_idx;
 
     // Push RR instruction
-    out_if.valid = (state == RRFSMOutput);
+    out_if.valid = (state == RRFSMOutput && !flush_abort);
     out_if.inst = rr_inst;
 
     // Request ROB allocation
@@ -72,6 +75,9 @@ module register_renamer #(
     prf_rst_if[0].valid = (state == RRFSMROBAlloc && rob_if.ready);
     prf_rst_if[1].preg = pregs_w[1];
     prf_rst_if[1].valid = (state == RRFSMROBAlloc && rob_if.ready);
+
+    // Publish idle signal
+    rr_idle = (state == RRFSMFetchInst);
   end
 
   inst_pkg::phy_reg_t pregs_w_d[2];
@@ -105,9 +111,12 @@ module register_renamer #(
       for (int i = 0; i < VREGS; i++) begin
         reg_aliases[i] <= ($bits(inst_pkg::phy_reg_t))'(i);
       end
+      flush_abort <= 0;
     end else begin
+      if (flush) flush_abort <= 1;
       // Receive instruction from IDU
-      if (state == RRFSMFetchInst && idu_if.valid) begin
+      if (state == RRFSMFetchInst && idu_if.valid && !flush) begin
+        flush_abort <= 0;
         op <= idu_if.inst.op;
         pl <= idu_if.inst.pl;
         pc <= idu_if.inst.pc;
@@ -136,7 +145,10 @@ module register_renamer #(
         state   <= RRFSMOutput;
       end
       // Output handshake
-      if (state == RRFSMOutput && out_if.ready) begin
+      if (state == RRFSMOutput && out_if.ready && !flush_abort) begin
+        state <= RRFSMFetchInst;
+      end
+      if (state == RRFSMOutput && flush_abort) begin
         state <= RRFSMFetchInst;
       end
       // RAT sync

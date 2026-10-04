@@ -17,6 +17,7 @@ module committer
     ftq_addr_if.tx ftq_redir,
     output logic flush_pipeline,
     input logic idu_out_valid,
+    input logic rr_idle,
     rat_sync_if.tx rat_sync
 );
 
@@ -47,7 +48,7 @@ module committer
 
   always_comb begin
     // Idle: Pull ROB entry
-    rob_co.ready = (state == FSMIdle);
+    rob_co.ready = (state == FSMIdle || state == FSMBranchRedir);
 
     // Idle: Push registers to free list
     // BranchRedir: Restore PReg free list
@@ -105,8 +106,8 @@ module committer
         branch_target_hi32 <= btq_pop.hi32;
         state <= FSMBranchRedir;
       end
-      // BranchRedir: Wait for ROB to be cleared
-      if (state == FSMBranchRedir && ftq_redir.ready && !rob_co.valid && !idu_out_valid) begin
+      // BranchRedir: Wait for ROB to be cleared; wait for IFU and RR to reset
+      if (state == FSMBranchRedir && ftq_redir.ready && !rob_co.valid && !idu_out_valid && rr_idle) begin
         state <= FSMIdle;
       end
     end

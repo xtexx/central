@@ -104,7 +104,6 @@ void Monitor::dumpROBCommit(std::ostream &log, ROBCommitWires &wires,
   else if (wires.valid & wires.ready) {
     rob_entry_t entry;
     entry.set(wires.entry);
-    assert(entry.ready);
     log << label << ": pc=" << FmtQAddr(entry.pc, 64);
 
     constexpr unsigned int ROB_ENTRY_REGS =

@@ -168,17 +168,20 @@ module tyro_core (
       .clk(clk),
       .rst(rst)
   );
+  logic rr_idle;
   register_renamer #(
       .VREGS(32)
   ) rr (
       .clk(clk),
       .rst(rst),
+      .flush(flush_pipeline),
       .idu_if(inst_dec_out),
       .free_list_if(free_list_alloc),
       .prf_rst_if(prf_rst),
       .rob_if(rob_alloc),
       .out_if(rr_out),
-      .rat_sync(rat_sync)
+      .rat_sync(rat_sync),
+      .rr_idle(rr_idle)
   );
 
   // Instruction Dispatcher
@@ -310,6 +313,7 @@ module tyro_core (
       .ftq_redir(ftq_redir),
       .flush_pipeline(flush_pipeline),
       .idu_out_valid(inst_dec_out.valid),
+      .rr_idle(rr_idle),
       .rat_sync(rat_sync)
   );
 
