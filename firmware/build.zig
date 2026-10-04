@@ -4,6 +4,11 @@ pub fn build(b: *std.Build) void {
     const target = b.resolveTargetQuery(.{
         .cpu_arch = .loongarch64,
         .cpu_model = .{ .explicit = &std.Target.loongarch.cpu.generic_la64 },
+        .cpu_features_add = std.Target.loongarch.featureSet(&.{
+            .ld_seq_sa,
+            .prefer_w_inst,
+            .relax,
+        }),
         .abi = .muslsf,
         .ofmt = .elf,
         .os_tag = .freestanding,
