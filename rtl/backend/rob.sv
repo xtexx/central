@@ -86,7 +86,8 @@ module rob
     end
 
     // Committer interface
-    commit_if.entry = mem_d[rptr_q[ADDR_W-1:0]];
+    commit_if.idx   = rptr_q[ADDR_W-1:0];
+    commit_if.entry = mem_q[rptr_q[ADDR_W-1:0]];
     commit_if.valid = !is_empty && (commit_if.entry.ready || flush);
     if (commit_if.valid && commit_if.ready) begin
       rptr_d = rptr_q + 1;

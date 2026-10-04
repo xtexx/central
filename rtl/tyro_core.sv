@@ -4,14 +4,22 @@
 module tyro_core (
     input wire clk,
     input wire rst,
-    taxi_axil_if.wr_mst pmem_wr,
-    taxi_axil_if.rd_mst pmem_rd
+    // [0] -> Committer
+    // [1] -> IFU
+    taxi_axil_if.rd_mst pmem_rd[2],
+    // [0] -> Committer
+    // [1] -> unused
+    taxi_axil_if.wr_mst pmem_wr[2]
 );
 
   // parameter int unsigned PADDR_W = pmem_rd.ADDR_W;
   parameter int unsigned VADDR_W = 40;
 
   logic flush_pipeline = 0;
+
+  assign pmem_wr[1].awvalid = '0;
+  assign pmem_wr[1].wvalid  = '0;
+  assign pmem_wr[1].bready  = '1;
 
   // FTQ
   ftq_addr_if #(.ADDR_W(VADDR_W))
@@ -43,7 +51,7 @@ module tyro_core (
   ifu ifu (
       .clk(clk),
       .rst(rst),
-      .pmem_rd(pmem_rd),
+      .pmem_rd(pmem_rd[1]),
       .ifu_if(ifu_out),
       .ftq_if(ftq_out),
       .flush(flush_pipeline)
@@ -83,7 +91,8 @@ module tyro_core (
   // [0] -> ALU Exec
   // [1] -> CTL Exec
   // [2] -> BRU Exec
-  rob_execute_if rob_exec[3] (
+  // [3] -> AGU Exec
+  rob_execute_if rob_exec[4] (
       .clk(clk),
       .rst(rst)
   );
@@ -94,7 +103,7 @@ module tyro_core (
   );
   rob #(
       .DEPTH(8),
-      .EXEC_PORTS(3),
+      .EXEC_PORTS(4),
       .PC_READ_PORTS(1)
   ) rob (
       .clk(clk),
@@ -109,13 +118,15 @@ module tyro_core (
   // Integer PRF
   // [0] [1] -> ALU Exec
   // [2] [3] -> BRU Exec
-  prf_read_if prf_rd[4] (
+  // [4] [5] [6] -> AGU Exec
+  prf_read_if prf_rd[7] (
       .clk(clk),
       .rst(rst)
   );
   // [0] -> ALU Exec
   // [1] -> BRU Exec
-  prf_write_if prf_wr[2] (
+  // [2] -> Committer
+  prf_write_if prf_wr[3] (
       .clk(clk),
       .rst(rst)
   );
@@ -126,8 +137,8 @@ module tyro_core (
   reg_file #(
       .DATA_W(64),
       .REG_N(64),
-      .READ_PORTS(4),
-      .WRITE_PORTS(2),
+      .READ_PORTS(7),
+      .WRITE_PORTS(3),
       .RESET_PORTS(2)
   ) int_prf (
       .clk(clk),
@@ -139,7 +150,7 @@ module tyro_core (
 
   // Integer register free list
   preg_alloc_if #(
-      .BATCH_SIZE(2)
+      .BATCH_SIZE(3)
   ) free_list_alloc (
       .clk(clk),
       .rst(rst)
@@ -197,12 +208,17 @@ module tyro_core (
       dp_o_bru (
           .clk(clk),
           .rst(rst)
+      ),
+      dp_o_agu (
+          .clk(clk),
+          .rst(rst)
       );
   inst_dispatcher inst_dp (
       .in(rr_out),
       .o_alu(dp_o_alu),
       .o_ctl(dp_o_ctl),
-      .o_bru(dp_o_bru)
+      .o_bru(dp_o_bru),
+      .o_agu(dp_o_agu)
   );
 
   // ALU Dispatch Queue
@@ -300,6 +316,51 @@ module tyro_core (
       .btq_push(btq_push)
   );
 
+  // Load/Store Queue
+  lsq_if
+      lsq_push (
+          .clk(clk),
+          .rst(rst)
+      ),
+      lsq_pop (
+          .clk(clk),
+          .rst(rst)
+      );
+  lsq #(
+      .DEPTH(2)
+  ) lsq (
+      .clk(clk),
+      .rst(rst),
+      .rx(lsq_push),
+      .tx(lsq_pop),
+      .flush(flush_pipeline)
+  );
+
+  // AGU Dispatch Queue
+  rr_out_if agu_dq_out (
+      .clk(clk),
+      .rst(rst)
+  );
+  rr_inst_buf #(
+      .DEPTH(2)
+  ) agu_dq (
+      .clk(clk),
+      .rst(rst),
+      .rx(dp_o_agu),
+      .tx(agu_dq_out),
+      .flush(flush_pipeline)
+  );
+
+  // AGU
+  agu_exec agu_ex (
+      .clk(clk),
+      .rst(rst),
+      .in(agu_dq_out),
+      .prf_rd(prf_rd[4:6]),
+      .rob_ex(rob_exec[3]),
+      .lsq_push(lsq_push)
+  );
+
   // Committer
   committer #(
       .VREGS(32)
@@ -307,6 +368,7 @@ module tyro_core (
       .clk(clk),
       .rst(rst),
       .rob_co(rob_commit),
+      .preg_wr(prf_wr[2]),
       .free_list_free(free_list_free),
 
       .btq_pop(btq_pop),
@@ -314,7 +376,11 @@ module tyro_core (
       .flush_pipeline(flush_pipeline),
       .idu_out_valid(inst_dec_out.valid),
       .rr_idle(rr_idle),
-      .rat_sync(rat_sync)
+      .rat_sync(rat_sync),
+
+      .lsq_pop(lsq_pop),
+      .pmem_rd(pmem_rd[0]),
+      .pmem_wr(pmem_wr[0])
   );
 
 endmodule

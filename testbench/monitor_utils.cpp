@@ -48,7 +48,8 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
   case inst_pkg::UOpLdImm: {
     uop_ld_imm_pl_t pl;
     pl.set(raw_pl);
-    log << std::format("LdImm is_lu32id={} is_lu52id={} imm=", pl.is_lu32id, pl.is_lu32id)
+    log << std::format("LdImm is_lu32id={} is_lu52id={} imm=", pl.is_lu32id,
+                       pl.is_lu32id)
         << FmtQAddr(pl.imm, 20);
     break;
   }
@@ -57,6 +58,14 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
     pl.set(raw_pl);
     log << std::format("Br base_reg={} offs26=", pl.base_reg)
         << FmtQAddr(pl.offs26, 26);
+    break;
+  }
+  case inst_pkg::UOpMem: {
+    uop_mem_pl_t pl;
+    pl.set(raw_pl);
+    log << std::format("Mem is_st={} is_u={} ty={} offs=", pl.is_store,
+                       pl.is_unsigned, pl.ty)
+        << FmtQAddr(pl.offs, 16);
     break;
   }
   default:

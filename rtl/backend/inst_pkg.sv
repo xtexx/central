@@ -17,7 +17,7 @@ package inst_pkg;
     // Data is the low 32 bits of target virtual address.
     InstCommitBranch,
     InstCommitException,
-    InstCommitPhyMem
+    InstCommitMem
   } inst_commit_type_t  /*verilator public*/;
 
   typedef logic [31:0] inst_commit_data_t;
@@ -44,9 +44,25 @@ package inst_pkg;
 
   // LSQ entry
   typedef struct packed {
+    // Data shift right (applied after mask)
+    logic [2:0] shr;
+    // Sign-extend (applied after bit shift)
+    // 0 = EXT.W.B, 1 = EXT.W.H, 2 = EXT.W, 3 = NOP
+    logic [1:0] ext;
+    phy_reg_t dst;
+    logic [64-3-2-$bits(phy_reg_t)-1:0] unused;
+  } lsq_entry_ld_data_t;
+  typedef struct packed {logic [63:0] data;} lsq_entry_st_data_t;
+  typedef union packed {
+    lsq_entry_ld_data_t ld;
+    lsq_entry_st_data_t st;
+  } lsq_entry_data_t;
+  typedef struct packed {
     logic is_store;
     logic [63:0] addr;
-  } load_store_t  /*verilator public*/;
+    logic [7:0] strb;
+    lsq_entry_data_t u;
+  } lsq_entry_t  /*verilator public*/;
 
   // Instruction Data
 
@@ -68,7 +84,9 @@ package inst_pkg;
     UOpException,
     // Branch unconditionally, uop_br_pl_t, to BRU
     // Rw0 = PC + 4
-    UOpBr
+    UOpBr,
+    // Memory operation, uop_mem_pl_t, to AGU
+    UOpMem
   } inst_opcode_t  /*verilator public*/;
 
   typedef logic [31:0] inst_payload_t;
@@ -76,7 +94,7 @@ package inst_pkg;
   typedef struct packed {
     inst_opcode_t op;
     inst_payload_t pl;
-    virt_reg_t [1:0] vregs_r;
+    virt_reg_t [2:0] vregs_r;
     virt_reg_t [1:0] vregs_w;
     logic [63:0] pc;
   } decoded_inst_t  /*verilator public*/;
@@ -84,7 +102,7 @@ package inst_pkg;
   typedef struct packed {
     inst_opcode_t op;
     inst_payload_t pl;
-    phy_reg_t [1:0] pregs_r;
+    phy_reg_t [2:0] pregs_r;
     phy_reg_t [1:0] pregs_w;
     rob_idx_t rob_idx;
   } rr_inst_t  /*verilator public*/;
@@ -112,5 +130,20 @@ package inst_pkg;
     logic signed [25:0] offs26;
     logic base_reg;  // PC = (base_reg ? Rr0 : PC) + offset
   } uop_br_pl_t  /*verilator public*/;
+
+  typedef enum logic [1:0] {
+    MemOpTypeB,
+    MemOpTypeH,
+    MemOpTypeW,
+    MemOpTypeD
+  } mem_op_type_t  /*verilator public*/;
+
+  typedef struct packed {
+    logic is_store;
+    // Target VADDR = Rr0 + Rr1 + offs
+    logic signed [15:0] offs;
+    mem_op_type_t ty;
+    logic is_unsigned;
+  } uop_mem_pl_t  /*verilator public*/;
 
 endpackage

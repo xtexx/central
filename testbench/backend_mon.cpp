@@ -87,7 +87,7 @@ static void dumpROBCommitPayload(std::ostream &log, CData raw_type,
     // TODO commit data
     break;
   }
-  case inst_pkg::InstCommitPhyMem: {
+  case inst_pkg::InstCommitMem: {
     log << "memory access";
     // TODO commit data
     break;
@@ -104,7 +104,7 @@ void Monitor::dumpROBCommit(std::ostream &log, ROBCommitWires &wires,
   else if (wires.valid & wires.ready) {
     rob_entry_t entry;
     entry.set(wires.entry);
-    log << label << ": pc=" << FmtQAddr(entry.pc, 64);
+    log << label << ": idx="<< (unsigned int)wires.idx <<", pc=" << FmtQAddr(entry.pc, 64);
 
     constexpr unsigned int ROB_ENTRY_REGS =
         sizeof(entry.rr) / sizeof(rob_rr_entry_t);

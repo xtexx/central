@@ -4,6 +4,7 @@
 #include "verilated.h"
 #include "verilated_fst_c.h"
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -76,6 +77,29 @@ int main(int argc, char **argv, char **env) {
       top->eval();
       trace->dump(vctx->time());
       vctx->timeInc(1);
+
+      // Dump environment
+      if (false) {
+        for (auto i = 0U; i < 32; i++) {
+          auto preg =
+              top->rootp->top__DOT__core__DOT__committer__DOT__reg_aliases[i];
+          auto preg_cell =
+              top->rootp->top__DOT__core__DOT__int_prf__DOT__mem[preg];
+          assert((preg_cell[2] & 1) == 1);
+          unsigned long long val = ((preg_cell[1] | 0ULL) << 32) | preg_cell[0];
+          if (i == 1)
+            cerr << "ra";
+          else if (i == 3)
+            cerr << "sp";
+          else
+            cerr << "r" << i;
+          cerr << " = " << std::format("{:016X}", val);
+          if ((i % 4) == 3)
+            cerr << '\n';
+          else
+            cerr << ' ';
+        }
+      }
 
       if (cycles == 100000)
         break;

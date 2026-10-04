@@ -1,5 +1,10 @@
 #:schema https://vide.pascal-lab.net/schemas/v1/vide.schema.json
-sources = ["rtl/**", "vendor/taxi/src/axi/rtl/*", "vendor/common_cells/src/*"]
+sources = [
+  "rtl/**",
+  "vendor/taxi/src/prim/rtl/*",
+  "vendor/taxi/src/axi/rtl/*",
+  "vendor/common_cells/src/*",
+]
 
 include_dirs = [
   "rtl",
@@ -9,11 +14,16 @@ include_dirs = [
   "rtl/mem",
   "rtl/frontend",
 
+  "vendor/taxi/src/prim/rtl",
   "vendor/taxi/src/axi/rtl",
   "vendor/common_cells/src",
   "vendor/common_cells/include",
 ]
 defines = ["SIMULATION"]
 top_modules = ["top"]
-libraries = ["vendor/taxi/src/axi/rtl", "vendor/common_cells/src"]
+libraries = [
+  "vendor/taxi/src/prim/rtl",
+  "vendor/taxi/src/axi/rtl",
+  "vendor/common_cells/src",
+]
 # exclude = ["build/**"]

@@ -105,6 +105,67 @@
     `LA_DEC_REG_R_GPR(0, op_rj) \
   end
 
+`define LA_DEC_MEM_LD(__rk, __offs, __ty, __is_unsigned) \
+  begin \
+    uop_mem_pl.is_store = '0; \
+    uop_mem_pl.offs = 16'(__offs); \
+    uop_mem_pl.ty = MemOpType``__ty; \
+    uop_mem_pl.is_unsigned = __is_unsigned; \
+    `LA_DEC(Mem, uop_mem_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+    `LA_DEC_REG_R_GPR(1, __rk) \
+  end
+
+`define LA_DEC_MEM_ST(__rk, __offs, __ty) \
+  begin \
+    uop_mem_pl.is_store = '1; \
+    uop_mem_pl.offs = 16'(__offs); \
+    uop_mem_pl.ty = MemOpType``__ty; \
+    uop_mem_pl.is_unsigned = '0; \
+    `LA_DEC(Mem, uop_mem_pl) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+    `LA_DEC_REG_R_GPR(1, __rk) \
+    `LA_DEC_REG_R_GPR(2, op_rd) \
+  end
+
+`define LA_DECODE_INST_LD_B `LA_DEC_MEM_LD(0, signed'(op_sk12), B, '0)
+`define LA_DECODE_INST_LD_BU `LA_DEC_MEM_LD(0, signed'(op_sk12), B, '1)
+`define LA_DECODE_INST_LD_H `LA_DEC_MEM_LD(0, signed'(op_sk12), H, '0)
+`define LA_DECODE_INST_LD_HU `LA_DEC_MEM_LD(0, signed'(op_sk12), H, '1)
+`define LA_DECODE_INST_LD_W `LA_DEC_MEM_LD(0, signed'(op_sk12), W, '0)
+`define LA_DECODE_INST_LD_WU `LA_DEC_MEM_LD(0, signed'(op_sk12), W, '1)
+`define LA_DECODE_INST_LD_D `LA_DEC_MEM_LD(0, signed'(op_sk12), D, '0)
+
+`define LA_DECODE_INST_ST_B `LA_DEC_MEM_ST(0, signed'(op_sk12), B)
+`define LA_DECODE_INST_ST_H `LA_DEC_MEM_ST(0, signed'(op_sk12), H)
+`define LA_DECODE_INST_ST_W `LA_DEC_MEM_ST(0, signed'(op_sk12), W)
+`define LA_DECODE_INST_ST_D `LA_DEC_MEM_ST(0, signed'(op_sk12), D)
+
+`define LA_DECODE_INST_LDX_B `LA_DEC_MEM_LD(op_rk, 0, B, '0)
+`define LA_DECODE_INST_LDX_BU `LA_DEC_MEM_LD(op_rk, 0, B, '1)
+`define LA_DECODE_INST_LDX_H `LA_DEC_MEM_LD(op_rk, 0, H, '0)
+`define LA_DECODE_INST_LDX_HU `LA_DEC_MEM_LD(op_rk, 0, H, '1)
+`define LA_DECODE_INST_LDX_W `LA_DEC_MEM_LD(op_rk, 0, W, '0)
+`define LA_DECODE_INST_LDX_WU `LA_DEC_MEM_LD(op_rk, 0, W, '1)
+`define LA_DECODE_INST_LDX_D `LA_DEC_MEM_LD(op_rk, 0, D, '0)
+
+`define LA_DECODE_INST_STX_B `LA_DEC_MEM_ST(op_rk, 0, B)
+`define LA_DECODE_INST_STX_H `LA_DEC_MEM_ST(op_rk, 0, H)
+`define LA_DECODE_INST_STX_W `LA_DEC_MEM_ST(op_rk, 0, W)
+`define LA_DECODE_INST_STX_D `LA_DEC_MEM_ST(op_rk, 0, D)
+
+`define LA_DECODE_INST_LDOX4_W `LA_DEC_MEM_LD(0, signed'({op_sk14, 2'b0}), W, '0)
+`define LA_DECODE_INST_LDOX4_D `LA_DEC_MEM_LD(0, signed'({op_sk14, 2'b0}), D, '0)
+
+`define LA_DECODE_INST_STOX4_W `LA_DEC_MEM_ST(0, signed'({op_sk14, 2'b0}), W)
+`define LA_DECODE_INST_STOX4_D `LA_DEC_MEM_ST(0, signed'({op_sk14, 2'b0}), D)
+
+`define LA_DECODE_INST_PRELD is_nop = 1;
+`define LA_DECODE_INST_PRELDX is_nop = 1;
+
+`define LA_DECODE_INST_CACOP is_nop = 1;
+
 `include "../gen/decode_tree.svh"
 
 // Instruction Decoder Unit
@@ -117,11 +178,12 @@ module inst_decoder
     inst_dec_out_if.tx out
 );
 
-  logic invalid_inst;
+  logic invalid_inst, is_nop;
 
   virt_reg_t op_rd, op_rj, op_rk;
   logic unsigned [11:0] op_uk12;
   logic signed   [11:0] op_sk12;
+  logic signed   [13:0] op_sk14;
   logic signed   [19:0] op_sj20;
   logic signed   [25:0] op_offs26;
   logic signed   [15:0] op_offs16;
@@ -133,6 +195,7 @@ module inst_decoder
 
     op_uk12 = in.inst[21:10];
     op_sk12 = signed'(op_uk12);
+    op_sk14 = signed'(in.inst[23:10]);
     op_sj20 = signed'(in.inst[24:5]);
 
     op_offs26 = signed'({in.inst[9:0], in.inst[25:10]});
@@ -143,34 +206,40 @@ module inst_decoder
   inst_pkg::uop_bitop_imm_pl_t uop_bitop_imm_pl;
   inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
   inst_pkg::uop_br_pl_t uop_br_pl;
+  inst_pkg::uop_mem_pl_t uop_mem_pl;
 
   always_comb begin
-    // Handshake passthrough
-    out.valid = in.valid;
-    in.ready = out.ready;
-    out.inst.pc = 64'(in.pc);
-
     // Default assignments
     out.inst.op = inst_pkg::inst_opcode_t'(0);
     out.inst.pl = '0;
     out.inst.vregs_r = '0;
     out.inst.vregs_w = '0;
 
+    is_nop = 0;
     invalid_inst = 0;
 
     uop_add_pl = '0;
     uop_bitop_imm_pl = '0;
     uop_ld_imm_pl = '0;
     uop_br_pl = '0;
+    uop_mem_pl = '0;
 
     // Decoder tree
     `LA_DECODE_TREE
+
+    // Identify NOP instructions
+    is_nop |= (in.inst == 32'h03400000);
 
     // Catch invalid instructions
     if (invalid_inst == 1) begin
       out.inst.op = UOpException;
       out.inst.pl[5:0] = 'h0D;  // INE exception
     end
+
+    // Handshake passthrough
+    out.valid = in.valid && !is_nop;
+    in.ready = out.ready || is_nop;
+    out.inst.pc = 64'(in.pc);
   end
 
 endmodule

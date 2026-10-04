@@ -73,8 +73,8 @@ void Monitor::dumpIDUOut(std::ostream &log, InstDecOutWires &out,
     log << label << " @" << FmtQAddr(inst.pc, 64) << ": ";
     dumpDecodedInstructionOp(log, inst.op, inst.pl);
     log << " (R=" << FmtVReg(inst.vregs_r[0]) << " " << FmtVReg(inst.vregs_r[1])
-        << ", W=" << FmtVReg(inst.vregs_w[0]) << " " << FmtVReg(inst.vregs_w[1])
-        << ")\n";
+        << " " << FmtVReg(inst.vregs_r[2]) << ", W=" << FmtVReg(inst.vregs_w[0])
+        << " " << FmtVReg(inst.vregs_w[1]) << ")\n";
   }
 }
 
@@ -89,7 +89,8 @@ void Monitor::dumpRROut(std::ostream &log, RROutWires &out,
     log << label << ": ROB idx=" << (unsigned int)inst.rob_idx << ", op=";
     dumpDecodedInstructionOp(log, inst.op, inst.pl);
     log << " (R=pr" << (unsigned int)inst.pregs_r[0] << " pr"
-        << (unsigned int)inst.pregs_r[1] << ", W=pr"
+        << (unsigned int)inst.pregs_r[1] << " pr"
+        << (unsigned int)inst.pregs_r[2] << ", W=pr"
         << (unsigned int)inst.pregs_w[0] << " pr"
         << (unsigned int)inst.pregs_w[1] << ")\n";
   }

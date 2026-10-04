@@ -37,7 +37,7 @@ module register_renamer #(
   inst_pkg::rr_inst_t rr_inst;
   inst_pkg::rob_idx_t rob_idx;
 
-  inst_pkg::phy_reg_t pregs_r[2];
+  inst_pkg::phy_reg_t pregs_r[3];
   inst_pkg::phy_reg_t pregs_w[2];
 
   inst_pkg::inst_opcode_t op;
@@ -54,6 +54,7 @@ module register_renamer #(
     rr_inst.pl = pl;
     rr_inst.pregs_r[0] = pregs_r[0];
     rr_inst.pregs_r[1] = pregs_r[1];
+    rr_inst.pregs_r[2] = pregs_r[2];
     rr_inst.pregs_w[0] = pregs_w[0];
     rr_inst.pregs_w[1] = pregs_w[1];
     rr_inst.rob_idx = rob_idx;
@@ -124,6 +125,7 @@ module register_renamer #(
         vregs_w[1] <= idu_if.inst.vregs_w[1];
         pregs_r[0] <= reg_aliases[idu_if.inst.vregs_r[0]];
         pregs_r[1] <= reg_aliases[idu_if.inst.vregs_r[1]];
+        pregs_r[2] <= reg_aliases[idu_if.inst.vregs_r[2]];
         if (idu_if.inst.vregs_w[0] == vreg_r0 && idu_if.inst.vregs_w[1] == vreg_r0) begin
           pregs_w[0] <= 0;
           pregs_w[1] <= 0;

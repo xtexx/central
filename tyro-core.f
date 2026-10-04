@@ -17,6 +17,7 @@ vendor/common_cells/src/cc_pkg.sv
 // Dependencies
 +incdir+vendor/common_cells/include
 -y vendor/common_cells/src
+-y vendor/taxi/src/prim/rtl
 -y vendor/taxi/src/axi/rtl
 
 // Top files
