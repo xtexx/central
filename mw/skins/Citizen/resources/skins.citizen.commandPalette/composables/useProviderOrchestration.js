@@ -5,6 +5,8 @@ const { DEFAULT_DEBOUNCE_MS } = require( '../providers/createProvider.js' );
 
 const SHOW_PENDING_DELAY_MS = 300;
 
+const RECENT_ITEMS_SHOWN = 8;
+
 // Per-item detail fetches fire on focus changes (arrow keys, hover).
 // Lower than the query debounce because the user expects detail to settle
 // faster than they expect search results, and aborts handle rapid
@@ -39,6 +41,48 @@ function normalizeProviderResult( result ) {
 		return result.items;
 	}
 	return Array.isArray( result ) ? result : [];
+}
+
+/**
+ * What opening a row would only reload: the view you are on; when a
+ * redirect led here, the redirect, whose own link opens this view again;
+ * and on search results, the full-text search for the same query.
+ *
+ * @return {string[]} Destination keys.
+ */
+function currentViewKeys() {
+	const keys = [ destinationKey( { id: '', url: window.location.href } ) ];
+	const redirectedFrom = mw.config.get( 'wgRedirectedFrom' );
+	if ( redirectedFrom ) {
+		keys.push( destinationKey( { id: '', url: mw.util.getUrl( redirectedFrom ) } ) );
+	}
+	// A go that found no page shows these results at its own link, which
+	// keys as the page it named, while Recent remembers it as the full-text
+	// search it ran.
+	if ( mw.config.get( 'wgCanonicalSpecialPageName' ) === 'Search' ) {
+		const search = mw.util.getParamValue( 'search' );
+		if ( typeof search === 'string' && search !== '' ) {
+			keys.push( destinationKey( {
+				id: '',
+				url: mw.util.getUrl( 'Special:Search', { search, fulltext: 1 } )
+			} ) );
+		}
+	}
+	return keys;
+}
+
+/**
+ * What Recent leaves out: what its row would only reload, and any page
+ * Related already lists, however each of them links to it.
+ *
+ * @param {Array<Object>} relatedItems The rows Related lists.
+ * @return {Set<string>} Destination keys.
+ */
+function recentLeftOut( relatedItems ) {
+	return new Set( [
+		...currentViewKeys(),
+		...relatedItems.filter( ( item ) => item.url ).map( destinationKey )
+	] );
 }
 
 /**
@@ -133,20 +177,19 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 		}
 
 		if ( isPresultsSurface.value ) {
-			// A page Related already lists is not repeated under Recent,
-			// however each of them links to it.
-			const relatedPages = new Set(
-				related.value.items.filter( ( item ) => item.url ).map( destinationKey )
-			);
+			// Recent is asked to leave these out already, but its rows are
+			// first fetched before Related settles, and an entry saved under
+			// an older key escapes that check.
+			const leftOut = recentLeftOut( related.value.items );
 			return [
 				section(
 					'citizen-command-palette-heading-related', related.value.items
 				),
 				section(
 					'citizen-command-palette-heading-recent',
-					recents.value.filter(
-						( item ) => !item.url || !relatedPages.has( destinationKey( item ) )
-					)
+					recents.value
+						.filter( ( item ) => !item.url || !leftOut.has( destinationKey( item ) ) )
+						.slice( 0, RECENT_ITEMS_SHOWN )
 				)
 			].filter( Boolean );
 		}
@@ -294,6 +337,27 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 	}
 
 	/**
+	 * Recent's rows for the presults surface, only as many as it shows.
+	 *
+	 * @param {Array<Object>} relatedItems The rows Related lists.
+	 * @return {Array<Object>|null} The rows, or null when Recent failed.
+	 */
+	function fetchRecents( relatedItems ) {
+		if ( !deps.recentItemsProvider ) {
+			return [];
+		}
+		try {
+			return normalizeProviderResult( deps.recentItemsProvider.getResults( '', {
+				leftOut: recentLeftOut( relatedItems ),
+				limit: RECENT_ITEMS_SHOWN
+			} ) );
+		} catch ( e ) {
+			mw.log.error( '[commandPalette] Failed to get recent items:', e );
+			return null;
+		}
+	}
+
+	/**
 	 * Clears the search and populates presults.
 	 *
 	 * Related outranks recents because navigation intent is higher. That
@@ -309,17 +373,7 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 		resetDetailState();
 		resetContent();
 
-		let recentItems = [];
-		if ( deps.recentItemsProvider ) {
-			try {
-				recentItems = normalizeProviderResult(
-					deps.recentItemsProvider.getResults( '' )
-				);
-			} catch ( e ) {
-				mw.log.error( '[commandPalette] Failed to get recent items:', e );
-			}
-		}
-		recents.value = recentItems;
+		recents.value = fetchRecents( [] ) || [];
 		related.value = { items: [], settled: !deps.relatedArticlesProvider };
 
 		if ( !deps.relatedArticlesProvider ) {
@@ -340,6 +394,11 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 		// between a slow related fetch and a surface that has moved on.
 		if ( surfaceKey.value !== dispatchSurface ) {
 			return;
+		}
+		// Recent refills the rows Related took, landing with Related in the
+		// same tick so the list is drawn once.
+		if ( relatedItems.some( ( item ) => item.url ) ) {
+			recents.value = fetchRecents( relatedItems ) || recents.value;
 		}
 		related.value = { items: relatedItems, settled: true };
 	}
@@ -542,9 +601,10 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 	 *
 	 * @param {Object} actionResult The action from the provider.
 	 * @param {Object} result The original selected item.
+	 * @param {import('../types.js').PaletteMode|null} mode The mode the item was selected in.
 	 * @return {Object} The processed action result.
 	 */
-	function processAction( actionResult, result ) {
+	function processAction( actionResult, result, mode ) {
 		if ( !actionResult ) {
 			return { action: 'none' };
 		}
@@ -552,16 +612,51 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 		if ( actionResult.action === 'navigate' && result.type !== 'command' ) {
 			if ( deps.recentItemsService ) {
 				// A lead row standing in for a result carries that result's id
-				// but not its link. Recent keeps the result itself, so the saved
-				// entry links to the page and not through Special:Search.
+				// with the go link. Recent keeps the result's own link, so the
+				// saved place is the page and not a trip through Special:Search.
+				// Any other row is remembered by the link its handler returned,
+				// which a mode may choose differently from the row's own link.
 				const standsFor = content.value.items.find(
-					( item ) => item.id === result.id
+					( item ) => item.id === result.id && item.url !== result.url
 				);
-				deps.recentItemsService.saveRecentItem( standsFor || result );
+				deps.recentItemsService.saveRecentItem(
+					standsFor || result,
+					standsFor ? standsFor.url : actionResult.payload,
+					standsFor ? null : mode
+				);
 			}
 		}
 
 		return actionResult;
+	}
+
+	/**
+	 * The displayed row a selection came from, carrying the selection's
+	 * activation flags.
+	 *
+	 * A copy is matched on its link as well as its id: rows from some modes
+	 * share an id, and rows that also share a link open the same place.
+	 *
+	 * @param {Object} result The selected item.
+	 * @return {Object} The full row, or the selection itself when it is not displayed.
+	 */
+	function resolveSelection( result ) {
+		if ( flatItems.value.includes( result ) ) {
+			return result;
+		}
+		const found = flatItems.value.find(
+			( item ) => String( item.id ) === String( result.id ) && item.url === result.url
+		);
+		if ( !found ) {
+			return result;
+		}
+		const row = { ...found };
+		for ( const flag of [ 'isMouseClick', 'modifierClick', 'newTab' ] ) {
+			if ( result[ flag ] !== undefined ) {
+				row[ flag ] = result[ flag ];
+			}
+		}
+		return row;
 	}
 
 	/**
@@ -575,13 +670,20 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 			return { action: 'none' };
 		}
 
+		// A mouse click emits only the row component's props, so without this
+		// a handler would miss fields its mode keeps on the row, such as a
+		// revision id.
+		const item = resolveSelection( result );
+		// Read before any handler runs: the reader can switch modes while a
+		// handler is still working, and Recent must ask the mode the row was
+		// opened in.
+		const mode = activeMode.value;
+
 		// If in a mode, delegate to the mode's onResultSelect
-		if ( activeMode.value &&
-			typeof activeMode.value.onResultSelect === 'function' ) {
+		if ( mode && typeof mode.onResultSelect === 'function' ) {
 			try {
-				const actionResult =
-					await activeMode.value.onResultSelect( result );
-				return processAction( actionResult, result );
+				const actionResult = await mode.onResultSelect( item );
+				return processAction( actionResult, item, mode );
 			} catch ( error ) {
 				mw.log.error(
 					'[commandPalette] Mode selection handler failed:', error
@@ -591,9 +693,9 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 		}
 
 		const sourceMatch = ( /^([^:]+)(?::.*)?$/ ).exec(
-			result.source ?? ''
+			item.source ?? ''
 		);
-		const providerId = sourceMatch ? sourceMatch[ 1 ] : result.source;
+		const providerId = sourceMatch ? sourceMatch[ 1 ] : item.source;
 		const sourceProvider = providers.find(
 			( p ) => p.id === providerId
 		);
@@ -601,8 +703,8 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 		if ( sourceProvider && typeof sourceProvider.onResultSelect === 'function' ) {
 			try {
 				const actionResult =
-					await sourceProvider.onResultSelect( result );
-				return processAction( actionResult, result );
+					await sourceProvider.onResultSelect( item );
+				return processAction( actionResult, item, mode );
 			} catch ( error ) {
 				mw.log.error(
 					'[commandPalette] Selection handler failed:', error
@@ -612,9 +714,9 @@ function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
 		}
 
 		// Fallback
-		const fallback = result.url ?
-			{ action: 'navigate', payload: result.url } : { action: 'none' };
-		return processAction( fallback, result );
+		const fallback = item.url ?
+			{ action: 'navigate', payload: item.url } : { action: 'none' };
+		return processAction( fallback, item, mode );
 	}
 
 	/**

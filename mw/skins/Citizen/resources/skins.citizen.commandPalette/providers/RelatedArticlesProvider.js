@@ -1,6 +1,6 @@
 const createProvider = require( './createProvider.js' );
 const { cdxIconArticle } = require( '../icons.json' );
-const { getNavigationAction } = require( '../utils/providerActions.js' );
+const { getNavigationAction, buildPageActions } = require( '../utils/providerActions.js' );
 
 /**
  * Creates a related articles provider.
@@ -54,7 +54,7 @@ function createRelatedArticlesProvider( loader ) {
 							url: mw.util.getUrl( page.title ),
 							thumbnail: page.thumbnail ? { url: page.thumbnail.source } : null,
 							thumbnailIcon: cdxIconArticle,
-							actions: [],
+							actions: buildPageActions( { id: page.pageid, title: page.title } ),
 							source: 'related'
 						} ) );
 

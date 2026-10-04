@@ -13,8 +13,13 @@ function createRecentItemsProvider( recentItemsService ) {
 			return !query;
 		},
 
-		getResults() {
-			const items = recentItemsService.getRecentItems();
+		/**
+		 * @param {string} _query Always empty: canProvide accepts only that.
+		 * @param {Object} [options] The service's getRecentItems options.
+		 * @return {{items: Array<Object>}}
+		 */
+		getResults( _query, options ) {
+			const items = recentItemsService.getRecentItems( options );
 			return {
 				items: Array.isArray( items ) ?
 					items.map( ( item ) => ( { ...item, source: 'recent' } ) ) : []

@@ -13,6 +13,9 @@ const useProviderOrchestration = require(
 const { DEFAULT_DEBOUNCE_MS } = require(
 	'../../../../resources/skins.citizen.commandPalette/providers/createProvider.js'
 );
+const destinationKey = require(
+	'../../../../resources/skins.citizen.commandPalette/utils/destinationKey.js'
+);
 
 describe( 'useProviderOrchestration', () => {
 	let mockSyncProvider;
@@ -291,6 +294,51 @@ describe( 'useProviderOrchestration', () => {
 
 			expect( mode.onResultSelect ).toHaveBeenCalled();
 			expect( mockSyncProvider.onResultSelect ).not.toHaveBeenCalled();
+		} );
+
+		it( 'hands Recent the mode a row was opened in', async () => {
+			const recentItemsService = { saveRecentItem: vi.fn() };
+			const modeOrch = useProviderOrchestration( mockProviders, mockDecorator, { recentItemsService } );
+			const mode = {
+				id: 'history',
+				getResults: vi.fn().mockResolvedValue( [] ),
+				onResultSelect: () => ( { action: 'navigate', payload: '/w/index.php?title=P&diff=prev&oldid=1' } ),
+				remember: vi.fn()
+			};
+			modeOrch.enterMode( mode );
+			const row = { id: 'r1', label: 'x', url: '/w/index.php?title=P&oldid=1' };
+
+			await modeOrch.handleSelection( row );
+
+			expect( recentItemsService.saveRecentItem ).toHaveBeenCalledWith(
+				row, '/w/index.php?title=P&diff=prev&oldid=1', mode
+			);
+		} );
+
+		it( 'hands Recent the mode a row was opened in, though another is entered while it opens', async () => {
+			const recentItemsService = { saveRecentItem: vi.fn() };
+			const modeOrch = useProviderOrchestration( mockProviders, mockDecorator, { recentItemsService } );
+			let finishSelect;
+			const history = {
+				id: 'history',
+				getResults: vi.fn().mockResolvedValue( [] ),
+				onResultSelect: () => new Promise( ( resolve ) => {
+					finishSelect = resolve;
+				} ),
+				remember: vi.fn()
+			};
+			const user = { id: 'user', getResults: vi.fn().mockResolvedValue( [] ), remember: vi.fn() };
+			modeOrch.enterMode( history );
+			const row = { id: 'r1', label: 'x', url: '/w/index.php?title=P&oldid=1' };
+
+			const selection = modeOrch.handleSelection( row );
+			modeOrch.enterMode( user );
+			finishSelect( { action: 'navigate', payload: '/w/index.php?title=P&diff=prev&oldid=1' } );
+			await selection;
+
+			expect( recentItemsService.saveRecentItem ).toHaveBeenCalledWith(
+				row, '/w/index.php?title=P&diff=prev&oldid=1', history
+			);
 		} );
 	} );
 
@@ -633,12 +681,25 @@ describe( 'useProviderOrchestration', () => {
 			relatedArticlesProvider: { getResults: relatedResolver }
 		} );
 
-		it( 'does not repeat under Recent a page Related already lists', async () => {
+		// Takes the view's own config too, wgPageName included, so a test
+		// fails if Recent compares by title rather than by the view.
+		const useWikiPaths = ( view = {} ) => {
 			vi.spyOn( mw.config, 'get' ).mockImplementation( ( key ) => ( {
 				wgArticlePath: '/wiki/$1',
-				wgScript: '/w/index.php'
+				wgScript: '/w/index.php',
+				...view
 			} )[ key ] ?? null );
 			mw.Title = mwTitle;
+		};
+
+		const { Title } = mw;
+		afterEach( () => {
+			mw.Title = Title;
+			window.history.replaceState( null, '', '/' );
+		} );
+
+		it( 'does not repeat under Recent a page Related already lists', async () => {
+			useWikiPaths();
 			const orch = useProviderOrchestration( [], mockDecorator, {
 				recentItemsProvider: { getResults: () => ( { items: [
 					{ id: 'go', type: 'action', url: '/w/index.php?title=Special:Search&search=akita', source: 'recent' },
@@ -652,6 +713,167 @@ describe( 'useProviderOrchestration', () => {
 			await orch.clearSearch();
 
 			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'a1', 'r1' ] );
+		} );
+
+		it( 'leaves the page you are on out of Recent', async () => {
+			useWikiPaths( { wgPageName: 'Akita' } );
+			window.history.replaceState( null, '', '/wiki/Akita#History' );
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( { items: [
+					{ id: 'r1', url: '/w/index.php?title=Akita', source: 'recent' },
+					{ id: 'r2', url: '/wiki/Other', source: 'recent' }
+				] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r2' ] );
+		} );
+
+		it( 'leaves out the redirect that brought you to the page', async () => {
+			useWikiPaths( { wgPageName: 'Dog', wgRedirectedFrom: 'Doggo' } );
+			window.history.replaceState( null, '', '/wiki/Dog' );
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( { items: [
+					{ id: 'r1', url: '/wiki/Doggo', source: 'recent' },
+					{ id: 'r2', url: '/wiki/Other', source: 'recent' }
+				] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r2' ] );
+		} );
+
+		it( 'leaves out the special page you are on, under whichever of its names', async () => {
+			useWikiPaths( { wgPageName: 'Special:Версия' } );
+			window.history.replaceState( null, '', '/wiki/Special:%D0%92%D0%B5%D1%80%D1%81%D0%B8%D1%8F' );
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( { items: [
+					{ id: 'r1', url: '/wiki/Special:Version', source: 'recent' },
+					{ id: 'r2', url: '/wiki/Special:ImageList', source: 'recent' }
+				] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r2' ] );
+		} );
+
+		it( 'leaves out the search a go ran while you are on its results', async () => {
+			useWikiPaths( { wgPageName: 'Special:Search', wgCanonicalSpecialPageName: 'Search' } );
+			window.history.replaceState( null, '', '/wiki/Special:Search?search=zzqx+yy' );
+			vi.spyOn( mw.util, 'getParamValue' ).mockImplementation(
+				( name ) => new URL( window.location.href ).searchParams.get( name )
+			);
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( { items: [
+					{ id: 'r1', url: mw.util.getUrl( 'Special:Search', { search: 'zzqx yy', fulltext: 1 } ), source: 'recent' },
+					{ id: 'r2', url: '/wiki/Special:Search?search=other&fulltext=1', source: 'recent' }
+				] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r2' ] );
+		} );
+
+		it( 'keeps a page under Recent while you view its history', async () => {
+			useWikiPaths( { wgPageName: 'Akita' } );
+			window.history.replaceState( null, '', '/w/index.php?title=Akita&action=history' );
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( { items: [
+					{ id: 'r1', url: '/wiki/Akita', source: 'recent' }
+				] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r1' ] );
+		} );
+
+		it( 'shows eight Recent entries after leaving some out', async () => {
+			useWikiPaths( { wgPageName: 'P1' } );
+			window.history.replaceState( null, '', '/wiki/P1' );
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( {
+					items: Array.from( { length: 11 }, ( _, i ) => (
+						{ id: `r${ i + 1 }`, url: `/wiki/P${ i + 1 }`, source: 'recent' }
+					) )
+				} ) },
+				relatedArticlesProvider: {
+					getResults: () => Promise.resolve( { items: [ { id: 'a1', url: '/wiki/P2', source: 'related' } ] } )
+				}
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual(
+				[ 'a1', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10' ]
+			);
+		} );
+
+		it( 'asks Recent for only the entries it shows, leaving out the page you are on', () => {
+			useWikiPaths( { wgPageName: 'Elsewhere' } );
+			window.history.replaceState( null, '', '/wiki/Elsewhere' );
+			const recentItemsProvider = { getResults: vi.fn( () => ( { items: [] } ) ) };
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider,
+				relatedArticlesProvider: { getResults: () => new Promise( () => {} ) }
+			} );
+
+			orch.clearSearch();
+
+			expect( recentItemsProvider.getResults ).toHaveBeenCalledWith( '', {
+				leftOut: new Set( [ destinationKey( { id: '', url: '/wiki/Elsewhere' } ) ] ),
+				limit: 8
+			} );
+		} );
+
+		it( 'refills Recent to eight entries once Related takes some', async () => {
+			useWikiPaths( { wgPageName: 'Elsewhere' } );
+			window.history.replaceState( null, '', '/wiki/Elsewhere' );
+			const stored = Array.from( { length: 10 }, ( _, i ) => (
+				{ id: `r${ i + 1 }`, url: `/wiki/P${ i + 1 }`, source: 'recent' }
+			) );
+			// Answers as the service does: it passes over the places left out
+			// and returns no more rows than asked for.
+			const recentItemsProvider = {
+				getResults: ( query, { leftOut = new Set(), limit = Infinity } = {} ) => ( {
+					items: stored.filter( ( row ) => !leftOut.has( destinationKey( row ) ) ).slice( 0, limit )
+				} )
+			};
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider,
+				relatedArticlesProvider: {
+					getResults: () => Promise.resolve( { items: [
+						{ id: 'a1', url: '/wiki/P2', source: 'related' },
+						{ id: 'a2', url: '/wiki/P5', source: 'related' }
+					] } )
+				}
+			} );
+
+			await orch.clearSearch();
+
+			const recent = orch.displayedItems.value.find(
+				( s ) => s.heading === 'citizen-command-palette-heading-recent'
+			);
+			expect( recent.items.map( ( i ) => i.id ) ).toEqual(
+				[ 'r1', 'r3', 'r4', 'r6', 'r7', 'r8', 'r9', 'r10' ]
+			);
+		} );
+
+		it( 'reads Recent once when Related lists nothing', async () => {
+			const recentItemsProvider = { getResults: vi.fn( () => ( { items: recentItems } ) ) };
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider,
+				relatedArticlesProvider: { getResults: () => Promise.resolve( { items: [] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( recentItemsProvider.getResults ).toHaveBeenCalledTimes( 1 );
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r1' ] );
 		} );
 
 		it( 'declares related above recents before related has resolved', async () => {
@@ -939,8 +1161,128 @@ describe( 'useProviderOrchestration', () => {
 
 			expect( action ).toEqual( { action: 'navigate', payload: 'go' } );
 			expect( recentItemsService.saveRecentItem ).toHaveBeenCalledWith(
-				{ id: 'p1', label: 'Page', source: 'search', url: '/wiki/Page' }
+				{ id: 'p1', label: 'Page', source: 'search', url: '/wiki/Page' },
+				'/wiki/Page',
+				null
 			);
+		} );
+
+		it( 'saves the link a row actually opened, not the row\'s own link', async () => {
+			const revisionProvider = {
+				...searchProvider,
+				getResults: () => ( {
+					items: [ { id: 'r1', label: 'Page', source: 'search', url: '/w/index.php?title=Page&oldid=1' } ]
+				} ),
+				onResultSelect: () => ( {
+					action: 'navigate',
+					payload: '/w/index.php?title=Page&diff=prev&oldid=1'
+				} )
+			};
+			const recentItemsService = { saveRecentItem: vi.fn() };
+			const orch = useProviderOrchestration(
+				[ commandProvider, revisionProvider ], mockDecorator, { recentItemsService }
+			);
+			orch.updateQuery( 'Page' );
+			await vi.runAllTimersAsync();
+			const row = orch.flatItems.value.find( ( item ) => item.id === 'r1' );
+
+			await orch.handleSelection( row );
+
+			expect( recentItemsService.saveRecentItem ).toHaveBeenCalledWith(
+				row,
+				'/w/index.php?title=Page&diff=prev&oldid=1',
+				null
+			);
+		} );
+
+		describe( 'a row that keeps more than it renders', () => {
+			const revisionRow = { id: 'r1', label: 'Page', source: 'search', url: '/w/index.php?title=Page&oldid=1', revid: 1 };
+			const clickedCopy = { id: 'r1', label: 'Page', url: '/w/index.php?title=Page&oldid=1', source: 'search', isMouseClick: true };
+
+			async function setup() {
+				const revisionProvider = {
+					...searchProvider,
+					getResults: () => ( { items: [ { ...revisionRow } ] } ),
+					onResultSelect: ( item ) => ( {
+						action: 'navigate',
+						payload: '/w/index.php?title=Page&diff=prev&oldid=' + item.revid
+					} )
+				};
+				const recentItemsService = { saveRecentItem: vi.fn() };
+				const orch = useProviderOrchestration(
+					[ commandProvider, revisionProvider ], mockDecorator, { recentItemsService }
+				);
+				orch.updateQuery( 'Page' );
+				await vi.runAllTimersAsync();
+				return { orch, recentItemsService };
+			}
+
+			it( 'gives a mouse-clicked row\'s handler the full row it was built from', async () => {
+				const { orch, recentItemsService } = await setup();
+
+				const action = await orch.handleSelection( { ...clickedCopy } );
+
+				expect( action.payload ).toBe( '/w/index.php?title=Page&diff=prev&oldid=1' );
+				expect( recentItemsService.saveRecentItem ).toHaveBeenCalledWith(
+					{ ...revisionRow, isMouseClick: true },
+					'/w/index.php?title=Page&diff=prev&oldid=1',
+					null
+				);
+			} );
+
+			it( 'saves the same link when a row is activated twice', async () => {
+				const { orch, recentItemsService } = await setup();
+				const row = orch.flatItems.value.find( ( item ) => item.id === 'r1' );
+
+				await orch.handleSelection( row );
+				await orch.handleSelection( { ...clickedCopy } );
+
+				const savedLinks = recentItemsService.saveRecentItem.mock.calls.map( ( call ) => call[ 1 ] );
+				expect( savedLinks ).toEqual( [
+					'/w/index.php?title=Page&diff=prev&oldid=1',
+					'/w/index.php?title=Page&diff=prev&oldid=1'
+				] );
+			} );
+		} );
+
+		describe( 'rows that share an id', () => {
+			const first = { id: 'menuitem-edit', label: 'Edit', source: 'search', url: '/a', marker: 1 };
+			const second = { id: 'menuitem-edit', label: 'Edit', source: 'search', url: '/b', marker: 2 };
+
+			async function setup() {
+				const sharedIdProvider = {
+					...searchProvider,
+					getResults: () => ( { items: [ { ...first }, { ...second } ] } ),
+					onResultSelect: vi.fn( ( item ) => ( { action: 'navigate', payload: item.url } ) )
+				};
+				const orch = useProviderOrchestration(
+					[ commandProvider, sharedIdProvider ], mockDecorator, {}
+				);
+				orch.updateQuery( 'Edit' );
+				await vi.runAllTimersAsync();
+				return { orch, onResultSelect: sharedIdProvider.onResultSelect };
+			}
+
+			it( 'opens the row that was activated, not the first with its id', async () => {
+				const { orch, onResultSelect } = await setup();
+				const row = orch.flatItems.value.find( ( item ) => item.marker === 2 );
+
+				const action = await orch.handleSelection( row );
+
+				expect( action.payload ).toBe( '/b' );
+				expect( onResultSelect ).toHaveBeenCalledWith( row );
+			} );
+
+			it( 'matches a clicked copy by its link as well as its id', async () => {
+				const { orch, onResultSelect } = await setup();
+
+				const action = await orch.handleSelection(
+					{ id: 'menuitem-edit', label: 'Edit', source: 'search', url: '/b', isMouseClick: true }
+				);
+
+				expect( action.payload ).toBe( '/b' );
+				expect( onResultSelect ).toHaveBeenCalledWith( { ...second, isMouseClick: true } );
+			} );
 		} );
 
 		it( 'leaves a trigger-prefixed query its own results in the lead', async () => {

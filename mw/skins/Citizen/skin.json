@@ -1,6 +1,6 @@
 {
 	"name": "Citizen",
-	"version": "3.23.0",
+	"version": "3.24.0",
 	"author": [
 		"[https://www.mediawiki.org/wiki/User:Alistair3149 Alistair3149]",
 		"[https://www.mediawiki.org/wiki/User:Octfx Octfx]",
@@ -203,6 +203,7 @@
 				"resources/skins.citizen.scripts/contentEnhancements.js",
 				"resources/skins.citizen.scripts/deferUntilFrame.js",
 				"resources/skins.citizen.scripts/dropdown.js",
+				"resources/skins.citizen.scripts/goLanding.js",
 				"resources/skins.citizen.scripts/notifications.js",
 				"resources/skins.citizen.scripts/intentPrefetch.js",
 				"resources/skins.citizen.scripts/keyboardLayout.js",
@@ -448,6 +449,12 @@
 				"resources/skins.citizen.commandPalette/utils/modeHelpDetail.js",
 				"resources/skins.citizen.commandPalette/utils/appendQueryActions.js",
 				"resources/skins.citizen.commandPalette/utils/destinationKey.js",
+				"resources/skins.citizen.commandPalette/utils/parseWikiLink.js",
+				"resources/skins.citizen.commandPalette/utils/recentEntry.js",
+				"resources/skins.citizen.commandPalette/utils/formatTimestamp.js",
+				"resources/skins.citizen.commandPalette/utils/userActions.js",
+				"resources/skins.citizen.commandPalette/utils/fileMedia.js",
+				"resources/skins.citizen.commandPalette/utils/resolveSpecialPage.js",
 				"resources/skins.citizen.commandPalette/services/instantDiffs.js",
 				"resources/skins.citizen.commandPalette/services/recentItems.js",
 				"resources/skins.citizen.commandPalette/services/searchClient.js",
@@ -517,7 +524,8 @@
 					"name": "resources/skins.citizen.commandPalette/specialPages.json",
 					"callback": "MediaWiki\\Skins\\Citizen\\Hooks\\ResourceLoaderHooks::getCitizenCommandPaletteSpecialPages"
 				},
-				"resources/skins.citizen.scripts/keyboardLayout.js"
+				"resources/skins.citizen.scripts/keyboardLayout.js",
+				"resources/skins.citizen.scripts/goLanding.js"
 			],
 			"messages": [
 				"action-edit",

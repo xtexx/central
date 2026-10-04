@@ -1,6 +1,7 @@
-const { cdxIconEdit, cdxIconUserAvatar, cdxIconUserContributions, cdxIconUserTalk } = require( '../icons.json' );
+const { cdxIconEdit, cdxIconUserAvatar } = require( '../icons.json' );
 const config = require( '../config.json' );
 const { getNavigationAction } = require( '../utils/providerActions.js' );
+const userActions = require( '../utils/userActions.js' );
 const { defineMode } = require( '../services/defineMode.js' );
 
 /**
@@ -38,20 +39,7 @@ function createUserCommand( ApiConstructor ) {
 					icon: cdxIconEdit
 				}
 			],
-			actions: [
-				{
-					id: 'talk',
-					label: mw.message( 'talk' ).text(),
-					icon: cdxIconUserTalk,
-					url: mw.util.getUrl( 'User_talk:' + apiUser.name )
-				},
-				{
-					id: 'contributions',
-					label: mw.message( 'contributions' ).text(),
-					icon: cdxIconUserContributions,
-					url: mw.util.getUrl( 'Special:Contributions/' + apiUser.name )
-				}
-			],
+			actions: userActions( apiUser.name ),
 			highlightQuery: true
 		};
 	}
@@ -128,6 +116,9 @@ function createUserCommand( ApiConstructor ) {
 		getResults: getUserResults,
 		async onResultSelect( item ) {
 			return getNavigationAction( item );
+		},
+		remember( item ) {
+			return { kind: 'user', label: item.label };
 		}
 	} );
 }
