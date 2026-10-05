@@ -12,7 +12,7 @@ module tyro_core (
   // parameter int unsigned PADDR_W = pmem_rd.ADDR_W;
   parameter int unsigned VADDR_W = 40;
 
-  logic flush_pipeline = 0;
+  logic flush_pipeline;
 
   // FTQ
   ftq_addr_if #(.ADDR_W(VADDR_W))
