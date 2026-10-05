@@ -43,15 +43,8 @@ module preg_free_list
   assign is_empty = wptr_q == rptr_q;
   assign is_full  = (wptr_q[PtrW-1:0] == rptr_q[PtrW-1:0]) && (wptr_q[PtrW] != rptr_q[PtrW]);
 
+  // Allocator interface
   always_comb begin
-    // Default assignments
-    list_d = list_q;
-    rptr_d = rptr_q;
-    wptr_d = wptr_q;
-
-    // Allocator interface
-    rptr_d = rptr_d + (PtrW + 1)'(alloc_if.used);
-
     alloc_if.valid = '0;
     for (int i = 0; i < alloc_if.BATCH_SIZE; i++) begin
       alloc_if.preg[i]  = list_q[(rptr_q[PtrW-1:0]+(PtrW'(i)))];
@@ -60,6 +53,13 @@ module preg_free_list
         alloc_if.valid[i] = alloc_if.valid[i] & alloc_if.valid[i-1];
       end
     end
+  end
+  assign rptr_d = rptr_q + (PtrW + 1)'(alloc_if.used);
+
+  always_comb begin
+    // Default assignments
+    list_d = list_q;
+    wptr_d = wptr_q;
 
     // Free interface
     for (int i = 0; i < free_if.BATCH_SIZE; i++) begin
