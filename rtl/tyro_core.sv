@@ -6,20 +6,13 @@ module tyro_core (
     input wire rst,
     // [0] -> Committer
     // [1] -> IFU
-    taxi_axil_if.rd_mst pmem_rd[2],
-    // [0] -> Committer
-    // [1] -> unused
-    taxi_axil_if.wr_mst pmem_wr[2]
+    AXI_LITE.Master pmem[2]
 );
 
   // parameter int unsigned PADDR_W = pmem_rd.ADDR_W;
   parameter int unsigned VADDR_W = 40;
 
   logic flush_pipeline = 0;
-
-  assign pmem_wr[1].awvalid = '0;
-  assign pmem_wr[1].wvalid  = '0;
-  assign pmem_wr[1].bready  = '1;
 
   // FTQ
   ftq_addr_if #(.ADDR_W(VADDR_W))
@@ -51,7 +44,7 @@ module tyro_core (
   ifu ifu (
       .clk(clk),
       .rst(rst),
-      .pmem_rd(pmem_rd[1]),
+      .pmem(pmem[1]),
       .ifu_if(ifu_out),
       .ftq_if(ftq_out),
       .flush(flush_pipeline)
@@ -379,8 +372,7 @@ module tyro_core (
       .rat_sync(rat_sync),
 
       .lsq_pop(lsq_pop),
-      .pmem_rd(pmem_rd[0]),
-      .pmem_wr(pmem_wr[0])
+      .pmem(pmem[0])
   );
 
 endmodule

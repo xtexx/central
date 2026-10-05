@@ -8,7 +8,7 @@ fn start() callconv(.naked) noreturn {
     asm volatile (
         \\li.d $sp, 0xff00
         // \\alsl.w $r4, $sp, $r0, 4
-        // \\st.d $r4, $r0, 0x50
+        \\st.d $r3, $r0, 0x50
         \\b %[main]
         :
         : [main] "X" (&main),

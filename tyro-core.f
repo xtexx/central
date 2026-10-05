@@ -4,10 +4,13 @@
 rtl/backend/inst_pkg.sv
 rtl/frontend/ifu_pkg.sv
 vendor/common_cells/src/cc_pkg.sv
+vendor/axi/src/axi_pkg.sv
+vendor/axi/src/axi_intf.sv
 
 // Search path
 -y rtl
 -y rtl/backend
+-y rtl/device
 -y rtl/frontend
 -y rtl/gen
 -y rtl/interface
@@ -17,8 +20,11 @@ vendor/common_cells/src/cc_pkg.sv
 // Dependencies
 +incdir+vendor/common_cells/include
 -y vendor/common_cells/src
--y vendor/taxi/src/prim/rtl
--y vendor/taxi/src/axi/rtl
++incdir+vendor/axi/include
+-y vendor/axi/src
+
+// AXI modules whose name is different from file name
+vendor/axi/src/axi_lite_xbar.sv
 
 // Top files
 rtl/top.sv

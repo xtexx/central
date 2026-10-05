@@ -22,8 +22,7 @@ module committer
     rat_sync_if.tx rat_sync,
 
     lsq_if.rx lsq_pop,
-    taxi_axil_if.rd_mst pmem_rd,
-    taxi_axil_if.wr_mst pmem_wr
+    AXI_LITE.Master pmem
 );
 
   initial assert (free_list_free.BATCH_SIZE >= inst_pkg::ROB_ENTRY_REGS);
@@ -95,31 +94,28 @@ module committer
     rat_sync.valid = (state == FSMBranchRedir);
 
     // MemReq: Send AR for load, send AW/W for store
-    pmem_rd.araddr = lsq_pop.entry.addr[pmem_rd.ADDR_W-1:0];
-    pmem_rd.arprot = '0;
-    pmem_rd.aruser = '0;
-    pmem_rd.arvalid = (state == FSMMemReq && !lsq_pop.entry.is_store);
+    pmem.ar_addr = lsq_pop.entry.addr[pmem.AXI_ADDR_WIDTH-1:0];
+    pmem.ar_prot = '0;
+    pmem.ar_valid = (state == FSMMemReq && !lsq_pop.entry.is_store);
 
-    pmem_wr.awaddr = lsq_pop.entry.addr[pmem_wr.ADDR_W-1:0];
-    pmem_wr.awprot = '0;
-    pmem_wr.awuser = '0;
-    pmem_wr.awvalid = (state == FSMMemReq && lsq_pop.entry.is_store);
+    pmem.aw_addr = lsq_pop.entry.addr[pmem.AXI_ADDR_WIDTH-1:0];
+    pmem.aw_prot = '0;
+    pmem.aw_valid = (state == FSMMemReq && lsq_pop.entry.is_store);
 
-    pmem_wr.wdata = lsq_pop.entry.u.st.data;
-    pmem_wr.wstrb = lsq_pop.entry.strb;
-    pmem_wr.wuser = '0;
-    pmem_wr.wvalid = (state == FSMMemReq && lsq_pop.entry.is_store);
+    pmem.w_data = lsq_pop.entry.u.st.data;
+    pmem.w_strb = lsq_pop.entry.strb;
+    pmem.w_valid = (state == FSMMemReq && lsq_pop.entry.is_store);
 
     mem_st_req_progress_d = mem_st_req_progress_q;
-    mem_st_req_progress_d[0] |= pmem_wr.awvalid && pmem_wr.awready;
-    mem_st_req_progress_d[1] |= pmem_wr.wvalid && pmem_wr.wready;
+    mem_st_req_progress_d[0] |= pmem.aw_valid && pmem.aw_ready;
+    mem_st_req_progress_d[1] |= pmem.w_valid && pmem.w_ready;
 
     // MemRsp: Receive R for load, receive B for store
-    pmem_rd.rready = (state == FSMMemRsp && !lsq_pop.entry.is_store);
-    pmem_wr.bready = (state == FSMMemRsp && lsq_pop.entry.is_store);
+    pmem.r_ready = (state == FSMMemRsp && !lsq_pop.entry.is_store);
+    pmem.b_ready = (state == FSMMemRsp && lsq_pop.entry.is_store);
 
     // MemRsp: Write load result
-    load_result = pmem_rd.rdata;
+    load_result = pmem.r_data;
     for (int i = 0; i < 8; i++) begin
       load_result[i*8+:8] = load_result[i*8+:8] & {8{lsq_pop.entry.strb[i]}};
     end
@@ -181,7 +177,7 @@ module committer
       end
       // MemReq: Complete AR/AW/W handshake
       if (state == FSMMemReq) begin
-        if (pmem_rd.arvalid && pmem_rd.arready) state <= FSMMemRsp;
+        if (pmem.ar_valid && pmem.ar_ready) state <= FSMMemRsp;
         if (mem_st_req_progress_d == 2'b11) begin
           mem_st_req_progress_q <= 0;
           state <= FSMMemRsp;
@@ -189,7 +185,7 @@ module committer
       end
       // MemRsp: Complete R/B handshake
       if (state == FSMMemRsp &&
-        ((pmem_wr.bvalid && pmem_wr.bready) || (pmem_rd.rvalid && pmem_rd.rready))) begin
+        ((pmem.b_valid && pmem.b_ready) || (pmem.r_valid && pmem.r_ready))) begin
         // TODO: check bresp and rresp
         mem_retire <= 1;
         state <= FSMIdle;

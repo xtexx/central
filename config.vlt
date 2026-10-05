@@ -1,12 +1,19 @@
 `verilator_config
 
-lint_off -rule PROCASSINIT -file "vendor/taxi/*"
-lint_off -rule GENUNNAMED -file "vendor/taxi/*"
-lint_off -rule UNUSEDPARAM -file "vendor/taxi/*"
-lint_off -rule UNUSEDSIGNAL -file "vendor/taxi/*"
+lint_off -rule DECLFILENAME -file "vendor/axi/*"
+lint_off -rule PINCONNECTEMPTY -file "vendor/axi/*"
+lint_off -rule UNUSEDSIGNAL -file "vendor/axi/*"
+lint_off -rule UNUSEDPARAM -file "vendor/axi/*"
+lint_off -rule GENUNNAMED -file "vendor/axi/*"
+lint_off -rule WIDTHEXPAND -file "vendor/axi/*"
+lint_off -rule WIDTHTRUNC -file "vendor/axi/*"
 
 lint_off -rule SYNCASYNCNET -file "vendor/common_cells/*"
+lint_off -rule PINCONNECTEMPTY -file "vendor/common_cells/*"
 lint_off -rule UNUSEDPARAM -file "vendor/common_cells/*"
+lint_off -rule UNUSEDSIGNAL -file "vendor/common_cells/*"
+lint_off -rule WIDTHEXPAND -file "vendor/common_cells/*"
+lint_off -rule WIDTHTRUNC -file "vendor/common_cells/*"
 
 public_flat_rd -module "tyro_core" -var "*"
 public_flat_rd -module "*_if" -var "*"
