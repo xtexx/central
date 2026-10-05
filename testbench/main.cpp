@@ -62,16 +62,16 @@ int main(int argc, char **argv, char **env) {
         }
       }
 
+      if (cycles == 10) {
+        top->rst = 0;
+        cerr << "Reset completed\n";
+      }
+
       top->clk = 1;
       ++cycles;
       top->eval();
       trace->dump(vctx->time());
       vctx->timeInc(1);
-
-      if (cycles == 10) {
-        top->rst = 0;
-        cerr << "Reset completed\n";
-      }
 
       top->clk = 0;
       top->eval();
