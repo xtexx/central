@@ -30,6 +30,7 @@ module rob
   // Flip-Flop
   always_ff @(posedge (clk)) begin
     if (rst) begin
+      mem_q  <= '0;
       rptr_q <= '0;
       wptr_q <= '0;
     end else begin
