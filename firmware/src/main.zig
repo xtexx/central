@@ -1,10 +1,19 @@
 const std = @import("std");
 
 comptime {
-    @export(&start, .{ .name = "start", .section = ".text.start" });
+    @export(&start0, .{ .name = "start", .section = ".text.start" });
 }
 
-fn start() callconv(.naked) noreturn {
+fn start0() callconv(.naked) noreturn {
+    asm volatile (
+        \\b %[start1]
+        \\b %[start1]
+        :
+        : [start1] "X" (&start1),
+    );
+}
+
+fn start1() callconv(.naked) noreturn {
     asm volatile (
         \\li.d $sp, 0xff00
         // \\alsl.w $r4, $sp, $r0, 4
