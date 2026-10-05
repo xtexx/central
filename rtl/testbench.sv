@@ -11,12 +11,13 @@ module testbench ();
   );
 
   initial clk = 0;
-  always #2 clk = ~clk;
+  initial rst = 1;
+  always #1 clk = ~clk;
 
   initial begin
-    rst = 1;
+    #2;
     $readmemh("firmware/zig-out/tyro-core-firmware.hex", platform.sram_mc.mem);
-    #20;
+    #11;
     rst = 0;
 
     repeat (10000) @(posedge clk);
