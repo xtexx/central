@@ -142,4 +142,5 @@
     "cSpell.userWords": [
         "combinational"
     ],
+    "network.meteredConnection": "off",
 }
