@@ -14,16 +14,20 @@ module inst_dispatcher
 
   always_comb begin
     // Instruction data wire net
-    o_alu.inst  = in.inst;
-    o_ctl.inst  = in.inst;
-    o_bru.inst  = in.inst;
-    o_agu.inst  = in.inst;
+    o_alu.inst = in.inst;
+    o_ctl.inst = in.inst;
+    o_bru.inst = in.inst;
+    o_agu.inst = in.inst;
 
     // Default assignments
     o_alu.valid = '0;
     o_ctl.valid = '0;
     o_bru.valid = '0;
     o_agu.valid = '0;
+
+    // Before the first instruction, RR output opcode are 'x.
+    // In this case, ready wire should be pulled down stably.
+    in.ready = '0;
 
     // Dispatch
     unique case (in.inst.op)
