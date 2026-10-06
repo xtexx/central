@@ -35,7 +35,11 @@ pub fn build(b: *std.Build) void {
     obj.setLinkerScript(b.path("src/linker.ld"));
     b.getInstallStep().dependOn(&b.addInstallFile(obj.getEmittedBin(), "tyro-core-firmware.o").step);
 
-    const objcopy = obj.addObjCopy(.{ .format = .binary, .only_section = ".text" });
+    const objcopy = obj.addObjCopy(.{
+        .format = .binary,
+        .only_section = ".text",
+        .pad_to = 64 * 1024,
+    });
     b.getInstallStep().dependOn(&b.addInstallFile(objcopy.getOutput(), "tyro-core-firmware.bin").step);
 
     const bin2hex = b.addExecutable(.{

@@ -20,7 +20,7 @@ pub fn main(init: std.process.Init) !void {
     var hex_buf: [4096]u8 = undefined;
     var hex_writer = hex_file.writerStreaming(io, &hex_buf);
 
-    for (0..bin_data.len / 8) |i| {
+    for (0..(bin_data.len / 8)) |i| {
         const val = std.mem.littleToNative(u64, @bitCast(bin_data[i * 8 ..][0..8].*));
         try hex_writer.interface.printInt(
             val,
@@ -29,5 +29,10 @@ pub fn main(init: std.process.Init) !void {
             .{ .alignment = .right, .fill = '0', .width = 16 },
         );
         try hex_writer.interface.writeAll("\n");
+    }
+    // Pad to 64K to workaround objcopy bug
+    // https://codeberg.org/ziglang/zig/pulls/37111
+    for ((bin_data.len / 8)..(64 * 1024 / 8)) |_| {
+        try hex_writer.interface.writeAll("0000000000000000\n");
     }
 }
