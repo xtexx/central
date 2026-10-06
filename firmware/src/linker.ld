@@ -23,8 +23,10 @@ SECTIONS {
 
 		. = ALIGN(4096);
 		PROVIDE( __data_start = . );
-		*(*.sdata .sdata*)
+		*(.sdata .sdata*)
+        *(.rodata .rodata.*)
         *(.data .data.*)
+		. = ALIGN(4096);
 		PROVIDE( __data_end = . );
 	} > ram AT > ram : text
 
@@ -32,7 +34,7 @@ SECTIONS {
 		. = ALIGN(4096);
 		PROVIDE( __bss_start = . );
 		*(.sbss .sbss.*)
-    *(.bss .bss.*)
+        *(.bss .bss.*)
 		. = ALIGN(4096);
 		PROVIDE( __bss_end = . );
 	} > ram AT > ram : bss
