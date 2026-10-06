@@ -261,6 +261,48 @@
 `define LA_DECODE_INST_PRELD is_nop = 1;
 `define LA_DECODE_INST_PRELDX is_nop = 1;
 
+`define LA_DEC_MEM_BC_LD(__ty, __chk) \
+  begin \
+    uop_mem_pl.is_store = '0; \
+    uop_mem_pl.ty = MemOpType``__ty; \
+    uop_mem_pl.is_unsigned = 0; \
+    uop_mem_pl.check_``__chk = '1; \
+    `LA_DEC(Mem, uop_mem_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+    `LA_DEC_REG_R_GPR(1, op_rk) \
+  end
+
+`define LA_DEC_MEM_BC_ST(__ty, __chk) \
+  begin \
+    uop_mem_pl.is_store = '1; \
+    uop_mem_pl.ty = MemOpType``__ty; \
+    uop_mem_pl.is_unsigned = '0; \
+    uop_mem_pl.check_``__chk = '1; \
+    `LA_DEC(Mem, uop_mem_pl) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+    `LA_DEC_REG_R_GPR(1, op_rk) \
+    `LA_DEC_REG_R_GPR(2, op_rd) \
+  end
+
+`define LA_DECODE_INST_LDGT_B `LA_DEC_MEM_BC_LD(B, gt)
+`define LA_DECODE_INST_LDGT_H `LA_DEC_MEM_BC_LD(H, gt)
+`define LA_DECODE_INST_LDGT_W `LA_DEC_MEM_BC_LD(W, gt)
+`define LA_DECODE_INST_LDGT_D `LA_DEC_MEM_BC_LD(D, gt)
+`define LA_DECODE_INST_LDLE_B `LA_DEC_MEM_BC_LD(B, le)
+`define LA_DECODE_INST_LDLE_H `LA_DEC_MEM_BC_LD(H, le)
+`define LA_DECODE_INST_LDLE_W `LA_DEC_MEM_BC_LD(W, le)
+`define LA_DECODE_INST_LDLE_D `LA_DEC_MEM_BC_LD(D, le)
+
+`define LA_DECODE_INST_STGT_B `LA_DEC_MEM_BC_ST(B, gt)
+`define LA_DECODE_INST_STGT_H `LA_DEC_MEM_BC_ST(H, gt)
+`define LA_DECODE_INST_STGT_W `LA_DEC_MEM_BC_ST(W, gt)
+`define LA_DECODE_INST_STGT_D `LA_DEC_MEM_BC_ST(D, gt)
+`define LA_DECODE_INST_STLE_B `LA_DEC_MEM_BC_ST(B, le)
+`define LA_DECODE_INST_STLE_H `LA_DEC_MEM_BC_ST(H, le)
+`define LA_DECODE_INST_STLE_W `LA_DEC_MEM_BC_ST(W, le)
+`define LA_DECODE_INST_STLE_D `LA_DEC_MEM_BC_ST(D, le)
+
 `define LA_DECODE_INST_DBAR is_nop = 1;
 `define LA_DECODE_INST_IBAR begin \
     uop_br_pl.offs26 = 'sd4; \

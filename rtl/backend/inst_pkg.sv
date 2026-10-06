@@ -211,10 +211,15 @@ package inst_pkg;
 
   typedef struct packed {
     logic is_store;
-    // Target VADDR = Rr0 + Rr1 + offs
+    // Target VADDR = Rr0 + Rr1 + offs (if !check_gt && !check_le)
+    // Target VADDR = Rr0 (if check_gt || check_le)
     logic signed [15:0] offs;
     mem_op_type_t ty;
     logic is_unsigned;
+    // Check Rr0 > Rr1
+    logic check_gt;
+    // Check Rr0 <= Rr1
+    logic check_le;
   } uop_mem_pl_t  /*verilator public*/;
 
 endpackage

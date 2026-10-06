@@ -18,13 +18,12 @@ module agu_exec
 
   `ASSERT_STABLE(InstStable, in.valid, in.ready, in.inst, '0, clk, rst);
 
-  logic ready;
-  logic [63:0] rr0, rr1, rr2, vaddr;
-
   inst_pkg::uop_mem_pl_t uop_pl;
   inst_pkg::lsq_entry_t  lsq_ent;
 
   always_comb begin
+    automatic logic ready, trigger_bce;
+    automatic logic [63:0] rr0, rr1, rr2, vaddr;
     // Payload decode
     uop_pl = in.inst.pl[$bits(inst_pkg::uop_mem_pl_t)-1:0];
 
@@ -40,14 +39,15 @@ module agu_exec
     ready = !rst && in.valid && prf_rd[0].ready && prf_rd[1].ready && prf_rd[2].ready;
 
     // Perform calculation
-    vaddr = '0;
+    vaddr = (uop_pl.check_gt || uop_pl.check_le) ? rr0 : (rr0 + rr1 + 64'(signed'(uop_pl.offs)));
+    unique if (uop_pl.check_gt) begin
+      trigger_bce = !(unsigned'(rr0) > unsigned'(rr1));
+    end else if (uop_pl.check_le) begin
+      trigger_bce = !(unsigned'(rr0) <= unsigned'(rr1));
+    end else begin
+      trigger_bce = '0;
+    end
     lsq_ent = '0;
-    unique case (in.inst.op)
-      UOpMem: begin
-        vaddr = rr0 + rr1 + 64'(signed'(uop_pl.offs));
-      end
-      default: if (ready) `ERROR("AGU Exec: bad op");
-    endcase
     lsq_ent.is_store = uop_pl.is_store;
     lsq_ent.addr = vaddr;
     lsq_ent.strb = '0;
@@ -86,8 +86,8 @@ module agu_exec
 
     // ROB write back
     rob_ex.idx = in.inst.rob_idx;
-    rob_ex.commit_type = InstCommitMem;
-    rob_ex.data = 0;
+    rob_ex.commit_type = trigger_bce ? InstCommitException : InstCommitMem;
+    rob_ex.data = 'h0A; // Ecode = BCE; unused for InstCommitMem
     rob_ex.valid = ready;
   end
 
