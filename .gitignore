@@ -5,7 +5,6 @@
 *.log
 /firmware/.zig-cache
 /firmware/zig-out
-/soc.json
 
 # Questa
 /questa
@@ -13,3 +12,8 @@
 /*.mpf
 /*.wlf
 /*.mti
+
+# Synthesis
+/synth.json
+/synth.sdc
+/soc.pnr.json

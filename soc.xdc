@@ -10,5 +10,11 @@ set_false_path -hold \
 set_property PACKAGE_PIN AD23 [get_ports clk]
 set_property IOSTANDARD LVCMOS33 [get_ports clk]
 
+set_property PACKAGE_PIN AF22 [get_ports clk_io_ref]
+set_property IOSTANDARD LVCMOS33 [get_ports clk_io_ref]
+
 set_property PACKAGE_PIN Y23 [get_ports rst]
 set_property IOSTANDARD LVCMOS33 [get_ports rst]
+
+set_property PACKAGE_PIN AA22 [get_ports uart_tx]
+set_property IOSTANDARD LVCMOS33 [get_ports uart_tx]
