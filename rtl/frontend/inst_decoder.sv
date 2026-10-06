@@ -93,6 +93,19 @@
 `define LA_DECODE_INST_BSTRINS_D `LA_DEC_BSTRINS(0, op_msbd, op_lsbd)
 `define LA_DECODE_INST_BSTRINS_W `LA_DEC_BSTRINS(1, {1'b0, op_msbw}, {1'b0,op_lsbw})
 
+`define LA_DEC_BSTRPICK(__is_w, __msbd, __lsbd) begin \
+    uop_bstr_pl.is_w = __is_w; \
+    uop_bstr_pl.is_ins = 0; \
+    uop_bstr_pl.msbw = __msbd; \
+    uop_bstr_pl.lsbw = __lsbd; \
+    `LA_DEC(BitStr, uop_bstr_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+  end
+
+`define LA_DECODE_INST_BSTRPICK_D `LA_DEC_BSTRPICK(0, op_msbd, op_lsbd)
+`define LA_DECODE_INST_BSTRPICK_W `LA_DEC_BSTRPICK(1, {1'b0, op_msbw}, {1'b0,op_lsbw})
+
 `define LA_DECODE_INST_BREAK begin \
     `LA_DEC(Exception, 'h0C) \
   end

@@ -97,6 +97,7 @@ module alu_exec
         if (uop_bstr_pl.is_ins) begin
           rd = (rk & ~tmp) | ((rj << uop_bstr_pl.lsbw) & tmp);
         end else begin
+          rd = (rj & tmp) >> uop_bstr_pl.lsbw;
         end
         // rd = IS_W ? SignExtend(rd[31:0]) : rd
         rd = (uop_bstr_pl.is_w) ? unsigned'(64'(signed'(rd[31:0]))) : rd;
