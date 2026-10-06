@@ -69,13 +69,13 @@ package inst_pkg;
   typedef logic [4:0] inst_gpr_t;
   typedef logic [13:0] inst_csr_t;
 
-  typedef enum logic [7:0] {
+  typedef enum logic [5:0] {
     // Add or sub, Rw0 = Rr0 +- Rr1, uop_add_sub_pl_t, to ALU
     UOpAdd,
     // Add or sub, Rw0 = Rr0 +- pl.si12, uop_add_sub_pl_t, to ALU
     UOpAddImm,
-    // Bit op, Rw0 = Rr0 |&^ pl.ui12, uop_bitop_imm_pl_t, to ALU
-    UOpBitOpImm,
+    // Bit op, uop_bitop_pl_t, to ALU
+    UOpBitOp,
     // Load immediate parts, uop_ld_imm_pl_t, to ALU
     UOpLdImm,
     // Bit string manipulation, uop_bstr_pl_t, to ALU
@@ -117,12 +117,44 @@ package inst_pkg;
     logic signed [11:0] si12;
   } uop_add_pl_t  /*verilator public*/;
 
+  typedef enum logic [4:0] {
+    BitOpTyAndImm = 5'b00000,
+    BitOpTyOrImm = 5'b00001,
+    BitOpTyXorImm = 5'b00010,
+    BitOpTyAnd = 5'b00100,
+    BitOpTyOr = 5'b00110,
+    BitOpTyAndn = 5'b00101,
+    BitOpTyOrn = 5'b00111,
+    BitOpTyXor = 5'b01000,
+    BitOpTyNor = 5'b01001,
+    BitOpTyMaskEqz = 5'b01010,
+    BitOpTyMaskNez = 5'b01011,
+    BitOpTyBitRevW = 5'b01100,
+    BitOpTyBitRevD = 5'b01101,
+    BitOpTyBitRev4B = 5'b01110,
+    BitOpTyBitRev8B = 5'b01111,
+    BitOpTyRevH2W = 5'b10000,
+    BitOpTyRevHD = 5'b10001,
+    BitOpTyRevB2H = 5'b10010,
+    BitOpTyRevB4H = 5'b10011,
+    BitOpTyRevB2W = 5'b10100,
+    BitOpTyRevBD = 5'b10101,
+    BitOpTyExtWB = 5'b10110,
+    BitOpTyExtWH = 5'b10111,
+    BitOpTyCLOW = 5'b11000,
+    BitOpTyCLOD = 5'b11001,
+    BitOpTyCLZW = 5'b11010,
+    BitOpTyCLZD = 5'b11011,
+    BitOpTyCTOW = 5'b11100,
+    BitOpTyCTOD = 5'b11101,
+    BitOpTyCTZW = 5'b11110,
+    BitOpTyCTZD = 5'b11111
+  } uop_bitop_ty_t  /*verilator public*/;
+
   typedef struct packed {
     logic unsigned [11:0] ui12;
-    logic is_andi;
-    logic is_ori;
-    logic is_xori;
-  } uop_bitop_imm_pl_t  /*verilator public*/;
+    uop_bitop_ty_t ty;
+  } uop_bitop_pl_t  /*verilator public*/;
 
   typedef struct packed {
     logic is_w;
@@ -162,7 +194,7 @@ package inst_pkg;
 
   typedef struct packed {
     logic signed [20:0] offs21;
-    uop_cond_br_type_t ty;
+    uop_cond_br_type_t  ty;
   } uop_cond_br_pl_t  /*verilator public*/;
 
   typedef enum logic [1:0] {

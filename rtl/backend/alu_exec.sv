@@ -20,17 +20,19 @@ module alu_exec
   `ASSERT_STABLE(InstStable, in.valid, in.ready, in.inst, '0, clk, rst);
 
   logic ready;
-  logic [63:0] rd, rj, rk, tmp;
+  logic [63:0] rd, rj, rk;
+  logic unsigned [63:0] tmp_u64;
+  logic unsigned [31:0] tmp_u32;
 
   inst_pkg::uop_add_pl_t uop_add_pl;
-  inst_pkg::uop_bitop_imm_pl_t uop_bitop_imm_pl;
+  inst_pkg::uop_bitop_pl_t uop_bitop_pl;
   inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
   inst_pkg::uop_bstr_pl_t uop_bstr_pl;
 
   always_comb begin
     // Payload decode
     uop_add_pl = in.inst.pl[$bits(inst_pkg::uop_add_pl_t)-1:0];
-    uop_bitop_imm_pl = in.inst.pl[$bits(inst_pkg::uop_bitop_imm_pl_t)-1:0];
+    uop_bitop_pl = in.inst.pl[$bits(inst_pkg::uop_bitop_pl_t)-1:0];
     uop_ld_imm_pl = in.inst.pl[$bits(inst_pkg::uop_ld_imm_pl_t)-1:0];
     uop_bstr_pl = in.inst.pl[$bits(inst_pkg::uop_bstr_pl_t)-1:0];
 
@@ -48,7 +50,8 @@ module alu_exec
 
     // Perform calculation
     rd = '0;
-    tmp = '0;
+    tmp_u64 = '0;
+    tmp_u32 = '0;
     unique case (in.inst.op)
       UOpAdd, UOpAddImm: begin
         // rd = RHS
@@ -58,14 +61,63 @@ module alu_exec
         // rd = IS_W ? SignExtend(rd[31:0]) : rd
         rd = (uop_add_pl.is_w) ? unsigned'(64'(signed'(rd[31:0]))) : rd;
       end
-      UOpBitOpImm: begin
-        if (uop_bitop_imm_pl.is_andi) begin
-          rd = rj & 64'(uop_bitop_imm_pl.ui12);
-        end else if (uop_bitop_imm_pl.is_ori) begin
-          rd = rj | 64'(uop_bitop_imm_pl.ui12);
-        end else if (uop_bitop_imm_pl.is_xori) begin
-          rd = rj ^ 64'(uop_bitop_imm_pl.ui12);
-        end else if (ready) `ERROR("ALU Exec: UOpBitOpImm nop");
+      UOpBitOp: begin
+        unique case (uop_bitop_pl.ty)
+          BitOpTyAndImm: rd = rj & 64'(uop_bitop_pl.ui12);
+          BitOpTyOrImm:  rd = rj | 64'(uop_bitop_pl.ui12);
+          BitOpTyXorImm: rd = rj ^ 64'(uop_bitop_pl.ui12);
+
+          BitOpTyAnd:  rd = rj & rk;
+          BitOpTyOr:   rd = rj | rk;
+          BitOpTyAndn: rd = rj & (~rk);
+          BitOpTyOrn:  rd = rj | (~rk);
+
+          BitOpTyXor: rd = rj ^ rk;
+          BitOpTyNor: rd = ~(rj | rk);
+
+          BitOpTyMaskEqz: rd = (rk == 0) ? '0 : rj;
+          BitOpTyMaskNez: rd = (rk != 0) ? '0 : rj;
+
+          BitOpTyBitRevW: begin
+            tmp_u32 = {<<{rj[31:0]}};
+            rd = 64'(signed'(tmp_u32));
+          end
+          BitOpTyBitRevD: rd = {<<{rj}};
+          BitOpTyBitRev4B, BitOpTyBitRev8B: begin
+            for (int i = 0; i < 8; i++) begin
+              rd[i*8+:8] = {<<{rj[i*8+:8]}};
+            end
+            rd = (uop_bitop_pl.ty == BitOpTyBitRev4B) ? 64'(signed'(rd[31:0])) : rd;
+          end
+
+          BitOpTyRevH2W: rd = {rj[47:32], rj[63:48], rj[15:0], rj[31:16]};
+          BitOpTyRevHD:  rd = {rj[15:0], rj[31:16], rj[47:32], rj[63:48]};
+          BitOpTyRevB2H, BitOpTyRevB4H: begin
+            for (int i = 0; i < 4; i++) begin
+              rd[i*16+:16] = {rj[i*16+:8], rj[i*16+8+:8]};
+            end
+            rd = (uop_bitop_pl.ty == BitOpTyRevB2H) ? 64'(signed'(rd[31:0])) : rd;
+          end
+          BitOpTyRevB2W: begin
+            rd[31:0]  = {rj[7:0], rj[15:8], rj[23:16], rj[31:24]};
+            rd[63:32] = {rj[39:32], rj[47:40], rj[55:48], rj[63:56]};
+          end
+          BitOpTyRevBD:  rd = {<<8{rj}};
+
+          BitOpTyExtWB: rd = 64'(signed'(rj[7:0]));
+          BitOpTyExtWH: rd = 64'(signed'(rj[15:0]));
+
+          BitOpTyCLOW,
+          BitOpTyCLOD,
+          BitOpTyCLZW,
+          BitOpTyCLZD,
+          BitOpTyCTOW,
+          BitOpTyCTOD,
+          BitOpTyCTZW,
+          BitOpTyCTZD: begin
+            // TODO
+          end
+        endcase
       end
       UOpLdImm: begin
         unique case (uop_ld_imm_pl.op)
@@ -101,22 +153,22 @@ module alu_exec
           end
           LdImmOpPCALAU12I: begin
             // PCALAU12I:
-            // tmp = PC + SignExtend({si20, 12'b0}, GRLEN)
+            // tmp_u64 = PC + SignExtend({si20, 12'b0}, GRLEN)
             rd = rob_pc_rd.pc + 64'(signed'({uop_ld_imm_pl.imm[19:0], 12'b0}));
-            // GR[rd] = {tmp[GRLEN-1:12], 12'b0}
+            // GR[rd] = {tmp_u64[GRLEN-1:12], 12'b0}
             rd = {rd[63:12], 12'b0};
           end
         endcase
       end
       UOpBitStr: begin
-        tmp = '0;
+        tmp_u64 = '0;
         for (int i = 0; i < 64; i++) begin
-          if (i >= uop_bstr_pl.lsbw && i <= uop_bstr_pl.msbw) tmp[i] = 1'b1;
+          if (i >= uop_bstr_pl.lsbw && i <= uop_bstr_pl.msbw) tmp_u64[i] = 1'b1;
         end
         if (uop_bstr_pl.is_ins) begin
-          rd = (rk & ~tmp) | ((rj << uop_bstr_pl.lsbw) & tmp);
+          rd = (rk & ~tmp_u64) | ((rj << uop_bstr_pl.lsbw) & tmp_u64);
         end else begin
-          rd = (rj & tmp) >> uop_bstr_pl.lsbw;
+          rd = (rj & tmp_u64) >> uop_bstr_pl.lsbw;
         end
         // rd = IS_W ? SignExtend(rd[31:0]) : rd
         rd = (uop_bstr_pl.is_w) ? unsigned'(64'(signed'(rd[31:0]))) : rd;

@@ -47,16 +47,34 @@
 
 `define LA_DEC_BITOP_IMM12(__op) \
   begin \
-    uop_bitop_imm_pl.is_``__op = '1; \
-    uop_bitop_imm_pl.ui12 = op_uk12; \
-    `LA_DEC(BitOpImm, uop_bitop_imm_pl) \
+    uop_bitop_pl.ty = BitOpTy``__op``Imm; \
+    uop_bitop_pl.ui12 = op_uk12; \
+    `LA_DEC(BitOp, uop_bitop_pl) \
     `LA_DEC_REG_W_GPR(0, op_rd) \
     `LA_DEC_REG_R_GPR(0, op_rj) \
   end
 
-`define LA_DECODE_INST_ANDI `LA_DEC_BITOP_IMM12(andi)
-`define LA_DECODE_INST_ORI `LA_DEC_BITOP_IMM12(ori)
-`define LA_DECODE_INST_XORI `LA_DEC_BITOP_IMM12(xori)
+`define LA_DECODE_INST_ANDI `LA_DEC_BITOP_IMM12(And)
+`define LA_DECODE_INST_ORI `LA_DEC_BITOP_IMM12(Or)
+`define LA_DECODE_INST_XORI `LA_DEC_BITOP_IMM12(Xor)
+
+`define LA_DEC_BITOP(__op, __rj, __rk) \
+  begin \
+    uop_bitop_pl.ty = BitOpTy``__op; \
+    `LA_DEC(BitOp, uop_bitop_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, __rj) \
+    `LA_DEC_REG_R_GPR(1, __rk) \
+  end
+
+`define LA_DECODE_INST_AND `LA_DEC_BITOP(And, op_rj, op_rk)
+`define LA_DECODE_INST_OR `LA_DEC_BITOP(Or, op_rj, op_rk)
+`define LA_DECODE_INST_ANDN `LA_DEC_BITOP(Andn, op_rj, op_rk)
+`define LA_DECODE_INST_ORN `LA_DEC_BITOP(Orn, op_rj, op_rk)
+`define LA_DECODE_INST_XOR `LA_DEC_BITOP(Xor, op_rj, op_rk)
+`define LA_DECODE_INST_NOR `LA_DEC_BITOP(Nor, op_rj, op_rk)
+`define LA_DECODE_INST_MASKEQZ `LA_DEC_BITOP(MaskEqz, op_rj, op_rk)
+`define LA_DECODE_INST_MASKNEZ `LA_DEC_BITOP(MaskNez, op_rj, op_rk)
 
 `define LA_DEC_LD_IMM(__op, __imm20, __rr0) \
   begin \
@@ -255,7 +273,7 @@ module inst_decoder
   end
 
   inst_pkg::uop_add_pl_t uop_add_pl;
-  inst_pkg::uop_bitop_imm_pl_t uop_bitop_imm_pl;
+  inst_pkg::uop_bitop_pl_t uop_bitop_pl;
   inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
   inst_pkg::uop_bstr_pl_t uop_bstr_pl;
   inst_pkg::uop_br_pl_t uop_br_pl;
@@ -273,7 +291,7 @@ module inst_decoder
     invalid_inst = 0;
 
     uop_add_pl = '0;
-    uop_bitop_imm_pl = '0;
+    uop_bitop_pl = '0;
     uop_ld_imm_pl = '0;
     uop_bstr_pl = '0;
     uop_br_pl = '0;

@@ -38,11 +38,10 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
                        pl.si12);
     break;
   }
-  case inst_pkg::UOpBitOpImm: {
-    uop_bitop_imm_pl_t pl;
+  case inst_pkg::UOpBitOp: {
+    uop_bitop_pl_t pl;
     pl.set(raw_pl);
-    log << std::format("BitOpImm is_andi={} is_ori={} is_xori={} ui12={}",
-                       pl.is_andi, pl.is_ori, pl.is_xori, pl.ui12);
+    log << std::format("BitOp ty={} ui12={}", pl.ty, pl.ui12);
     break;
   }
   case inst_pkg::UOpLdImm: {
