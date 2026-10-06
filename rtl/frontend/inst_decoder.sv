@@ -74,6 +74,7 @@
 
 `define LA_DECODE_INST_CU52I_D begin \
     uop_ld_imm_pl.imm = 20'(op_uk12); \
+    uop_ld_imm_pl.is_lu52id = 1; \
     `LA_DEC(LdImm, uop_ld_imm_pl) \
     `LA_DEC_REG_W_GPR(0, op_rd) \
     `LA_DEC_REG_R_GPR(0, op_rj) \
