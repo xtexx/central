@@ -121,6 +121,7 @@ package inst_pkg;
     BitOpTyAndImm = 6'b000000,
     BitOpTyOrImm = 6'b000001,
     BitOpTyXorImm = 6'b000010,
+    BitOpTyAddu16id = 6'b000011,
     BitOpTyAnd = 6'b000100,
     BitOpTyAndn = 6'b000101,
     BitOpTyOr = 6'b000110,
@@ -156,8 +157,8 @@ package inst_pkg;
   } uop_bitop_ty_t  /*verilator public*/;
 
   typedef struct packed {
-    logic unsigned [11:0] ui12;
     uop_bitop_ty_t ty;
+    logic unsigned [15:0] ui16;
   } uop_bitop_pl_t  /*verilator public*/;
 
   typedef struct packed {

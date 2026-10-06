@@ -42,13 +42,20 @@
 
 `define LA_DECODE_INST_ADDI_W `LA_DEC_ADD_SUB_IMM(0, 1)
 `define LA_DECODE_INST_ADDI_D `LA_DEC_ADD_SUB_IMM(0, 0)
-`define LA_DECODE_INST_SUBI_W `LA_DEC_ADD_SUB_IMM(1, 1)
-`define LA_DECODE_INST_SUBI_D `LA_DEC_ADD_SUB_IMM(1, 0)
+
+`define LA_DECODE_INST_ADDU16I_D \
+  begin \
+    uop_bitop_pl.ty = BitOpTyAddu16id; \
+    uop_bitop_pl.ui16 = unsigned'(op_sk16); \
+    `LA_DEC(BitOp, uop_bitop_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+  end
 
 `define LA_DEC_BITOP_IMM12(__op) \
   begin \
     uop_bitop_pl.ty = BitOpTy``__op``Imm; \
-    uop_bitop_pl.ui12 = op_uk12; \
+    uop_bitop_pl.ui16 = 16'(unsigned'(op_uk12)); \
     `LA_DEC(BitOp, uop_bitop_pl) \
     `LA_DEC_REG_W_GPR(0, op_rd) \
     `LA_DEC_REG_R_GPR(0, op_rj) \
@@ -281,6 +288,7 @@ module inst_decoder
   logic unsigned [11:0] op_uk12;
   logic signed   [11:0] op_sk12;
   logic signed   [13:0] op_sk14;
+  logic signed   [15:0] op_sk16;
   logic signed   [19:0] op_sj20;
   logic signed   [25:0] op_offs26;
   logic signed   [20:0] op_offs21;
@@ -298,6 +306,7 @@ module inst_decoder
     op_uk12 = in.inst[21:10];
     op_sk12 = signed'(op_uk12);
     op_sk14 = signed'(in.inst[23:10]);
+    op_sk16 = signed'(in.inst[25:10]);
     op_sj20 = signed'(in.inst[24:5]);
 
     op_offs26 = signed'({in.inst[9:0], in.inst[25:10]});

@@ -80,9 +80,11 @@ module alu_exec
       end
       UOpBitOp: begin
         unique case (uop_bitop_pl.ty)
-          BitOpTyAndImm: rd = rj & 64'(uop_bitop_pl.ui12);
-          BitOpTyOrImm:  rd = rj | 64'(uop_bitop_pl.ui12);
-          BitOpTyXorImm: rd = rj ^ 64'(uop_bitop_pl.ui12);
+          BitOpTyAndImm: rd = rj & 64'(uop_bitop_pl.ui16[11:0]);
+          BitOpTyOrImm:  rd = rj | 64'(uop_bitop_pl.ui16[11:0]);
+          BitOpTyXorImm: rd = rj ^ 64'(uop_bitop_pl.ui16[11:0]);
+
+          BitOpTyAddu16id: rd = rj + 64'(signed'({uop_bitop_pl.ui16[15:0], 16'b0}));
 
           BitOpTyAnd:  rd = rj & rk;
           BitOpTyOr:   rd = rj | rk;
@@ -138,8 +140,8 @@ module alu_exec
 
           BitOpTySetLtS: rd = (signed'(rj) < signed'(rk)) ? 1 : 0;
           BitOpTySetLtU: rd = (unsigned'(rj) < unsigned'(rk)) ? 1 : 0;
-          BitOpTySetLtSImm: rd = (signed'(rj) < 64'(signed'(uop_bitop_pl.ui12))) ? 1 : 0;
-          BitOpTySetLtUImm: rd = (unsigned'(rj) < 64'(signed'(uop_bitop_pl.ui12))) ? 1 : 0;
+          BitOpTySetLtSImm: rd = (signed'(rj) < 64'(signed'(uop_bitop_pl.ui16[11:0]))) ? 1 : 0;
+          BitOpTySetLtUImm: rd = (unsigned'(rj) < 64'(signed'(uop_bitop_pl.ui16[11:0]))) ? 1 : 0;
         endcase
       end
       UOpLdImm: begin
