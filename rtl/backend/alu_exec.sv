@@ -20,17 +20,19 @@ module alu_exec
 
   logic ready;
   logic [1:0] has_rr;
-  logic [63:0] rd, rj, rk;
+  logic [63:0] rd, rj, rk, tmp;
 
   inst_pkg::uop_add_pl_t uop_add_pl;
   inst_pkg::uop_bitop_imm_pl_t uop_bitop_imm_pl;
   inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
+  inst_pkg::uop_bstr_pl_t uop_bstr_pl;
 
   always_comb begin
     // Payload decode
     uop_add_pl = in.inst.pl[$bits(inst_pkg::uop_add_pl_t)-1:0];
     uop_bitop_imm_pl = in.inst.pl[$bits(inst_pkg::uop_bitop_imm_pl_t)-1:0];
     uop_ld_imm_pl = in.inst.pl[$bits(inst_pkg::uop_ld_imm_pl_t)-1:0];
+    uop_bstr_pl = in.inst.pl[$bits(inst_pkg::uop_bstr_pl_t)-1:0];
 
     // Classify binary operators
     has_rr = '0;
@@ -38,6 +40,7 @@ module alu_exec
       UOpAdd: has_rr = 2'b11;
       UOpAddImm, UOpBitOpImm: has_rr = 2'b01;
       UOpLdImm: has_rr[0] = uop_ld_imm_pl.is_lu32id || uop_ld_imm_pl.is_lu52id;
+      UOpBitStr: has_rr = uop_bstr_pl.is_ins ? 2'b11 : 2'b01;
       default: if (!rst) `ERROR("ALU Exec: bad op");
     endcase
 
@@ -52,6 +55,7 @@ module alu_exec
 
     // Perform calculation
     rd = '0;
+    tmp = '0;
     unique case (in.inst.op)
       UOpAdd, UOpAddImm: begin
         // rd = RHS
@@ -84,6 +88,18 @@ module alu_exec
           // GR[rd] = SignExtend({si20, 12'b0}, GRLEN)
           rd = 64'(signed'({uop_ld_imm_pl.imm[19:0], 12'b0}));
         end
+      end
+      UOpBitStr: begin
+        tmp = '0;
+        for (int i = 0; i < 64; i++) begin
+          if (i >= uop_bstr_pl.lsbw && i <= uop_bstr_pl.msbw) tmp[i] = 1'b1;
+        end
+        if (uop_bstr_pl.is_ins) begin
+          rd = (rk & ~tmp) | ((rj << uop_bstr_pl.lsbw) & tmp);
+        end else begin
+        end
+        // rd = IS_W ? SignExtend(rd[31:0]) : rd
+        rd = (uop_bstr_pl.is_w) ? unsigned'(64'(signed'(rd[31:0]))) : rd;
       end
       default: if (ready) `ERROR("ALU Exec: bad op");
     endcase

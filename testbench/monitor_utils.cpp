@@ -53,6 +53,13 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
         << FmtQAddr(pl.imm, 20);
     break;
   }
+  case inst_pkg::UOpBitStr: {
+    uop_bstr_pl_t pl;
+    pl.set(raw_pl);
+    log << std::format("BitStr is_w={} is_ins={} msbw={} lsbw={}", pl.is_w,
+                       pl.is_ins, pl.msbw, pl.lsbw);
+    break;
+  }
   case inst_pkg::UOpBr: {
     uop_br_pl_t pl;
     pl.set(raw_pl);

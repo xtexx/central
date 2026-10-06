@@ -78,6 +78,8 @@ package inst_pkg;
     UOpBitOpImm,
     // Load immediate parts, uop_ld_imm_pl_t, to ALU
     UOpLdImm,
+    // Bit string manipulation, uop_bstr_pl_t, to ALU
+    UOpBitStr,
     // Trigger an exception, to CTL
     // pl[5:0] = Ecode
     // pl[14:6] = EsubCode
@@ -119,6 +121,13 @@ package inst_pkg;
     logic is_ori;
     logic is_xori;
   } uop_bitop_imm_pl_t  /*verilator public*/;
+
+  typedef struct packed {
+    logic is_w;
+    logic is_ins;
+    logic [5:0] msbw;
+    logic [5:0] lsbw;
+  } uop_bstr_pl_t  /*verilator public*/;
 
   typedef struct packed {
     logic unsigned [19:0] imm;

@@ -79,6 +79,20 @@
     `LA_DEC_REG_R_GPR(0, op_rj) \
   end
 
+`define LA_DEC_BSTRINS(__is_w, __msbd, __lsbd) begin \
+    uop_bstr_pl.is_w = __is_w; \
+    uop_bstr_pl.is_ins = 1; \
+    uop_bstr_pl.msbw = __msbd; \
+    uop_bstr_pl.lsbw = __lsbd; \
+    `LA_DEC(BitStr, uop_bstr_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+    `LA_DEC_REG_R_GPR(1, op_rd) \
+  end
+
+`define LA_DECODE_INST_BSTRINS_D `LA_DEC_BSTRINS(0, op_msbd, op_lsbd)
+`define LA_DECODE_INST_BSTRINS_W `LA_DEC_BSTRINS(1, {1'b0, op_msbw}, {1'b0,op_lsbw})
+
 `define LA_DECODE_INST_BREAK begin \
     `LA_DEC(Exception, 'h0C) \
   end
@@ -187,6 +201,10 @@ module inst_decoder
   logic signed   [19:0] op_sj20;
   logic signed   [25:0] op_offs26;
   logic signed   [15:0] op_offs16;
+  logic unsigned [ 4:0] op_lsbw;
+  logic unsigned [ 4:0] op_msbw;
+  logic unsigned [ 5:0] op_lsbd;
+  logic unsigned [ 5:0] op_msbd;
 
   always_comb begin
     op_rd = in.inst[4:0];
@@ -200,11 +218,17 @@ module inst_decoder
 
     op_offs26 = signed'({in.inst[9:0], in.inst[25:10]});
     op_offs16 = signed'(in.inst[25:10]);
+
+    op_lsbw = in.inst[14:10];
+    op_msbw = in.inst[20:16];
+    op_lsbd = in.inst[15:10];
+    op_msbd = in.inst[21:16];
   end
 
   inst_pkg::uop_add_pl_t uop_add_pl;
   inst_pkg::uop_bitop_imm_pl_t uop_bitop_imm_pl;
   inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
+  inst_pkg::uop_bstr_pl_t uop_bstr_pl;
   inst_pkg::uop_br_pl_t uop_br_pl;
   inst_pkg::uop_mem_pl_t uop_mem_pl;
 
@@ -221,6 +245,7 @@ module inst_decoder
     uop_add_pl = '0;
     uop_bitop_imm_pl = '0;
     uop_ld_imm_pl = '0;
+    uop_bstr_pl = '0;
     uop_br_pl = '0;
     uop_mem_pl = '0;
 
