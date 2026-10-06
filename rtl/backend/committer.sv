@@ -100,11 +100,11 @@ module committer
 
     pmem.aw_addr = lsq_pop.entry.addr[pmem.AXI_ADDR_WIDTH-1:0];
     pmem.aw_prot = '0;
-    pmem.aw_valid = (state == FSMMemReq && lsq_pop.entry.is_store);
+    pmem.aw_valid = (state == FSMMemReq && lsq_pop.entry.is_store && !mem_st_req_progress_q[0]);
 
     pmem.w_data = lsq_pop.entry.u.st.data;
     pmem.w_strb = lsq_pop.entry.strb;
-    pmem.w_valid = (state == FSMMemReq && lsq_pop.entry.is_store);
+    pmem.w_valid = (state == FSMMemReq && lsq_pop.entry.is_store && !mem_st_req_progress_q[1]);
 
     mem_st_req_progress_d = mem_st_req_progress_q;
     mem_st_req_progress_d[0] |= pmem.aw_valid && pmem.aw_ready;
