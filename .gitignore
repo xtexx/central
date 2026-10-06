@@ -1,6 +1,7 @@
 /build
 /.cache
 *.fst
+*.vcd
 *.log
 /firmware/.zig-cache
 /firmware/zig-out
