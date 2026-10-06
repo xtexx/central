@@ -28,12 +28,5 @@ verilate(tyro-emu
   SOURCES
     config.vlt
   VERILATOR_ARGS
-    -f tyro-core.f
-
-    -Werror-LATCH
-    -Werror-BLKANDNBLK
-    -Werror-CASEINCOMPLETE
-    -Wall
-    -Wpedantic
-    --timescale "1ns / 1ps"
+    -f tyro-core.verilator.f
 )
