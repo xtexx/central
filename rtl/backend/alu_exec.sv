@@ -21,16 +21,35 @@ module alu_exec
 
   logic ready;
   logic [63:0] rd, rj, rk;
-  logic unsigned [63:0] tmp_u64;
-  logic unsigned [31:0] tmp_u32;
 
-  inst_pkg::uop_add_pl_t uop_add_pl;
-  inst_pkg::uop_bitop_pl_t uop_bitop_pl;
-  inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
-  inst_pkg::uop_bstr_pl_t uop_bstr_pl;
+  logic [63:0] ctz_in;
+  logic [63:0] ctz_out, clz_out;
+  logic ctz_empty, clz_empty;
+  assign ctz_out[63:6] = '0;
+  assign clz_out[63:6] = '0;
+  cc_lzc #(
+      .Width(64),
+      .Mode (cc_pkg::LZC_TRAILING_ZERO_CNT)
+  ) i_ctz (
+      .in_i   (ctz_in),
+      .cnt_o  (ctz_out[5:0]),
+      .empty_o(ctz_empty)
+  );
+  cc_lzc #(
+      .Width(64),
+      .Mode (cc_pkg::LZC_LEADING_ZERO_CNT)
+  ) i_clz (
+      .in_i   (ctz_in),
+      .cnt_o  (clz_out[5:0]),
+      .empty_o(clz_empty)
+  );
 
   always_comb begin
     // Payload decode
+    automatic inst_pkg::uop_add_pl_t uop_add_pl;
+    automatic inst_pkg::uop_bitop_pl_t uop_bitop_pl;
+    automatic inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
+    automatic inst_pkg::uop_bstr_pl_t uop_bstr_pl;
     uop_add_pl = in.inst.pl[$bits(inst_pkg::uop_add_pl_t)-1:0];
     uop_bitop_pl = in.inst.pl[$bits(inst_pkg::uop_bitop_pl_t)-1:0];
     uop_ld_imm_pl = in.inst.pl[$bits(inst_pkg::uop_ld_imm_pl_t)-1:0];
@@ -50,8 +69,6 @@ module alu_exec
 
     // Perform calculation
     rd = '0;
-    tmp_u64 = '0;
-    tmp_u32 = '0;
     unique case (in.inst.op)
       UOpAdd, UOpAddImm: begin
         // rd = RHS
@@ -79,8 +96,8 @@ module alu_exec
           BitOpTyMaskNez: rd = (rk != 0) ? '0 : rj;
 
           BitOpTyBitRevW: begin
-            tmp_u32 = {<<{rj[31:0]}};
-            rd = 64'(signed'(tmp_u32));
+            automatic logic [31:0] tmp = {<<{rj[31:0]}};
+            rd = 64'(signed'(tmp));
           end
           BitOpTyBitRevD: rd = {<<{rj}};
           BitOpTyBitRev4B, BitOpTyBitRev8B: begin
@@ -115,7 +132,8 @@ module alu_exec
           BitOpTyCTOD,
           BitOpTyCTZW,
           BitOpTyCTZD: begin
-            // TODO
+            automatic logic is_t = uop_bitop_pl.ty[2];
+            rd = is_t ? (ctz_empty ? 64 : ctz_out) : (clz_empty ? 64 : clz_out);
           end
         endcase
       end
@@ -153,22 +171,22 @@ module alu_exec
           end
           LdImmOpPCALAU12I: begin
             // PCALAU12I:
-            // tmp_u64 = PC + SignExtend({si20, 12'b0}, GRLEN)
+            // tmp = PC + SignExtend({si20, 12'b0}, GRLEN)
             rd = rob_pc_rd.pc + 64'(signed'({uop_ld_imm_pl.imm[19:0], 12'b0}));
-            // GR[rd] = {tmp_u64[GRLEN-1:12], 12'b0}
+            // GR[rd] = {tmp[GRLEN-1:12], 12'b0}
             rd = {rd[63:12], 12'b0};
           end
         endcase
       end
       UOpBitStr: begin
-        tmp_u64 = '0;
+        automatic logic [63:0] tmp = '0;
         for (int i = 0; i < 64; i++) begin
-          if (i >= uop_bstr_pl.lsbw && i <= uop_bstr_pl.msbw) tmp_u64[i] = 1'b1;
+          if (i >= uop_bstr_pl.lsbw && i <= uop_bstr_pl.msbw) tmp[i] = 1'b1;
         end
         if (uop_bstr_pl.is_ins) begin
-          rd = (rk & ~tmp_u64) | ((rj << uop_bstr_pl.lsbw) & tmp_u64);
+          rd = (rk & ~tmp) | ((rj << uop_bstr_pl.lsbw) & tmp);
         end else begin
-          rd = (rj & tmp_u64) >> uop_bstr_pl.lsbw;
+          rd = (rj & tmp) >> uop_bstr_pl.lsbw;
         end
         // rd = IS_W ? SignExtend(rd[31:0]) : rd
         rd = (uop_bstr_pl.is_w) ? unsigned'(64'(signed'(rd[31:0]))) : rd;
@@ -189,6 +207,25 @@ module alu_exec
     rob_ex.commit_type = InstCommitNop;
     rob_ex.data = '0;
     rob_ex.valid = ready;
+  end
+
+  // Trailing/leading one/zero counter
+  always_comb begin
+    /* verilator lint_off UNUSEDSIGNAL */
+    automatic inst_pkg::uop_bitop_pl_t uop_bitop_pl;
+    /* verilator lint_on UNUSEDSIGNAL */
+    automatic logic is_w;
+    automatic logic is_z;
+
+    uop_bitop_pl = in.inst.pl[$bits(inst_pkg::uop_bitop_pl_t)-1:0];
+    is_w = ~uop_bitop_pl.ty[0];
+    is_z = uop_bitop_pl.ty[1];
+
+    ctz_in = prf_rd[0].data;
+    ctz_in = is_z ? ctz_in : (~ctz_in);
+    if (is_w) begin
+      ctz_in = {ctz_in[31:0], {32{(is_z) ? (1'b1) : (1'b0)}}};
+    end
   end
 
 endmodule
