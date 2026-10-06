@@ -1,4 +1,4 @@
-read_slang -f tyro-core.f --top top -D SYNTHESIS
+read_slang -f tyro-core.yosys.f
 
 check -assert
 check_mem -assert -non-const
