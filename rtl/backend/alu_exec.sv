@@ -142,6 +142,28 @@ module alu_exec
           BitOpTySetLtU: rd = (unsigned'(rj) < unsigned'(rk)) ? 1 : 0;
           BitOpTySetLtSImm: rd = (signed'(rj) < 64'(signed'(uop_bitop_pl.ui16[11:0]))) ? 1 : 0;
           BitOpTySetLtUImm: rd = (unsigned'(rj) < 64'(signed'(uop_bitop_pl.ui16[11:0]))) ? 1 : 0;
+
+          BitOpTySlAddW, BitOpTySlAddWU: begin
+            automatic logic is_u = uop_bitop_pl.ty[0];
+            automatic logic [1:0] op_sa2 = uop_bitop_pl.ui16[1:0];
+            automatic logic [31:0] tmp = '0;
+            for (int i = 0; i < 4; i++) begin
+              if (op_sa2 == 2'(i)) begin
+                tmp = rj[31:0] << (i + 1);
+              end
+            end
+            rd = is_u ? 64'(unsigned'(rk[31:0] + tmp)) : 64'(signed'(rk[31:0] + tmp));
+          end
+          BitOpTySlAddD: begin
+            automatic logic [ 1:0] op_sa2 = uop_bitop_pl.ui16[1:0];
+            automatic logic [63:0] tmp = '0;
+            for (int i = 0; i < 4; i++) begin
+              if (op_sa2 == 2'(i)) begin
+                tmp = rj << (i + 1);
+              end
+            end
+            rd = tmp + rk;
+          end
         endcase
       end
       UOpLdImm: begin

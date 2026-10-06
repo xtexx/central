@@ -114,6 +114,20 @@
 `define LA_DECODE_INST_CTZ_W `LA_DEC_BITOP(CTZW, op_rj, 0)
 `define LA_DECODE_INST_CTZ_D `LA_DEC_BITOP(CTZD, op_rj, 0)
 
+`define LA_DEC_BITOP_SLADD(__op) \
+  begin \
+    uop_bitop_pl.ty = BitOpTySlAdd``__op; \
+    uop_bitop_pl.imm = op_sa2; \
+    `LA_DEC(BitOp, uop_bitop_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+    `LA_DEC_REG_R_GPR(1, op_rk) \
+  end
+
+`define LA_DECODE_INST_SLADD_W `LA_DEC_BITOP_SLADD(W)
+`define LA_DECODE_INST_SLADD_WU `LA_DEC_BITOP_SLADD(WU)
+`define LA_DECODE_INST_SLADD_D `LA_DEC_BITOP_SLADD(D)
+
 `define LA_DEC_LD_IMM(__op, __imm20, __rr0) \
   begin \
     uop_ld_imm_pl.imm = __imm20; \
@@ -339,6 +353,7 @@ module inst_decoder
   logic unsigned [ 4:0] op_msbw;
   logic unsigned [ 5:0] op_lsbd;
   logic unsigned [ 5:0] op_msbd;
+  logic unsigned [ 1:0] op_sa2;
 
   always_comb begin
     op_rd = in.inst[4:0];
@@ -359,6 +374,7 @@ module inst_decoder
     op_msbw = in.inst[20:16];
     op_lsbd = in.inst[15:10];
     op_msbd = in.inst[21:16];
+    op_sa2 = in.inst[16:15];
   end
 
   inst_pkg::uop_add_pl_t uop_add_pl;
