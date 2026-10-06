@@ -2,6 +2,7 @@
 
 +define+SYNTHESIS
 +define+SYNTHESIS_YOSYS
++define+PRELD_FIRMWARE
 
 -f tyro-core.f
 
