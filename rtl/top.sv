@@ -43,7 +43,7 @@ module top (
   // Memory Controller
   sram #(
       .ADDR_W(16),
-      .FIRMWARE_PATH("firmware/zig-out/tyro-core-firmware.hex")
+      .FIRMWARE_PATH("firmware/zig-out/tyro-core.hex")
   ) sram_mc (
       .clk (clk),
       .rst (rst),

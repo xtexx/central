@@ -24,7 +24,7 @@ module testbench ();
 
   initial begin
     #2;
-    $readmemh("firmware/zig-out/tyro-core-firmware.hex", soc.sram_mc.mem);
+    $readmemh("firmware/zig-out/tyro-firmware.hex", soc.sram_mc.mem);
     #11;
     rst = 0;
 

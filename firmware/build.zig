@@ -40,7 +40,7 @@ pub fn build(b: *std.Build) void {
         .only_section = ".text",
         .pad_to = 64 * 1024,
     });
-    b.getInstallStep().dependOn(&b.addInstallFile(objcopy.getOutput(), "tyro-core-firmware.bin").step);
+    b.getInstallStep().dependOn(&b.addInstallFile(objcopy.getOutput(), "tyro-firmware.bin").step);
 
     const bin2hex = b.addExecutable(.{
         .name = "bin2hex",
@@ -53,5 +53,5 @@ pub fn build(b: *std.Build) void {
     run_bin2hex.addFileArg(objcopy.getOutput());
     const hex_out = run_bin2hex.addOutputFileArg2("firmware.hex", .{});
 
-    b.getInstallStep().dependOn(&b.addInstallFile(hex_out, "tyro-core-firmware.hex").step);
+    b.getInstallStep().dependOn(&b.addInstallFile(hex_out, "tyro-firmware.hex").step);
 }
