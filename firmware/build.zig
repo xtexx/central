@@ -15,10 +15,11 @@ pub fn build(b: *std.Build) void {
     });
     const host_target = b.resolveTargetQuery(.{});
 
-    const obj = b.addObject(.{
-        .name = "tyro-core-firmware",
+    const exe = b.addExecutable(.{
+        .name = "tyro-firmware",
         .use_llvm = true,
         .use_lld = true,
+        .linkage = .static,
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
@@ -30,12 +31,20 @@ pub fn build(b: *std.Build) void {
             .link_libc = false,
             .link_libcpp = false,
             .strip = true,
+            .error_tracing = false,
+            .stack_protector = false,
         }),
     });
-    obj.setLinkerScript(b.path("src/linker.ld"));
-    b.getInstallStep().dependOn(&b.addInstallFile(obj.getEmittedBin(), "tyro-core-firmware.o").step);
+    exe.setLinkerScript(b.path("src/linker.ld"));
+    exe.build_id = .sha1;
+    exe.image_base = 0;
+    exe.lto = .full;
+    exe.pie = false;
+    exe.entry = .{ .symbol_name = "start" };
+    exe.root_module.strip = false;
+    b.getInstallStep().dependOn(&b.addInstallFile(exe.getEmittedBin(), "tyro-firmware.elf").step);
 
-    const objcopy = obj.addObjCopy(.{
+    const objcopy = exe.addObjCopy(.{
         .format = .binary,
         .only_section = ".text",
         .pad_to = 64 * 1024,

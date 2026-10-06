@@ -41,7 +41,7 @@ int main(int argc, char **argv, char **env) {
     top->eval();
     auto &sram = top->rootp->top__DOT__sram_mc__DOT__mem;
     sram.fill(0);
-    auto fw_path = path("../firmware/zig-out/tyro-core-firmware.bin");
+    auto fw_path = path("firmware/zig-out/tyro-firmware.bin");
     cerr << "Loading firmware ...\n";
     auto fw_ifs = ifstream(fw_path, std::ios::binary);
     fw_ifs.read(reinterpret_cast<char *>(&sram.m_storage[0]),
