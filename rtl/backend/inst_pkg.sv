@@ -87,6 +87,8 @@ package inst_pkg;
     // Branch unconditionally, uop_br_pl_t, to BRU
     // Rw0 = PC + 4
     UOpBr,
+    // Branch conditionally, uop_cond_br_pl_t, to BRU
+    UOpCondBr,
     // Memory operation, uop_mem_pl_t, to AGU
     UOpMem
   } inst_opcode_t  /*verilator public*/;
@@ -148,6 +150,20 @@ package inst_pkg;
     logic signed [25:0] offs26;
     logic base_reg;  // PC = (base_reg ? Rr0 : PC) + offset
   } uop_br_pl_t  /*verilator public*/;
+
+  typedef enum logic [2:0] {
+    BrCondEq  = 3'b000,
+    BrCondNe  = 3'b001,
+    BrCondGtS = 3'b010,
+    BrCondGtU = 3'b011,
+    BrCondLeS = 3'b100,
+    BrCondLeU = 3'b101
+  } uop_cond_br_type_t;
+
+  typedef struct packed {
+    logic signed [20:0] offs21;
+    uop_cond_br_type_t ty;
+  } uop_cond_br_pl_t  /*verilator public*/;
 
   typedef enum logic [1:0] {
     MemOpTypeB,

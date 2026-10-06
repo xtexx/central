@@ -37,8 +37,7 @@ module agu_exec
     rr2 = prf_rd[2].data;
 
     // Wait for operand
-    ready = !rst && in.valid && prf_rd[0].ready && prf_rd[1].ready
-      && (prf_rd[2].ready || !uop_pl.is_store);
+    ready = !rst && in.valid && prf_rd[0].ready && prf_rd[1].ready && prf_rd[2].ready;
 
     // Perform calculation
     vaddr = '0;

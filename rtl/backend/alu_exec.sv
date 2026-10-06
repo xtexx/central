@@ -20,7 +20,6 @@ module alu_exec
   `ASSERT_STABLE(InstStable, in.valid, in.ready, in.inst, '0, clk, rst);
 
   logic ready;
-  logic [1:0] has_rr;
   logic [63:0] rd, rj, rk, tmp;
 
   inst_pkg::uop_add_pl_t uop_add_pl;
@@ -35,16 +34,6 @@ module alu_exec
     uop_ld_imm_pl = in.inst.pl[$bits(inst_pkg::uop_ld_imm_pl_t)-1:0];
     uop_bstr_pl = in.inst.pl[$bits(inst_pkg::uop_bstr_pl_t)-1:0];
 
-    // Classify binary operators
-    has_rr = '0;
-    unique case (in.inst.op)
-      UOpAdd: has_rr = 2'b11;
-      UOpAddImm, UOpBitOpImm: has_rr = 2'b01;
-      UOpLdImm: has_rr[0] = uop_ld_imm_pl.op inside {LdImmOpCU32ID, LdImmOpCU52ID};
-      UOpBitStr: has_rr = uop_bstr_pl.is_ins ? 2'b11 : 2'b01;
-      default: if (!rst) `ERROR("ALU Exec: bad op");
-    endcase
-
     // Read operand registers
     prf_rd[0].preg = in.inst.pregs_r[0];
     prf_rd[1].preg = in.inst.pregs_r[1];
@@ -55,7 +44,7 @@ module alu_exec
     rob_pc_rd.idx = in.inst.rob_idx;
 
     // Wait for operand
-    ready = !rst && in.valid && (prf_rd[0].ready || !has_rr[0]) && (prf_rd[1].ready || !has_rr[1]);
+    ready = !rst && in.valid && prf_rd[0].ready && prf_rd[1].ready;
 
     // Perform calculation
     rd = '0;

@@ -128,6 +128,24 @@
     `LA_DEC_REG_R_GPR(0, op_rj) \
   end
 
+`define LA_DEC_COND_BR(__ty, __rr0, __rr1, __offs21) begin \
+    uop_cond_br_pl.offs21 = __offs21; \
+    uop_cond_br_pl.ty = BrCond``__ty; \
+    `LA_DEC(CondBr, uop_cond_br_pl) \
+    `LA_DEC_REG_R_GPR(0, __rr0) \
+    `LA_DEC_REG_R_GPR(1, __rr1) \
+  end
+
+`define LA_DECODE_INST_BEQ `LA_DEC_COND_BR(Eq, op_rd, op_rj, 21'(signed'(op_offs16)))
+`define LA_DECODE_INST_BNE `LA_DEC_COND_BR(Ne, op_rd, op_rj, 21'(signed'(op_offs16)))
+`define LA_DECODE_INST_BGT `LA_DEC_COND_BR(GtS, op_rd, op_rj, 21'(signed'(op_offs16)))
+`define LA_DECODE_INST_BGTU `LA_DEC_COND_BR(GtU, op_rd, op_rj, 21'(signed'(op_offs16)))
+`define LA_DECODE_INST_BLE `LA_DEC_COND_BR(LeS, op_rd, op_rj, 21'(signed'(op_offs16)))
+`define LA_DECODE_INST_BLEU `LA_DEC_COND_BR(LeU, op_rd, op_rj, 21'(signed'(op_offs16)))
+
+`define LA_DECODE_INST_BEQZ `LA_DEC_COND_BR(Eq, op_rd, 0, op_offs21)
+`define LA_DECODE_INST_BNEZ `LA_DEC_COND_BR(Ne, op_rd, 0, op_offs21)
+
 `define LA_DEC_MEM_LD(__rk, __offs, __ty, __is_unsigned) \
   begin \
     uop_mem_pl.is_store = '0; \
@@ -209,6 +227,7 @@ module inst_decoder
   logic signed   [13:0] op_sk14;
   logic signed   [19:0] op_sj20;
   logic signed   [25:0] op_offs26;
+  logic signed   [20:0] op_offs21;
   logic signed   [15:0] op_offs16;
   logic unsigned [ 4:0] op_lsbw;
   logic unsigned [ 4:0] op_msbw;
@@ -226,6 +245,7 @@ module inst_decoder
     op_sj20 = signed'(in.inst[24:5]);
 
     op_offs26 = signed'({in.inst[9:0], in.inst[25:10]});
+    op_offs21 = signed'({in.inst[4:0], in.inst[25:10]});
     op_offs16 = signed'(in.inst[25:10]);
 
     op_lsbw = in.inst[14:10];
@@ -239,6 +259,7 @@ module inst_decoder
   inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
   inst_pkg::uop_bstr_pl_t uop_bstr_pl;
   inst_pkg::uop_br_pl_t uop_br_pl;
+  inst_pkg::uop_cond_br_pl_t uop_cond_br_pl;
   inst_pkg::uop_mem_pl_t uop_mem_pl;
 
   always_comb begin
@@ -256,6 +277,7 @@ module inst_decoder
     uop_ld_imm_pl = '0;
     uop_bstr_pl = '0;
     uop_br_pl = '0;
+    uop_cond_br_pl = '0;
     uop_mem_pl = '0;
 
     // Decoder tree

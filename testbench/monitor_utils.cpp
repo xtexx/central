@@ -65,6 +65,13 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
         << FmtQAddr(pl.offs26, 26);
     break;
   }
+  case inst_pkg::UOpCondBr: {
+    uop_cond_br_pl_t pl;
+    pl.set(raw_pl);
+    log << std::format("CondBr ty={} offs21=", pl.ty)
+        << FmtQAddr(pl.offs21, 21);
+    break;
+  }
   case inst_pkg::UOpMem: {
     uop_mem_pl_t pl;
     pl.set(raw_pl);

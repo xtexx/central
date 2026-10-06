@@ -42,7 +42,7 @@ module inst_dispatcher
         in.ready = o_ctl.ready;
       end
       // BRU
-      UOpBr: begin
+      UOpBr, UOpCondBr: begin
         o_bru.valid = in.valid;
         in.ready = o_bru.ready;
       end

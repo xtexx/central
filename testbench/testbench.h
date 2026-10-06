@@ -34,6 +34,7 @@ typedef Vtyro_uop_bitop_imm_pl_t__struct__0 uop_bitop_imm_pl_t;
 typedef Vtyro_uop_ld_imm_pl_t__struct__0 uop_ld_imm_pl_t;
 typedef Vtyro_uop_bstr_pl_t__struct__0 uop_bstr_pl_t;
 typedef Vtyro_uop_br_pl_t__struct__0 uop_br_pl_t;
+typedef Vtyro_uop_cond_br_pl_t__struct__0 uop_cond_br_pl_t;
 typedef Vtyro_uop_mem_pl_t__struct__0 uop_mem_pl_t;
 
 // Backend
