@@ -13,6 +13,7 @@ module alu_exec
     rr_out_if.rx in,
     prf_read_if.user prf_rd[2],
     prf_write_if.user prf_wr,
+    rob_pc_read_if.user rob_pc_rd,
     rob_execute_if.exec rob_ex
 );
 
@@ -39,7 +40,7 @@ module alu_exec
     unique case (in.inst.op)
       UOpAdd: has_rr = 2'b11;
       UOpAddImm, UOpBitOpImm: has_rr = 2'b01;
-      UOpLdImm: has_rr[0] = uop_ld_imm_pl.is_lu32id || uop_ld_imm_pl.is_lu52id;
+      UOpLdImm: has_rr[0] = uop_ld_imm_pl.op inside {LdImmOpCU32ID, LdImmOpCU52ID};
       UOpBitStr: has_rr = uop_bstr_pl.is_ins ? 2'b11 : 2'b01;
       default: if (!rst) `ERROR("ALU Exec: bad op");
     endcase
@@ -49,6 +50,9 @@ module alu_exec
     prf_rd[1].preg = in.inst.pregs_r[1];
     rj = prf_rd[0].data;
     rk = prf_rd[1].data;
+
+    // Read PC
+    rob_pc_rd.idx = in.inst.rob_idx;
 
     // Wait for operand
     ready = !rst && in.valid && (prf_rd[0].ready || !has_rr[0]) && (prf_rd[1].ready || !has_rr[1]);
@@ -75,19 +79,45 @@ module alu_exec
         end else if (ready) `ERROR("ALU Exec: UOpBitOpImm nop");
       end
       UOpLdImm: begin
-        if (uop_ld_imm_pl.is_lu32id) begin
-          // LU32I.W:
-          // GR[rd] = {SignExtend(si20, 32), GR[rd][31:0]}
-          rd = {unsigned'(32'(signed'(uop_ld_imm_pl.imm[19:0]))), rj[31:0]};
-        end else if (uop_ld_imm_pl.is_lu52id) begin
-          // LU52I.D:
-          // GR[rd] = {si12, GR[rj][51:0]}
-          rd = {uop_ld_imm_pl.imm[11:0], rj[51:0]};
-        end else begin
-          // LU12I.W:
-          // GR[rd] = SignExtend({si20, 12'b0}, GRLEN)
-          rd = 64'(signed'({uop_ld_imm_pl.imm[19:0], 12'b0}));
-        end
+        unique case (uop_ld_imm_pl.op)
+          LdImmOpLU12IW: begin
+            // LU12I.W:
+            // GR[rd] = SignExtend({si20, 12'b0}, GRLEN)
+            rd = 64'(signed'({uop_ld_imm_pl.imm[19:0], 12'b0}));
+          end
+          LdImmOpCU32ID: begin
+            // LU32I.D:
+            // GR[rd] = {SignExtend(si20, 32), GR[rd][31:0]}
+            rd = {unsigned'(32'(signed'(uop_ld_imm_pl.imm[19:0]))), rj[31:0]};
+          end
+          LdImmOpCU52ID: begin
+            // LU52I.D:
+            // GR[rd] = {si12, GR[rj][51:0]}
+            rd = {uop_ld_imm_pl.imm[11:0], rj[51:0]};
+          end
+          LdImmOpPCADDU2I: begin
+            // PCADDI:
+            // GR[rd] = PC + SignExtend({si20, 2'b0}, GRLEN)
+            rd = rob_pc_rd.pc + 64'(signed'({uop_ld_imm_pl.imm[19:0], 2'b00}));
+          end
+          LdImmOpPCADDU12I: begin
+            // PCADDU12I:
+            // GR[rd] = PC + SignExtend({si20, 12'b0}, GRLEN)
+            rd = rob_pc_rd.pc + 64'(signed'({uop_ld_imm_pl.imm[19:0], 12'b0}));
+          end
+          LdImmOpPCADDU18I: begin
+            // PCADDU18I:
+            // GR[rd] = PC + SignExtend({si20, 18'b0}, GRLEN)
+            rd = rob_pc_rd.pc + 64'(signed'({uop_ld_imm_pl.imm[19:0], 18'b0}));
+          end
+          LdImmOpPCALAU12I: begin
+            // PCALAU12I:
+            // tmp = PC + SignExtend({si20, 12'b0}, GRLEN)
+            rd = rob_pc_rd.pc + 64'(signed'({uop_ld_imm_pl.imm[19:0], 12'b0}));
+            // GR[rd] = {tmp[GRLEN-1:12], 12'b0}
+            rd = {rd[63:12], 12'b0};
+          end
+        endcase
       end
       UOpBitStr: begin
         tmp = '0;

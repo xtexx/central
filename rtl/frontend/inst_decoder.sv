@@ -58,27 +58,22 @@
 `define LA_DECODE_INST_ORI `LA_DEC_BITOP_IMM12(ori)
 `define LA_DECODE_INST_XORI `LA_DEC_BITOP_IMM12(xori)
 
-`define LA_DECODE_INST_LU12I_W begin \
-    uop_ld_imm_pl.imm = op_sj20; \
+`define LA_DEC_LD_IMM(__op, __imm20, __rr0) \
+  begin \
+    uop_ld_imm_pl.imm = __imm20; \
+    uop_ld_imm_pl.op = LdImmOp``__op; \
     `LA_DEC(LdImm, uop_ld_imm_pl) \
     `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, __rr0) \
   end
 
-`define LA_DECODE_INST_CU32I_D begin \
-    uop_ld_imm_pl.imm = op_sj20; \
-    uop_ld_imm_pl.is_lu32id = 1; \
-    `LA_DEC(LdImm, uop_ld_imm_pl) \
-    `LA_DEC_REG_W_GPR(0, op_rd) \
-    `LA_DEC_REG_R_GPR(0, op_rd) \
-  end
-
-`define LA_DECODE_INST_CU52I_D begin \
-    uop_ld_imm_pl.imm = 20'(op_uk12); \
-    uop_ld_imm_pl.is_lu52id = 1; \
-    `LA_DEC(LdImm, uop_ld_imm_pl) \
-    `LA_DEC_REG_W_GPR(0, op_rd) \
-    `LA_DEC_REG_R_GPR(0, op_rj) \
-  end
+`define LA_DECODE_INST_LU12I_W `LA_DEC_LD_IMM(LU12IW, op_sj20, 0)
+`define LA_DECODE_INST_CU32I_D `LA_DEC_LD_IMM(CU32ID, op_sj20, op_rd)
+`define LA_DECODE_INST_CU52I_D `LA_DEC_LD_IMM(CU52ID, 20'(op_uk12), op_rj)
+`define LA_DECODE_INST_PCADDU2I `LA_DEC_LD_IMM(PCADDU2I, op_sj20, 0)
+`define LA_DECODE_INST_PCADDU12I `LA_DEC_LD_IMM(PCADDU12I, op_sj20, 0)
+`define LA_DECODE_INST_PCADDU18I `LA_DEC_LD_IMM(PCADDU18I, op_sj20, 0)
+`define LA_DECODE_INST_PCALAU12I `LA_DEC_LD_IMM(PCALAU12I, op_sj20, 0)
 
 `define LA_DEC_BSTRINS(__is_w, __msbd, __lsbd) begin \
     uop_bstr_pl.is_w = __is_w; \

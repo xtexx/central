@@ -48,9 +48,7 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
   case inst_pkg::UOpLdImm: {
     uop_ld_imm_pl_t pl;
     pl.set(raw_pl);
-    log << std::format("LdImm is_lu32id={} is_lu52id={} imm=", pl.is_lu32id,
-                       pl.is_lu32id)
-        << FmtQAddr(pl.imm, 20);
+    log << std::format("LdImm op={} imm=", pl.op) << FmtQAddr(pl.imm, 20);
     break;
   }
   case inst_pkg::UOpBitStr: {

@@ -89,15 +89,16 @@ module tyro_core (
       .clk(clk),
       .rst(rst)
   );
-  // [0] -> BRU Exec
-  rob_pc_read_if rob_pc_rd[1] (
+  // [0] -> ALU Exec
+  // [1] -> BRU Exec
+  rob_pc_read_if rob_pc_rd[2] (
       .clk(clk),
       .rst(rst)
   );
   rob #(
       .DEPTH(8),
       .EXEC_PORTS(4),
-      .PC_READ_PORTS(1)
+      .PC_READ_PORTS(2)
   ) rob (
       .clk(clk),
       .rst(rst),
@@ -236,6 +237,7 @@ module tyro_core (
       .in(alu_dq_out),
       .prf_rd(prf_rd[0:1]),
       .prf_wr(prf_wr[0]),
+      .rob_pc_rd(rob_pc_rd[0]),
       .rob_ex(rob_exec[0])
   );
 
@@ -304,7 +306,7 @@ module tyro_core (
       .in(bru_dq_out),
       .prf_rd(prf_rd[2:3]),
       .prf_wr(prf_wr[1]),
-      .rob_pc_rd(rob_pc_rd[0]),
+      .rob_pc_rd(rob_pc_rd[1]),
       .rob_ex(rob_exec[2]),
       .btq_push(btq_push)
   );

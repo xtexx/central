@@ -129,10 +129,19 @@ package inst_pkg;
     logic [5:0] lsbw;
   } uop_bstr_pl_t  /*verilator public*/;
 
+  typedef enum logic [2:0] {
+    LdImmOpLU12IW = 3'b000,
+    LdImmOpCU32ID = 3'b010,
+    LdImmOpCU52ID = 3'b011,
+    LdImmOpPCADDU2I = 3'b100,
+    LdImmOpPCADDU12I = 3'b101,
+    LdImmOpPCADDU18I = 3'b110,
+    LdImmOpPCALAU12I = 3'b111
+  } uop_ld_imm_op_t  /*verilator public*/;
+
   typedef struct packed {
     logic unsigned [19:0] imm;
-    logic is_lu32id;
-    logic is_lu52id;
+    uop_ld_imm_op_t op;
   } uop_ld_imm_pl_t  /*verilator public*/;
 
   typedef struct packed {
