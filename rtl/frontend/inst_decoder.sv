@@ -58,6 +58,9 @@
 `define LA_DECODE_INST_ORI `LA_DEC_BITOP_IMM12(Or)
 `define LA_DECODE_INST_XORI `LA_DEC_BITOP_IMM12(Xor)
 
+`define LA_DECODE_INST_SLTI `LA_DEC_BITOP_IMM12(SetLtS)
+`define LA_DECODE_INST_SLTUI `LA_DEC_BITOP_IMM12(SetLtU)
+
 `define LA_DEC_BITOP(__op, __rj, __rk) \
   begin \
     uop_bitop_pl.ty = BitOpTy``__op; \
@@ -73,8 +76,36 @@
 `define LA_DECODE_INST_ORN `LA_DEC_BITOP(Orn, op_rj, op_rk)
 `define LA_DECODE_INST_XOR `LA_DEC_BITOP(Xor, op_rj, op_rk)
 `define LA_DECODE_INST_NOR `LA_DEC_BITOP(Nor, op_rj, op_rk)
+
 `define LA_DECODE_INST_MASKEQZ `LA_DEC_BITOP(MaskEqz, op_rj, op_rk)
 `define LA_DECODE_INST_MASKNEZ `LA_DEC_BITOP(MaskNez, op_rj, op_rk)
+
+`define LA_DECODE_INST_SLT `LA_DEC_BITOP(SetLtS, op_rj, op_rk)
+`define LA_DECODE_INST_SLTU `LA_DEC_BITOP(SetLtU, op_rj, op_rk)
+
+`define LA_DECODE_INST_REVBIT_W `LA_DEC_BITOP(BitRevW, op_rj, 0)
+`define LA_DECODE_INST_REVBIT_D `LA_DEC_BITOP(BitRevD, op_rj, 0)
+`define LA_DECODE_INST_REVBIT_4B `LA_DEC_BITOP(BitRev4B, op_rj, 0)
+`define LA_DECODE_INST_REVBIT_8B `LA_DEC_BITOP(BitRev8B, op_rj, 0)
+
+`define LA_DECODE_INST_REVH_2W `LA_DEC_BITOP(RevH2W, op_rj, 0)
+`define LA_DECODE_INST_REVH_D `LA_DEC_BITOP(RevHD, op_rj, 0)
+`define LA_DECODE_INST_REVB_2H `LA_DEC_BITOP(RevB2H, op_rj, 0)
+`define LA_DECODE_INST_REVB_4H `LA_DEC_BITOP(RevB4H, op_rj, 0)
+`define LA_DECODE_INST_REVB_2W `LA_DEC_BITOP(RevB2W, op_rj, 0)
+`define LA_DECODE_INST_REVB_D `LA_DEC_BITOP(RevBD, op_rj, 0)
+
+`define LA_DECODE_INST_SEXT_B `LA_DEC_BITOP(ExtWB, op_rj, 0)
+`define LA_DECODE_INST_SEXT_H `LA_DEC_BITOP(ExtWH, op_rj, 0)
+
+`define LA_DECODE_INST_CLO_W `LA_DEC_BITOP(CLOW, op_rj, 0)
+`define LA_DECODE_INST_CLO_D `LA_DEC_BITOP(CLOD, op_rj, 0)
+`define LA_DECODE_INST_CLZ_W `LA_DEC_BITOP(CLZW, op_rj, 0)
+`define LA_DECODE_INST_CLZ_D `LA_DEC_BITOP(CLZD, op_rj, 0)
+`define LA_DECODE_INST_CTO_W `LA_DEC_BITOP(CTOW, op_rj, 0)
+`define LA_DECODE_INST_CTO_D `LA_DEC_BITOP(CTOD, op_rj, 0)
+`define LA_DECODE_INST_CTZ_W `LA_DEC_BITOP(CTZW, op_rj, 0)
+`define LA_DECODE_INST_CTZ_D `LA_DEC_BITOP(CTZD, op_rj, 0)
 
 `define LA_DEC_LD_IMM(__op, __imm20, __rr0) \
   begin \

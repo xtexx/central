@@ -135,6 +135,11 @@ module alu_exec
             automatic logic is_t = uop_bitop_pl.ty[2];
             rd = is_t ? (ctz_empty ? 64 : ctz_out) : (clz_empty ? 64 : clz_out);
           end
+
+          BitOpTySetLtS: rd = (signed'(rj) < signed'(rk)) ? 1 : 0;
+          BitOpTySetLtU: rd = (unsigned'(rj) < unsigned'(rk)) ? 1 : 0;
+          BitOpTySetLtSImm: rd = (signed'(rj) < 64'(signed'(uop_bitop_pl.ui12))) ? 1 : 0;
+          BitOpTySetLtUImm: rd = (unsigned'(rj) < 64'(signed'(uop_bitop_pl.ui12))) ? 1 : 0;
         endcase
       end
       UOpLdImm: begin
