@@ -115,7 +115,7 @@ module committer
     pmem.b_ready = (state == FSMMemRsp && lsq_pop.entry.is_store);
 
     // MemRsp: Write load result
-    load_result = pmem.r_data;
+    load_result  = pmem.r_data;
     for (int i = 0; i < 8; i++) begin
       load_result[i*8+:8] = load_result[i*8+:8] & {8{lsq_pop.entry.strb[i]}};
     end
@@ -126,10 +126,10 @@ module committer
       2: load_result = 64'(signed'(load_result[31:0]));
       3: ;
     endcase
-    if (state == FSMMemRsp && !lsq_pop.entry.is_store) begin
+    if (pmem.r_ready) begin
       preg_wr.preg  = lsq_pop.entry.u.ld.dst;
       preg_wr.data  = load_result;
-      preg_wr.valid = '1;
+      preg_wr.valid = pmem.r_valid;
     end
 
     // MemRsp: Pop LSQ entry
