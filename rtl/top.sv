@@ -2,8 +2,10 @@
 `default_nettype wire
 
 module top (
-    input logic clk,
-    input logic rst
+    input  logic clk,
+    input  logic rst,
+    input  logic clk_io_ref,  // IO reference clock
+    output logic uart_tx
 );
   // Memory Topology
   typedef struct packed {
@@ -22,24 +24,20 @@ module top (
       PipelineStages    : 0,
       AxiAddrWidth      : 40,
       AxiDataWidth      : 64,
-      NoAddrRules       : 1,
+      NoAddrRules       : 2,
       default: '0
   };
 
   // [0] -> SRAM MC
+  // [1] -> UART 0
   AXI_LITE #(
       .AXI_DATA_WIDTH(64),
       .AXI_ADDR_WIDTH(40)
   ) pmem_region_axil_if[XBarCfg.NoMstPorts-1:0] ();
 
-  assign pmem_region_axil_if[1].ar_ready = '0;
-  assign pmem_region_axil_if[1].r_valid  = '0;
-  assign pmem_region_axil_if[1].aw_ready = '0;
-  assign pmem_region_axil_if[1].w_ready  = '0;
-  assign pmem_region_axil_if[1].b_valid  = '0;
-
   localparam xbar_rule_40_t [XBarCfg.NoAddrRules-1:0] XBarAddrMap = '{
-      '{idx: 0, start_addr: 'h0000000000, end_addr: 'h0000010000}
+      '{idx: 0, start_addr: 'h0000000000, end_addr: 'h0000010000},
+      '{idx: 1, start_addr: 'h0000100000, end_addr: 'h0000100040}
   };
 
   // Memory Controller
@@ -50,6 +48,15 @@ module top (
       .clk (clk),
       .rst (rst),
       .axil(pmem_region_axil_if[0])
+  );
+
+  // UART Controller
+  uart_ctl uart0 (
+      .clk(clk),
+      .clk_io(clk_io_ref),
+      .rst(rst),
+      .mmio(pmem_region_axil_if[1]),
+      .uart_tx(uart_tx)
   );
 
   // Memory Interconnect

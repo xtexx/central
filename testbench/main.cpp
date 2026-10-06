@@ -23,10 +23,11 @@ int main(int argc, char **argv, char **env) {
 
     VerilatedFstC *trace = new VerilatedFstC();
     trace->set_time_resolution("1ps");
-    trace->set_time_unit("1ps");
+    trace->set_time_unit("1ns");
 
     Vtyro *top = new Vtyro(vctx);
     top->clk = 0;
+    top->clk_io_ref = 0;
     top->rst = 1;
 
     // Setup tracing
@@ -68,12 +69,14 @@ int main(int argc, char **argv, char **env) {
       }
 
       top->clk = 1;
+      top->clk_io_ref = 1;
       ++cycles;
       top->eval();
       trace->dump(vctx->time());
       vctx->timeInc(1);
 
       top->clk = 0;
+      top->clk_io_ref = 0;
       top->eval();
       trace->dump(vctx->time());
       vctx->timeInc(1);
@@ -101,7 +104,7 @@ int main(int argc, char **argv, char **env) {
         }
       }
 
-      if (cycles == 100000)
+      if (cycles == 200000)
         break;
     }
     top->final();
