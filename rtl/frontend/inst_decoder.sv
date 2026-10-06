@@ -223,6 +223,13 @@
 `define LA_DECODE_INST_PRELD is_nop = 1;
 `define LA_DECODE_INST_PRELDX is_nop = 1;
 
+`define LA_DECODE_INST_DBAR is_nop = 1;
+`define LA_DECODE_INST_IBAR begin \
+    uop_br_pl.offs26 = 'sd4; \
+    uop_br_pl.base_reg = 0; \
+    `LA_DEC(Br, uop_br_pl) \
+  end
+
 `define LA_DECODE_INST_CACOP is_nop = 1;
 
 `include "../gen/decode_tree.svh"

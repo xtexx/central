@@ -49,6 +49,11 @@ pub fn setBaudRate(uart: Uart, comptime baud_rate: u64) void {
 }
 
 /// Send a byte to the FIFO buffer.
-pub inline fn sendByte(uart: Uart, char: u8) void {
+pub fn sendByte(uart: Uart, char: u8) void {
     @atomicStore(u8, &uart.regs.tx_fifo, char, .unordered);
+}
+
+/// Send a string to the FIFO buffer.
+pub fn sendBytes(uart: Uart, chars: []const u8) void {
+    for (chars) |ch| uart.sendByte(ch);
 }

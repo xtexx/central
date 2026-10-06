@@ -20,8 +20,6 @@ fn start0() callconv(.naked) noreturn {
 fn start1() callconv(.naked) noreturn {
     asm volatile (
         \\li.d $sp, 0xff00
-        // \\alsl.w $r4, $sp, $r0, 4
-        // \\st.d $r4, $r0, 0x1050
         \\b %[main]
         :
         : [main] "X" (&main),
@@ -33,10 +31,6 @@ fn main() noreturn {
     // uart0.setBaudRate(9600);
     // uart0.setBaudRate(100000000);
     uart0.setBaudRate(4000000);
-    for ("你好世界喵喵喵\n") |c| uart0.sendByte(c);
+    uart0.sendBytes("Tyro Core Firmware Early Initialization\n");
     while (true) {}
-}
-
-export fn b() void {
-    asm volatile ("break 1");
 }
