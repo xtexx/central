@@ -32,7 +32,7 @@ module inst_dispatcher
     // Dispatch
     unique case (in.inst.op)
       // ALU
-      UOpAdd, UOpAddImm, UOpBitOp, UOpLdImm, UOpBitStr: begin
+      UOpAdd, UOpAddImm, UOpBitOp, UOpLdImm, UOpBitStr, UOpBitShift: begin
         o_alu.valid = in.valid;
         in.ready = o_alu.ready;
       end

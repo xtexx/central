@@ -10,8 +10,9 @@ const uart0: Uart = .{ .regs = @ptrFromInt(0x0000100000) };
 
 fn start0() callconv(.naked) noreturn {
     asm volatile (
-        \\b %[start1]
-        \\b %[start1]
+        \\ // Reset instructions
+        \\ b %[start1]
+        \\ b %[start1]
         :
         : [start1] "X" (&start1),
     );
@@ -19,8 +20,8 @@ fn start0() callconv(.naked) noreturn {
 
 fn start1() callconv(.naked) noreturn {
     asm volatile (
-        \\li.d $sp, 0xff00
-        \\b %[main]
+        \\ li.d $sp, 0xff00
+        \\ b %[main]
         :
         : [main] "X" (&main),
     );

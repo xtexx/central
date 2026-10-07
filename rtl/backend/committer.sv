@@ -172,7 +172,8 @@ module committer
         state <= FSMBranchRedir;
       end
       // BranchRedir: Wait for ROB to be cleared; wait for IFU and RR to reset
-      if (state == FSMBranchRedir && ftq_redir.ready && !rob_co.valid && !idu_out_valid && rr_idle) begin
+      if (state == FSMBranchRedir && ftq_redir.ready
+        && !rob_co.valid && !idu_out_valid && rr_idle) begin
         state <= FSMIdle;
       end
       // MemReq: Complete AR/AW/W handshake

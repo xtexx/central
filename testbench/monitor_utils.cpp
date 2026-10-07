@@ -44,6 +44,13 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
     log << std::format("BitOp ty={} imm={}", pl.ty, pl.ui16);
     break;
   }
+  case inst_pkg::UOpBitShift: {
+    uop_bit_shift_pl_t pl;
+    pl.set(raw_pl);
+    log << std::format("BitShift ty={} is_w={} is_imm={} imm={}", pl.ty,
+                       pl.is_w, pl.is_imm, pl.imm);
+    break;
+  }
   case inst_pkg::UOpLdImm: {
     uop_ld_imm_pl_t pl;
     pl.set(raw_pl);

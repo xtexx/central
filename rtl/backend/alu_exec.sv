@@ -48,10 +48,12 @@ module alu_exec
     // Payload decode
     automatic inst_pkg::uop_add_pl_t uop_add_pl;
     automatic inst_pkg::uop_bitop_pl_t uop_bitop_pl;
+    automatic inst_pkg::uop_bit_shift_pl_t uop_bit_shift_pl;
     automatic inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
     automatic inst_pkg::uop_bstr_pl_t uop_bstr_pl;
     uop_add_pl = in.inst.pl[$bits(inst_pkg::uop_add_pl_t)-1:0];
     uop_bitop_pl = in.inst.pl[$bits(inst_pkg::uop_bitop_pl_t)-1:0];
+    uop_bit_shift_pl = in.inst.pl[$bits(inst_pkg::uop_bit_shift_pl_t)-1:0];
     uop_ld_imm_pl = in.inst.pl[$bits(inst_pkg::uop_ld_imm_pl_t)-1:0];
     uop_bstr_pl = in.inst.pl[$bits(inst_pkg::uop_bstr_pl_t)-1:0];
 
@@ -190,6 +192,42 @@ module alu_exec
             end
           end
         endcase
+      end
+      UOpBitShift: begin
+        automatic logic is_w = uop_bit_shift_pl.is_w;
+        automatic logic [5:0] rhs = uop_bit_shift_pl.is_imm ? uop_bit_shift_pl.imm : rk[5:0];
+        if (uop_bit_shift_pl.ty[1] == '0) begin
+          // Logical
+          if (uop_bit_shift_pl.ty[0] == '0) begin
+            // Logical left
+            rd = rj << rhs;
+          end else begin
+            // Logical right
+            rd = rj >> rhs;
+          end
+          rd = is_w ? 64'(signed'(rd[31:0])) : rd;
+        end else begin
+          // Rotate right and arithmetic right
+          if (uop_bit_shift_pl.ty[0] == '0) begin
+            // Arithmetic shift right
+            if (is_w) begin
+              rd = 64'(unsigned'(rj[31:0] >>> rhs[4:0]));
+            end else begin
+              rd = rj >>> rhs;
+            end
+          end else begin
+            // Rotate shift right
+            if (is_w) begin
+              automatic logic [63:0] tmp = {rj[31:0], rj[31:0]} >> rhs[4:0];
+              automatic logic [31:0] unused_tmp = tmp[63:32];
+              rd = 64'(signed'(tmp[31:0]));
+            end else begin
+              automatic logic [127:0] tmp = {rj, rj} >> rhs;
+              automatic logic [ 63:0] unused_tmp = tmp[127:64];
+              rd = tmp[63:0];
+            end
+          end
+        end
       end
       UOpLdImm: begin
         unique case (uop_ld_imm_pl.op)

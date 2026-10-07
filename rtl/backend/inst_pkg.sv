@@ -69,28 +69,31 @@ package inst_pkg;
   typedef logic [4:0] inst_gpr_t;
   typedef logic [13:0] inst_csr_t;
 
-  typedef enum logic [5:0] {
+  // [3:0] = execute type, [6:4] = dispatch type
+  typedef enum logic [6:0] {
     // Add or sub, Rw0 = Rr0 +- Rr1, uop_add_sub_pl_t, to ALU
-    UOpAdd,
+    UOpAdd = 7'b001_0000,
     // Add or sub, Rw0 = Rr0 +- pl.si12, uop_add_sub_pl_t, to ALU
-    UOpAddImm,
+    UOpAddImm = 7'b001_0001,
     // Bit op, uop_bitop_pl_t, to ALU
-    UOpBitOp,
+    UOpBitOp = 7'b001_0010,
+    // Bit shift, uop_bit_shift_pl_t, to ALU
+    UOpBitShift = 7'b001_0011,
     // Load immediate parts, uop_ld_imm_pl_t, to ALU
-    UOpLdImm,
+    UOpLdImm = 7'b001_0100,
     // Bit string manipulation, uop_bstr_pl_t, to ALU
-    UOpBitStr,
+    UOpBitStr = 7'b001_0101,
     // Trigger an exception, to CTL
     // pl[5:0] = Ecode
     // pl[14:6] = EsubCode
-    UOpException,
+    UOpException = 7'b010_0000,
     // Branch unconditionally, uop_br_pl_t, to BRU
     // Rw0 = PC + 4
-    UOpBr,
+    UOpBr = 7'b011_0000,
     // Branch conditionally, uop_cond_br_pl_t, to BRU
-    UOpCondBr,
+    UOpCondBr = 7'b011_0001,
     // Memory operation, uop_mem_pl_t, to AGU
-    UOpMem
+    UOpMem = 7'b100_0000
   } inst_opcode_t  /*verilator public*/;
 
   typedef logic [31:0] inst_payload_t;
@@ -172,6 +175,20 @@ package inst_pkg;
     logic [5:0] msbw;
     logic [5:0] lsbw;
   } uop_bstr_pl_t  /*verilator public*/;
+
+  typedef enum logic [1:0] {
+    BitShiftTyLogicalLeft = 2'b00,
+    BitShiftTyLogicalRight = 2'b01,
+    BitShiftTyArithmeticRight = 2'b10,
+    BitShiftTyRotateRight = 2'b11
+  } uop_bit_shift_ty_t  /*verilator public*/;
+
+  typedef struct packed {
+    logic is_w;
+    logic is_imm;
+    uop_bit_shift_ty_t ty;
+    logic [5:0] imm;
+  } uop_bit_shift_pl_t  /*verilator public*/;
 
   typedef enum logic [2:0] {
     LdImmOpLU12IW = 3'b000,

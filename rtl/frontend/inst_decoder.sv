@@ -175,6 +175,44 @@
 `define LA_DECODE_INST_BSTRPICK_D `LA_DEC_BSTRPICK(0, op_msbd, op_lsbd)
 `define LA_DECODE_INST_BSTRPICK_W `LA_DEC_BSTRPICK(1, {1'b0, op_msbw}, {1'b0,op_lsbw})
 
+`define LA_DEC_BIT_SHIFT_R(__ty, __is_w) begin \
+    uop_bit_shift_pl.is_w = __is_w; \
+    uop_bit_shift_pl.is_imm = '0; \
+    uop_bit_shift_pl.ty = BitShiftTy``__ty; \
+    `LA_DEC(BitShift, uop_bit_shift_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+    `LA_DEC_REG_R_GPR(1, op_rk) \
+  end
+
+`define LA_DEC_BIT_SHIFT_I(__ty, __is_w, __imm) begin \
+    uop_bit_shift_pl.is_w = __is_w; \
+    uop_bit_shift_pl.is_imm = '1; \
+    uop_bit_shift_pl.imm = 6'(unsigned'(__imm)); \
+    uop_bit_shift_pl.ty = BitShiftTy``__ty; \
+    `LA_DEC(BitShift, uop_bit_shift_pl) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+  end
+
+`define LA_DECODE_INST_SLL_W `LA_DEC_BIT_SHIFT_R(LogicalLeft, 1)
+`define LA_DECODE_INST_SLL_D `LA_DEC_BIT_SHIFT_R(LogicalLeft, 0)
+`define LA_DECODE_INST_SRL_W `LA_DEC_BIT_SHIFT_R(LogicalRight, 1)
+`define LA_DECODE_INST_SRL_D `LA_DEC_BIT_SHIFT_R(LogicalRight, 0)
+`define LA_DECODE_INST_SRA_W `LA_DEC_BIT_SHIFT_R(ArithmeticRight, 1)
+`define LA_DECODE_INST_SRA_D `LA_DEC_BIT_SHIFT_R(ArithmeticRight, 0)
+`define LA_DECODE_INST_ROTR_W `LA_DEC_BIT_SHIFT_R(RotateRight, 1)
+`define LA_DECODE_INST_ROTR_D `LA_DEC_BIT_SHIFT_R(RotateRight, 0)
+
+`define LA_DECODE_INST_SLLI_W `LA_DEC_BIT_SHIFT_I(LogicalLeft, 1, op_uk5)
+`define LA_DECODE_INST_SLLI_D `LA_DEC_BIT_SHIFT_I(LogicalLeft, 0, op_uk6)
+`define LA_DECODE_INST_SRLI_W `LA_DEC_BIT_SHIFT_I(LogicalRight, 1, op_uk5)
+`define LA_DECODE_INST_SRLI_D `LA_DEC_BIT_SHIFT_I(LogicalRight, 0, op_uk6)
+`define LA_DECODE_INST_SRAI_W `LA_DEC_BIT_SHIFT_I(ArithmeticRight, 1, op_uk5)
+`define LA_DECODE_INST_SRAI_D `LA_DEC_BIT_SHIFT_I(ArithmeticRight, 0, op_uk6)
+`define LA_DECODE_INST_ROTRI_W `LA_DEC_BIT_SHIFT_I(RotateRight, 1, op_uk5)
+`define LA_DECODE_INST_ROTRI_D `LA_DEC_BIT_SHIFT_I(RotateRight, 0, op_uk6)
+
 `define LA_DECODE_INST_BREAK begin \
     `LA_DEC(Exception, 'h0C) \
   end
@@ -352,6 +390,8 @@ module inst_decoder
     automatic virt_reg_t op_rd = in.inst[4:0];
     automatic virt_reg_t op_rj = in.inst[9:5];
     automatic virt_reg_t op_rk = in.inst[14:10];
+    automatic logic unsigned [4:0] op_uk5 = signed'(in.inst[14:10]);
+    automatic logic unsigned [5:0] op_uk6 = signed'(in.inst[15:10]);
     automatic logic unsigned [11:0] op_uk12 = in.inst[21:10];
     automatic logic signed [11:0] op_sk12 = signed'(in.inst[21:10]);
     automatic logic signed [13:0] op_sk14 = signed'(in.inst[23:10]);
@@ -370,6 +410,7 @@ module inst_decoder
     // UOp payloads
     automatic inst_pkg::uop_add_pl_t uop_add_pl = '0;
     automatic inst_pkg::uop_bitop_pl_t uop_bitop_pl = '0;
+    automatic inst_pkg::uop_bit_shift_pl_t uop_bit_shift_pl = '0;
     automatic inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl = '0;
     automatic inst_pkg::uop_bstr_pl_t uop_bstr_pl = '0;
     automatic inst_pkg::uop_br_pl_t uop_br_pl = '0;
