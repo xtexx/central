@@ -156,7 +156,9 @@ package inst_pkg;
     BitOpTySetLtUImm = 6'b100011,
     BitOpTySlAddW = 6'b100100,
     BitOpTySlAddWU = 6'b100101,
-    BitOpTySlAddD = 6'b100110
+    BitOpTySlAddD = 6'b100110,
+    BitOpTyBytePickW = 6'b101000,
+    BitOpTyBytePickD = 6'b101001
   } uop_bitop_ty_t  /*verilator public*/;
 
   typedef struct packed {

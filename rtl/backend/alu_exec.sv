@@ -164,42 +164,60 @@ module alu_exec
             end
             rd = tmp + rk;
           end
+
+          BitOpTyBytePickW: begin
+            automatic logic [ 1:0] op_sa2 = uop_bitop_pl.ui16[1:0];
+            // tmp = {GR[rk][31:0], GR[rj][31:0]}
+            automatic logic [63:0] tmp = {rk[31:0], rj[31:0]};
+            // GR[rd] = SignExtend(tmp[8*(8-sa2)-1 : 8*(4-sa2)], GRLEN)
+            automatic logic [31:0] out = '0;
+            for (int i = 0; i < 4; i++) begin
+              if (op_sa2 == 2'(i)) begin
+                out = tmp[8*(4-i)+:32];
+              end
+            end
+            rd = 64'(signed'(out));
+          end
+          BitOpTyBytePickD: begin
+            automatic logic [  2:0] op_sa3 = uop_bitop_pl.ui16[2:0];
+            // tmp = {GR[rk][63:0], GR[rj][63:0]}
+            automatic logic [127:0] tmp = {rk, rj};
+            // GR[rd] = tmp[8*(16-sa3)-1 : 8*(8-sa3)]
+            for (int i = 0; i < 8; i++) begin
+              if (op_sa3 == 3'(i)) begin
+                rd = tmp[8*(8-i)+:64];
+              end
+            end
+          end
         endcase
       end
       UOpLdImm: begin
         unique case (uop_ld_imm_pl.op)
           LdImmOpLU12IW: begin
-            // LU12I.W:
             // GR[rd] = SignExtend({si20, 12'b0}, GRLEN)
             rd = 64'(signed'({uop_ld_imm_pl.imm[19:0], 12'b0}));
           end
           LdImmOpCU32ID: begin
-            // LU32I.D:
             // GR[rd] = {SignExtend(si20, 32), GR[rd][31:0]}
             rd = {unsigned'(32'(signed'(uop_ld_imm_pl.imm[19:0]))), rj[31:0]};
           end
           LdImmOpCU52ID: begin
-            // LU52I.D:
             // GR[rd] = {si12, GR[rj][51:0]}
             rd = {uop_ld_imm_pl.imm[11:0], rj[51:0]};
           end
           LdImmOpPCADDU2I: begin
-            // PCADDI:
             // GR[rd] = PC + SignExtend({si20, 2'b0}, GRLEN)
             rd = rob_pc_rd.pc + 64'(signed'({uop_ld_imm_pl.imm[19:0], 2'b00}));
           end
           LdImmOpPCADDU12I: begin
-            // PCADDU12I:
             // GR[rd] = PC + SignExtend({si20, 12'b0}, GRLEN)
             rd = rob_pc_rd.pc + 64'(signed'({uop_ld_imm_pl.imm[19:0], 12'b0}));
           end
           LdImmOpPCADDU18I: begin
-            // PCADDU18I:
             // GR[rd] = PC + SignExtend({si20, 18'b0}, GRLEN)
             rd = rob_pc_rd.pc + 64'(signed'({uop_ld_imm_pl.imm[19:0], 18'b0}));
           end
           LdImmOpPCALAU12I: begin
-            // PCALAU12I:
             // tmp = PC + SignExtend({si20, 12'b0}, GRLEN)
             rd = rob_pc_rd.pc + 64'(signed'({uop_ld_imm_pl.imm[19:0], 12'b0}));
             // GR[rd] = {tmp[GRLEN-1:12], 12'b0}

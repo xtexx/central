@@ -114,19 +114,22 @@
 `define LA_DECODE_INST_CTZ_W `LA_DEC_BITOP(CTZW, op_rj, 0)
 `define LA_DECODE_INST_CTZ_D `LA_DEC_BITOP(CTZD, op_rj, 0)
 
-`define LA_DEC_BITOP_SLADD(__op) \
+`define LA_DEC_BITOP_RRRI(__op, __imm) \
   begin \
-    uop_bitop_pl.ty = BitOpTySlAdd``__op; \
-    uop_bitop_pl.ui16 = 16'(unsigned'(op_sa2)); \
+    uop_bitop_pl.ty = BitOpTy``__op; \
+    uop_bitop_pl.ui16 = 16'(unsigned'(__imm)); \
     `LA_DEC(BitOp, uop_bitop_pl) \
     `LA_DEC_REG_W_GPR(0, op_rd) \
     `LA_DEC_REG_R_GPR(0, op_rj) \
     `LA_DEC_REG_R_GPR(1, op_rk) \
   end
 
-`define LA_DECODE_INST_SLADD_W `LA_DEC_BITOP_SLADD(W)
-`define LA_DECODE_INST_SLADD_WU `LA_DEC_BITOP_SLADD(WU)
-`define LA_DECODE_INST_SLADD_D `LA_DEC_BITOP_SLADD(D)
+`define LA_DECODE_INST_SLADD_W `LA_DEC_BITOP_RRRI(SlAddW, op_sa2)
+`define LA_DECODE_INST_SLADD_WU `LA_DEC_BITOP_RRRI(SlAddWU, op_sa2)
+`define LA_DECODE_INST_SLADD_D `LA_DEC_BITOP_RRRI(SlAddD, op_sa2)
+
+`define LA_DECODE_INST_CATPICK_W `LA_DEC_BITOP_RRRI(BytePickW, op_sa2)
+`define LA_DECODE_INST_CATPICK_D `LA_DEC_BITOP_RRRI(BytePickD, op_sa3)
 
 `define LA_DEC_LD_IMM(__op, __imm20, __rr0) \
   begin \
@@ -358,6 +361,7 @@ module inst_decoder
     automatic logic unsigned [5:0] op_lsbd = in.inst[15:10];
     automatic logic unsigned [5:0] op_msbd = in.inst[21:16];
     automatic logic unsigned [1:0] op_sa2 = in.inst[16:15];
+    automatic logic unsigned [2:0] op_sa3 = in.inst[17:15];
 
     // UOp payloads
     automatic inst_pkg::uop_add_pl_t uop_add_pl = '0;
