@@ -117,7 +117,7 @@
 `define LA_DEC_BITOP_SLADD(__op) \
   begin \
     uop_bitop_pl.ty = BitOpTySlAdd``__op; \
-    uop_bitop_pl.imm = op_sa2; \
+    uop_bitop_pl.ui16 = 16'(unsigned'(op_sa2)); \
     `LA_DEC(BitOp, uop_bitop_pl) \
     `LA_DEC_REG_W_GPR(0, op_rd) \
     `LA_DEC_REG_R_GPR(0, op_rj) \
@@ -340,52 +340,34 @@ module inst_decoder
 
   logic invalid_inst, is_nop;
 
-  virt_reg_t op_rd, op_rj, op_rk;
-  logic unsigned [11:0] op_uk12;
-  logic signed   [11:0] op_sk12;
-  logic signed   [13:0] op_sk14;
-  logic signed   [15:0] op_sk16;
-  logic signed   [19:0] op_sj20;
-  logic signed   [25:0] op_offs26;
-  logic signed   [20:0] op_offs21;
-  logic signed   [15:0] op_offs16;
-  logic unsigned [ 4:0] op_lsbw;
-  logic unsigned [ 4:0] op_msbw;
-  logic unsigned [ 5:0] op_lsbd;
-  logic unsigned [ 5:0] op_msbd;
-  logic unsigned [ 1:0] op_sa2;
-
   always_comb begin
-    op_rd = in.inst[4:0];
-    op_rj = in.inst[9:5];
-    op_rk = in.inst[14:10];
+    // Operands
+    automatic virt_reg_t op_rd = in.inst[4:0];
+    automatic virt_reg_t op_rj = in.inst[9:5];
+    automatic virt_reg_t op_rk = in.inst[14:10];
+    automatic logic unsigned [11:0] op_uk12 = in.inst[21:10];
+    automatic logic signed [11:0] op_sk12 = signed'(in.inst[21:10]);
+    automatic logic signed [13:0] op_sk14 = signed'(in.inst[23:10]);
+    automatic logic signed [15:0] op_sk16 = signed'(in.inst[25:10]);
+    automatic logic signed [19:0] op_sj20 = signed'(in.inst[24:5]);
+    automatic logic signed [25:0] op_offs26 = signed'({in.inst[9:0], in.inst[25:10]});
+    automatic logic signed [20:0] op_offs21 = signed'({in.inst[4:0], in.inst[25:10]});
+    automatic logic signed [15:0] op_offs16 = signed'(in.inst[25:10]);
+    automatic logic unsigned [4:0] op_lsbw = in.inst[14:10];
+    automatic logic unsigned [4:0] op_msbw = in.inst[20:16];
+    automatic logic unsigned [5:0] op_lsbd = in.inst[15:10];
+    automatic logic unsigned [5:0] op_msbd = in.inst[21:16];
+    automatic logic unsigned [1:0] op_sa2 = in.inst[16:15];
 
-    op_uk12 = in.inst[21:10];
-    op_sk12 = signed'(op_uk12);
-    op_sk14 = signed'(in.inst[23:10]);
-    op_sk16 = signed'(in.inst[25:10]);
-    op_sj20 = signed'(in.inst[24:5]);
+    // UOp payloads
+    automatic inst_pkg::uop_add_pl_t uop_add_pl = '0;
+    automatic inst_pkg::uop_bitop_pl_t uop_bitop_pl = '0;
+    automatic inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl = '0;
+    automatic inst_pkg::uop_bstr_pl_t uop_bstr_pl = '0;
+    automatic inst_pkg::uop_br_pl_t uop_br_pl = '0;
+    automatic inst_pkg::uop_cond_br_pl_t uop_cond_br_pl = '0;
+    automatic inst_pkg::uop_mem_pl_t uop_mem_pl = '0;
 
-    op_offs26 = signed'({in.inst[9:0], in.inst[25:10]});
-    op_offs21 = signed'({in.inst[4:0], in.inst[25:10]});
-    op_offs16 = signed'(in.inst[25:10]);
-
-    op_lsbw = in.inst[14:10];
-    op_msbw = in.inst[20:16];
-    op_lsbd = in.inst[15:10];
-    op_msbd = in.inst[21:16];
-    op_sa2 = in.inst[16:15];
-  end
-
-  inst_pkg::uop_add_pl_t uop_add_pl;
-  inst_pkg::uop_bitop_pl_t uop_bitop_pl;
-  inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
-  inst_pkg::uop_bstr_pl_t uop_bstr_pl;
-  inst_pkg::uop_br_pl_t uop_br_pl;
-  inst_pkg::uop_cond_br_pl_t uop_cond_br_pl;
-  inst_pkg::uop_mem_pl_t uop_mem_pl;
-
-  always_comb begin
     // Default assignments
     out.inst.op = inst_pkg::inst_opcode_t'(0);
     out.inst.pl = '0;
@@ -394,14 +376,6 @@ module inst_decoder
 
     is_nop = 0;
     invalid_inst = 0;
-
-    uop_add_pl = '0;
-    uop_bitop_pl = '0;
-    uop_ld_imm_pl = '0;
-    uop_bstr_pl = '0;
-    uop_br_pl = '0;
-    uop_cond_br_pl = '0;
-    uop_mem_pl = '0;
 
     // Decoder tree
     `LA_DECODE_TREE
