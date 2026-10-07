@@ -31,9 +31,9 @@ public:
           top->__PVT__##prefix##rob_exec__BRA__0__KET__,                       \
           top->__PVT__##prefix##rob_exec__BRA__1__KET__,                       \
           top->__PVT__##prefix##rob_exec__BRA__2__KET__,                       \
-          top->__PVT__##prefix##dp_o_alu, top->__PVT__##prefix##dp_o_ctl,      \
-          top->__PVT__##prefix##dp_o_bru, top->__PVT__##prefix##alu_dq_out,    \
-          &top->prefix##flush_pipeline))
+          top->__PVT__##prefix##alu_dq_out, top->__PVT__##prefix##ctl_dq_out,  \
+          top->__PVT__##prefix##bru_dq_out, top->__PVT__##prefix##agu_dq_out,  \
+          top->__PVT__##prefix##mul_dq_out, &top->prefix##flush_pipeline))
 
 } // namespace testbench
 } // namespace tyro

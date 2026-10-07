@@ -9,7 +9,8 @@ module inst_dispatcher
     rr_out_if.tx o_alu,
     rr_out_if.tx o_ctl,
     rr_out_if.tx o_bru,
-    rr_out_if.tx o_agu
+    rr_out_if.tx o_agu,
+    rr_out_if.tx o_mul
 );
 
   always_comb begin
@@ -18,12 +19,14 @@ module inst_dispatcher
     o_ctl.inst = in.inst;
     o_bru.inst = in.inst;
     o_agu.inst = in.inst;
+    o_mul.inst = in.inst;
 
     // Default assignments
     o_alu.valid = '0;
     o_ctl.valid = '0;
     o_bru.valid = '0;
     o_agu.valid = '0;
+    o_mul.valid = '0;
 
     // Before the first instruction, RR output opcode are 'x.
     // In this case, ready wire should be pulled down stably.
@@ -50,6 +53,11 @@ module inst_dispatcher
       UOpMem: begin
         o_agu.valid = in.valid;
         in.ready = o_agu.ready;
+      end
+      // MUL
+      UOpMul: begin
+        o_mul.valid = in.valid;
+        in.ready = o_mul.ready;
       end
     endcase
   end

@@ -21,11 +21,11 @@ void Monitor::dumpState(std::ostream &log) {
   for (unsigned int i = 0; i < rob_execute.size(); i++)
     dumpROBExecute(log, *rob_execute[i], "ROB execute", i);
 
-  frontend::Monitor::dumpRROut(log, dp_o_alu, "Dispatch to ALU");
-  frontend::Monitor::dumpRROut(log, dp_o_ctl, "Dispatch to CTL");
-  frontend::Monitor::dumpRROut(log, dp_o_bru, "Dispatch to BRU");
-
   frontend::Monitor::dumpRROut(log, alu_dq_out, "ALU DQ out");
+  frontend::Monitor::dumpRROut(log, ctl_dq_out, "CTL DQ out");
+  frontend::Monitor::dumpRROut(log, bru_dq_out, "BRU DQ out");
+  frontend::Monitor::dumpRROut(log, agu_dq_out, "AGU DQ out");
+  frontend::Monitor::dumpRROut(log, mul_dq_out, "MUL DQ out");
 }
 
 void Monitor::dumpPRegAlloc(std::ostream &log, PRegAllocWires &wires,
@@ -104,7 +104,8 @@ void Monitor::dumpROBCommit(std::ostream &log, ROBCommitWires &wires,
   else if (wires.valid & wires.ready) {
     rob_entry_t entry;
     entry.set(wires.entry);
-    log << label << ": idx="<< (unsigned int)wires.idx <<", pc=" << FmtQAddr(entry.pc, 64);
+    log << label << ": idx=" << (unsigned int)wires.idx
+        << ", pc=" << FmtQAddr(entry.pc, 64);
 
     constexpr unsigned int ROB_ENTRY_REGS =
         sizeof(entry.rr) / sizeof(rob_rr_entry_t);

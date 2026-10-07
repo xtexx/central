@@ -93,7 +93,9 @@ package inst_pkg;
     // Branch conditionally, uop_cond_br_pl_t, to BRU
     UOpCondBr = 7'b011_0001,
     // Memory operation, uop_mem_pl_t, to AGU
-    UOpMem = 7'b100_0000
+    UOpMem = 7'b100_0000,
+    // Multiplication, uop_mul_pl_t, to MUL EXEC
+    UOpMul = 7'b101_0000
   } inst_opcode_t  /*verilator public*/;
 
   typedef logic [31:0] inst_payload_t;
@@ -243,5 +245,19 @@ package inst_pkg;
     // Check Rr0 <= Rr1
     logic check_le;
   } uop_mem_pl_t  /*verilator public*/;
+
+  // pl[0] -> is_signed; pl[1] -> is_w
+  // pl[3:2] -> 00: [31:0], 01: [63:32]
+  // pl[3:2] -> 10: [63:0], 11: [127:64]
+  typedef enum logic [3:0] {
+    MulTyW = 4'b00_1_1,
+    MulTyW_H = 4'b01_1_1,
+    MulTyW_HU = 4'b01_1_0,
+    MulTyD = 4'b10_0_1,
+    MulTyD_H = 4'b11_0_1,
+    MulTyD_HU = 4'b11_0_0,
+    MulTyWD_W = 4'b10_1_1,
+    MulTyWD_WU = 4'b10_1_0
+  } uop_mul_pl_t  /*verilator public*/;
 
 endpackage

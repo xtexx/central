@@ -86,6 +86,10 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
         << FmtQAddr(pl.offs, 16);
     break;
   }
+  case inst_pkg::UOpMul: {
+    log << std::format("Mul pl={}", raw_pl);
+    break;
+  }
   default:
     log << "???";
   }

@@ -85,7 +85,8 @@ module tyro_core (
   // [1] -> CTL Exec
   // [2] -> BRU Exec
   // [3] -> AGU Exec
-  rob_execute_if rob_exec[4] (
+  // [4] -> MUL Exec
+  rob_execute_if rob_exec[5] (
       .clk(clk),
       .rst(rst)
   );
@@ -97,7 +98,7 @@ module tyro_core (
   );
   rob #(
       .DEPTH(8),
-      .EXEC_PORTS(4),
+      .EXEC_PORTS(5),
       .PC_READ_PORTS(2)
   ) rob (
       .clk(clk),
@@ -113,14 +114,16 @@ module tyro_core (
   // [0] [1] -> ALU Exec
   // [2] [3] -> BRU Exec
   // [4] [5] [6] -> AGU Exec
-  prf_read_if prf_rd[7] (
+  // [7] [8] -> MUL Exec
+  prf_read_if prf_rd[9] (
       .clk(clk),
       .rst(rst)
   );
   // [0] -> ALU Exec
   // [1] -> BRU Exec
   // [2] -> Committer
-  prf_write_if prf_wr[3] (
+  // [3] -> MUL Exec
+  prf_write_if prf_wr[4] (
       .clk(clk),
       .rst(rst)
   );
@@ -131,8 +134,8 @@ module tyro_core (
   reg_file #(
       .DATA_W(64),
       .REG_N(64),
-      .READ_PORTS(7),
-      .WRITE_PORTS(3),
+      .READ_PORTS(9),
+      .WRITE_PORTS(4),
       .RESET_PORTS(2)
   ) int_prf (
       .clk(clk),
@@ -206,13 +209,18 @@ module tyro_core (
       dp_o_agu (
           .clk(clk),
           .rst(rst)
+      ),
+      dp_o_mul (
+          .clk(clk),
+          .rst(rst)
       );
   inst_dispatcher inst_dp (
       .in(rr_out),
       .o_alu(dp_o_alu),
       .o_ctl(dp_o_ctl),
       .o_bru(dp_o_bru),
-      .o_agu(dp_o_agu)
+      .o_agu(dp_o_agu),
+      .o_mul(dp_o_mul)
   );
 
   // ALU Dispatch Queue
@@ -354,6 +362,31 @@ module tyro_core (
       .prf_rd(prf_rd[4:6]),
       .rob_ex(rob_exec[3]),
       .lsq_push(lsq_push)
+  );
+
+  // MUL Dispatch Queue
+  rr_out_if mul_dq_out (
+      .clk(clk),
+      .rst(rst)
+  );
+  rr_inst_buf #(
+      .DEPTH(2)
+  ) mul_dq (
+      .clk(clk),
+      .rst(rst),
+      .rx(dp_o_mul),
+      .tx(mul_dq_out),
+      .flush(flush_pipeline)
+  );
+
+  // MUL EXEC
+  mul_exec mul_ex (
+      .clk(clk),
+      .rst(rst),
+      .in(mul_dq_out),
+      .prf_rd(prf_rd[7:8]),
+      .prf_wr(prf_wr[3]),
+      .rob_ex(rob_exec[4])
   );
 
   // Committer

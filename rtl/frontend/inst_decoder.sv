@@ -213,6 +213,22 @@
 `define LA_DECODE_INST_ROTRI_W `LA_DEC_BIT_SHIFT_I(RotateRight, 1, op_uk5)
 `define LA_DECODE_INST_ROTRI_D `LA_DEC_BIT_SHIFT_I(RotateRight, 0, op_uk6)
 
+`define LA_DEC_MUL(__ty) begin \
+    `LA_DEC(Mul, MulTy``__ty) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+    `LA_DEC_REG_R_GPR(1, op_rk) \
+  end
+
+`define LA_DECODE_INST_MUL_W `LA_DEC_MUL(W)
+`define LA_DECODE_INST_MULH_W `LA_DEC_MUL(W_H)
+`define LA_DECODE_INST_MULH_WU `LA_DEC_MUL(W_HU)
+`define LA_DECODE_INST_MUL_D `LA_DEC_MUL(D)
+`define LA_DECODE_INST_MULH_D `LA_DEC_MUL(D_H)
+`define LA_DECODE_INST_MULH_DU `LA_DEC_MUL(D_HU)
+`define LA_DECODE_INST_MULW_D_W `LA_DEC_MUL(WD_W)
+`define LA_DECODE_INST_MULW_D_WU `LA_DEC_MUL(WD_WU)
+
 `define LA_DECODE_INST_BREAK begin \
     `LA_DEC(Exception, 'h0C) \
   end
