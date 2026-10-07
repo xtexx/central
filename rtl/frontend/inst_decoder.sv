@@ -179,6 +179,10 @@
     `LA_DEC(Exception, 'h0C) \
   end
 
+`define LA_DECODE_INST_SYSCALL begin \
+    `LA_DEC(Exception, 'h0B) \
+  end
+
 `define LA_DECODE_INST_B begin \
     uop_br_pl.offs26 = op_offs26; \
     uop_br_pl.base_reg = 0; \
