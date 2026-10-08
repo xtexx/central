@@ -291,8 +291,8 @@
 `define LA_DECODE_INST_BLE `LA_DEC_COND_BR(LeS, op_rd, op_rj, 21'(signed'(op_offs16)))
 `define LA_DECODE_INST_BLEU `LA_DEC_COND_BR(LeU, op_rd, op_rj, 21'(signed'(op_offs16)))
 
-`define LA_DECODE_INST_BEQZ `LA_DEC_COND_BR(Eq, op_rd, 0, op_offs21)
-`define LA_DECODE_INST_BNEZ `LA_DEC_COND_BR(Ne, op_rd, 0, op_offs21)
+`define LA_DECODE_INST_BEQZ `LA_DEC_COND_BR(Eq, op_rj, 0, op_offs21)
+`define LA_DECODE_INST_BNEZ `LA_DEC_COND_BR(Ne, op_rj, 0, op_offs21)
 
 `define LA_DEC_MEM_LD(__rk, __offs, __ty, __is_unsigned) \
   begin \
