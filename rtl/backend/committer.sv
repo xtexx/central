@@ -26,9 +26,12 @@ module committer
 );
 
   initial assert (free_list_free.BATCH_SIZE >= inst_pkg::ROB_ENTRY_REGS);
-  `ASSERT_STABLE(InstStable, rob_co.valid, rob_co.ready, rob_co.entry, '0, clk, rst);
-  `ASSERT_STABLE(BTQStable, btq_pop.valid, btq_pop.ready, btq_pop.hi32, '0, clk, rst);
-  `ASSERT_STABLE(LSQStable, lsq_pop.valid, lsq_pop.ready, lsq_pop.entry, '0, clk, rst);
+  `ASSERT_STABLE(InstStable, rob_co.valid && !flush_pipeline, rob_co.ready, rob_co.entry, '0, clk,
+                 rst);
+  `ASSERT_STABLE(BTQStable, btq_pop.valid && !flush_pipeline, btq_pop.ready, btq_pop.hi32, '0, clk,
+                 rst);
+  `ASSERT_STABLE(LSQStable, lsq_pop.valid && !flush_pipeline, lsq_pop.ready, lsq_pop.entry, '0,
+                 clk, rst);
 
   inst_pkg::phy_reg_t reg_aliases[VREGS];
 

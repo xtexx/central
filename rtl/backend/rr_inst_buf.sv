@@ -14,18 +14,24 @@ module rr_inst_buf #(
 
   logic [cc_pkg::cnt_width(DEPTH)-1:0] unused_fifo_usage;
 
+  logic rx_ready;
+  assign rx.ready = rx_ready || flush;
+
+  logic tx_valid;
+  assign tx.valid = tx_valid && !flush;
+
   if (DEPTH == 2) begin : gen_spill
     cc_spill_register_flushable #(
         .data_t(inst_pkg::rr_inst_t)
     ) fifo (
         .clk_i  (clk),
         .rst_ni ('1),
-        .clr_i  (rst | flush),
-        .flush_i('0),
-        .valid_i(rx.valid),
-        .ready_o(rx.ready),
+        .clr_i  (rst),
+        .flush_i(flush),
+        .valid_i(rx.valid && !flush),
+        .ready_o(rx_ready),
         .data_i (rx.inst),
-        .valid_o(tx.valid),
+        .valid_o(tx_valid),
         .ready_i(tx.ready),
         .data_o (tx.inst)
     );
@@ -37,14 +43,14 @@ module rr_inst_buf #(
     ) fifo (
         .clk_i  (clk),
         .rst_ni ('1),
-        .clr_i  ('0),
-        .flush_i(rst | flush),
+        .clr_i  (rst),
+        .flush_i(flush),
         .usage_o(unused_fifo_usage),
-        .data_i (rx.inst),
-        .valid_i(rx.valid),
-        .ready_o(rx.ready),
+        .data_i (rx.inst && !flush),
+        .valid_i(rx.ready),
+        .ready_o(rx_ready),
         .data_o (tx.inst),
-        .valid_o(tx.valid),
+        .valid_o(tx_valid),
         .ready_i(tx.ready)
     );
   end
