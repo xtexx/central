@@ -28,12 +28,6 @@ fn start1() callconv(.naked) noreturn {
 }
 
 fn main() noreturn {
-    asm volatile (
-        \\ li.d $r5, 12306
-        \\ li.d $r6, 10086
-        \\ mulw.d.w $r4, $r5, $r6
-        \\ st.d $r4, $r0, 0x500
-    );
     // 9600 is too slow for simulation.
     // uart0.setBaudRate(9600);
     // uart0.setBaudRate(100000000);

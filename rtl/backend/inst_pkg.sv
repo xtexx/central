@@ -95,7 +95,9 @@ package inst_pkg;
     // Memory operation, uop_mem_pl_t, to AGU
     UOpMem = 7'b100_0000,
     // Multiplication, uop_mul_pl_t, to MUL EXEC
-    UOpMul = 7'b101_0000
+    UOpMul = 7'b101_0000,
+    // Division, uop_div_pl_t, to MUL EXEC
+    UOpDiv = 7'b101_0001
   } inst_opcode_t  /*verilator public*/;
 
   typedef logic [31:0] inst_payload_t;
@@ -259,5 +261,17 @@ package inst_pkg;
     MulTyWD_W = 4'b10_1_1,
     MulTyWD_WU = 4'b10_1_0
   } uop_mul_pl_t  /*verilator public*/;
+
+  // pl[0] -> is_signed; pl[1] -> is_w; pl[2] -> is_remainder
+  typedef enum logic [2:0] {
+    DivTyQuoWS = 3'b011,
+    DivTyQuoWU = 3'b010,
+    DivTyQuoDS = 3'b001,
+    DivTyQuoDU = 3'b000,
+    DivTyModWS = 3'b111,
+    DivTyModWU = 3'b110,
+    DivTyModDS = 3'b101,
+    DivTyModDU = 3'b100
+  } uop_div_pl_t  /*verilator public*/;
 
 endpackage

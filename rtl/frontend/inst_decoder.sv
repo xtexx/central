@@ -229,6 +229,23 @@
 `define LA_DECODE_INST_MULW_D_W `LA_DEC_MUL(WD_W)
 `define LA_DECODE_INST_MULW_D_WU `LA_DEC_MUL(WD_WU)
 
+`define LA_DEC_DIV(__ty) begin \
+    `LA_DEC(Div, DivTy``__ty) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
+    `LA_DEC_REG_R_GPR(1, op_rk) \
+  end
+
+
+`define LA_DECODE_INST_DIV_W `LA_DEC_DIV(QuoWS)
+`define LA_DECODE_INST_DIV_WU `LA_DEC_DIV(QuoWU)
+`define LA_DECODE_INST_DIV_D `LA_DEC_DIV(QuoDS)
+`define LA_DECODE_INST_DIV_DU `LA_DEC_DIV(QuoDU)
+`define LA_DECODE_INST_MOD_W `LA_DEC_DIV(ModWS)
+`define LA_DECODE_INST_MOD_WU `LA_DEC_DIV(ModWU)
+`define LA_DECODE_INST_MOD_D `LA_DEC_DIV(ModDS)
+`define LA_DECODE_INST_MOD_DU `LA_DEC_DIV(ModDU)
+
 `define LA_DECODE_INST_BREAK begin \
     `LA_DEC(Exception, 'h0C) \
   end

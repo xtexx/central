@@ -55,7 +55,7 @@ module inst_dispatcher
         in.ready = o_agu.ready;
       end
       // MUL
-      UOpMul: begin
+      UOpMul, UOpDiv: begin
         o_mul.valid = in.valid;
         in.ready = o_mul.ready;
       end

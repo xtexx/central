@@ -90,6 +90,10 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
     log << std::format("Mul pl={}", raw_pl);
     break;
   }
+  case inst_pkg::UOpDiv: {
+    log << std::format("Div pl={}", raw_pl);
+    break;
+  }
   default:
     log << "???";
   }
