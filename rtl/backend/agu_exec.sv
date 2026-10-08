@@ -87,7 +87,7 @@ module agu_exec
     // ROB write back
     rob_ex.idx = in.inst.rob_idx;
     rob_ex.commit_type = trigger_bce ? InstCommitException : InstCommitMem;
-    rob_ex.data = 'h0A; // Ecode = BCE; unused for InstCommitMem
+    rob_ex.data = 'h0A;  // Ecode = BCE; unused for InstCommitMem
     rob_ex.valid = ready;
   end
 

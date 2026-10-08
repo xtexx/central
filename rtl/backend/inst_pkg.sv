@@ -83,6 +83,8 @@ package inst_pkg;
     UOpLdImm = 7'b001_0100,
     // Bit string manipulation, uop_bstr_pl_t, to ALU
     UOpBitStr = 7'b001_0101,
+    // Read configuration, uop_rd_cfg_pl_t, to ALU
+    UOpRdCfg = 7'b001_0111,
     // Trigger an exception, to CTL
     // pl[5:0] = Ecode
     // pl[14:6] = EsubCode
@@ -193,6 +195,13 @@ package inst_pkg;
     uop_bit_shift_ty_t ty;
     logic [5:0] imm;
   } uop_bit_shift_pl_t  /*verilator public*/;
+
+  typedef enum logic [2:0] {
+    // RdCfgOpRdTscD  = 3'b000,
+    // RdCfgOpRdTscWH = 3'b010,
+    // RdCfgOpRdTscWL = 3'b011,
+    RdCfgOpCpuCfg = 3'b100
+  } uop_rd_cfg_pl_t  /*verilator public*/;
 
   typedef enum logic [2:0] {
     LdImmOpLU12IW = 3'b000,

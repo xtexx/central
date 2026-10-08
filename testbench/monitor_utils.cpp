@@ -94,6 +94,10 @@ void dumpDecodedInstructionOp(std::ostream &log, const SData op,
     log << std::format("Div pl={}", raw_pl);
     break;
   }
+  case inst_pkg::UOpRdCfg: {
+    log << std::format("RdCfg pl={}", raw_pl);
+    break;
+  }
   default:
     log << "???";
   }

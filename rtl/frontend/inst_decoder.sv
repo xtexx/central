@@ -236,7 +236,6 @@
     `LA_DEC_REG_R_GPR(1, op_rk) \
   end
 
-
 `define LA_DECODE_INST_DIV_W `LA_DEC_DIV(QuoWS)
 `define LA_DECODE_INST_DIV_WU `LA_DEC_DIV(QuoWU)
 `define LA_DECODE_INST_DIV_D `LA_DEC_DIV(QuoDS)
@@ -252,6 +251,12 @@
 
 `define LA_DECODE_INST_SYSCALL begin \
     `LA_DEC(Exception, 'h0B) \
+  end
+
+`define LA_DECODE_INST_CPUCFG begin \
+    `LA_DEC(RdCfg, RdCfgOpCpuCfg) \
+    `LA_DEC_REG_W_GPR(0, op_rd) \
+    `LA_DEC_REG_R_GPR(0, op_rj) \
   end
 
 `define LA_DECODE_INST_B begin \

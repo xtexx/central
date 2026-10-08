@@ -51,11 +51,13 @@ module alu_exec
     automatic inst_pkg::uop_bit_shift_pl_t uop_bit_shift_pl;
     automatic inst_pkg::uop_ld_imm_pl_t uop_ld_imm_pl;
     automatic inst_pkg::uop_bstr_pl_t uop_bstr_pl;
+    automatic inst_pkg::uop_rd_cfg_pl_t uop_rd_cfg_pl;
     uop_add_pl = in.inst.pl[$bits(inst_pkg::uop_add_pl_t)-1:0];
     uop_bitop_pl = in.inst.pl[$bits(inst_pkg::uop_bitop_pl_t)-1:0];
     uop_bit_shift_pl = in.inst.pl[$bits(inst_pkg::uop_bit_shift_pl_t)-1:0];
     uop_ld_imm_pl = in.inst.pl[$bits(inst_pkg::uop_ld_imm_pl_t)-1:0];
     uop_bstr_pl = in.inst.pl[$bits(inst_pkg::uop_bstr_pl_t)-1:0];
+    uop_rd_cfg_pl = inst_pkg::uop_rd_cfg_pl_t'(in.inst.pl[$bits(inst_pkg::uop_rd_cfg_pl_t)-1:0]);
 
     // Read operand registers
     prf_rd[0].preg = in.inst.pregs_r[0];
@@ -275,6 +277,34 @@ module alu_exec
         end
         // rd = IS_W ? SignExtend(rd[31:0]) : rd
         rd = (uop_bstr_pl.is_w) ? unsigned'(64'(signed'(rd[31:0]))) : rd;
+      end
+      UOpRdCfg: begin
+        unique case (uop_rd_cfg_pl)
+          RdCfgOpCpuCfg: begin
+            rd = '0;
+            unique0 case (rj)
+              'h0: begin
+                // PRID
+                rd = 64'(unsigned'(32'h6f727954));
+              end
+              'h1: begin
+                // ARCH
+                rd[1:0]   = 2'b10;
+                // PALEN
+                rd[11:4]  = 40 - 1;
+                // VALEN
+                rd[19:12] = 40 - 1;
+              end
+              'h2: begin
+                // ITLBHMC, ICHMC
+                rd[7:6] = '1;
+                // LD_SEQ_SA
+                rd[23]  = '1;
+              end
+            endcase
+            rd = 64'(signed'(rd[31:0]));
+          end
+        endcase
       end
       default: if (ready) `ERROR("ALU Exec: bad op");
     endcase
