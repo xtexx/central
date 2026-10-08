@@ -8,6 +8,7 @@ pub fn build(b: *std.Build) void {
             .ld_seq_sa,
             .prefer_w_inst,
             .relax,
+            .div32,
         }),
         .abi = .muslsf,
         .ofmt = .elf,
