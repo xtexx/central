@@ -73,7 +73,7 @@ module agu_exec
       end
       lsq_ent.u.ld.dst = in.inst.pregs_w[0];
     end else begin
-      lsq_ent.u.st.data = rr2 << vaddr[2:0];
+      lsq_ent.u.st.data = rr2 << (vaddr[2:0] * 8);
     end
 
     // Write to LSQ

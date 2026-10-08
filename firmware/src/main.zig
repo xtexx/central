@@ -48,10 +48,10 @@ fn main() noreturn {
     uart0.setBaudRate(4000000);
     uart0.sendBytes("Tyro Core Firmware Early Initialization\n");
 
-    // var heap_allocator: std.heap.FixedBufferAllocator = .init(&heap);
-    // const gpa = heap_allocator.allocator();
-    // const str = gpa.print("CF0={x}\nCF1={x}\n", .{ cpucfg(0), cpucfg(1) }) catch unreachable;
-    const str = std.fmt.bufPrint(&heap, "CF0={x}\nCF1={x}\n", .{ cpucfg(0), cpucfg(1) }) catch unreachable;
+    var heap_allocator: std.heap.FixedBufferAllocator = .init(&heap);
+    const gpa = heap_allocator.allocator();
+    const str = gpa.print("CF0={x}\nCF1={x}\n", .{ cpucfg(0), cpucfg(1) }) catch unreachable;
+    // const str = std.fmt.bufPrint(&heap, "CF0={x}\nCF1={x}\n", .{ cpucfg(0), cpucfg(1) }) catch unreachable;
     uart0.sendBytes(str);
 
     uart0.sendBytes("End\n");
