@@ -210,18 +210,5 @@ module mul_exec
       end
     end
   end
-  // N = lhs div_numerator
-  // D = rhs
-  // Q := 0                  -- Initialize quotient and remainder to zero
-  // R := 0
-  // for i := n − 1 .. 0 do  -- Where n is number of bits in N
-  //   R := R << 1           -- Left-shift R by 1 bit
-  //   R(0) := div_numerator[0]          -- Set the least-significant bit of R equal to bit i of the numerator
-  // div_numerator <= div_numerator>>1;
-  //   if R ≥ D then
-  //     R := R − D
-  //     Q(i) := 1
-  //   end
-  // end
 
 endmodule
