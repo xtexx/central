@@ -54,7 +54,7 @@ int board_late_init(void)
 	 * Make sure virtio bus is enumerated so that peripherals
 	 * on the virtio bus can be discovered by their drivers
 	 */
-	virtio_init();
+	// virtio_init();
 
 	return 0;
 }
@@ -62,6 +62,6 @@ int board_late_init(void)
 int board_fdt_blob_setup(void **fdtp)
 {
 	/* QEMU stores the DTB to 0x100000 */
-	*fdtp = (void *)VIRT_FDT_BASE;
-	return 0;
+	// *fdtp = (void *)VIRT_FDT_BASE;
+	return -EINVAL;
 }

@@ -526,6 +526,15 @@ config DEBUG_UART_GOLDFISH
 	  start up driver model. The driver will be available until the real
 	  driver model serial is running.
 
+config DEBUG_UART_TYRO_CORE
+	bool "Tyro-Core UART"
+	depends on TYRO_CORE_SERIAL
+	help
+	  Select this to enable the debug UART using the Tyro-Core UART driver.
+	  This provides basic serial output from the console without needing to
+	  start up driver model. The driver will be available until the real
+	  driver model serial is running.
+
 endchoice
 
 config DEBUG_UART_BASE
@@ -537,6 +546,7 @@ config DEBUG_UART_BASE
 	default 0xe0000000 if DEBUG_UART_ZYNQ && ARCH_ZYNQ
 	default 0xff000000 if DEBUG_UART_PL011 && ARCH_VERSAL
 	default 0xf1920000 if DEBUG_UART_PL011 && (ARCH_VERSAL_NET || ARCH_VERSAL2)
+	default 0x00100000 if DEBUG_UART_TYRO_CORE
 	help
 	  This is the base address of your UART for memory-mapped UARTs.
 
@@ -570,6 +580,7 @@ config DEBUG_UART_CLOCK
 	default 0 if DEBUG_SBI_CONSOLE
 	default 0 if DEBUG_UART_SANDBOX
 	default 0 if DEBUG_MVEBU_A3700_UART
+	default 100000000 if DEBUG_UART_TYRO_CORE
 	default 100000000 if DEBUG_UART_ZYNQ && ARCH_ZYNQMP
 	default 50000000 if DEBUG_UART_ZYNQ && ARCH_ZYNQ
 	default 100000000 if DEBUG_UART_PL011 && (ARCH_VERSAL || ARCH_VERSAL_NET || ARCH_VERSAL2)
@@ -1177,6 +1188,11 @@ config 8xx_CONS_SMC2
 	bool "SMC2"
 
 endchoice
+
+config TYRO_CORE_SERIAL
+	bool "Tyro-Core UART support"
+	help
+	  Select this to enable the Tyro-Core builtin UART support.
 
 config SYS_SMC_RXBUFLEN
 	int "Console Rx buffer length"

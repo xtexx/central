@@ -4,7 +4,10 @@
 #
 
 ifeq ($(CONFIG_ARCH_LA64),y)
-	ARCH_FLAGS = -march=loongarch64 -mabi=lp64d
+	ARCH_FLAGS = -target loongarch64-freestanding-none -march=loongarch64 -mtune=loongarch64 -mabi=lp64s
+	ARCH_FLAGS += -mld-seq-sa -mrelax -mdiv32 -ffreestanding -mno-lsx -mno-lasx -mstrict-align
+	ARCH_FLAGS += -msoft-float -mfpu=none
+	ARCH_FLAGS += -z common-page-size=0x100 -z max-page-size=0x100
 endif
 
 ifeq ($(CONFIG_$(SPL_)FRAMEPOINTER),y)

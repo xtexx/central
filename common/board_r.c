@@ -230,8 +230,9 @@ static int initr_malloc(void)
 	 * reserve_noncached().
 	 */
 	start = gd->relocaddr - TOTAL_MALLOC_LEN;
+	start = 0x0000240000;
 	gd_set_malloc_start(start);
-	mem_malloc_init(start, TOTAL_MALLOC_LEN);
+	mem_malloc_init(start, 0x40000);
 	return 0;
 }
 

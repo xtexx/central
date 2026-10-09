@@ -1840,6 +1840,7 @@ static int fdtdec_apply_bloblist_dtos(void)
 int fdtdec_setup(void)
 {
 	int ret = -ENOENT;
+	return ret;
 
 	/*
 	 * If allowing a bloblist, check that first. The necessary test is

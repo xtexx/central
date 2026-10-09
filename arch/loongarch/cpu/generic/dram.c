@@ -7,10 +7,10 @@
 
 int dram_init(void)
 {
-	return fdtdec_setup_mem_size_base_lowest();
+	return 0;
 }
 
 int dram_init_banksize(void)
 {
-	return fdtdec_setup_memory_banksize();
+	return 0;
 }

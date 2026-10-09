@@ -114,10 +114,9 @@ config LOONGARCH
 	bool "LoongArch architecture"
 	select HAVE_SETJMP
 	select CREATE_ARCH_SYMLINK
-	select SUPPORT_OF_CONTROL
-	select OF_CONTROL
 	select DM
 	select DM_EVENT
+	select ARCH_SUPPORTS_LTO
 	imply DM_SERIAL
 	imply BLK
 	imply CLK

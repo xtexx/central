@@ -14,40 +14,19 @@
 
 static inline void arch_local_irq_enable(void)
 {
-	u32 flags = CSR_CRMD_IE;
-
-	__asm__ __volatile__(
-		"csrxchg %[val], %[mask], %[reg]\n\t"
-		: [val] "+r" (flags)
-		: [mask] "r" (CSR_CRMD_IE), [reg] "i" (LOONGARCH_CSR_CRMD)
-		: "memory");
 }
 
 #define local_irq_enable arch_local_irq_enable
 
 static inline void arch_local_irq_disable(void)
 {
-	u32 flags = 0;
-
-	__asm__ __volatile__(
-		"csrxchg %[val], %[mask], %[reg]\n\t"
-		: [val] "+r" (flags)
-		: [mask] "r" (CSR_CRMD_IE), [reg] "i" (LOONGARCH_CSR_CRMD)
-		: "memory");
 }
 
 #define local_irq_disable arch_local_irq_disable
 
 static inline unsigned long arch_local_irq_save(void)
 {
-	unsigned long flags = 0;
-
-	__asm__ __volatile__(
-		"csrxchg %[val], %[mask], %[reg]\n\t"
-		: [val] "+r" (flags)
-		: [mask] "r" (CSR_CRMD_IE), [reg] "i" (LOONGARCH_CSR_CRMD)
-		: "memory");
-	return flags;
+	return 0;
 }
 
 #define local_irq_save(__flags)						\
@@ -57,11 +36,6 @@ static inline unsigned long arch_local_irq_save(void)
 
 static inline void arch_local_irq_restore(unsigned long flags)
 {
-	__asm__ __volatile__(
-		"csrxchg %[val], %[mask], %[reg]\n\t"
-		: [val] "+r" (flags)
-		: [mask] "r" (CSR_CRMD_IE), [reg] "i" (LOONGARCH_CSR_CRMD)
-		: "memory");
 }
 
 #define local_irq_restore(__flags)					\

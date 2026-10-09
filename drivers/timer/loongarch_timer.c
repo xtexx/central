@@ -12,39 +12,12 @@
 
 static u64 notrace loongarch_timer_get_count(struct udevice *dev)
 {
-	u32 hi, lo;
-
-	if (IS_ENABLED(CONFIG_64BIT))
-		return drdtime();
-
-	do {
-		hi = rdtimeh();
-		lo = rdtimel();
-	} while (hi != rdtimeh());
-
-	return ((u64)hi << 32) | lo;
+	return 0;
 }
 
 static int loongarch_timer_get_freq_cpucfg(unsigned int *freq)
 {
-	unsigned int res;
-	unsigned int base_freq;
-	unsigned int cfm, cfd;
-
-	res = read_cpucfg(LOONGARCH_CPUCFG2);
-	if (!(res & CPUCFG2_LLFTP))
-		return -ENODEV;
-
-	base_freq = read_cpucfg(LOONGARCH_CPUCFG4);
-	res = read_cpucfg(LOONGARCH_CPUCFG5);
-	cfm = res & 0xffff;
-	cfd = (res >> 16) & 0xffff;
-
-	if (!base_freq || !cfm || !cfd)
-		return -EINVAL;
-
-	*freq = base_freq * cfm / cfd;
-
+	*freq = 1000;
 	return 0;
 }
 

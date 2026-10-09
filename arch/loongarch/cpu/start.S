@@ -22,32 +22,10 @@ _start:
 	/* Allow arch specific setup code for MCSR stuff */
 	entry_setup
 
-	/* Disable interrupt */
-	LONG_LI		t0, CSR_CRMD_IE
-	csrxchg		zero, t0, LOONGARCH_CSR_CRMD
-
-	/* Configure reset ebase */
-	la.pcrel	t0, exception_entry
-	csrwr		t0, LOONGARCH_CSR_EENTRY
-
-	/* Setup direct map window for later use */
-	PTR_LI		t0, CSR_DMW0_INIT
-	csrwr		t0, LOONGARCH_CSR_DMWIN0
-	PTR_LI		t0, CSR_DMW1_INIT
-	csrwr		t0, LOONGARCH_CSR_DMWIN1
-
-	/* Branch out for nonboot core */
-	csrrd		t0, LOONGARCH_CSR_CPUID
-	andi		t0, t0, CSR_CPUID_COREID
-	LONG_LI		t1, BOOTCORE_ID
-	bne		t1, t0, secondary_core_loop
-
 /*
  * Set stackpointer in internal/ex RAM to call board_init_f
  */
 call_board_init_f:
-	PTR_LI		t0, (SYS_INIT_SP_ADDR & STACK_ALIGN)
-	move		sp, t0			/* save stack pointer */
 /*
  * Now sp points to the right stack belonging to current CPU.
  * It's essential before any function call, otherwise, we get data-race.
@@ -57,7 +35,7 @@ call_board_init_f_0:
 	/* find top of reserve space */
 	PTR_LI		t1, 1
 	PTR_SLL		t1, t1, CONFIG_STACK_SIZE_SHIFT
-	PTR_SUB		a0, t0, t1		/* t1 -> size of one CPU stack */
+	PTR_SUB		a0, sp, t1		/* t1 -> size of one CPU stack */
 	bl		board_init_f_alloc_reserve
 
 	/* Set global pointer to u0 ($r21) */
@@ -130,12 +108,6 @@ fix_rela_dyn:
 8:
 	PTR_ADDI	t1, t1, (PTRSIZE * 3)
 	blt		t1, t2, 6b
-
-
-	/* Update exception entry */
-	la.pcrel	t0, exception_entry
-	PTR_ADD		t0, t0, s5
-	csrwr		t0, LOONGARCH_CSR_EENTRY
 
 clear_bss:
 	la.pcrel	t0, __bss_start		/* t0 <- rel __bss_start in FLASH */

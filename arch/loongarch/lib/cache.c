@@ -240,7 +240,7 @@ void probe_caches(void)
 
 __weak void enable_caches(void)
 {
-	cache_invalidate();
+	// cache_invalidate();
 	/* Enable cache for direct address translation mode */
-	csr_xchg64(1 << CSR_CRMD_DACM_SHIFT, CSR_CRMD_DACM, LOONGARCH_CSR_CRMD);
+	// csr_xchg64(1 << CSR_CRMD_DACM_SHIFT, CSR_CRMD_DACM, LOONGARCH_CSR_CRMD);
 }

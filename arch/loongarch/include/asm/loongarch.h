@@ -1157,7 +1157,7 @@ static __always_inline u32 rdtimel(void)
 
 static inline unsigned int get_csr_cpuid(void)
 {
-	return csr_read32(LOONGARCH_CSR_CPUID);
+	return 0;
 }
 
 static inline void csr_any_send(unsigned int addr, unsigned int data,
