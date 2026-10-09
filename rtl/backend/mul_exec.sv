@@ -46,7 +46,7 @@ module mul_exec
       .ready(mul_ready),
       .result(mul_out)
   );
-  assign mul_valid = (state == FSMMultiply);
+  assign mul_valid = (state == FSMMultiply) && ready;
   logic [65:0] unused_mul_out;
   assign unused_mul_out = mul_out[129:64];
 

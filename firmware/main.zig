@@ -6,18 +6,6 @@ comptime {
     @export(&start0, .{ .name = "start", .section = ".text.start" });
 }
 
-// pub const std_options: std.Options = .{
-//     .allow_stack_tracing = false,
-//     .page_size_max = 64,
-//     .page_size_min = 64,
-//     .queryPageSize = mockPageSize,
-//     .unexpected_error_tracing = false,
-// };
-
-// fn mockPageSize() usize {
-//     return 64;
-// }
-
 const uart0: Uart = .{ .regs = @ptrFromInt(0x0000100000) };
 
 var heap: [1024]u8 = undefined;
@@ -50,11 +38,15 @@ fn main() noreturn {
 
     var heap_allocator: std.heap.FixedBufferAllocator = .init(&heap);
     const gpa = heap_allocator.allocator();
-    const str = gpa.print("CF0={x}\nCF1={x}\n", .{ cpucfg(0), cpucfg(1) }) catch unreachable;
-    // const str = std.fmt.bufPrint(&heap, "CF0={x}\nCF1={x}\n", .{ cpucfg(0), cpucfg(1) }) catch unreachable;
+    const str = gpa.print("CPUCFG0={x}\nCPUCFG1={x}\n", .{ cpucfg(0), cpucfg(1) }) catch unreachable;
     uart0.sendBytes(str);
 
-    uart0.sendBytes("End\n");
+    // Call U-Boot
+    uart0.sendBytes("Starting U-Boot...\n");
+    asm volatile (
+        \\ li.d $r4, 0x200000
+        \\ jirl $r0, $r4, 0
+    );
 
     while (true) {}
 }

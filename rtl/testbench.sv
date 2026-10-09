@@ -24,11 +24,12 @@ module testbench ();
 
   initial begin
     #2;
-    $readmemh("firmware/zig-out/tyro-firmware.hex", soc.sram_mc.mem);
+    $readmemh("zig-out/tyro-firmware.hex", soc.sram_mc.mem);
+    $readmemh("../u-boot/u-boot.hex", soc.sram_mc_1.mem);
     #11;
     rst = 0;
 
-    repeat (200000) @(posedge clk);
+    repeat (1000000) @(posedge clk);
 
     $display("All tests done.");
     $finish();

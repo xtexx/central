@@ -1,6 +1,7 @@
 #include "Vtyro.h"
 #include "Vtyro___024root.h"
 #include "core_mon.h"
+#include "endian_polyfill.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
 #include <filesystem>
@@ -38,19 +39,37 @@ int main(int argc, char **argv, char **env) {
     Monitor *mon = TYRO_TB_NEW_MONITOR(top->rootp, top__DOT__core__DOT__);
 
     // Load firmware
-    top->eval();
-    auto &sram = top->rootp->top__DOT__sram_mc__DOT__mem;
-    sram.fill(0);
-    auto fw_path = path("firmware/zig-out/tyro-firmware.bin");
-    cerr << "Loading firmware ...\n";
-    auto fw_ifs = ifstream(fw_path, std::ios::binary);
-    fw_ifs.read(reinterpret_cast<char *>(&sram.m_storage[0]),
-                sizeof(sram.m_storage));
-    if constexpr (std::endian::native == std::endian::big) {
-      for (auto &v : sram.m_storage)
-        v = std::byteswap(v);
+    {
+      top->eval();
+      auto &sram = top->rootp->top__DOT__sram_mc__DOT__mem;
+      sram.fill(0);
+      auto fw_path = path("zig-out/tyro-firmware.bin");
+      cerr << "Loading firmware ...\n";
+      auto fw_ifs = ifstream(fw_path, std::ios::binary);
+      fw_ifs.read(reinterpret_cast<char *>(&sram.m_storage[0]),
+                  sizeof(sram.m_storage));
+      if constexpr (endian::native == endian::big) {
+        for (auto &v : sram.m_storage)
+          v = byteswap(v);
+      }
+      cerr << "Firmware loaded\n";
     }
-    cerr << "Firmware loaded\n";
+
+    {
+      top->eval();
+      auto &sram1 = top->rootp->top__DOT__sram_mc_1__DOT__mem;
+      sram1.fill(0);
+      auto fw_path = path("../u-boot/u-boot.bin");
+      cerr << "Loading U-Boot ...\n";
+      auto fw_ifs = ifstream(fw_path, std::ios::binary);
+      fw_ifs.read(reinterpret_cast<char *>(&sram1.m_storage[0]),
+                  sizeof(sram1.m_storage));
+      if constexpr (endian::native == endian::big) {
+        for (auto &v : sram1.m_storage)
+          v = byteswap(v);
+      }
+      cerr << "U-Boot loaded\n";
+    }
 
     // Simulation loop
     auto cycles = 0ULL;
@@ -104,8 +123,8 @@ int main(int argc, char **argv, char **env) {
         }
       }
 
-      if (cycles == 200000)
-        break;
+      // if (cycles == 200000)
+      //   break;
     }
     top->final();
     trace->close();

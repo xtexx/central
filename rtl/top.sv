@@ -16,7 +16,7 @@ module top (
 
   localparam axi_pkg::xbar_cfg_t XBarCfg = '{
       NoSlvPorts        : 2,
-      NoMstPorts        : 2,
+      NoMstPorts        : 3,
       MaxMstTrans       : 2,
       MaxSlvTrans       : 2,
       FallThrough       : 1'b0,
@@ -24,12 +24,13 @@ module top (
       PipelineStages    : 0,
       AxiAddrWidth      : 40,
       AxiDataWidth      : 64,
-      NoAddrRules       : 2,
+      NoAddrRules       : 3,
       default: '0
   };
 
-  // [0] -> SRAM MC
+  // [0] -> SRAM MC 0
   // [1] -> UART 0
+  // [2] -> SRAM MC 1
   AXI_LITE #(
       .AXI_DATA_WIDTH(64),
       .AXI_ADDR_WIDTH(40)
@@ -37,17 +38,28 @@ module top (
 
   localparam xbar_rule_40_t [XBarCfg.NoAddrRules-1:0] XBarAddrMap = '{
       '{idx: 0, start_addr: 'h0000000000, end_addr: 'h0000010000},
-      '{idx: 1, start_addr: 'h0000100000, end_addr: 'h0000100040}
+      '{idx: 1, start_addr: 'h0000100000, end_addr: 'h0000100040},
+      '{idx: 2, start_addr: 'h0000200000, end_addr: 'h0000280000}
   };
 
-  // Memory Controller
+  // Memory Controller 0
   sram #(
       .ADDR_W(16),
-      .FIRMWARE_PATH("firmware/zig-out/tyro-firmware.hex")
+      .FIRMWARE_PATH("zig-out/tyro-firmware.hex")
   ) sram_mc (
       .clk (clk),
       .rst (rst),
       .axil(pmem_region_axil_if[0])
+  );
+
+  // Memory Controller 1
+  sram #(
+      .ADDR_W(19),
+      .FIRMWARE_PATH("../u-boot/u-boot.hex")
+  ) sram_mc_1 (
+      .clk (clk),
+      .rst (rst),
+      .axil(pmem_region_axil_if[2])
   );
 
   // UART Controller

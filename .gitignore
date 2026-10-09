@@ -3,8 +3,8 @@
 *.fst
 *.vcd
 *.log
-/firmware/.zig-cache
-/firmware/zig-out
+/.zig-cache
+/zig-out
 
 # Questa
 /questa

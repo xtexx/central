@@ -7,6 +7,7 @@ pub fn main(init: std.process.Init) !void {
     const args = try init.minimal.args.toSlice(arena);
     const bin_path = args[1];
     const hex_path = args[2];
+    const pad_to = try std.fmt.parseUnsigned(usize, args[3], 10) * 1024;
 
     const bin_file = try std.Io.Dir.cwd().openFile(io, bin_path, .{ .mode = .read_only });
     defer bin_file.close(io);
@@ -32,7 +33,7 @@ pub fn main(init: std.process.Init) !void {
     }
     // Pad to 64K to workaround objcopy bug
     // https://codeberg.org/ziglang/zig/pulls/37111
-    for ((bin_data.len / 8)..(64 * 1024 / 8)) |_| {
+    for ((bin_data.len / 8)..(pad_to / 8)) |_| {
         try hex_writer.interface.writeAll("0000000000000000\n");
     }
 }

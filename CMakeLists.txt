@@ -26,7 +26,7 @@ verilate(tyro-emu
   TRACE_FST THREADS
   PREFIX Vtyro
   SOURCES
-    config.vlt
+    rtl/config.vlt
   VERILATOR_ARGS
     -f tyro-core.verilator.f
 )
