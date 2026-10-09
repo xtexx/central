@@ -29,7 +29,7 @@ module testbench ();
     #11;
     rst = 0;
 
-    repeat (1000000) @(posedge clk);
+    repeat (5000000) @(posedge clk);
 
     $display("All tests done.");
     $finish();
