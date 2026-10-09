@@ -2,6 +2,8 @@ disabled:
   - id: ccls-project.ccls
     uuid: 8e21d425-1e30-4072-8436-786a9017e5c7
 enabled:
+  - id: antfu.slidev
+    uuid: 1396f3b6-119e-4436-a767-30a73c5a4a4f
   - id: asciidoctor.asciidoctor-vscode
     uuid: c1309cc2-f420-46a3-b2be-ca04f4d9e51b
   - id: basdp.language-gas-x86
