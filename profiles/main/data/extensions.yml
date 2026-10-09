@@ -1,6 +1,8 @@
 disabled:
   - id: ccls-project.ccls
     uuid: 8e21d425-1e30-4072-8436-786a9017e5c7
+  - id: DavidAnson.vscode-markdownlint
+    uuid: daf8b44d-8aae-4da2-80c5-1f770219f643
 enabled:
   - id: antfu.slidev
     uuid: 1396f3b6-119e-4436-a767-30a73c5a4a4f
@@ -20,8 +22,6 @@ enabled:
     uuid: bbc90840-c688-45b9-8f68-67fbb679cb44
   - id: cschlosser.doxdocgen
     uuid: da7e26d5-d57c-4742-ab47-d77fb189e195
-  - id: DavidAnson.vscode-markdownlint
-    uuid: daf8b44d-8aae-4da2-80c5-1f770219f643
   - id: dbaeumer.vscode-eslint
     uuid: 583b2b34-2c1e-4634-8c0b-0b82e283ea3a
   - id: denoland.vscode-deno
