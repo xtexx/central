@@ -150,6 +150,18 @@ blockquote::after {
     font-size: 15pt;
 }
 
+@media screen and (max-width:650px) {
+    blockquote {
+        margin-left: 7pt;
+        margin-right: 7pt;
+    }
+
+    blockquote::before {
+        content: "“";
+        font-size: 20pt;
+    }
+}
+
 math {
     font-family: "Fira Math", "Cambria Math", 'STIXTwoMath-Regular', 'NotoSansMath-Regular';
 }
