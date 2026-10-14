@@ -39,7 +39,7 @@ font-family: Apple Color Emoji, Segoe UI Emoji, NotoColorEmoji, Segoe UI Symbol,
 	font-size: 2rem;
 	vertical-align: middle;
 }
-@media screen and (max-width:650px) {
+@media screen and (max-width: 800px) {
   .nowrap {
     display: block;
     margin: 25px 0;

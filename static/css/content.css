@@ -50,7 +50,7 @@ article header .tags span::before {
     padding-right: 4em;
 }
 
-@media screen and (max-width:650px) {
+@media screen and (max-width: 800px) {
     .content {
         padding-left: 0;
         padding-right: 0;
@@ -150,7 +150,7 @@ blockquote::after {
     font-size: 15pt;
 }
 
-@media screen and (max-width:650px) {
+@media screen and (max-width: 800px) {
     blockquote {
         margin-left: 7pt;
         margin-right: 7pt;
