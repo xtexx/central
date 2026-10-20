@@ -1,0 +1,48 @@
+@import 'mediawiki.skin.variables.less';
+
+.minerva--minimal {
+	// Mirror standard Minerva's HTML markup: nav container with nested list of
+	// page actions (<ul>/<li> list of <a> tags).
+	.minerva__page-tags-container {
+		width: 100%;
+		overflow: auto;
+		margin-bottom: @spacing-125;
+
+		.minerva__page-tags-list {
+			display: flex;
+			gap: @spacing-50;
+			margin: 0;
+			padding: 0;
+			list-style: none;
+		}
+
+		// Interactive <a> chip
+		.cdx-info-chip {
+			border: 0;
+			border-radius: 4px;
+			padding: @spacing-25 @spacing-35;
+			text-decoration: none;
+			outline-offset: -2px;
+			height: @size-150;
+			color: @color-progressive;
+
+			&:hover {
+				background-color: @background-color-progressive-subtle--hover;
+				color: @color-progressive--hover;
+			}
+
+			&:active {
+				background-color: @background-color-progressive-subtle--active;
+				color: @color-progressive--active;
+			}
+
+			.cdx-info-chip__text {
+				color: inherit;
+			}
+
+			.minerva-icon {
+				background-color: currentColor;
+			}
+		}
+	}
+}
