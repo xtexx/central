@@ -1,0 +1,29 @@
+{
+	"@metadata": {
+		"authors": [
+			"Hakimi97",
+			"Tofeiku",
+			"Zulfadli51"
+		]
+	},
+	"linterrors": "Ralat tiras",
+	"linter-category-bogus-image-options": "Pilihan fail lancung",
+	"linter-category-duplicate-ids": "ID pendua",
+	"linter-form-tag-option-all": "Tiada penapis",
+	"linter-form-template-option-all": "Tiada penapis",
+	"linter-form-template-option-with": "Dengan templat",
+	"linter-form-template-option-without": "Tanpa templat",
+	"linter-page-history": "sejarah",
+	"linter-pager-bogus-image-options-details": "Pilihan fail palsu",
+	"linter-pager-deletable-table-tag-details": "Teg jadual yang harus dipadamkan",
+	"linter-pager-duplicate-ids-details": "ID pendua",
+	"linter-pager-html5-misnesting-details": "Silap penyarangan (kini rosak)",
+	"linter-pager-misc-tidy-replacement-issues-details": "Lain-lain kesilapan penandaan",
+	"linter-pager-misnested-tag-details": "Teg yang disarang dengan tidak betul yang harus disarang dengan betul",
+	"linter-pager-missing-end-tag-details": "Teg akhir tiada",
+	"linter-pager-multi-colon-escape-details": "Pelarian tanda titik bertindih pelbagai",
+	"linter-pager-multiline-html-table-in-list-details": "Jadual HTML5 baris bertingkat dalam senarai",
+	"linter-pager-multiple-unclosed-formatting-tags-details": "Pelbagai teg pemformatan yang tidak tertutup pada laman tersebut",
+	"linter-pager-obsolete-tag-details": "Teg HTML usang",
+	"linter-pager-self-closed-tag-details": "Teg tutup sendiri"
+}
