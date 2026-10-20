@@ -1,0 +1,14 @@
+{
+	"@metadata": {
+		"authors": [
+			"Af420",
+			"Amjad Khan",
+			"Baloch Khan",
+			"شاه زمان پټان"
+		]
+	},
+	"globaluserpage-desc": "د مرکزي ويکي څخه د کارن مخونه په خپلکاري ډول راوباسي",
+	"globaluserpage-editnotice": "دا مخ وسمهال د بل ويکي څخه د کارن مخ ښيي. که تاسو دلته يو نوی مخ جوړ کړئ؛ نو دا به نور د بل ويکي مخ ښکاره نکړي.",
+	"globaluserpage-central-editnotice": "دا کارن مخ به په نورو ويکي‌گانو کې [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalUserPage ښکارېږي] که چېرې هلته سيمه‌ييز کارن مخ شتون ونلري.",
+	"globaluserpage-footer": "دې مخ کې چې تاسو څه وينئ، هغه له [$2 $2] [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalUserPage څخه لمېسل شوې دي]."
+}

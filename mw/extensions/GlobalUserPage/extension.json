@@ -1,0 +1,103 @@
+{
+	"name": "GlobalUserPage",
+	"version": "0.11.1",
+	"author": [
+		"Kunal Mehta",
+		"Jack Phoenix"
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:GlobalUserPage",
+	"descriptionmsg": "globaluserpage-desc",
+	"license-name": "GPL-3.0-or-later",
+	"type": "wikifamily",
+	"requires": {
+		"MediaWiki": ">= 1.47.0"
+	},
+	"MessagesDirs": {
+		"GlobalUserPage": [
+			"i18n"
+		]
+	},
+	"ExtensionMessagesFiles": {
+		"GlobalUserPageMagic": "GlobalUserPage.i18n.magic.php"
+	},
+	"Hooks": {
+		"LinkTargetIsAlwaysKnownBatch": "main",
+		"ArticleFromTitle": "main",
+		"LinksUpdateComplete": "main",
+		"PageSaveComplete": "main",
+		"PageDeleteComplete": "main",
+		"TitleGetEditNotices": "main",
+		"GetDoubleUnderscoreIDs": "main",
+		"WikiPageFactory": "main"
+	},
+	"callback": "\\MediaWiki\\GlobalUserPage\\Hooks::onRegistration",
+	"HookHandlers": {
+		"main": {
+			"class": "MediaWiki\\GlobalUserPage\\Hooks",
+			"services": [
+				"GlobalUserPage.GlobalUserPageManager",
+				"ConfigFactory",
+				"MainConfig",
+				"MainWANObjectCache",
+				"HttpRequestFactory",
+				"UrlUtils",
+				"NamespaceInfo",
+				"JobQueueGroup"
+			]
+		}
+	},
+	"config": {
+		"GlobalUserPageCacheExpiry": {
+			"value": 604800
+		},
+		"GlobalUserPageAPIUrl": {
+			"value": "https://example.org/w/api.php"
+		},
+		"GlobalUserPageTimeout": {
+			"value": 10
+		},
+		"GlobalUserPageFooterKey": {
+			"value": "globaluserpage-footer"
+		},
+		"GlobalUserPageDBname": {
+			"value": null
+		}
+	},
+	"ResourceModules": {
+		"ext.GlobalUserPage": {
+			"styles": "ext.GlobalUserPage.less"
+		}
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "modules",
+		"remoteExtPath": "GlobalUserPage/modules"
+	},
+	"JobClasses": {
+		"GlobalUserPageLocalJobSubmitJob": {
+			"class": "MediaWiki\\GlobalUserPage\\LocalJobSubmitJob",
+			"services": [
+				"CentralIdLookup",
+				"JobQueueGroupFactory",
+				"GlobalUserPage.GlobalUserPageManager"
+			],
+			"needsPage": false
+		},
+		"LocalGlobalUserPageCacheUpdateJob": {
+			"class": "MediaWiki\\GlobalUserPage\\LocalCacheUpdateJob",
+			"services": [
+				"HTMLCacheUpdater"
+			],
+			"needsPage": false
+		}
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\GlobalUserPage\\": "includes/"
+	},
+	"ConfigRegistry": {
+		"globaluserpage": "MediaWiki\\Config\\GlobalVarConfig::newInstance"
+	},
+	"ServiceWiringFiles": [
+		"includes/ServiceWiring.php"
+	],
+	"manifest_version": 2
+}

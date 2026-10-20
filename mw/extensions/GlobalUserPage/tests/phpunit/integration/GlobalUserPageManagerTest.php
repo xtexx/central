@@ -1,0 +1,443 @@
+<?php
+namespace MediaWiki\GlobalUserPage\Tests\Integration;
+
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\GlobalUserPage\GlobalUserPageManager;
+use MediaWiki\Linker\LinkTarget;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Tests\User\TempUser\TempUserTestTrait;
+use MediaWiki\Title\TitleValue;
+use MediaWiki\User\CentralId\CentralIdLookup;
+use MediaWiki\User\UserIdentity;
+use MediaWiki\User\UserIdentityValue;
+use MediaWiki\WikiMap\WikiMap;
+use MediaWikiIntegrationTestCase;
+use Wikimedia\Rdbms\IConnectionProvider;
+use Wikimedia\Timestamp\ConvertibleTimestamp;
+
+/**
+ * @covers \MediaWiki\GlobalUserPage\GlobalUserPageManager
+ * @group Database
+ */
+class GlobalUserPageManagerTest extends MediaWikiIntegrationTestCase {
+	use TempUserTestTrait;
+
+	private const TEST_TIMESTAMP = '20230101000000';
+
+	private const IP_WITH_GLOBAL_USERPAGE = '127.0.0.2';
+	private const TEMP_ACCOUNT_WITH_GLOBAL_USERPAGE = '~2025-3';
+	private const USER_WITH_GLOBAL_USERPAGE = 'UserWithGlobalUserPage';
+	private const USER_WITH_DISABLED_GLOBAL_USERPAGE = 'UserWithDisabledGlobalUserPage';
+
+	private IConnectionProvider $connectionProvider;
+	private CentralIdLookup $centralIdLookup;
+
+	protected function setUp(): void {
+		parent::setUp();
+		$this->enableAutoCreateTempUser( [
+			'genPattern' => '~$1',
+			'reservedPattern' => '~$1',
+		] );
+
+		$this->connectionProvider = $this->createMock( IConnectionProvider::class );
+		$this->centralIdLookup = $this->createMock( CentralIdLookup::class );
+	}
+
+	public function addDBDataOnce(): void {
+		try {
+			// Ensure the page_touched timestamp is consistent.
+			ConvertibleTimestamp::setFakeTime( self::TEST_TIMESTAMP );
+
+			$this->editPage(
+				new TitleValue( NS_USER, self::USER_WITH_GLOBAL_USERPAGE ),
+				'Global user page content'
+			);
+			$this->editPage(
+				new TitleValue( NS_USER, self::IP_WITH_GLOBAL_USERPAGE ),
+				'Global user page content'
+			);
+			$this->editPage(
+				new TitleValue( NS_USER, self::TEMP_ACCOUNT_WITH_GLOBAL_USERPAGE ),
+				'Global user page content'
+			);
+			$this->editPage(
+				new TitleValue( NS_USER, self::USER_WITH_DISABLED_GLOBAL_USERPAGE ),
+				"__NOGLOBAL__\nGlobal user page content"
+			);
+		} finally {
+			ConvertibleTimestamp::setFakeTime( false );
+		}
+	}
+
+	private function getObjectUnderTest(
+		string $globalUserPageDBname,
+		array $localDatabases = []
+	): GlobalUserPageManager {
+		return new GlobalUserPageManager(
+			$this->connectionProvider,
+			$this->getServiceContainer()->getUserIdentityLookup(),
+			$this->getServiceContainer()->getUserNameUtils(),
+			$this->centralIdLookup,
+			new ServiceOptions( GlobalUserPageManager::CONSTRUCTOR_OPTIONS, [
+				'GlobalUserPageDBname' => $globalUserPageDBname,
+				MainConfigNames::LocalDatabases => $localDatabases,
+			] ),
+			$this->getServiceContainer()->getHookContainer(),
+		);
+	}
+
+	/**
+	 * Mock CentralIdLookup::lookupAttachedUserNames for both the local and central-wiki calls.
+	 *
+	 * @param string $globalUserPageDBname Wiki id used for the central-wiki attachment call
+	 * @param array<string,array{0:bool,1:bool}> $attachment Map of normalized username to
+	 * [ attachedLocally, attachedOnGlobalWiki ]
+	 * @param int|null $expectedCalls Exact number of lookupAttachedUserNames calls to assert, or
+	 * null for no expectation
+	 */
+	private function mockLookupAttachedUserNames(
+		string $globalUserPageDBname,
+		array $attachment,
+		?int $expectedCalls = null
+	): void {
+		$matcher = $expectedCalls !== null ? $this->exactly( $expectedCalls ) : $this->any();
+		$this->centralIdLookup->expects( $matcher )
+			->method( 'lookupAttachedUserNames' )
+			->willReturnCallback(
+				static function (
+					array $nameToId,
+					$audience,
+					$flags = 0,
+					$wikiId = UserIdentity::LOCAL
+				) use ( $globalUserPageDBname, $attachment ): array {
+					$isCentralCall = $wikiId === $globalUserPageDBname;
+					$result = $nameToId;
+					foreach ( array_keys( $nameToId ) as $name ) {
+						$attachedFlags = $attachment[$name] ?? [ false, false ];
+						$attached = $isCentralCall ? $attachedFlags[1] : $attachedFlags[0];
+						if ( $attached ) {
+							$result[$name] = 42;
+						}
+					}
+					return $result;
+				}
+			);
+	}
+
+	/**
+	 * @dataProvider provideShouldDisplayGlobalPage
+	 *
+	 * @param LinkTarget $title Title of the page to check
+	 * @param string|null $globalUserPageDBname The wiki where global user pages are stored,
+	 * or `null` to use the current wiki
+	 * @param bool $userAttachedLocally Whether the user is attached on the local wiki
+	 * @param bool $userAttachedOnGlobalWiki Whether the user is attached on the wiki
+	 * where global user pages are stored.
+	 * @param bool $expected
+	 * @return void
+	 */
+	public function testShouldDisplayGlobalPage(
+		LinkTarget $title,
+		?string $globalUserPageDBname,
+		bool $userAttachedLocally,
+		bool $userAttachedOnGlobalWiki,
+		bool $expected
+	): void {
+		$globalUserPageDBname ??= WikiMap::getCurrentWikiId();
+		$globalUserPageManager = $this->getObjectUnderTest( $globalUserPageDBname );
+
+		$this->mockLookupAttachedUserNames( $globalUserPageDBname, [
+			$title->getText() => [ $userAttachedLocally, $userAttachedOnGlobalWiki ],
+		] );
+
+		$this->connectionProvider->method( 'getReplicaDatabase' )
+			->with( $globalUserPageDBname )
+			->willReturn( $this->getDb() );
+
+		$shouldDisplay = $globalUserPageManager->shouldDisplayGlobalPage( $title );
+
+		$this->assertSame( $expected, $shouldDisplay );
+	}
+
+	public static function provideShouldDisplayGlobalPage(): iterable {
+		$validGlobalUserPage = new TitleValue( NS_USER, self::USER_WITH_GLOBAL_USERPAGE );
+
+		yield 'local userpage on configured global wiki' => [
+			$validGlobalUserPage,
+			null,
+			true,
+			true,
+			false
+		];
+
+		yield 'non-userpage' => [
+			new TitleValue( NS_MAIN, self::USER_WITH_GLOBAL_USERPAGE ),
+			'some_other_wiki',
+			true,
+			true,
+			false
+		];
+
+		yield 'user subpage' => [
+			new TitleValue( NS_USER, self::USER_WITH_GLOBAL_USERPAGE . '/Test' ),
+			'some_other_wiki',
+			true,
+			true,
+			false
+		];
+
+		yield 'IP userpage' => [
+			new TitleValue( NS_USER, self::IP_WITH_GLOBAL_USERPAGE ),
+			'some_other_wiki',
+			true,
+			true,
+			false
+		];
+
+		yield 'user not attached locally' => [
+			$validGlobalUserPage,
+			'some_other_wiki',
+			false,
+			true,
+			false
+		];
+
+		yield 'user not attached on global wiki' => [
+			$validGlobalUserPage,
+			'some_other_wiki',
+			true,
+			false,
+			false
+		];
+
+		yield 'user with disabled global userpage' => [
+			new TitleValue( NS_USER, self::USER_WITH_DISABLED_GLOBAL_USERPAGE ),
+			'some_other_wiki',
+			true,
+			true,
+			false
+		];
+
+		yield 'user with no global userpage' => [
+			new TitleValue( NS_USER, 'OtherUser' ),
+			'some_other_wiki',
+			true,
+			true,
+			false
+		];
+
+		yield 'temporary account userpage' => [
+			new TitleValue( NS_USER, self::TEMP_ACCOUNT_WITH_GLOBAL_USERPAGE ),
+			'some_other_wiki',
+			true,
+			true,
+			false
+		];
+
+		yield 'user with global userpage' => [
+			$validGlobalUserPage,
+			'some_other_wiki',
+			true,
+			true,
+			true
+		];
+	}
+
+	public function testShouldDisplayGlobalPageBatched(): void {
+		$globalUserPageDBname = 'some_other_wiki';
+		$globalUserPageManager = $this->getObjectUnderTest( $globalUserPageDBname );
+
+		$validGlobalUserPage = new TitleValue( NS_USER, self::USER_WITH_GLOBAL_USERPAGE );
+		$nonUserPage = new TitleValue( NS_MAIN, self::USER_WITH_GLOBAL_USERPAGE );
+		$userWithNoGlobalPage = new TitleValue( NS_USER, 'OtherUser' );
+		$userWithDisabledPage = new TitleValue( NS_USER, self::USER_WITH_DISABLED_GLOBAL_USERPAGE );
+
+		// Every candidate username is attached on both wikis; the outcome is driven by the
+		// central-touched state. Assert exactly two attachment lookups (local + central) for the
+		// whole batch, regardless of how many titles are passed.
+		$this->mockLookupAttachedUserNames( $globalUserPageDBname, [
+			self::USER_WITH_GLOBAL_USERPAGE => [ true, true ],
+			'OtherUser' => [ true, true ],
+			self::USER_WITH_DISABLED_GLOBAL_USERPAGE => [ true, true ],
+		], 2 );
+
+		$this->connectionProvider->method( 'getReplicaDatabase' )
+			->with( $globalUserPageDBname )
+			->willReturn( $this->getDb() );
+
+		$titles = [
+			'valid' => $validGlobalUserPage,
+			'non-userpage' => $nonUserPage,
+			'no-global-page' => $userWithNoGlobalPage,
+			'disabled' => $userWithDisabledPage,
+		];
+
+		$results = $globalUserPageManager->shouldDisplayGlobalPageBatched( $titles );
+
+		$this->assertSame(
+			[
+				'valid' => true,
+				'non-userpage' => false,
+				'no-global-page' => false,
+				'disabled' => false,
+			],
+			$results
+		);
+	}
+
+	public function testShouldDisplayGlobalPageBatchedNoCentralPages(): void {
+		$globalUserPageDBname = 'some_other_wiki';
+		$globalUserPageManager = $this->getObjectUnderTest( $globalUserPageDBname );
+
+		// No candidate has a central user page, so the attachment lookups must be skipped.
+		$this->centralIdLookup->expects( $this->never() )
+			->method( 'lookupAttachedUserNames' );
+
+		$this->connectionProvider->method( 'getReplicaDatabase' )
+			->with( $globalUserPageDBname )
+			->willReturn( $this->getDb() );
+
+		$results = $globalUserPageManager->shouldDisplayGlobalPageBatched( [
+			new TitleValue( NS_USER, 'OtherUser' ),
+			new TitleValue( NS_USER, self::USER_WITH_DISABLED_GLOBAL_USERPAGE ),
+		] );
+
+		$this->assertSame( [ false, false ], $results );
+	}
+
+	/**
+	 * @dataProvider provideGetCentralTouched
+	 *
+	 * @param UserIdentity $user
+	 * @param string|false $expected
+	 * @return void
+	 */
+	public function testGetCentralTouched( UserIdentity $user, $expected ): void {
+		$globalUserPageDBname = 'some_other_wiki';
+
+		$this->connectionProvider->method( 'getReplicaDatabase' )
+			->with( $globalUserPageDBname )
+			->willReturn( $this->getDb() );
+
+		$globalUserPageManager = $this->getObjectUnderTest( $globalUserPageDBname );
+
+		$touched = $globalUserPageManager->getCentralTouched( $user );
+
+		$this->assertSame( $expected, $touched );
+	}
+
+	public static function provideGetCentralTouched(): iterable {
+		yield 'user with disabled global userpage' => [
+			new UserIdentityValue( 1, self::USER_WITH_DISABLED_GLOBAL_USERPAGE ),
+			false
+		];
+
+		yield 'user with no global userpage' => [
+			new UserIdentityValue( 1, 'OtherUser' ),
+			false
+		];
+
+		yield 'user with global userpage' => [
+			new UserIdentityValue( 1, self::USER_WITH_GLOBAL_USERPAGE ),
+			self::TEST_TIMESTAMP
+		];
+	}
+
+	public function testGetCentralTouchedBatch(): void {
+		$globalUserPageDBname = 'some_other_wiki';
+
+		$this->connectionProvider->method( 'getReplicaDatabase' )
+			->with( $globalUserPageDBname )
+			->willReturn( $this->getDb() );
+
+		$globalUserPageManager = $this->getObjectUnderTest( $globalUserPageDBname );
+
+		$touched = $globalUserPageManager->getCentralTouchedBatch( [
+			self::USER_WITH_GLOBAL_USERPAGE,
+			self::USER_WITH_DISABLED_GLOBAL_USERPAGE,
+			'OtherUser',
+		] );
+
+		$this->assertSame(
+			[
+				self::USER_WITH_GLOBAL_USERPAGE => self::TEST_TIMESTAMP,
+				self::USER_WITH_DISABLED_GLOBAL_USERPAGE => false,
+				'OtherUser' => false,
+			],
+			$touched
+		);
+	}
+
+	/**
+	 * @dataProvider provideIsGlobalPage
+	 */
+	public function testIsGlobalPage(
+		LinkTarget $title,
+		?string $globalUserPageDBname,
+		bool $expected
+	): void {
+		$globalUserPageDBname ??= WikiMap::getCurrentWikiId();
+		$globalUserPageManager = $this->getObjectUnderTest( $globalUserPageDBname );
+
+		$this->assertSame( $expected, $globalUserPageManager->isGlobalPage( $title ) );
+	}
+
+	public static function provideIsGlobalPage(): iterable {
+		$validGlobalUserPage = new TitleValue( NS_USER, self::USER_WITH_GLOBAL_USERPAGE );
+
+		yield 'local userpage on configured global wiki' => [
+			$validGlobalUserPage,
+			null,
+			true
+		];
+
+		yield 'non-userpage' => [
+			new TitleValue( NS_MAIN, self::USER_WITH_GLOBAL_USERPAGE ),
+			null,
+			false
+		];
+
+		yield 'user subpage' => [
+			new TitleValue( NS_USER, self::USER_WITH_GLOBAL_USERPAGE . '/Test' ),
+			null,
+			false
+		];
+
+		yield 'IP userpage' => [
+			new TitleValue( NS_USER, self::IP_WITH_GLOBAL_USERPAGE ),
+			null,
+			false
+		];
+
+		yield 'temporary account userpage' => [
+			new TitleValue( NS_USER, self::TEMP_ACCOUNT_WITH_GLOBAL_USERPAGE ),
+			null,
+			false
+		];
+
+		yield 'user on other wiki' => [
+			$validGlobalUserPage,
+			'some_other_wiki',
+			false
+		];
+	}
+
+	public function testGetEnabledWikisViaHook() {
+		$this->setTemporaryHook( 'GlobalUserPageWikis', static function ( array &$list ): bool {
+			$list[] = 'hook-wiki';
+			return false;
+		} );
+
+		$globalUserPageManager = $this->getObjectUnderTest( WikiMap::getCurrentWikiId(), [ 'unused-wiki' ] );
+
+		$this->assertSame( [ 'hook-wiki' ], $globalUserPageManager->getEnabledWikis() );
+	}
+
+	public function testGetEnabledWikisViaFallback() {
+		$this->clearHook( 'GlobalUserPageWikis' );
+
+		$globalUserPageManager = $this->getObjectUnderTest( WikiMap::getCurrentWikiId(), [ 'fallback-wiki' ] );
+
+		$this->assertSame( [ 'fallback-wiki' ], $globalUserPageManager->getEnabledWikis() );
+	}
+}
