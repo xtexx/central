@@ -1,0 +1,19 @@
+{
+	"@metadata": {
+		"authors": [
+			"Hamilton Abreu",
+			"Jkb8",
+			"RogueScholar",
+			"Vitorvicentevalente"
+		]
+	},
+	"globalcssjs-extensionname": "CSS/JS global",
+	"globalcssjs-desc": "Permite que CSS e JavaScript de uma wiki central sejam carregados em todas as wikis ligadas",
+	"globalcssjs-custom-css-js": "CSS/JavaScript partilhados por todas as wikis ([https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalCssJs mais informações]):",
+	"globalcssjs-warning-js": "Qualquer código JavaScript adicionado a esta página será carregado em todas as wikis onde tiver uma conta (ver [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalCssJs documentação]).",
+	"globalcssjs-warning-css": "Qualquer CSS adicionado a esta página será carregado em todas as wikis onde tiver uma conta (ver [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalCssJs documentação]).",
+	"globalcssjs-custom-js": "JavaScript personalizado",
+	"globalcssjs-custom-css": "CSS personalizado",
+	"globalcssjs-delete-css": "Eliminação da página CSS a pedido do {{GENDER:$1|utilizador}} devido à implementação de [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalCssJs Extension:GlobalCssJs]",
+	"globalcssjs-delete-js": "Eliminação da página JavaScript a pedido do {{GENDER:$1|utilizador}} devido à implementação de [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:GlobalCssJs Extension:GlobalCssJs]"
+}
