@@ -1,0 +1,18 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\ConfirmEdit\Tests\Unit;
+
+use MediaWiki\Extension\ConfirmEdit\Hooks\HookRunner;
+use MediaWiki\Tests\HookContainer\HookRunnerTestBase;
+
+/**
+ * @covers \MediaWiki\Extension\ConfirmEdit\Hooks\HookRunner
+ */
+class HookRunnerTest extends HookRunnerTestBase {
+
+	public static function provideHookRunners() {
+		yield HookRunner::class => [ HookRunner::class ];
+	}
+}

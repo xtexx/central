@@ -1,0 +1,27 @@
+{
+	"@metadata": {
+		"authors": [
+			"Nemoralis"
+		]
+	},
+	"hcaptcha-desc": "Confirm Edit üçün [https://www.hcaptcha.com/ hCaptcha] modulu",
+	"hcaptcha-edit": "Vikini avtomatlaşdırılmış spamdan qorumaq üçün sizdən aşağıdakı hCaptcha sualını həll etməyinizi xahiş edirik:",
+	"hcaptcha-addurl": "Redaktəniz yeni xarici keçidlər ehtiva edir. Vikini avtomatlaşdırılmış spamdan qorumaq üçün sizdən aşağıdakı hCaptcha-nı həll etməyinizi xahiş edirik:",
+	"hcaptcha-badlogin": "Vikini avtomatik parol sındırılmasından qorumaq üçün sizdən aşağıdakı hCaptcha-nı həll etməyinizi xahiş edirik:",
+	"hcaptcha-createaccount": "Vikini avtomatlaşdırılmış hesab yaradılmasından qorumaq üçün sizdən aşağıdakı hCaptcha-nı həll etməyinizi xahiş edirik:",
+	"hcaptcha-createaccount-fail": "Deyəsən hCaptcha-nı hələ həll etməmisiniz.",
+	"hcaptcha-create": "Vikini avtomatlaşdırılmış səhifə yaradılmasından qorumaq üçün sizdən aşağıdakı hCaptcha problemini həll etməyinizi xahiş edirik:",
+	"hcaptcha-help": "Zəhmət olmasa hCaptcha problemini həll edin və cavabı captchaWord olaraq qaytarın.",
+	"hcaptcha-privacy-policy": "Bu sayt hCaptcha tərəfindən qorunur və onun [https://www.hcaptcha.com/privacy Məxfilik Siyasəti] və [https://www.hcaptcha.com/terms İstifadə Şərtləri] tətbiq edilir.",
+	"hcaptcha-challenge-closed": "Davam etmək üçün captcha-nı tamamlamalısınız.",
+	"hcaptcha-challenge-expired": "Captcha-nı tamamlamaq üçün vaxt limiti başa çatıb. Yenidən cəhd edin.",
+	"hcaptcha-generic-error": "Formanı yükləyərkən xəta baş verdi. Davam etmək üçün səhifəni yenidən yükləməlisiniz.",
+	"hcaptcha-internal-error": "Forma göndərilərkən daxili xəta baş verdi. Zəhmət olmasa, yenidən cəhd edin.",
+	"hcaptcha-network-error": "Forma göndərilərkən şəbəkə xətası baş verdi. Zəhmət olmasa, işlək bağlantınız olduğundan əmin olun və yenidən cəhd edin.",
+	"hcaptcha-rate-limited": "Sualı həll etmək üçün çox cəhd edilib. Yenidən cəhd etməzdən əvvəl bir az gözləyin.",
+	"hcaptcha-loading-indicator-label": "Formanı yükləməyi tamamlayana qədər gözləyin...",
+	"hcaptcha-missing-token": "Formanı yükləməyi tamamlamamışıq. Bir neçə saniyə gözləyin, sonra yenidən cəhd edin.",
+	"hcaptcha-noscript": "Davam etmək üçün JavaScript tələb olunur. Brauzerinizin parametrlərində JavaScript-i aktivləşdirin və səhifəni yeniləyin.",
+	"hcaptcha-force-show-captcha-edit": "Zəhmət olmasa, formanı yenidən göndərin və redaktənizi yadda saxlamaq üçün tapşırığı tamamlayın.",
+	"hcaptcha-visual-editor-error-handler-warning": "Zəhmət olmasa, redaktənizi yadda saxlamaq üçün formanı yenidən göndərin."
+}

@@ -1,0 +1,12 @@
+{
+	"@metadata": {
+		"authors": [
+			"Kaszeba",
+			"Orbitminis"
+		]
+	},
+	"fancycaptcha-captcha": "Kòntrola bezpiekù",
+	"fancycaptcha-accountcreate": "Przez òchronã przed aùtomaticznym ùsôdzanim kòntów, proszã wpisac słowa, co je widzysz niżi, do tekstowi kastczi ([[Special:Captcha/help|wicy wëdowiédzë]])",
+	"fancycaptcha-imgcaptcha-ph": "Wpiszë widzawny tekst na òbrôzkù",
+	"fancycaptcha-reload-text": "Òdswiéżë"
+}

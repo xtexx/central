@@ -1,0 +1,11 @@
+{
+	"@metadata": {
+		"authors": [
+			"ऐक्टिवेटेड्"
+		]
+	},
+	"fancycaptcha-captcha": "सुरक्षा जाँच",
+	"fancycaptcha-accountcreate": "स्वचालित प्रयोगकर्ता पञ्जीकरणसे बचावेला नीचे देल शब्द डिब्बामे लिखेके अनुरोध हे ([[Special:Captcha/help|अधिक जानकारी]]):",
+	"fancycaptcha-imgcaptcha-ph": "चित्रमे देल पाठके लिखथिन",
+	"fancycaptcha-reload-text": "नवीकरण"
+}

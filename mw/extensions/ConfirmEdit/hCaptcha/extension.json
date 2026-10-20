@@ -1,0 +1,34 @@
+{
+	"name": "hCaptcha",
+	"author": [
+		"Sam Reed",
+		"..."
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:ConfirmEdit",
+	"descriptionmsg": "hcaptcha-desc",
+	"license-name": "GPL-2.0-or-later",
+	"type": "antispam",
+	"attributes": {
+		"VisualEditor": {
+			"PluginModules": [
+				"ext.confirmEdit.hCaptcha"
+			]
+		}
+	},
+	"RestRoutes": [
+		{
+			"path": "/confirmedit/v0/hcaptcha/blocktoken",
+			"method": "POST",
+			"class": "MediaWiki\\Extension\\ConfirmEdit\\Api\\Rest\\Handler\\PostHCaptchaTokenForBlockHandler",
+			"services": [
+				"MainConfig",
+				"HookContainer",
+				"UserFactory",
+				"ConfirmEditHCaptchaBlocksLookup",
+				"TitleFactory",
+				"ConfirmEditHCaptchaRiskScoreCrawlerFilter"
+			]
+		}
+	],
+	"manifest_version": 2
+}

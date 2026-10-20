@@ -1,0 +1,1019 @@
+const initMobileFrontend = require( 'ext.confirmEdit.hCaptcha/ext.confirmEdit.hCaptcha/mobileFrontend/initMobileFrontend.js' );
+
+QUnit.module(
+	'ext.confirmEdit.hCaptcha.mobileFrontend.initMobileFrontend',
+	QUnit.newMwEnvironment( {
+		beforeEach() {
+			this.waitOneTick = async () => await new Promise( ( resolve ) => {
+				setTimeout( resolve );
+			} );
+
+			this.realMWHook = mw.hook;
+			this.mfHookName =
+				( method ) => `mobileFrontend.sourceEditor.${ method }`;
+			this.ceHookName =
+				( method ) => `confirmEdit.hCaptcha.${ method }`;
+
+			// jQuery-style stateful .data() fake; fresh store per stub.
+			this.makeStatefulData = () => {
+				const store = {};
+				return ( key, value ) => {
+					if ( value === undefined ) {
+						return store[ key ];
+					}
+					store[ key ] = value;
+				};
+			};
+
+			const RiskScoreCollector = require( 'ext.confirmEdit.hCaptcha/ext.confirmEdit.hCaptcha/RiskScoreCollector.js' );
+
+			this.logError = this.sandbox.stub( mw.errorLogger, 'logError' );
+			this.logWarn = this.sandbox.stub( mw.log, 'warn' );
+			this.collectRiskScore = this.sandbox.stub(
+				RiskScoreCollector,
+				'collectRiskScoreForBlockedUser'
+			);
+
+			// Provide a fake registry so that hooks set in one
+			// test run are not kept when the next one runs
+			const registry = {};
+
+			mw.hook = function ( name ) {
+				registry[ name ] = registry[ name ] || {
+					handlers: [],
+					add( fn ) {
+						this.handlers.push( fn );
+						return this;
+					},
+					fire( ...args ) {
+						this.handlers.forEach(
+							( fn ) => fn( ...args )
+						);
+						return this;
+					}
+				};
+
+				return registry[ name ];
+			};
+
+			// We do not want to add real script elements to the page or
+			// interact with the real hCaptcha, so stub the code that does this
+			// for tests.
+			this.window = {
+				hcaptcha: {
+					render: this.sandbox.stub(),
+					execute: this.sandbox.stub()
+				},
+				document: {
+					head: {
+						appendChild: this.sandbox.stub()
+					},
+					createElement: this.sandbox.stub(),
+					querySelectorAll: this.sandbox.stub()
+				}
+			};
+
+			this.window.document.querySelectorAll.returns( [] );
+
+			// loadHCaptcha() is a function imported by initMobileFrontend.js
+			// from utils.js, and we can't add a stub for it here easily so,
+			// instead of that, tests verify whether the side effects of calling
+			// it had happened (specifically, that createElement was called to
+			// create the script tag to add to the document).
+			this.window.document.createElement.returns(
+				document.createElement( 'script' )
+			);
+
+			this.trimHTML = ( html ) => html.split( '\n' )
+				.map( ( line ) => line.trim() )
+				.join( '\n' );
+
+			this.hCaptchaExpectedFormHTML = this.trimHTML(
+				`<div id="h-captcha-container">
+					<div id="h-captcha" class="h-captcha" data-size="invisible"
+						data-sitekey="{{hCaptchaSiteKey}}"></div>
+					<div class="ext-confirmEdit-captcha-privacy-policy license">
+						{{{hCaptchaLicenseText}}}
+					</div>
+				</div>`
+			);
+		},
+		afterEach: function () {
+			mw.hook = this.realMWHook;
+		}
+	} )
+);
+
+// Tests for mobileFrontend.sourceEditor.getDefaultOptions
+
+QUnit.test(
+	'getDefaultOptions when hCaptcha is enabled for MobileFrontend',
+	function ( assert ) {
+		mw.config.set( 'wgConfirmEditCaptchaNeededForGenericEdit', 'hcaptcha' );
+
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: true,
+				MobileHCaptchaAbuseFilterEnabled: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		const e = this.sandbox.stub();
+		e.setDefaults = this.sandbox.stub();
+		e.defaults = {
+			foo: 'bar'
+		};
+
+		mw.hook( this.mfHookName( 'getDefaultOptions' ) ).fire( e );
+
+		assert.true(
+			e.setDefaults.calledOnce,
+			"The hook handler should've used the event object to update defaults"
+		);
+		assert.true(
+			e.setDefaults.calledWith( {
+				foo: 'bar',
+				hCaptchaLicenseText: '(hcaptcha-privacy-policy)',
+				hCaptchaSiteKey: 'hCaptcha-site-key'
+			} ),
+			"The hook handler should've set new default values on the event object"
+		);
+	}
+);
+
+QUnit.test(
+	'getDefaultOptions when hCaptcha is not enabled for MobileFrontend',
+	function ( assert ) {
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: false,
+				MobileHCaptchaAbuseFilterEnabled: false,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			}
+		);
+
+		const e = this.sandbox.stub();
+		e.setDefaults = this.sandbox.stub();
+		e.defaults = {
+			foo: 'bar'
+		};
+
+		mw.hook( this.mfHookName( 'getDefaultOptions' ) ).fire( e );
+
+		assert.false(
+			e.setDefaults.called,
+			'The hook handler should not have been called'
+		);
+	}
+);
+
+// Tests for mobileFrontend.sourceEditor.getSavePanelTemplateSource
+
+QUnit.test(
+	'getSavePanelTemplateSource when hCaptcha is enabled for MobileFrontend',
+	function ( assert ) {
+		mw.config.set( 'wgConfirmEditCaptchaNeededForGenericEdit', 'hcaptcha' );
+
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: true,
+				MobileHCaptchaAbuseFilterEnabled: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		const e = this.sandbox.stub();
+		e.setTemplate = this.sandbox.stub();
+
+		mw.hook( this.mfHookName( 'getSavePanelTemplateSource' ) ).fire( e );
+
+		assert.true(
+			e.setTemplate.calledOnce,
+			"The hook handler should've used the event object to change the template"
+		);
+		assert.true(
+			this.trimHTML( e.setTemplate.firstCall.args[ 0 ] ) ===
+			this.hCaptchaExpectedFormHTML,
+			"The hook handler should've set a new template for the save panel"
+		);
+	}
+);
+
+QUnit.test(
+	'getSavePanelTemplateSource when hCaptcha is not enabled for MobileFrontend',
+	function ( assert ) {
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: false,
+				MobileHCaptchaAbuseFilterEnabled: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		const e = this.sandbox.stub();
+		e.setTemplate = this.sandbox.stub();
+
+		mw.hook( this.mfHookName( 'getSavePanelTemplateSource' ) ).fire( e );
+
+		assert.false(
+			e.setTemplate.called,
+			'The hook handler should not have been called'
+		);
+	}
+);
+
+// Tests for mobileFrontend.sourceEditor.getCaptchaPanelTemplateSource
+
+QUnit.test(
+	'getCaptchaPanelTemplateSource when hCaptcha is enabled for MobileFrontend',
+	function ( assert ) {
+		mw.config.set( 'wgConfirmEditCaptchaNeededForGenericEdit', 'hcaptcha' );
+
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: true,
+				MobileHCaptchaAbuseFilterEnabled: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		const e = this.sandbox.stub();
+		e.setTemplate = this.sandbox.stub();
+
+		mw.hook( this.mfHookName( 'getCaptchaPanelTemplateSource' ) ).fire( e );
+
+		assert.true(
+			e.setTemplate.calledOnce,
+			"The hook handler should've used the event object to change the template"
+		);
+		assert.true(
+			e.setTemplate.calledWith( '', false ),
+			"The hook handler should've set up an empty template for the captcha panel"
+		);
+	}
+);
+
+QUnit.test(
+	'getCaptchaPanelTemplateSource when hCaptcha is not enabled for MobileFrontend',
+	function ( assert ) {
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: false,
+				MobileHCaptchaAbuseFilterEnabled: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			}
+		);
+
+		const e = this.sandbox.stub();
+		e.setTemplate = this.sandbox.stub();
+
+		mw.hook( this.mfHookName( 'getCaptchaPanelTemplateSource' ) ).fire( e );
+
+		assert.false(
+			e.setTemplate.called,
+			'The hook handler should not have been called'
+		);
+	}
+);
+
+// Tests for mobileFrontend.sourceEditor.preRenderFinished
+
+QUnit.test(
+	'preRenderFinished when hCaptcha is not enabled for MobileFrontend',
+	async function ( assert ) {
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: false,
+				MobileHCaptchaAbuseFilterEnabled: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		mw.hook( this.mfHookName( 'preRenderFinished' ) ).fire();
+		await this.waitOneTick();
+
+		assert.false(
+			this.window.document.createElement.called,
+			'The hook handler should not have been called'
+		);
+	}
+);
+
+QUnit.test(
+	'preRenderFinished when hCaptcha is enabled and captcha is needed for generic edit',
+	async function ( assert ) {
+		mw.config.set( 'wgConfirmEditCaptchaNeededForGenericEdit', 'hcaptcha' );
+
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: true,
+				MobileHCaptchaAbuseFilterEnabled: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		mw.hook( this.mfHookName( 'preRenderFinished' ) ).fire();
+		await this.waitOneTick();
+
+		assert.true(
+			this.window.document.createElement.calledOnce,
+			'The handler should have created a script tag for the hCaptcha SDK'
+		);
+	}
+);
+
+QUnit.test(
+	'preRenderFinished does not preload SDK when captcha is not needed for generic edit',
+	async function ( assert ) {
+		mw.config.set( 'wgConfirmEditCaptchaNeededForGenericEdit', false );
+
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: true,
+				MobileHCaptchaAbuseFilterEnabled: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		mw.hook( this.mfHookName( 'preRenderFinished' ) ).fire();
+		await this.waitOneTick();
+
+		assert.false(
+			this.window.document.createElement.called,
+			'The handler should not preload the hCaptcha SDK when captcha is not needed'
+		);
+	}
+);
+
+// Tests for mobileFrontend.sourceEditor.saveBegin
+
+QUnit.test.each(
+	'saveBegin when hCaptcha is not enabled for MobileFrontend',
+	[
+		{
+			config: { HCaptchaEnabledInMobileFrontend: false, MobileHCaptchaAbuseFilterEnabled: false },
+			captchaNeededForGenericEdit: undefined
+		},
+		{
+			config: { HCaptchaEnabledInMobileFrontend: false, MobileHCaptchaAbuseFilterEnabled: true },
+			captchaNeededForGenericEdit: undefined
+		},
+		{
+			config: { HCaptchaEnabledInMobileFrontend: true, MobileHCaptchaAbuseFilterEnabled: true },
+			captchaNeededForGenericEdit: false
+		}
+	],
+	async function ( assert, { config, captchaNeededForGenericEdit } ) {
+		initMobileFrontend( 'mobilefrontendeditor', config, this.window );
+
+		mw.config.set( 'wgConfirmEditCaptchaNeededForGenericEdit', captchaNeededForGenericEdit );
+
+		const e = this.sandbox.stub();
+		e.stop = this.sandbox.stub();
+
+		mw.hook( this.mfHookName( 'saveBegin' ) ).fire( e );
+		await this.waitOneTick();
+
+		// When HCaptcha for the MobileFrontend is enabled, the hook handler for
+		// saveBegin first calls stop() on the event it receives in order to
+		// instruct the MobileFrontend to not continue saving the edit: Check
+		// that stop() was not called to verify that the handler was not called.
+		assert.false(
+			e.stop.called,
+			'The hook handler should not have been called'
+		);
+	}
+);
+
+QUnit.test(
+	'saveBegin when hCaptcha is enabled for MobileFrontend',
+	async function ( assert ) {
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: true,
+				MobileHCaptchaAbuseFilterEnabled: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		mw.config.set( 'wgConfirmEditCaptchaNeededForGenericEdit', 'hcaptcha' );
+
+		const e = this.sandbox.stub();
+		e.stop = this.sandbox.stub();
+
+		mw.hook( this.mfHookName( 'saveBegin' ) ).fire( e );
+		await this.waitOneTick();
+
+		// When HCaptcha for the MobileFrontend is enabled, the hook handler for
+		// saveBegin first calls stop() on the event it receives in order to
+		// instruct the MobileFrontend to not continue saving the edit: Check
+		// that stop() was called to verify that the handler was indeed called.
+		assert.true(
+			e.stop.calledOnce,
+			'The handler should have requested to stop saving the page'
+		);
+	}
+);
+
+// Tests for confirmEdit.hCaptcha.executionSuccess
+
+QUnit.test(
+	'executionSuccess when hCaptcha is not enabled for MobileFrontend',
+	async function ( assert ) {
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: false,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		const e = this.sandbox.stub();
+		e.stop = this.sandbox.stub();
+		e.resume = this.sandbox.stub();
+		e.abort = this.sandbox.stub();
+
+		// Under normal circumstances, saveBegin is triggered first in order to
+		// have the object passed as its argument bound to the hooks in
+		// initMobileFrontend, and then the handler for executionSuccess uses
+		// that object to resume the normal flow for saving the edit.
+		//
+		// As this test checks the behavior when the integration is not enabled,
+		// we trigger the regular events that the MobileFrontend would fire, but
+		// don't expect it to stop the save flow nor to then resume it.
+		mw.hook( this.mfHookName( 'saveBegin' ) ).fire( e );
+		await this.waitOneTick();
+
+		mw.hook( this.ceHookName( 'executionSuccess' ) ).fire( 'token' );
+		await this.waitOneTick();
+
+		assert.false(
+			e.stop.called,
+			'stop() in the hook handler payload should not have been called'
+		);
+		assert.false(
+			e.resume.called,
+			'resume() in the hook handler payload should not have been called'
+		);
+		assert.false(
+			e.abort.called,
+			'abort() in the hook handler payload should not have been called'
+		);
+	}
+);
+
+QUnit.test(
+	'executionSuccess when hCaptcha is enabled for MobileFrontend',
+	async function ( assert ) {
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		mw.config.set( 'wgConfirmEditCaptchaNeededForGenericEdit', 'hcaptcha' );
+
+		const e = this.sandbox.stub();
+		e.stop = this.sandbox.stub();
+		e.resume = this.sandbox.stub();
+		e.options = {
+			foo: 'bar'
+		};
+
+		// saveBegin should be triggered first in order to have the object
+		// passed as its argument bound to the hooks in initMobileFrontend.
+		//
+		// Then, the handler fo executionSuccess should use that object to
+		// resume the normal flow for saving the edit, while retaining any
+		// option provided in the original event.
+		mw.hook( this.mfHookName( 'saveBegin' ) ).fire( e );
+		await this.waitOneTick();
+
+		assert.true(
+			e.stop.calledOnce,
+			'The handler should have requested to stop saving the page'
+		);
+
+		mw.hook( this.ceHookName( 'executionSuccess' ) ).fire( 'token' );
+		await this.waitOneTick();
+
+		assert.true(
+			e.resume.calledWith( {
+				captchaWord: 'token',
+				foo: 'bar'
+			} ),
+			'resume() should have been called passing the token in its param'
+		);
+	}
+);
+
+QUnit.test(
+	'saveBegin does not stop save when wgConfirmEditForceShowCaptcha is set (page reload after AbuseFilter)',
+	async function ( assert ) {
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		mw.config.set( 'wgConfirmEditCaptchaNeededForGenericEdit', 'hcaptcha' );
+		mw.config.set( 'wgConfirmEditForceShowCaptcha', true );
+
+		const e = this.sandbox.stub();
+		e.stop = this.sandbox.stub();
+		e.resume = this.sandbox.stub();
+		e.options = {};
+
+		mw.hook( this.mfHookName( 'saveBegin' ) ).fire( e );
+		await this.waitOneTick();
+
+		assert.false(
+			e.stop.called,
+			'stop() should not be called when wgConfirmEditForceShowCaptcha is set — handleCaptcha will handle it'
+		);
+	}
+);
+
+QUnit.test.each(
+	'handleCaptcha renders the captcha panel for abuse-filter responses',
+	{
+		'missing-token': { error: 'missing-token' },
+		'sitekey-mismatch': { error: 'sitekey-mismatch' }
+	},
+	async function ( assert, { error } ) {
+		const mobileConfig = {
+			HCaptchaEnabledInMobileFrontend: false,
+			MobileHCaptchaAbuseFilterEnabled: true,
+			HCaptchaSiteKey: 'hCaptcha-site-key'
+		};
+
+		initMobileFrontend( 'mobilefrontendeditor', mobileConfig, this.window );
+
+		const editorEvent = this.sandbox.stub();
+		editorEvent.stop = this.sandbox.stub();
+		editorEvent.abort = this.sandbox.stub();
+		editorEvent.setTemplate = this.sandbox.stub();
+
+		const captchaDetails = {
+			type: 'hcaptcha',
+			error: error,
+			key: 'details-site-key'
+		};
+
+		const $captchaForm = this.sandbox.stub();
+		$captchaForm.show = this.sandbox.stub();
+		$captchaForm.removeClass = this.sandbox.stub();
+
+		const $captchaContainer = this.sandbox.stub();
+		$captchaContainer.find = this.sandbox.stub().returns( $captchaForm );
+
+		$captchaContainer.data = this.makeStatefulData();
+
+		mw.hook( this.mfHookName( 'handleCaptcha' ) ).fire(
+			editorEvent,
+			captchaDetails,
+			$captchaContainer
+		);
+		await this.waitOneTick();
+
+		assert.true(
+			editorEvent.stop.calledOnce,
+			'Stops the current save attempt'
+		);
+		assert.true(
+			editorEvent.setTemplate.calledOnce,
+			'Injects captcha panel template'
+		);
+
+		const setTemplateArgs = editorEvent.setTemplate.firstCall.args;
+		assert.strictEqual(
+			setTemplateArgs[ 0 ],
+			'captcha-panel',
+			'Targets captcha panel template slot'
+		);
+		assert.strictEqual(
+			this.trimHTML( setTemplateArgs[ 1 ] ),
+			this.hCaptchaExpectedFormHTML,
+			'Uses the expected hCaptcha form template'
+		);
+		assert.deepEqual(
+			setTemplateArgs[ 2 ],
+			{
+				hCaptchaLicenseText: '(hcaptcha-privacy-policy)',
+				hCaptchaSiteKey: 'details-site-key'
+			},
+			'Passes template variables required by the panel'
+		);
+
+		setTemplateArgs[ 3 ]();
+		assert.false(
+			this.window.document.createElement.calledOnce,
+			'Won\'t load hCaptcha SDK on panel callback to await user interaction'
+		);
+	}
+);
+
+QUnit.test(
+	'handleCaptcha shows the privacy policy first again in a new editor overlay',
+	async function ( assert ) {
+		const mobileConfig = {
+			HCaptchaEnabledInMobileFrontend: false,
+			MobileHCaptchaAbuseFilterEnabled: true,
+			HCaptchaSiteKey: 'hCaptcha-site-key'
+		};
+
+		initMobileFrontend( 'mobilefrontendeditor', mobileConfig, this.window );
+
+		const captchaDetails = {
+			type: 'hcaptcha',
+			error: 'forceshowcaptcha',
+			key: 'details-site-key'
+		};
+
+		const makeContainer = () => {
+			const $el = this.sandbox.stub();
+			$el.find = this.sandbox.stub().returns( {
+				show: this.sandbox.stub(),
+				removeClass: this.sandbox.stub()
+			} );
+
+			$el.data = this.makeStatefulData();
+
+			return $el;
+		};
+
+		const makePayload = () => {
+			const payload = this.sandbox.stub();
+			payload.stop = this.sandbox.stub();
+			payload.abort = this.sandbox.stub();
+			payload.setTemplate = this.sandbox.stub();
+			return payload;
+		};
+
+		// alreadyAutoSubmittedForKnownError is reset by saveBegin, so fire it
+		// before each attempt to keep the repeated known error from aborting.
+		const fireSaveBegin = () => {
+			const saveEvent = this.sandbox.stub();
+			saveEvent.stop = this.sandbox.stub();
+			saveEvent.resume = this.sandbox.stub();
+			saveEvent.options = {};
+			mw.hook( this.mfHookName( 'saveBegin' ) ).fire( saveEvent );
+		};
+
+		const $el1 = makeContainer();
+
+		// First challenge on the overlay shows the privacy policy without
+		// loading the SDK.
+		const payload1 = makePayload();
+		fireSaveBegin();
+		mw.hook( this.mfHookName( 'handleCaptcha' ) ).fire(
+			payload1,
+			captchaDetails,
+			$el1
+		);
+		await this.waitOneTick();
+		// args[ 3 ] is the post-render callback MobileFrontend runs once the panel is in the DOM
+		payload1.setTemplate.firstCall.args[ 3 ]();
+
+		assert.true(
+			payload1.abort.calledOnce,
+			'Shows the privacy policy on the first challenge'
+		);
+		assert.strictEqual(
+			payload1.abort.firstCall.args[ 0 ],
+			'(hcaptcha-force-show-captcha-edit)',
+			'Aborts with the force-show-captcha message'
+		);
+		assert.false(
+			this.window.document.createElement.called,
+			'Does not load the hCaptcha SDK before the policy is acknowledged'
+		);
+
+		// Second challenge on the same overlay loads the SDK.
+		const payload2 = makePayload();
+		fireSaveBegin();
+		mw.hook( this.mfHookName( 'handleCaptcha' ) ).fire(
+			payload2,
+			captchaDetails,
+			$el1
+		);
+		await this.waitOneTick();
+		payload2.setTemplate.firstCall.args[ 3 ]();
+
+		assert.false(
+			payload2.abort.called,
+			'Does not show the privacy policy again on the same overlay'
+		);
+		assert.true(
+			this.window.document.createElement.called,
+			'Loads the hCaptcha SDK once the policy is acknowledged'
+		);
+
+		// A new overlay shows the privacy policy again.
+		const $el2 = makeContainer();
+		const payload3 = makePayload();
+		fireSaveBegin();
+		mw.hook( this.mfHookName( 'handleCaptcha' ) ).fire(
+			payload3,
+			captchaDetails,
+			$el2
+		);
+		await this.waitOneTick();
+		payload3.setTemplate.firstCall.args[ 3 ]();
+
+		assert.true(
+			payload3.abort.calledOnce,
+			'Shows the privacy policy again in a new editor overlay'
+		);
+		assert.strictEqual(
+			payload3.abort.firstCall.args[ 0 ],
+			'(hcaptcha-force-show-captcha-edit)',
+			'Aborts with the force-show-captcha message for the new overlay'
+		);
+	}
+);
+
+QUnit.test(
+	'executionSuccess resumes a pending save started by handleCaptcha',
+	async function ( assert ) {
+		const mobileConfig = {
+			HCaptchaEnabledInMobileFrontend: false,
+			MobileHCaptchaAbuseFilterEnabled: true,
+			HCaptchaSiteKey: 'hCaptcha-site-key'
+		};
+
+		initMobileFrontend( 'mobilefrontendeditor', mobileConfig, this.window );
+
+		const editorEvent = this.sandbox.stub();
+		editorEvent.stop = this.sandbox.stub();
+		editorEvent.resume = this.sandbox.stub();
+		editorEvent.abort = this.sandbox.stub();
+		editorEvent.setTemplate = this.sandbox.stub();
+		editorEvent.options = { source: 'mobile-abuse-filter' };
+
+		const captchaDetails = {
+			type: 'hcaptcha',
+			error: 'missing-token',
+			key: 'details-site-key'
+		};
+
+		const $captchaContainer = this.sandbox.stub();
+		$captchaContainer.find = this.sandbox.stub().returns( {
+			show: this.sandbox.stub()
+		} );
+
+		mw.hook( this.mfHookName( 'handleCaptcha' ) ).fire(
+			editorEvent,
+			captchaDetails,
+			$captchaContainer
+		);
+		mw.hook( this.ceHookName( 'executionSuccess' ) ).fire( 'hcaptcha-token' );
+		await this.waitOneTick();
+
+		assert.true(
+			editorEvent.stop.calledOnce,
+			'Stops edit flow until a token is available'
+		);
+	}
+);
+
+QUnit.test.each(
+	'handleCaptcha renders the captcha panel for known errors',
+	{
+		forceshowcaptcha: { error: 'forceshowcaptcha' }
+	},
+	async function ( assert, { error } ) {
+		const mobileConfig = {
+			HCaptchaEnabledInMobileFrontend: false,
+			MobileHCaptchaAbuseFilterEnabled: true,
+			HCaptchaSiteKey: 'hCaptcha-site-key'
+		};
+
+		initMobileFrontend( 'mobilefrontendeditor', mobileConfig, this.window );
+
+		const editorEvent = this.sandbox.stub();
+		editorEvent.stop = this.sandbox.stub();
+		editorEvent.setTemplate = this.sandbox.stub();
+
+		const captchaDetails = {
+			type: 'hcaptcha',
+			error: error,
+			key: 'details-site-key'
+		};
+
+		const $captchaForm = this.sandbox.stub();
+		$captchaForm.show = this.sandbox.stub();
+
+		const $captchaContainer = this.sandbox.stub();
+		$captchaContainer.find = this.sandbox.stub().returns( $captchaForm );
+
+		mw.hook( this.mfHookName( 'handleCaptcha' ) ).fire(
+			editorEvent,
+			captchaDetails,
+			$captchaContainer
+		);
+		await this.waitOneTick();
+
+		assert.true(
+			editorEvent.stop.calledOnce,
+			'Stops the current save attempt'
+		);
+		assert.true(
+			editorEvent.setTemplate.calledOnce,
+			'Injects captcha panel template'
+		);
+		assert.deepEqual(
+			editorEvent.setTemplate.firstCall.args[ 2 ],
+			{
+				hCaptchaLicenseText: '(hcaptcha-privacy-policy)',
+				hCaptchaSiteKey: 'details-site-key'
+			},
+			'Passes the site key from details to the panel'
+		);
+	}
+);
+
+QUnit.test(
+	'handleCaptcha shows a generic error notification for repeated known errors',
+	async function ( assert ) {
+		const mobileConfig = {
+			HCaptchaEnabledInMobileFrontend: false,
+			MobileHCaptchaAbuseFilterEnabled: true,
+			HCaptchaSiteKey: 'hCaptcha-site-key'
+		};
+
+		initMobileFrontend( 'mobilefrontendeditor', mobileConfig, this.window );
+
+		const editorEvent = this.sandbox.stub();
+		editorEvent.abort = this.sandbox.stub();
+		editorEvent.stop = this.sandbox.stub();
+		editorEvent.setTemplate = this.sandbox.stub();
+
+		const captchaDetails = {
+			type: 'hcaptcha',
+			error: 'sitekey-mismatch',
+			key: 'details-site-key'
+		};
+
+		const $captchaContainer = this.sandbox.stub();
+		$captchaContainer.find = this.sandbox.stub();
+
+		mw.hook( this.mfHookName( 'handleCaptcha' ) ).fire(
+			editorEvent,
+			captchaDetails,
+			$captchaContainer
+		);
+		await this.waitOneTick();
+
+		assert.true(
+			editorEvent.stop.calledOnce,
+			'Stops the the first save attempt'
+		);
+
+		mw.hook( this.mfHookName( 'handleCaptcha' ) ).fire(
+			editorEvent,
+			captchaDetails,
+			$captchaContainer
+		);
+		await this.waitOneTick();
+
+		assert.true(
+			editorEvent.abort.calledOnce,
+			'Aborts the second save attempt'
+		);
+		assert.strictEqual(
+			editorEvent.abort.firstCall.args[ 0 ],
+			'(hcaptcha-generic-error)',
+			'Provides the relevant error message for the abort'
+		);
+	}
+);
+
+QUnit.test(
+	'handleCaptcha shows a generic error notification for unhandled errors',
+	async function ( assert ) {
+		const mobileConfig = {
+			HCaptchaEnabledInMobileFrontend: false,
+			MobileHCaptchaAbuseFilterEnabled: true,
+			HCaptchaSiteKey: 'hCaptcha-site-key'
+		};
+
+		initMobileFrontend( 'mobilefrontendeditor', mobileConfig, this.window );
+
+		const editorEvent = this.sandbox.stub();
+		editorEvent.abort = this.sandbox.stub();
+		editorEvent.setTemplate = this.sandbox.stub();
+
+		const captchaDetails = {
+			type: 'hcaptcha',
+			error: 'some-unknown-error',
+			key: 'details-site-key'
+		};
+
+		const $captchaContainer = this.sandbox.stub();
+		$captchaContainer.find = this.sandbox.stub();
+
+		mw.hook( this.mfHookName( 'handleCaptcha' ) ).fire(
+			editorEvent,
+			captchaDetails,
+			$captchaContainer
+		);
+		await this.waitOneTick();
+
+		assert.true(
+			editorEvent.abort.calledOnce,
+			'Aborts the current save attempt'
+		);
+		assert.strictEqual(
+			editorEvent.abort.firstCall.args[ 0 ],
+			'(hcaptcha-generic-error)',
+			'Provides the relevant error message for the abort'
+		);
+	}
+);
+
+// Tests for mobileFrontend.blockMessageDrawer.onShow
+
+QUnit.test(
+	'blockMessageDrawer.onShow calls collectRiskScoreForBlockedUser when config is set',
+	function ( assert ) {
+		mw.config.set( 'wgConfirmEditCaptchaNeededForGenericEdit', 'hcaptcha' );
+		mw.config.set(
+			'wgHCaptchaBlockedIpEditingScoreCollectionSiteKey',
+			'test-site-key'
+		);
+
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: true,
+				MobileHCaptchaAbuseFilterEnabled: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		mw.hook( 'mobileFrontend.blockMessageDrawer.onShow' ).fire();
+
+		assert.true(
+			this.collectRiskScore.calledOnce,
+			'collectRiskScoreForBlockedUser should have been called'
+		);
+		assert.deepEqual(
+			this.collectRiskScore.firstCall.args[ 1 ],
+			'test-site-key',
+			'collectRiskScoreForBlockedUser should receive the config directly'
+		);
+	}
+);
+
+QUnit.test(
+	'blockMessageDrawer.onShow does not call collectRiskScoreForBlockedUser when config is null',
+	function ( assert ) {
+		mw.config.set( 'wgConfirmEditCaptchaNeededForGenericEdit', 'hcaptcha' );
+		mw.config.set( 'wgHCaptchaBlockedIpEditingScoreCollectionSiteKey', null );
+
+		initMobileFrontend(
+			'mobilefrontendeditor',
+			{
+				HCaptchaEnabledInMobileFrontend: true,
+				MobileHCaptchaAbuseFilterEnabled: true,
+				HCaptchaSiteKey: 'hCaptcha-site-key'
+			},
+			this.window
+		);
+
+		mw.hook( 'mobileFrontend.blockMessageDrawer.onShow' ).fire();
+
+		assert.false(
+			this.collectRiskScore.called,
+			'collectRiskScoreForBlockedUser should not have been called'
+		);
+	}
+);
