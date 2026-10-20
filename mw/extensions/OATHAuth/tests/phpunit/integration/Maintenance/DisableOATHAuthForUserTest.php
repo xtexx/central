@@ -1,0 +1,52 @@
+<?php
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\OATHAuth\Tests\Integration\Maintenance;
+
+use MediaWiki\Extension\OATHAuth\Maintenance\DisableOATHAuthForUser;
+use MediaWiki\Tests\Maintenance\MaintenanceBaseTestCase;
+
+/**
+ * @covers \MediaWiki\Extension\OATHAuth\Maintenance\DisableOATHAuthForUser
+ * @covers \MediaWiki\Extension\OATHAuth\Notifications\Manager
+ * @covers \MediaWiki\Extension\OATHAuth\OATHUserRepository
+ * @group Database
+ */
+class DisableOATHAuthForUserTest extends MaintenanceBaseTestCase {
+
+	use UserWith2FATrait;
+
+	protected function getMaintenanceClass() {
+		return DisableOATHAuthForUser::class;
+	}
+
+	public function testDisableOATHAuthForUser(): void {
+		[ $repository, $user, $totpKey, $recoveryKey, ] = $this->setupUserWith2FA();
+
+		$this->assertArrayEquals( [ $totpKey, $recoveryKey ], $repository->findByUser( $user )->getKeys() );
+
+		$username = $user->getName();
+		$this->maintenance->setArg( 'user', $username );
+
+		$this->expectOutputString( "Two-factor authentication disabled for $username.\n" );
+		$this->maintenance->execute();
+
+		$this->assertArrayEquals( [], $repository->findByUser( $user )->getKeys() );
+	}
+
+	public function testNonExistentUser(): void {
+		$this->maintenance->setArg( 'user', 'foobar' );
+		$this->expectCallToFatalError();
+		$this->expectOutputString( "User foobar doesn't exist!\n" );
+		$this->maintenance->execute();
+	}
+
+	public function test2FANotEnabled(): void {
+		$user = $this->getTestSysop()->getUser();
+		$username = $user->getName();
+		$this->maintenance->setArg( 'user', $username );
+		$this->expectCallToFatalError();
+		$this->expectOutputString( "User $username does not have two-factor authentication enabled!\n" );
+		$this->maintenance->execute();
+	}
+}

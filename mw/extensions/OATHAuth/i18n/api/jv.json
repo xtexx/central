@@ -1,0 +1,10 @@
+{
+	"@metadata": {
+		"authors": [
+			"Sumbukompor"
+		]
+	},
+	"apihelp-query+oath-param-user": "Naraguna sing informasiné arep digolèki. Modhe gawan ya iku marang naraguna saiki.",
+	"apihelp-query+oath-example-1": "Golèk informasi ngenani naraguna saiki",
+	"apihelp-query+oath-example-2": "Golèk informasi ngenani naraguna <kbd>Conto</kbd>"
+}

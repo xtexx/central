@@ -1,0 +1,14 @@
+{
+	"@metadata": {
+		"authors": [
+			"Chrumps",
+			"Jdx",
+			"Rail"
+		]
+	},
+	"apihelp-query+oath-summary": "Sprawdzenie, czy uwierzytelnianie dwuskładnikowe (OATH) dla użytkownika jest włączone.",
+	"apihelp-query+oath-param-user": "Użytkownik o którym pobierane będą informacje. Domyślnie obecny użytkownik.",
+	"apihelp-query+oath-param-reason": "Powód pozyskiwania informacji o statusie OATH.",
+	"apihelp-query+oath-example-1": "Pobierz informacje o aktualnym użytkowniku",
+	"apihelp-query+oath-example-2": "Pobierz informacje o użytkowniku <kbd>Example</kbd>"
+}

@@ -1,0 +1,11 @@
+{
+	"@metadata": {
+		"authors": [
+			"Xuacu"
+		]
+	},
+	"apihelp-query+oath-summary": "Comprobar si la identificación de dos factores (OATH) tá activada pa un usuariu.",
+	"apihelp-query+oath-param-user": "Usuariu del qu'algamar la información. De mou predetermináu, ye l'usuariu actual.",
+	"apihelp-query+oath-example-1": "Recibir información sobro l'usuariu actual.",
+	"apihelp-query+oath-example-2": "Recibir información sobro l'usuariu <kbd>Example</kbd>"
+}

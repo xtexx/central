@@ -1,0 +1,12 @@
+{
+	"@metadata": {
+		"authors": [
+			"Dgstranz",
+			"Jelou"
+		]
+	},
+	"apihelp-query+oath-summary": "Verificar si un usuario tiene activada la autenticación en dos pasos (OATH).",
+	"apihelp-query+oath-param-user": "Usuario del que obtener información. Por defecto, se trata del usuario actual.",
+	"apihelp-query+oath-example-1": "Obtener información sobre el usuario actual",
+	"apihelp-query+oath-example-2": "Obtener información sobre el usuario <kbd>Ejemplo</kbd>"
+}

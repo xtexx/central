@@ -1,0 +1,12 @@
+{
+	"@metadata": {
+		"authors": [
+			"McDutchie"
+		]
+	},
+	"apihelp-query+oath-summary": "Verificar si le authentication bifactorial (OATH) es active pro un usator.",
+	"apihelp-query+oath-param-user": "Le usator sur le qual obtener information. Per omission, le usator actual.",
+	"apihelp-query+oath-param-reason": "Motivo pro consultar le stato de OATH.",
+	"apihelp-query+oath-example-1": "Obtener information sur le usator actual",
+	"apihelp-query+oath-example-2": "Obtener information sur le usator <kbd>Exemplo</kbd>"
+}

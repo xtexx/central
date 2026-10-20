@@ -1,0 +1,447 @@
+<?php
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\OATHAuth\Hook;
+
+use MediaWiki\Auth\AuthenticationRequest;
+use MediaWiki\Auth\ElevatedSecurityAuthenticationRequest;
+use MediaWiki\Auth\Hook\LocalUserCreatedHook;
+use MediaWiki\Config\Config;
+use MediaWiki\Extension\OATHAuth\Auth\SecondaryAuthenticationProvider;
+use MediaWiki\Extension\OATHAuth\Auth\WebAuthnAuthenticationRequest;
+use MediaWiki\Extension\OATHAuth\ExpiringRecoveryCodeGenerator;
+use MediaWiki\Extension\OATHAuth\HTMLField\NoJsInfoField;
+use MediaWiki\Extension\OATHAuth\Key\AuthKey;
+use MediaWiki\Extension\OATHAuth\Key\RecoveryCode;
+use MediaWiki\Extension\OATHAuth\Key\RecoveryCodeKeys;
+use MediaWiki\Extension\OATHAuth\Module\RecoveryCodes;
+use MediaWiki\Extension\OATHAuth\OATHAuthLogger;
+use MediaWiki\Extension\OATHAuth\OATHAuthModuleRegistry;
+use MediaWiki\Extension\OATHAuth\OATHUserRepository;
+use MediaWiki\Html\Html;
+use MediaWiki\Logger\LoggerFactory;
+use MediaWiki\Message\Message;
+use MediaWiki\Output\Hook\BeforePageDisplayHook;
+use MediaWiki\Permissions\PermissionManager;
+use MediaWiki\Preferences\Hook\GetPreferencesHook;
+use MediaWiki\ResourceLoader\Context;
+use MediaWiki\Skin\Hook\SiteNoticeAfterHook;
+use MediaWiki\SpecialPage\Hook\AuthChangeFormFieldsHook;
+use MediaWiki\SpecialPage\SpecialPage;
+use MediaWiki\User\Hook\ReadPrivateUserRequirementsConditionHook;
+use MediaWiki\User\Hook\UserModifyCreateAccountEmailHook;
+use MediaWiki\User\Hook\UserRequirementsConditionHook;
+use MediaWiki\User\User;
+use MediaWiki\User\UserIdentity;
+use OOUI\ButtonWidget;
+use OOUI\HorizontalLayout;
+use OOUI\LabelWidget;
+use Wikimedia\Message\ListParam;
+use Wikimedia\Message\ListType;
+use Wikimedia\Timestamp\ConvertibleTimestamp;
+use Wikimedia\Timestamp\TimestampFormat as TS;
+
+class HookHandler implements
+	AuthChangeFormFieldsHook,
+	BeforePageDisplayHook,
+	GetPreferencesHook,
+	LocalUserCreatedHook,
+	ReadPrivateUserRequirementsConditionHook,
+	SiteNoticeAfterHook,
+	UserModifyCreateAccountEmailHook,
+	UserRequirementsConditionHook
+{
+	public function __construct(
+		private readonly OATHUserRepository $userRepo,
+		private readonly OATHAuthModuleRegistry $moduleRegistry,
+		private readonly OATHAuthLogger $oathLogger,
+		private readonly ExpiringRecoveryCodeGenerator $recoveryCodeGenerator,
+		private readonly PermissionManager $permissionManager,
+		private readonly Config $config,
+	) {
+	}
+
+	/** @inheritDoc */
+	public function onAuthChangeFormFields( $requests, $fieldInfo, &$formDescriptor, $action ) {
+		if ( isset( $fieldInfo['OATHToken'] ) ) {
+			$formDescriptor['OATHToken'] += [
+				'cssClass' => 'loginText',
+				'id' => 'wpOATHToken',
+				'size' => 20,
+				'dir' => 'ltr',
+				'autofocus' => true,
+				'persistent' => false,
+				'autocomplete' => 'one-time-code',
+				'spellcheck' => false,
+				'inputmode' => 'numeric',
+				'help-message' => 'oathauth-auth-token-help-ui',
+			];
+		}
+
+		if ( isset( $fieldInfo['RecoveryCode'] ) ) {
+			$formDescriptor['RecoveryCode'] += [
+				'dir' => 'ltr',
+				'autofocus' => true,
+				'persistent' => false,
+				'autocomplete' => 'off',
+				'spellcheck' => false,
+				'help-message' => $fieldInfo['RecoveryCode']['help']
+			];
+		}
+
+		if ( isset( $fieldInfo['info-temporary-recovery-code'] ) ) {
+			// Transform the info-temporary-recovery-code field into a notice box
+			$formDescriptor['info-temporary-recovery-code']['default'] = Html::noticeBox(
+				wfMessage( 'oathauth-auth-initial-recovery-code-info' )->parseAsBlock()
+			);
+			$formDescriptor['info-temporary-recovery-code']['raw'] = true;
+		}
+
+		if ( isset( $fieldInfo['newModule'] ) ) {
+			// HACK: Hide the newModule <select>, but keep it in form, otherwise HTMLForm won't
+			// understand the button weirdness below. There's no great way for us to inject CSS, so
+			// abuse a CSS class from core that has display: none; on it.
+			// TODO: Make this multi-button thing a real HTMLForm field (T404664)
+			$formDescriptor['newModule']['cssclass'] = 'emptyPortlet';
+			if ( isset( $formDescriptor['OATHToken'] ) ) {
+				// Don't make the TOTP token field required. Otherwise, the "Switch to XYZ" submit
+				// buttons can't be used without filling in this field
+				$formDescriptor['OATHToken']['required'] = false;
+			}
+			if ( isset( $formDescriptor['RecoveryCode'] ) ) {
+				// Ditto for the recovery code field (T436012)
+				$formDescriptor['RecoveryCode']['required'] = false;
+			}
+			// Check the weight of the form submit button to make sure other authentication
+			// options are placed below it
+			$loginButtonWeight = $formDescriptor['loginattempt']['weight'] ?? 100;
+
+			$availableModules = $fieldInfo['newModule']['options'];
+			// Remove the empty option for not switching first
+			unset( $availableModules[''] );
+
+			// Reorder 2FA types according to SecondaryAuthenticationProvider Module Priority
+			$orderedModules = [];
+			foreach ( SecondaryAuthenticationProvider::MODULE_PRIORITY as $moduleName ) {
+				if ( isset( $availableModules[$moduleName] ) ) {
+					$orderedModules[$moduleName] = $availableModules[$moduleName];
+					unset( $availableModules[$moduleName] );
+				}
+			}
+			// Append any remaining modules that weren’t in the priority list
+			$availableModules = $orderedModules + $availableModules;
+
+			$extraWeight = 1;
+			foreach ( $availableModules as $moduleName => $ignored ) {
+				// Add a switch button for each alternative module, all with name="newModule"
+				// Whichever button is clicked will submit the form, with newModule set to its value
+				$buttonMessage = $this->moduleRegistry->getModuleByKey( $moduleName )->getLoginSwitchButtonMessage();
+				$formDescriptor["newModule_$moduleName"] = [
+					'type' => 'submit',
+					'name' => 'newModule',
+					// Set and explicit id, as HTMLFormField assigns autogenerates ids based on the name field.
+					// As all buttons share the same name="newModule" field, all would get the same id otherwise
+					// Duplicate IDs confuse VoiceOver, making it announce all buttons with the same label.
+					'id' => "mw-input-newModule_$moduleName",
+					'default' => $moduleName,
+					'buttonlabel' => $buttonMessage->text(),
+					// Make sure these buttons appear after the loginattempt button
+					'weight' => $loginButtonWeight + $extraWeight,
+					'flags' => [],
+				];
+				$extraWeight++;
+			}
+		}
+
+		$webauthnReq = AuthenticationRequest::getRequestByClass( $requests, WebAuthnAuthenticationRequest::class );
+		// Display a message about needing JavaScript for WebAuthn, but don't display it if we're on
+		// the initial login page (the WebAuthnAuthenticationRequest there is for passwordless login)
+		if ( $webauthnReq && !isset( $fieldInfo['username'] ) ) {
+			$formDescriptor['webauthn-nojs'] = [
+				'class' => NoJsInfoField::class,
+				'weight' => -50,
+			];
+		}
+
+		$reauthReq = AuthenticationRequest::getRequestByClass( $requests,
+			ElevatedSecurityAuthenticationRequest::class );
+		if ( $reauthReq ) {
+			// If this is a reauth and we're offering a 2FA method directly, remove the password field
+			if ( $webauthnReq || isset( $fieldInfo['OATHToken'] ) ) {
+				unset( $formDescriptor['password'] );
+			}
+			// Also remove the "Log in" button if there is a WebAuthn request: in that case the
+			// passkey or security key button will be primary
+			if ( $webauthnReq ) {
+				unset( $formDescriptor['loginattempt'] );
+			}
+		}
+
+		if (
+			$this->config->get( 'OATHAuth2FAForAllWarnings' ) &&
+			!$this->config->get( 'OATHAuthEnforce2FAForAll' ) &&
+			isset( $fieldInfo['username'] ) &&
+			!$reauthReq
+		) {
+			// 2FA is going to be required for all users, but is not yet. Show a message at the top
+			// of the first stage of the login form.
+			$formDescriptor['info-2fa-required-soon'] = [
+				'type' => 'info',
+				'default' => Html::noticeBox(
+					wfMessage( 'oathauth-2fa-required-soon' )->parseAsBlock()
+				),
+				'raw' => true,
+				'weight' => -100,
+			];
+		}
+
+		if ( $this->config->get( 'OATHPasswordlessLogin' ) ) {
+			if ( isset( $fieldInfo['username'] ) && isset( $fieldInfo['credential'] ) ) {
+				$formDescriptor['username']['autocomplete'] = 'username webauthn';
+
+				// HACK autofocus the username even when it's prepopulated
+				$formDescriptor['username']['autofocus'] = true;
+				if ( isset( $formDescriptor['password']['autofocus'] ) ) {
+					unset( $formDescriptor['password']['autofocus'] );
+				}
+			}
+
+			if ( isset( $fieldInfo['passwordlessButton'] ) && !$reauthReq ) {
+				// Make the "Log in with passkey" button a non-primary, non-submit button, make it
+				// progressive, and put it below the login button
+				$formDescriptor['passwordlessButton']['type'] = 'button';
+				$formDescriptor['passwordlessButton']['flags'] = [ 'progressive' ];
+				$formDescriptor['passwordlessButton']['weight'] = 110;
+			}
+		}
+
+		return true;
+	}
+
+	/** @inheritDoc */
+	public function onGetPreferences( $user, &$preferences ) {
+		$oathUser = $this->userRepo->findByUser( $user );
+
+		// If there is no existing module for the user, and the user is not allowed to enable it,
+		// we have nothing to show.
+		if (
+			!$oathUser->isTwoFactorAuthEnabled() &&
+			!$this->permissionManager->userHasRight( $user, 'oathauth-enable' )
+		) {
+			return true;
+		}
+
+		$modules = array_unique( array_map(
+			static fn ( AuthKey $key ) => $key->getModule(),
+			$oathUser->getKeys(),
+		) );
+		$moduleNames = array_map(
+			fn ( string $moduleId ) => $this->moduleRegistry
+				->getModuleByKey( $moduleId )
+				->getDisplayName(),
+			$modules
+		);
+
+		if ( count( $moduleNames ) > 1 ) {
+			$moduleLabel = wfMessage( 'rawmessage' )
+				->params( new ListParam( ListType::AND, $moduleNames ) );
+		} elseif ( $moduleNames ) {
+			$moduleLabel = $moduleNames[0];
+		} else {
+			$moduleLabel = wfMessage( 'oathauth-ui-no-module' );
+		}
+
+		$manageButton = new ButtonWidget( [
+			'href' => SpecialPage::getTitleFor( 'OATHManage' )->getLocalURL(),
+			'label' => wfMessage( 'oathauth-ui-manage' )->text()
+		] );
+
+		$currentModuleLabel = new LabelWidget( [
+			'label' => $moduleLabel->text(),
+		] );
+
+		$control = new HorizontalLayout( [
+			'items' => [
+				$currentModuleLabel,
+				$manageButton
+			]
+		] );
+
+		$preferences['oathauth-module'] = [
+			'type' => 'info',
+			'raw' => true,
+			'default' => (string)$control,
+			'label-message' => 'oathauth-prefs-label',
+			'section' => 'personal/accountsecurity',
+		];
+
+		return true;
+	}
+
+	/**
+	 * Callback that generates the contents of the virtual data.json file in the ext.oath.manage
+	 * ResourceLoader module.
+	 */
+	public static function getOathManageModuleData( Context $context, Config $config ): array {
+		return [
+			'passkeyDialogTextHtml' => $context->msg( 'oathauth-passkey-dialog-text' )->parseAsBlock(),
+			'WebAuthnNewCredsDisabled' => (bool)$config->get( 'WebAuthnNewCredsDisabled' )
+		];
+	}
+
+	/** @inheritDoc */
+	public function onUserRequirementsCondition(
+		string|int $type,
+		array $args,
+		UserIdentity $user,
+		bool $isPerformingRequest,
+		?bool &$result
+	): void {
+		if ( $type !== APCOND_OATH_HAS2FA ) {
+			return;
+		}
+		$result = $this->userRepo->userHas2FAEnabled( $user );
+	}
+
+	/** @inheritDoc */
+	public function onReadPrivateUserRequirementsCondition(
+		UserIdentity $performer,
+		UserIdentity $target,
+		array $conditions
+	): void {
+		if ( in_array( APCOND_OATH_HAS2FA, $conditions ) ) {
+			$this->oathLogger->logImplicitVerification( $performer, $target );
+		}
+	}
+
+	/** @inheritDoc */
+	public function onBeforePageDisplay( $out, $skin ): void {
+		if (
+			$this->config->get( 'OATHPasswordlessLogin' ) &&
+			$out->getTitle()->isSpecial( 'Userlogin' )
+		) {
+			$out->addModules( 'ext.webauthn.passwordlessLogin' );
+			$out->addModuleStyles( 'ext.webauthn.passwordlessLogin.styles' );
+		}
+	}
+
+	public function onUserModifyCreateAccountEmail(
+		User $user,
+		User $performer,
+		Message &$subject,
+		Message &$body
+	): void {
+		if ( !$this->config->get( 'OATHAuthEnforce2FAForAll' ) && !$this->userRepo->userHas2FAEnabled( $user ) ) {
+			return;
+		}
+
+		$status = $this->recoveryCodeGenerator->attemptToCreateInitial2FACodes(
+			performer: $performer,
+			username: $user->getName(),
+			email: $user->getEmail(),
+			sendEmail: false,
+		);
+
+		if ( !$status->isGood() ) {
+			LoggerFactory::getInstance( 'authentication' )->error(
+				'Failed to create initial 2FA codes for user {user} with error message {msg}',
+				[
+					'user' => $user->getName(),
+					'msg' => $status->getWikiText( false, false, 'en' )
+				]
+			);
+			return;
+		}
+
+		$recoveryCodes = $status->getValue();
+		$expiryTimestamp = ConvertibleTimestamp::convert(
+			TS::MW,
+			(int)ConvertibleTimestamp::now( TS::UNIX ) +
+				$this->config->get( 'OATHInitialRecoveryCodesValidityDays' ) * 86_400
+		);
+		$newBody = wfMessage( 'oathauth-createaccount-text-with-2fa' )
+			->params(
+				$body,
+				count( $recoveryCodes ),
+				implode( "\n", $recoveryCodes ),
+				Message::dateParam( $expiryTimestamp )
+			);
+		$body = $newBody;
+	}
+
+	/** @inheritDoc */
+	public function onSiteNoticeAfter( &$siteNotice, $skin ): void {
+		$user = $skin->getUser();
+
+		// Only display the banner to fully logged-in (non-temporary) users
+		if ( !$user->isNamed() ) {
+			return;
+		}
+
+		$twoFAForAll = $this->config->get( 'OATHAuthEnforce2FAForAll' );
+		$twoFAForAllWarnings = $this->config->get( 'OATHAuth2FAForAllWarnings' );
+
+		// Neither relevant setting is true, so we're not displaying anything in any case
+		if ( !$twoFAForAll && !$twoFAForAllWarnings ) {
+			return;
+		}
+
+		$oathUser = $this->userRepo->findByUser( $user );
+		// If the user already has proper 2FA enabled, nothing to do either
+		if ( $oathUser->userHasNonSpecialEnabledKeys() ) {
+			return;
+		}
+
+		if ( !$twoFAForAll && $twoFAForAllWarnings ) {
+			// Display a "coming soon" warning on all pages
+			$siteNotice .= Html::warningBox(
+				$skin->msg( 'oathauth-2fa-required-soon-banner' )->parseAsBlock(),
+				'mw-oathauth-sitenotice'
+			);
+			return;
+		}
+
+		// Only display the remaining banner if both settings are true
+		if ( !$twoFAForAll || !$twoFAForAllWarnings ) {
+			return;
+		}
+
+		// The user only has recovery codes. Display a message urging them to set up other 2FA.
+		$recoveryCodes = $oathUser->getKeysForModule( RecoveryCodes::MODULE_NAME )[ 0 ] ?? null;
+		if ( !$recoveryCodes instanceof RecoveryCodeKeys ) {
+			return;
+		}
+		// Get the expiry date of the user's recovery codes
+		$expiries = array_map(
+			static fn ( RecoveryCode $code ) => $code->getExpiryTimestamp(),
+			$recoveryCodes->getRecoveryCodes()
+		);
+		$expiryTimestamp = $expiries ? max( $expiries ) : null;
+
+		// Protect against $expiryTimestamp somehow being null, which causes ->dateParams() to
+		// die with an error
+		if ( $expiryTimestamp !== null ) {
+			$siteNotice .= Html::warningBox(
+				$skin->msg( 'oathauth-recovery-code-only-sitenotice' )
+					->dateParams( $expiryTimestamp )
+					->parseAsBlock(),
+				'mw-oathauth-sitenotice'
+			);
+		}
+	}
+
+	/** @inheritDoc */
+	public function onLocalUserCreated( $user, $autocreated ) {
+		// Only create initial 2FA codes if enforcing for all, and the user hasn't got 2FA enabled by something else..
+		if ( !$this->config->get( 'OATHAuthEnforce2FAForAll' ) || $this->userRepo->userHas2FAEnabled( $user ) ) {
+			return;
+		}
+
+		$this->recoveryCodeGenerator->attemptToCreateInitial2FACodes(
+			performer: $user,
+			username: $user->getName(),
+			email: $user->getEmail(),
+			sendEmail: true,
+		);
+	}
+}

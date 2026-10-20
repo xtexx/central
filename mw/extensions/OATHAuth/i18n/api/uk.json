@@ -1,0 +1,13 @@
+{
+	"@metadata": {
+		"authors": [
+			"Base",
+			"Piramidion"
+		]
+	},
+	"apihelp-query+oath-summary": "Перевірка чи двофакторна автентифікація (OATH) увімкнена для користувача.",
+	"apihelp-query+oath-param-user": "Користувач, про якого треба отримати інформацію. За замовчуванням ним є поточний користувач.",
+	"apihelp-query+oath-param-reason": "Причина для запиту статусу OATH.",
+	"apihelp-query+oath-example-1": "Отримати інформацію про поточного користувача",
+	"apihelp-query+oath-example-2": "Отримати інформацію про користувача <kbd>Example</kbd>"
+}

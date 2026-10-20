@@ -1,0 +1,10 @@
+{
+	"@metadata": {
+		"authors": [
+			"Huji"
+		]
+	},
+	"apihelp-query+oath-param-user": "کاربری که در موردش اطلاعات می‌گیرید. پیش‌فرض، حساب کاربری جاری است.",
+	"apihelp-query+oath-example-1": "گرفتن اطلاعات در مورد کاربر جاری",
+	"apihelp-query+oath-example-2": "گرفتن اطلاعات در مورد کاربر <kbd>Example</kbd>"
+}

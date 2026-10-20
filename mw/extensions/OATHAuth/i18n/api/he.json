@@ -1,0 +1,13 @@
+{
+	"@metadata": {
+		"authors": [
+			"Amire80",
+			"Guycn2"
+		]
+	},
+	"apihelp-query+oath-summary": "בדיקה האם אימות דו־שלבי (OATH) מופעל עבור משתמש.",
+	"apihelp-query+oath-param-user": "על איזה משתמש לקבל מידע. ברירת המחדל היא המשתמש הנוכחי.",
+	"apihelp-query+oath-param-reason": "סיבה לשאילתה על מצב OATH.",
+	"apihelp-query+oath-example-1": "קבלת מידע על המשתמש הנוכחי",
+	"apihelp-query+oath-example-2": "קבלת מידע על משתמש <kbd>Example</kbd>"
+}

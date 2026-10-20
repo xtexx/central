@@ -1,0 +1,13 @@
+{
+	"@metadata": {
+		"authors": [
+			"Elisardojm",
+			"Toliño"
+		]
+	},
+	"apihelp-query+oath-summary": "Verificar se a autenticación en dous factores (OATH) está activa para un usuario.",
+	"apihelp-query+oath-param-user": "Usuario do que obter a información. Por defecto, o usuario actual.",
+	"apihelp-query+oath-param-reason": "Motivo para consultar o estado OATH.",
+	"apihelp-query+oath-example-1": "Obter información sobre o usuario actual",
+	"apihelp-query+oath-example-2": "Obter información sobre o usuario <kbd>Example</kbd>"
+}

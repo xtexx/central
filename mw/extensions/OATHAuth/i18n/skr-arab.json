@@ -1,0 +1,16 @@
+{
+	"@metadata": {
+		"authors": [
+			"Saraiki"
+		]
+	},
+	"oathauth-recoverycodes-download": "ڈاؤن لوڈ",
+	"oathauth-recoverycodes-copy": "نقل کرو",
+	"oathauth-enteruser": "ورتݨ ناں:",
+	"oathauth-auth-recovery-code-label": "بحالی کوڈ",
+	"oathauth-notifications-recoverycodesleft-help": "مدد",
+	"oathauth-notifications-recoverycodes-generated-for-user-help": "مدد",
+	"oathauth-authenticator-delete": "ہٹاؤ",
+	"oathauth-passkey-dialog-back": "پچھوں",
+	"oathauth-2fa-required-groups-on-project": "$2 $3 اتے"
+}
