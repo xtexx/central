@@ -1,0 +1,111 @@
+<?php
+
+namespace MediaWiki\Extension\Chart;
+
+use MediaWiki\Category\TrackingCategories;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\Extension\JsonConfig\JCContent;
+use MediaWiki\Extension\JsonConfig\JCContentView;
+use MediaWiki\Language\FormatterFactory;
+use MediaWiki\Language\LanguageFactory;
+use MediaWiki\Logger\LoggerFactory;
+use MediaWiki\Page\PageReference;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Parser\ParserOutput;
+
+class JCChartContentView extends JCContentView {
+
+	public function __construct(
+		private readonly ChartArgumentsParser $chartArgumentsParser,
+		private readonly ChartRenderer $chartRenderer,
+		private readonly DataPageResolver $dataPageResolver,
+		private readonly FormatterFactory $formatterFactory,
+		private readonly LanguageFactory $languageFactory,
+		private readonly TrackingCategories $trackingCategories,
+	) {
+	}
+
+	/**
+	 * @param JCContent $content
+	 * @param PageReference $page
+	 * @param int|null $revId
+	 * @param ParserOptions $options
+	 * @param bool $generateHtml
+	 * @param ParserOutput &$output
+	 * @return string
+	 */
+	public function valueToHtml(
+		JCContent $content,
+		PageReference $page,
+		$revId,
+		ParserOptions $options,
+		$generateHtml,
+		ParserOutput &$output
+	): string {
+		$logger = LoggerFactory::getInstance( 'Chart' );
+
+		if ( $content instanceof JCChartContent && $content->usesDeprecatedFormat() ) {
+			$this->trackingCategories->addTrackingCategory(
+				$output,
+				'chart-deprecated-category',
+				$page
+			);
+		}
+
+		$lang = $options->getUserLangObj();
+		$context = new RequestContext();
+		$context->setLanguage( $lang );
+
+		$parserFunction = new ParserFunction(
+			$this->chartRenderer,
+			$lang,
+			$this->chartArgumentsParser,
+			$this->dataPageResolver,
+			$logger,
+			$this->formatterFactory->getStatusFormatter( $context ),
+			$page
+		);
+
+		$status = $parserFunction->renderChartForDefinitionContent( $output, $content );
+		if ( $status->isGood() ) {
+			return $status->getValue();
+		} else {
+			return $parserFunction->renderStatus( $status );
+		}
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function getDefault( $modelId ): string {
+		return <<<JSON
+{
+	"@documentation": "https://www.mediawiki.org/wiki/Extension:Chart/Specification",
+	"version": 1,
+
+	"license": "",
+
+	"source": "Example.tab",
+
+	"mediawikiCategories": [],
+
+	"title": {
+		"en": "Title of chart"
+	},
+
+	"type": "line",
+
+	"xAxis": {
+		"title": {
+			"en": "X axis label"
+		}
+	},
+	"yAxis": {
+		"title": {
+			"en": "Y axis label"
+		}
+	}
+}
+JSON;
+	}
+}

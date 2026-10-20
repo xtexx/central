@@ -1,0 +1,13 @@
+{
+	"root": true,
+	"extends": [
+		"../../resources/.eslintrc.json"
+	],
+	"globals": {
+		"global": "writable"
+	},
+	"env": {
+		"browser": true,
+		"jest": true
+	}
+}

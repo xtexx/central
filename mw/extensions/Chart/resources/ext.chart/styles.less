@@ -1,0 +1,30 @@
+wiki-chart {
+	// clear float of any floated elements appearing before the chart
+	// to avoid chart being inappropriately tall (T393286)
+	clear: both;
+	max-width: 100%;
+	height: auto;
+	display: block;
+
+	> svg {
+		width: 100%;
+	}
+}
+
+.client-js .ext-chart-js {
+	wiki-chart {
+		> svg {
+			filter: blur( 10px );
+		}
+
+		&.ext-chart-fallback > svg {
+			filter: none;
+		}
+	}
+}
+
+/* Workaround for https://github.com/apache/echarts/issues/16419 */
+/* @noflip */
+wiki-chart text {
+	direction: ltr;
+}

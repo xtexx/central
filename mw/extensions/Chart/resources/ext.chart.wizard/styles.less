@@ -1,0 +1,102 @@
+@import 'mediawiki.skin.variables.less';
+
+/* Styles for Special:ChartWizard */
+
+/* HTMLForm only allows us to set an ID, not a class */
+/* stylelint-disable selector-max-id */
+#ext-chart-wizard {
+	max-width: 100%;
+}
+
+/* Flexbox gap not supported by all browsers, but yet is used widely in MW */
+/* stylelint-disable-next-line plugin/no-unsupported-browser-features */
+.ext-chart-wizard-container {
+	display: flex;
+	flex-wrap: wrap;
+	column-gap: @spacing-200;
+	margin-top: @spacing-100;
+
+	& > * {
+		flex-basis: 0;
+		flex-grow: 1;
+	}
+
+	// Styles for the step "1. …, 2. …, 3. …" headings,
+	// which are proper fieldset elements.
+	fieldset legend.cdx-label {
+		font-size: @font-size-base;
+		margin-bottom: @spacing-50;
+
+		> .cdx-label__label {
+			font-size: @font-size-large;
+		}
+	}
+
+	// Applies to all labels.
+	.cdx-label .cdx-label__label__text {
+		font-weight: @font-weight-bold;
+	}
+
+	.ext-chart-wizard__preview {
+		border: @border-subtle;
+
+		&--source {
+			background: transparent;
+			border: 0;
+			margin: 0;
+			padding: @spacing-200;
+		}
+	}
+
+	.ext-chart-wizard__preview-accordion {
+		border: @border-subtle;
+		flex-basis: initial;
+
+		.cdx-accordion__content {
+			padding: 0;
+		}
+
+		.ext-chart-wizard__preview {
+			border: 0;
+		}
+	}
+
+	.ext-chart-wizard__preview-placeholder {
+		text-align: center;
+		padding: @spacing-200 0;
+
+		&-header {
+			font-size: @font-size-large;
+			font-weight: @font-weight-bold;
+			padding-top: @spacing-200;
+			padding-bottom: @spacing-25;
+		}
+
+		&-image-wrapper {
+			background-color: @background-color-disabled;
+			border-radius: @border-radius-circle;
+			display: inline-block;
+			height: 96px;
+			position: relative;
+			width: 96px;
+		}
+
+		svg {
+			height: @size-200;
+			left: @size-half;
+			position: absolute;
+			top: @size-half;
+			transform: translate( -50%, -50% );
+			width: @size-200;
+		}
+	}
+}
+
+// Preview comes first on mobile/responsive view.
+// This hard-coded in ChartWizard.vue, so we hard-code it here too.
+// This should be kept in sync with the @max-width-breakpoint-tablet token.
+@media ( max-width: 1119px ) {
+	.ext-chart-wizard-container {
+		flex-direction: column;
+	}
+}
