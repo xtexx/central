@@ -1,0 +1,57 @@
+/*!
+ * VisualEditor UserInterface MWTabberDialog styles.
+ *
+ */
+
+/* stylelint-disable selector-class-pattern */
+
+@import 'mediawiki.skin.variables.less';
+
+.ve-ui-mwTabberDialog-content .oo-ui-textInputWidget {
+	max-width: none;
+}
+
+.ve-ui-mwTabberDialog-stickyHeader {
+	position: sticky;
+	top: 0;
+	z-index: @z-index-toolbar;
+	display: flex;
+	align-items: center;
+	padding-inline: @spacing-100 - 6px @spacing-100;
+	background: @background-color-neutral;
+	border-bottom: @border-subtle;
+
+	> .oo-ui-buttonElement {
+		margin-top: 4px; /* Align with tab label */
+	}
+}
+
+.ve-ui-mwTabberDialog-tabSelectWrapper {
+	flex: 1;
+	min-width: 0;
+	overflow: auto hidden;
+	scroll-behavior: smooth;
+	scrollbar-width: thin;
+}
+
+.ve-ui-mwTabberDialog-tabSelect {
+	white-space: nowrap;
+}
+
+.ve-ui-mwTabberDialog-tabOption {
+	flex-shrink: 0;
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ve-ui-mwTabberDialog-tabPanel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.ve-ui-mwTabberDialog-tabPanel-title {
+	font-size: @font-size-large;
+	font-weight: @font-weight-bold;
+}

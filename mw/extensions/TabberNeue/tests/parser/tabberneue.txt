@@ -1,0 +1,422 @@
+!! version 2
+# TabberNeue parser tests
+#
+# Per-test wgTabberNeue* overrides use !! config (not !! options).
+# !! config sets $test->config, which ParserTestRunner applies to $GLOBALS
+# before each test.  The ParserTestGlobals hook (ParserTestGlobalsHandler)
+# then resets TabberNeue.TabberOptions and its downstream services so each
+# test picks up the fresh config rather than a cached instance from a
+# previous test.
+
+!! hooks
+tabber
+tabbertransclude
+!! endhooks
+
+!! test
+TabberNeue: basic tabber with three tabs
+!! config
+wgTabberNeueParseTabName=false
+wgTabberNeueAddTabPrefix=true
+!! wikitext
+<tabber>
+|-|First=
+First content.
+|-|Second=
+Second content.
+|-|Third=
+Third content.
+</tabber>
+!! html
+<div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-First-label" href="#tabber-First" aria-controls="tabber-First">First</a><a class="tabber__tab" role="tab" id="tabber-Second-label" href="#tabber-Second" aria-controls="tabber-Second">Second</a><a class="tabber__tab" role="tab" id="tabber-Third-label" href="#tabber-Third" aria-controls="tabber-Third">Third</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-First" aria-labelledby="tabber-First-label"><p class="mw-empty-elt">
+</p><p>First content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Second" aria-labelledby="tabber-Second-label"><p class="mw-empty-elt">
+</p><p>Second content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Third" aria-labelledby="tabber-Third-label"><p class="mw-empty-elt">
+</p><p>Third content.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: tab content with mixed wikitext (list, table, link)
+!! config
+wgTabberNeueParseTabName=false
+wgTabberNeueAddTabPrefix=true
+!! wikitext
+<tabber>
+|-|List=
+* one
+* two
+|-|Table=
+{| class="wikitable"
+! H1 !! H2
+|-
+| a || b
+|}
+|-|Link=
+A [[Main Page|link]] here.
+</tabber>
+!! html
+<div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-List-label" href="#tabber-List" aria-controls="tabber-List">List</a><a class="tabber__tab" role="tab" id="tabber-Table-label" href="#tabber-Table" aria-controls="tabber-Table">Table</a><a class="tabber__tab" role="tab" id="tabber-Link-label" href="#tabber-Link" aria-controls="tabber-Link">Link</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-List" aria-labelledby="tabber-List-label"><p class="mw-empty-elt">
+</p><ul><li>one</li>
+<li>two</li></ul>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Table" aria-labelledby="tabber-Table-label">
+<table class="wikitable">
+<tbody><tr>
+<th>H1</th>
+<th>H2
+</th></tr>
+<tr>
+<td>a</td>
+<td>b
+</td></tr></tbody></table>
+</div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Link" aria-labelledby="tabber-Link-label"><p class="mw-empty-elt">
+</p><p>A <a href="/index.php?title=Main_Page&amp;action=edit&amp;redlink=1" class="new" title="Main Page (page does not exist)">link</a> here.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: HTML attributes on tabber element
+!! config
+wgTabberNeueParseTabName=false
+wgTabberNeueAddTabPrefix=true
+!! wikitext
+<tabber id="custom-id" class="custom-class" data-test="custom">
+|-|A=
+content A
+|-|B=
+content B
+</tabber>
+!! html
+<div class="tabber tabber--init custom-class" id="custom-id" data-test="custom"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-A-label" href="#tabber-A" aria-controls="tabber-A">A</a><a class="tabber__tab" role="tab" id="tabber-B-label" href="#tabber-B" aria-controls="tabber-B">B</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-A" aria-labelledby="tabber-A-label"><p class="mw-empty-elt">
+</p><p>content A
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-B" aria-labelledby="tabber-B-label"><p class="mw-empty-elt">
+</p><p>content B
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: nested tabber via parser function
+!! config
+wgTabberNeueParseTabName=false
+wgTabberNeueAddTabPrefix=true
+!! wikitext
+<tabber>
+|-|Outer A=
+{{#tag:tabber|
+Inner 1=
+Inner 1 content.
+{{!}}-{{!}}
+Inner 2=
+Inner 2 content.
+}}
+|-|Outer B=
+Outer B plain.
+</tabber>
+!! html
+<div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-Outer_A-label" href="#tabber-Outer_A" aria-controls="tabber-Outer_A">Outer A</a><a class="tabber__tab" role="tab" id="tabber-Outer_B-label" href="#tabber-Outer_B" aria-controls="tabber-Outer_B">Outer B</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Outer_A" aria-labelledby="tabber-Outer_A-label"><p class="mw-empty-elt">
+</p><div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-Inner_1-label" href="#tabber-Inner_1" aria-controls="tabber-Inner_1">Inner 1</a><a class="tabber__tab" role="tab" id="tabber-Inner_2-label" href="#tabber-Inner_2" aria-controls="tabber-Inner_2">Inner 2</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Inner_1" aria-labelledby="tabber-Inner_1-label"><p class="mw-empty-elt">
+</p><p>Inner 1 content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Inner_2" aria-labelledby="tabber-Inner_2-label"><p class="mw-empty-elt">
+</p><p>Inner 2 content.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Outer_B" aria-labelledby="tabber-Outer_B-label"><p class="mw-empty-elt">
+</p><p>Outer B plain.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: duplicate labels deduplicated with counter suffix
+!! config
+wgTabberNeueParseTabName=false
+wgTabberNeueAddTabPrefix=true
+!! wikitext
+<tabber>
+|-|Same=
+First.
+|-|Same=
+Second.
+|-|Same=
+Third.
+</tabber>
+!! html
+<div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-Same-label" href="#tabber-Same" aria-controls="tabber-Same">Same</a><a class="tabber__tab" role="tab" id="tabber-Same_2-label" href="#tabber-Same_2" aria-controls="tabber-Same_2">Same</a><a class="tabber__tab" role="tab" id="tabber-Same_3-label" href="#tabber-Same_3" aria-controls="tabber-Same_3">Same</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Same" aria-labelledby="tabber-Same-label"><p class="mw-empty-elt">
+</p><p>First.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Same_2" aria-labelledby="tabber-Same_2-label"><p class="mw-empty-elt">
+</p><p>Second.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Same_3" aria-labelledby="tabber-Same_3-label"><p class="mw-empty-elt">
+</p><p>Third.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: parseTabName=true parses wikitext in tab labels
+!! config
+wgTabberNeueParseTabName=true
+wgTabberNeueAddTabPrefix=true
+!! wikitext
+<tabber>
+|-|'''Bold label'''=
+Body of the bold-labeled tab.
+|-|''Italic label''=
+Body of the italic-labeled tab.
+</tabber>
+!! html
+<div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-Bold_label-label" href="#tabber-Bold_label" aria-controls="tabber-Bold_label"><b>Bold label</b></a><a class="tabber__tab" role="tab" id="tabber-Italic_label-label" href="#tabber-Italic_label" aria-controls="tabber-Italic_label"><i>Italic label</i></a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Bold_label" aria-labelledby="tabber-Bold_label-label"><p class="mw-empty-elt">
+</p><p>Body of the bold-labeled tab.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Italic_label" aria-labelledby="tabber-Italic_label-label"><p class="mw-empty-elt">
+</p><p>Body of the italic-labeled tab.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: parseTabName=true renders wikitext markup in labels
+!! config
+wgTabberNeueParseTabName=true
+wgTabberNeueAddTabPrefix=true
+!! wikitext
+<tabber>
+|-|'''Bold'''=
+Content.
+|-|''Italic''=
+Content.
+</tabber>
+!! html
+<div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-Bold-label" href="#tabber-Bold" aria-controls="tabber-Bold"><b>Bold</b></a><a class="tabber__tab" role="tab" id="tabber-Italic-label" href="#tabber-Italic" aria-controls="tabber-Italic"><i>Italic</i></a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Bold" aria-labelledby="tabber-Bold-label"><p class="mw-empty-elt">
+</p><p>Content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Italic" aria-labelledby="tabber-Italic-label"><p class="mw-empty-elt">
+</p><p>Content.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: parseTabName=false leaves markup literal in labels
+!! config
+wgTabberNeueParseTabName=false
+wgTabberNeueAddTabPrefix=true
+!! wikitext
+<tabber>
+|-|'''Bold'''=
+Content.
+|-|''Italic''=
+Content.
+</tabber>
+!! html
+<div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-.26.23039.3B.26.23039.3B.26.23039.3BBold.26.23039.3B.26.23039.3B.26.23039.3B-label" href="#tabber-.26.23039.3B.26.23039.3B.26.23039.3BBold.26.23039.3B.26.23039.3B.26.23039.3B" aria-controls="tabber-.26.23039.3B.26.23039.3B.26.23039.3BBold.26.23039.3B.26.23039.3B.26.23039.3B">&#39;&#39;&#39;Bold&#39;&#39;&#39;</a><a class="tabber__tab" role="tab" id="tabber-.26.23039.3B.26.23039.3BItalic.26.23039.3B.26.23039.3B-label" href="#tabber-.26.23039.3B.26.23039.3BItalic.26.23039.3B.26.23039.3B" aria-controls="tabber-.26.23039.3B.26.23039.3BItalic.26.23039.3B.26.23039.3B">&#39;&#39;Italic&#39;&#39;</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-.26.23039.3B.26.23039.3B.26.23039.3BBold.26.23039.3B.26.23039.3B.26.23039.3B" aria-labelledby="tabber-.26.23039.3B.26.23039.3B.26.23039.3BBold.26.23039.3B.26.23039.3B.26.23039.3B-label"><p class="mw-empty-elt">
+</p><p>Content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-.26.23039.3B.26.23039.3BItalic.26.23039.3B.26.23039.3B" aria-labelledby="tabber-.26.23039.3B.26.23039.3BItalic.26.23039.3B.26.23039.3B-label"><p class="mw-empty-elt">
+</p><p>Content.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: addTabPrefix=false omits tabber- prefix from IDs
+!! config
+wgTabberNeueParseTabName=false
+wgTabberNeueAddTabPrefix=false
+!! wikitext
+<tabber>
+|-|Alpha=
+A.
+|-|Beta=
+B.
+</tabber>
+!! html
+<div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="Alpha-label" href="#Alpha" aria-controls="Alpha">Alpha</a><a class="tabber__tab" role="tab" id="Beta-label" href="#Beta" aria-controls="Beta">Beta</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="Alpha" aria-labelledby="Alpha-label"><p class="mw-empty-elt">
+</p><p>A.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="Beta" aria-labelledby="Beta-label"><p class="mw-empty-elt">
+</p><p>B.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: tabbertransclude empty input renders nothing
+!! config
+wgTabberNeueParseTabName=false
+wgTabberNeueAddTabPrefix=true
+!! wikitext
+<tabbertransclude>
+</tabbertransclude>
+!! html
+!! end
+
+!! test
+TabberNeue: wrap attribute enables tabber--wrap with config default off
+!! config
+wgTabberNeueParseTabName=false
+wgTabberNeueAddTabPrefix=true
+wgTabberNeueEnableTabWrap=false
+!! wikitext
+<tabber wrap>
+|-|First=
+First content.
+|-|Second=
+Second content.
+</tabber>
+!! html
+<div class="tabber tabber--init tabber--wrap"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-First-label" href="#tabber-First" aria-controls="tabber-First">First</a><a class="tabber__tab" role="tab" id="tabber-Second-label" href="#tabber-Second" aria-controls="tabber-Second">Second</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-First" aria-labelledby="tabber-First-label"><p class="mw-empty-elt">
+</p><p>First content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Second" aria-labelledby="tabber-Second-label"><p class="mw-empty-elt">
+</p><p>Second content.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: config default on adds tabber--wrap without a wrap attribute
+!! config
+wgTabberNeueParseTabName=false
+wgTabberNeueAddTabPrefix=true
+wgTabberNeueEnableTabWrap=true
+!! wikitext
+<tabber>
+|-|First=
+First content.
+|-|Second=
+Second content.
+</tabber>
+!! html
+<div class="tabber tabber--init tabber--wrap"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-First-label" href="#tabber-First" aria-controls="tabber-First">First</a><a class="tabber__tab" role="tab" id="tabber-Second-label" href="#tabber-Second" aria-controls="tabber-Second">Second</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-First" aria-labelledby="tabber-First-label"><p class="mw-empty-elt">
+</p><p>First content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Second" aria-labelledby="tabber-Second-label"><p class="mw-empty-elt">
+</p><p>Second content.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: wrap=false attribute overrides config default on
+!! config
+wgTabberNeueParseTabName=false
+wgTabberNeueAddTabPrefix=true
+wgTabberNeueEnableTabWrap=true
+!! wikitext
+<tabber wrap=false>
+|-|First=
+First content.
+|-|Second=
+Second content.
+</tabber>
+!! html
+<div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-First-label" href="#tabber-First" aria-controls="tabber-First">First</a><a class="tabber__tab" role="tab" id="tabber-Second-label" href="#tabber-Second" aria-controls="tabber-Second">Second</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-First" aria-labelledby="tabber-First-label"><p class="mw-empty-elt">
+</p><p>First content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Second" aria-labelledby="tabber-Second-label"><p class="mw-empty-elt">
+</p><p>Second content.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+TabberNeue: parseTabName=true renders plain labels identically to a full parse
+!! config
+wgTabberNeueParseTabName=true
+wgTabberNeueAddTabPrefix=true
+!! wikitext
+<tabber>
+|-|Player's stats=
+Content.
+|-|A "quoted" label=
+Content.
+|-|Level (2)=
+Content.
+|-|Stats : Level=
+Content.
+|-|Non breaking=
+Content.
+</tabber>
+!! html
+<div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-Player.26.23039.3Bs_stats-label" href="#tabber-Player.26.23039.3Bs_stats" aria-controls="tabber-Player.26.23039.3Bs_stats">Player's stats</a><a class="tabber__tab" role="tab" id="tabber-A_.26quot.3Bquoted.26quot.3B_label-label" href="#tabber-A_.26quot.3Bquoted.26quot.3B_label" aria-controls="tabber-A_.26quot.3Bquoted.26quot.3B_label">A "quoted" label</a><a class="tabber__tab" role="tab" id="tabber-Level_.282.29-label" href="#tabber-Level_.282.29" aria-controls="tabber-Level_.282.29">Level (2)</a><a class="tabber__tab" role="tab" id="tabber-Stats.26amp.3B.23160.3B:_Level-label" href="#tabber-Stats.26amp.3B.23160.3B:_Level" aria-controls="tabber-Stats.26amp.3B.23160.3B:_Level">Stats&#160;: Level</a><a class="tabber__tab" role="tab" id="tabber-Non.26amp.3B.23160.3Bbreaking-label" href="#tabber-Non.26amp.3B.23160.3Bbreaking" aria-controls="tabber-Non.26amp.3B.23160.3Bbreaking">Non&#160;breaking</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Player.26.23039.3Bs_stats" aria-labelledby="tabber-Player.26.23039.3Bs_stats-label"><p class="mw-empty-elt">
+</p><p>Content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-A_.26quot.3Bquoted.26quot.3B_label" aria-labelledby="tabber-A_.26quot.3Bquoted.26quot.3B_label-label"><p class="mw-empty-elt">
+</p><p>Content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Level_.282.29" aria-labelledby="tabber-Level_.282.29-label"><p class="mw-empty-elt">
+</p><p>Content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Stats.26amp.3B.23160.3B:_Level" aria-labelledby="tabber-Stats.26amp.3B.23160.3B:_Level-label"><p class="mw-empty-elt">
+</p><p>Content.
+</p>
+<p class="mw-empty-elt"></p></div><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Non.26amp.3B.23160.3Bbreaking" aria-labelledby="tabber-Non.26amp.3B.23160.3Bbreaking-label"><p class="mw-empty-elt">
+</p><p>Content.
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! article
+Module:TabberNeueLuaAttrs
+!! text
+local p = {}
+function p.main()
+	return mw.ext.tabber.render(
+		{ { label = 'Alpha', content = 'A content' } },
+		{ id = 'lua-id', class = 'lua-class', ['data-x'] = 'lua-data', wrap = true }
+	)
+end
+function p.unsafe()
+	return mw.ext.tabber.render(
+		{ { label = 'Alpha', content = 'A content' } },
+		{ onmouseover = 'alert(1)', style = 'background:url(javascript:alert(1))', id = 'a"><script>alert(1)</script>' }
+	)
+end
+function p.noattrs()
+	return mw.ext.tabber.render( { { label = 'Alpha', content = 'A content' } } )
+end
+return p
+!! endarticle
+
+!! test
+Lua render passes wrapper attributes through the tag sanitizer
+!! wikitext
+{{#invoke:TabberNeueLuaAttrs|main}}
+!! html
+<div class="tabber tabber--init tabber--wrap lua-class" id="lua-id" data-x="lua-data"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-Alpha-label" href="#tabber-Alpha" aria-controls="tabber-Alpha">Alpha</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Alpha" aria-labelledby="tabber-Alpha-label"><p class="mw-empty-elt">
+</p><p>A content
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+Lua render drops event handlers and neutralises unsafe attribute values
+!! wikitext
+{{#invoke:TabberNeueLuaAttrs|unsafe}}
+!! html
+<div class="tabber tabber--init" style="/* insecure input */" id="a.22.3E.3Cscript.3Ealert.281.29.3C.2Fscript.3E"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-Alpha-label" href="#tabber-Alpha" aria-controls="tabber-Alpha">Alpha</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Alpha" aria-labelledby="tabber-Alpha-label"><p class="mw-empty-elt">
+</p><p>A content
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
+
+!! test
+Lua render without the attributes argument stays backward compatible
+!! wikitext
+{{#invoke:TabberNeueLuaAttrs|noattrs}}
+!! html
+<div class="tabber tabber--init"><header class="tabber__header"><button class="tabber__header__prev" tabindex="-1" type="button" aria-hidden="true"></button><nav class="tabber__tabs" role="tablist"><a class="tabber__tab" role="tab" id="tabber-Alpha-label" href="#tabber-Alpha" aria-controls="tabber-Alpha">Alpha</a></nav><button class="tabber__header__next" tabindex="-1" type="button" aria-hidden="true"></button></header><div class="tabber__section"><div class="tabber__panel" role="tabpanel" tabindex="0" id="tabber-Alpha" aria-labelledby="tabber-Alpha-label"><p class="mw-empty-elt">
+</p><p>A content
+</p>
+<p class="mw-empty-elt"></p></div></div></div>
+!! end
