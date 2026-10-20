@@ -1,0 +1,25 @@
+{
+	"@metadata": {
+		"authors": [
+			"ऐक्टिवेटेड्"
+		]
+	},
+	"gadgets-desc": "प्रयोगकर्ताके उनकर [[Special:Preferences#mw-prefsection-gadgets|प्राथमिकता]]मे से चुनिन्दा [[Special:Gadgets|सिएसएस आउ जावास्क्रिप्ट उपकरण]] चुने देथिन ।",
+	"prefs-gadgets": "उपकरण",
+	"prefs-description-gadgets": "अपन खाताला अतिरिक्त सुविधा सक्षम करथिन ।",
+	"special-gadgets": "उपकरण",
+	"gadgetusage": "उपकरण उपयोग साङ्ख्यिकी",
+	"gadgetusage-gadget": "उपकरण",
+	"gadgetusage-usercount": "प्रयोगकर्ताके सङ्ख्या",
+	"gadgetusage-noresults": "कौनो उपकरण नै भेटाएल ।",
+	"gadgetusage-activeusers": "सक्रिय प्रयोगकर्ता",
+	"gadgetusage-default": "पूर्वनिर्धारित",
+	"gadgets-title": "उपकरण",
+	"gadgets-editdescription": "विवरण सम्पादित करथिन",
+	"gadgets-viewdescription": "विवरण देखथिन",
+	"gadgets-uses": "उपयोग",
+	"gadgets-export": "निर्यात",
+	"gadgets-export-title": "उपकरण निर्यात",
+	"gadgets-not-found": "उपकरण \"$1\" नै भेटलै ।",
+	"gadgets-export-download": "डाउनलोड"
+}

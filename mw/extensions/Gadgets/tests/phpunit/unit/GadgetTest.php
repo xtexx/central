@@ -1,0 +1,338 @@
+<?php
+
+use MediaWiki\Extension\Gadgets\Gadget;
+use MediaWiki\ResourceLoader\Module;
+use MediaWiki\Skin\SkinFallback;
+use MediaWiki\User\User;
+
+/**
+ * @covers \MediaWiki\Extension\Gadgets\Gadget
+ * @covers \MediaWiki\Extension\Gadgets\GadgetResourceLoaderModule
+ * @covers \MediaWiki\Extension\Gadgets\MediaWikiGadgetsDefinitionRepo
+ * @group Gadgets
+ */
+class GadgetTest extends MediaWikiUnitTestCase {
+	use GadgetTestTrait;
+
+	public function testToArray() {
+		$g = $this->makeGadget( '*bar[rights=test]|bar.js|foo.css | foo.json' );
+		$gNewFromSerialized = new Gadget( $g->toArray() );
+		$this->assertArrayEquals( $g->toArray(), $gNewFromSerialized->toArray() );
+	}
+
+	public function testGadgetFromDefinitionContent() {
+		$gArray = Gadget::serializeDefinition( 'bar', [
+			'settings' => [
+				'rights' => [],
+				'default' => true,
+				'package' => true,
+				'hidden' => false,
+				'actions' => [],
+				'skins' => [],
+				'namespaces' => [],
+				'categories' => [],
+				'contentModels' => [],
+				'section' => 'misc',
+				'supportsUrlLoad' => false,
+			],
+			'module' => [
+				'pages' => [ 'foo.js', 'bar.css' ],
+				'datas' => [],
+				'dependencies' => [ 'moment' ],
+				'peers' => [],
+				'codexIcons' => [],
+				'messages' => [ 'blanknamespace' ],
+				'type' => 'general',
+			]
+		] );
+
+		$g = new Gadget( $gArray );
+
+		$this->assertTrue( $g->isOnByDefault() );
+		$this->assertTrue( $g->isPackaged() );
+		$this->assertFalse( $g->isHidden() );
+		$this->assertFalse( $g->supportsUrlLoad() );
+		$this->assertCount( 1, $g->getScripts() );
+		$this->assertCount( 1, $g->getStyles() );
+		$this->assertCount( 0, $g->getJSONs() );
+		$this->assertCount( 1, $g->getDependencies() );
+		$this->assertCount( 1, $g->getMessages() );
+		$this->assertCount( 0, $g->getCodexIcons() );
+
+		// Ensure parity and internal consistency
+		// between Gadget::serializeDefinition and Gadget::toArray
+		$arr = $g->toArray();
+		unset( $arr['definition'] );
+		$this->assertSame( $arr, $gArray );
+	}
+
+	public function testInvalidLines() {
+		$this->assertFalse( $this->makeGadget( '' ) );
+		$this->assertFalse( $this->makeGadget( '<foo|bar>' ) );
+	}
+
+	public function testSimpleCases() {
+		$g = $this->makeGadget( '* foo bar| foo.css|foo.js|foo.json|foo.bar' );
+		$this->assertEquals( 'foo_bar', $g->getName() );
+		$this->assertEquals( 'ext.gadget.foo_bar', Gadget::getModuleName( $g->getName() ) );
+		$this->assertEquals( [ 'MediaWiki:Gadget-foo.js' ], $g->getScripts() );
+		$this->assertEquals( [ 'MediaWiki:Gadget-foo.css' ], $g->getStyles() );
+		$this->assertEquals( [ 'MediaWiki:Gadget-foo.json' ], $g->getJSONs() );
+		$this->assertEquals( [ 'MediaWiki:Gadget-foo.js', 'MediaWiki:Gadget-foo.css', 'MediaWiki:Gadget-foo.json' ],
+			$g->getScriptsAndStyles() );
+		$this->assertTrue( $g->hasModule() );
+	}
+
+	public function testPackaged() {
+		$g = $this->makeGadget( '* foo bar[package]| foo.css|foo.js|foo.bar|foo.json|foo.vue' );
+		$this->assertEquals( 'foo_bar', $g->getName() );
+		$this->assertEquals( 'ext.gadget.foo_bar', Gadget::getModuleName( $g->getName() ) );
+		$this->assertEquals( [ 'MediaWiki:Gadget-foo.js' ], $g->getScripts() );
+		$this->assertEquals( [ 'MediaWiki:Gadget-foo.css' ], $g->getStyles() );
+		$this->assertEquals( [ 'MediaWiki:Gadget-foo.json' ], $g->getJSONs() );
+		$this->assertEquals( [ 'MediaWiki:Gadget-foo.vue' ], $g->getVues() );
+		$this->assertEquals( [ 'MediaWiki:Gadget-foo.js', 'MediaWiki:Gadget-foo.css', 'MediaWiki:Gadget-foo.json',
+			'MediaWiki:Gadget-foo.vue' ], $g->getScriptsAndStyles() );
+		$this->assertTrue( $g->hasModule() );
+	}
+
+	public function testSupportsUrlLoad() {
+		$directLoadAllowedByDefault = $this->makeGadget( '*foo|foo.js' );
+		$directLoadAllowed1 = $this->makeGadget( '*bar[supportsUrlLoad]|bar.js' );
+		$directLoadAllowed2 = $this->makeGadget( '*bar[supportsUrlLoad=true]|bar.js' );
+		$directLoadNotAllowed = $this->makeGadget( '*baz[supportsUrlLoad=false]|baz.js' );
+
+		$this->assertFalse( $directLoadAllowedByDefault->supportsUrlLoad() );
+		$this->assertTrue( $directLoadAllowed1->supportsUrlLoad() );
+		$this->assertTrue( $directLoadAllowed2->supportsUrlLoad() );
+		$this->assertFalse( $directLoadNotAllowed->supportsUrlLoad() );
+	}
+
+	public function testIsAllowed() {
+		$user = $this->getMockBuilder( User::class )
+			->onlyMethods( [ 'isAllowedAll' ] )
+			->getMock();
+		$user->method( 'isAllowedAll' )->willReturnCallback(
+			static fn ( string ...$rights ) => !array_diff( $rights, [ 'test' ] )
+		);
+
+		$gUnset = $this->makeGadget( '*foo|foo.js' );
+		$gAllowed = $this->makeGadget( '*bar[rights=test]|bar.js' );
+		$gNotAllowed = $this->makeGadget( '*baz[rights=nope]|baz.js' );
+		$this->assertTrue( $gUnset->isAllowed( $user ) );
+		$this->assertTrue( $gAllowed->isAllowed( $user ) );
+		$this->assertFalse( $gNotAllowed->isAllowed( $user ) );
+	}
+
+	public function testSkinsTag() {
+		$gUnset = $this->makeGadget( '*foo|foo.js' );
+		$gSkinSupported = $this->makeGadget( '*bar[skins=fallback]|bar.js' );
+		$gSkinNotSupported = $this->makeGadget( '*baz[skins=bar]|baz.js' );
+		$skin = new SkinFallback();
+		$this->assertTrue( $gUnset->isSkinSupported( $skin ) );
+		$this->assertTrue( $gSkinSupported->isSkinSupported( $skin ) );
+		$this->assertFalse( $gSkinNotSupported->isSkinSupported( $skin ) );
+	}
+
+	public function testActionsTag() {
+		$gUnset = $this->makeGadget( '*foo|foo.js' );
+		$gActionSupported = $this->makeGadget( '*bar[actions=edit]|bar.js' );
+		$gActionNotSupported = $this->makeGadget( '*baz[actions=history]|baz.js' );
+		$this->assertTrue( $gUnset->isActionSupported( 'edit' ) );
+		$this->assertTrue( $gActionSupported->isActionSupported( 'edit' ) );
+		$this->assertFalse( $gActionNotSupported->isActionSupported( 'edit' ) );
+
+		// special case
+		$this->assertTrue( $gActionSupported->isActionSupported( 'submit' ) );
+
+		$gMultiActions = $this->makeGadget( '*bar[actions=unknown,history]|bar.js' );
+		$this->assertTrue( $gMultiActions->isActionSupported( 'history' ) );
+		$this->assertFalse( $gMultiActions->isActionSupported( 'view' ) );
+	}
+
+	public function testNamespacesTag() {
+		$gUnsetNamespace = $this->makeGadget( '*foo|foo.js' );
+		$gNamespace0 = $this->makeGadget( '*bar[namespaces=0]|bar.js' );
+		$gNamespace1 = $this->makeGadget( '*bar[namespaces=1]|bar.js' );
+		$gMultiNamespace = $this->makeGadget( '*bar[namespaces=1,2,3,4]|bar.js' );
+
+		$this->assertTrue( $gUnsetNamespace->isNamespaceSupported( 5 ) );
+
+		$this->assertTrue( $gNamespace0->isNamespaceSupported( 0 ) );
+		$this->assertFalse( $gNamespace0->isNamespaceSupported( 2 ) );
+
+		$this->assertTrue( $gNamespace1->isNamespaceSupported( 1 ) );
+		$this->assertFalse( $gNamespace1->isNamespaceSupported( 2 ) );
+
+		$this->assertTrue( $gMultiNamespace->isNamespaceSupported( 1 ) );
+		$this->assertTrue( $gMultiNamespace->isNamespaceSupported( 2 ) );
+		$this->assertFalse( $gMultiNamespace->isNamespaceSupported( 5 ) );
+
+		$this->assertSame( [ '1', '2', '3', '4' ], $gMultiNamespace->getRequiredNamespaces() );
+	}
+
+	public function testCategoriesTag() {
+		$gUnsetCategory = $this->makeGadget( '*foo|foo.js' );
+		$gCategoryFoo = $this->makeGadget( '*foo[categories=Foo]|foo.js' );
+		$gMultiCategory = $this->makeGadget( '*foo[categories=Foo,Bar baz,quux]|foo.js' );
+
+		$this->assertTrue( $gUnsetCategory->isCategorySupported( [ 'Foo' => 1 ] ) );
+
+		$this->assertTrue( $gCategoryFoo->isCategorySupported( [ 'Foo' => 1 ] ) );
+		$this->assertFalse( $gCategoryFoo->isCategorySupported( [ 'Bar' => 1 ] ) );
+		$this->assertFalse( $gCategoryFoo->isCategorySupported( [ 'Bar baz' => 1 ] ) );
+
+		$this->assertTrue( $gMultiCategory->isCategorySupported( [ 'Foo' => 1 ] ) );
+		$this->assertFalse( $gMultiCategory->isCategorySupported( [ 'Bar' => 1 ] ) );
+		$this->assertTrue( $gMultiCategory->isCategorySupported( [ 'Spam' => 1, 'Bar baz' => 1, 'Eggs' => 1 ] ) );
+		$this->assertFalse( $gMultiCategory->isCategorySupported( [ 'Spam' => 1, 'Eggs' => 1 ] ) );
+		// Load condition must use title text form
+		$this->assertFalse( $gMultiCategory->isCategorySupported( [ 'foo' => 1 ] ) );
+		$this->assertFalse( $gMultiCategory->isCategorySupported( [ 'Bar_baz' => 1 ] ) );
+		// Definition must use title text form, too
+		$this->assertFalse( $gMultiCategory->isCategorySupported( [ 'Quux' => 1 ] ) );
+	}
+
+	public function testContentModelsTags() {
+		$gUnsetModel = $this->makeGadget( '*foo|foo.js' );
+		$gModelWikitext = $this->makeGadget( '*bar[contentModels=wikitext]|bar.js' );
+		$gModelCode = $this->makeGadget( '*bar[contentModels=javascript,css]|bar.js' );
+
+		$this->assertTrue( $gUnsetModel->isContentModelSupported( 'wikitext' ) );
+
+		$this->assertTrue( $gModelWikitext->isContentModelSupported( 'wikitext' ) );
+		$this->assertFalse( $gModelWikitext->isContentModelSupported( 'javascript' ) );
+
+		$this->assertTrue( $gModelCode->isContentModelSupported( 'javascript' ) );
+		$this->assertTrue( $gModelCode->isContentModelSupported( 'css' ) );
+		$this->assertFalse( $gModelCode->isContentModelSupported( 'wikitext' ) );
+	}
+
+	public function testDependencies() {
+		$g = $this->makeGadget( '* foo[dependencies=mediawiki.util]|bar.js' );
+		$this->assertEquals( [ 'MediaWiki:Gadget-bar.js' ], $g->getScripts() );
+		$this->assertEquals( [ 'mediawiki.util' ], $g->getDependencies() );
+	}
+
+	public function testRemovedOptions() {
+		$g = $this->makeGadget( '* foo[ResourceLoader|requiresES6|namespaces=0]|bar.js' );
+		$this->assertEquals( 'foo', $g->getName() );
+		$this->assertEquals( [ 'MediaWiki:Gadget-bar.js' ], $g->getScripts() );
+		$this->assertFalse( $g->isNamespaceSupported( 1 ) );
+	}
+
+	public static function provideGetType() {
+		return [
+			[
+				'Default (mixed)',
+				'* foo|bar.css|bar.js',
+				'general',
+				Module::LOAD_GENERAL,
+			],
+			[
+				'Default (styles only)',
+				'* foo|bar.css',
+				'styles',
+				Module::LOAD_STYLES,
+			],
+			[
+				'Default (scripts only)',
+				'* foo|bar.js',
+				'general',
+				Module::LOAD_GENERAL,
+			],
+			[
+				'Default (styles only with dependencies)',
+				'* foo[dependencies=mediawiki.util]|bar.css',
+				'general',
+				Module::LOAD_GENERAL,
+			],
+			[
+				'Styles type (mixed)',
+				'* foo[type=styles]|bar.css|bar.js',
+				'styles',
+				Module::LOAD_STYLES,
+			],
+			[
+				'Styles type (styles only)',
+				'* foo[type=styles]|bar.css',
+				'styles',
+				Module::LOAD_STYLES,
+			],
+			[
+				'Styles type (scripts only)',
+				'* foo[type=styles]|bar.js',
+				'styles',
+				Module::LOAD_STYLES,
+			],
+			[
+				'General type (mixed)',
+				'* foo[type=general]|bar.css|bar.js',
+				'general',
+				Module::LOAD_GENERAL,
+			],
+			[
+				'General type (styles only)',
+				'* foo[type=general]|bar.css',
+				'general',
+				Module::LOAD_GENERAL,
+			],
+			[
+				'General type (scripts only)',
+				'* foo[type=general]|bar.js',
+				'general',
+				Module::LOAD_GENERAL,
+			],
+		];
+	}
+
+	/**
+	 * @dataProvider provideGetType
+	 */
+	public function testType( $message, $definition, $gType, $mType ) {
+		$g = $this->makeGadget( $definition );
+		$this->assertEquals( $gType, $g->getType(), "Gadget: $message" );
+		$this->assertEquals( $mType, $this->makeGadgetModule( $g )->getType(), "Module: $message" );
+	}
+
+	public function testIsHidden() {
+		$g = $this->makeGadget( '* foo[hidden]|bar.js' );
+		$this->assertTrue( $g->isHidden() );
+
+		$g = $this->makeGadget( '* foo[hidden]|bar.js' );
+		$this->assertTrue( $g->isHidden() );
+
+		$g = $this->makeGadget( '* foo|bar.js' );
+		$this->assertFalse( $g->isHidden() );
+	}
+
+	public static function provideWarnings() {
+		return [
+			[
+				'* foo[package]|foo.css',
+				[ 'gadgets-validate-noentrypoint' ]
+			],
+			[
+				'* foo|foo.js,foo.json',
+				[ 'gadgets-validate-json' ]
+			],
+			[
+				'* foo[type=styles]|foo.js|foo.css',
+				[ 'gadgets-validate-scriptsnotallowed' ]
+			],
+			[
+				'* foo[type=styles|peers=bar]|foo.js|foo.json|foo.css',
+				[ 'gadgets-validate-scriptsnotallowed', 'gadgets-validate-stylepeers', 'gadgets-validate-json' ]
+			]
+		];
+	}
+
+	/**
+	 * @dataProvider provideWarnings
+	 */
+	public function testGadgetWarnings( $definition, $expectedMsgKeys ) {
+		$g = $this->makeGadget( $definition );
+		$msgKeys = $g->getValidationWarnings();
+		$this->assertArrayEquals( $expectedMsgKeys, $msgKeys );
+	}
+}
