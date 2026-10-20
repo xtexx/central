@@ -1,0 +1,13 @@
+{
+	"root": true,
+	"extends": [
+		"wikimedia/selenium"
+	],
+	"globals": {
+		"mw": "readonly"
+	},
+	"parserOptions": {
+		"ecmaVersion": "2022",
+		"sourceType": "module"
+	}
+}
