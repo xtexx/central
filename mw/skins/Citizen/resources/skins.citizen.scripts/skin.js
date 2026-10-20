@@ -1,0 +1,146 @@
+/**
+ * @param {Object} deps
+ * @param {Document} deps.document
+ * @param {Window} deps.window
+ * @param {Object} deps.mw
+ * @param {Object} deps.navigator
+ * @param {Object} deps.HTMLScriptElement
+ * @return {void}
+ */
+function deferredTasks( { document, window, mw, navigator, HTMLScriptElement } ) {
+	const { createSpeculationRules } = require( './speculationRules.js' );
+	const { createServiceWorker } = require( './serviceWorker.js' );
+	const { createPerformanceMode } = require( './performance.js' );
+
+	createSpeculationRules( { document, mw, HTMLScriptElement } ).init();
+	createServiceWorker( { mw, navigator } ).register();
+	// The WebGL probe is main-thread heavy on first visit; the server-rendered
+	// default (performance mode on) is the conservative state, so flipping it
+	// off for capable devices can safely wait for idle.
+	createPerformanceMode( { document, mw } ).init();
+
+	window.addEventListener( 'beforeunload', () => {
+		// Set up loading indicator
+		document.documentElement.classList.add( 'citizen-loading' );
+	}, false );
+
+	// Remove loading indicator once the page is unloaded/hidden
+	window.addEventListener( 'pagehide', () => {
+		document.documentElement.classList.remove( 'citizen-loading' );
+	} );
+
+	document.documentElement.classList.add( 'citizen-animations-ready' );
+}
+
+/**
+ * Initialize scripts related to wiki page content
+ *
+ * @param {HTMLElement} bodyContent
+ * @param {Object} deps
+ * @param {Document} deps.document
+ * @param {Window} deps.window
+ * @param {Object} deps.mw
+ * @param {typeof IntersectionObserver} deps.IntersectionObserver
+ * @param {typeof ResizeObserver} deps.ResizeObserver
+ * @return {void}
+ */
+function initBodyContent(
+	bodyContent, { document, window, mw, IntersectionObserver, ResizeObserver }
+) {
+	const
+		{ createSections } = require( './sections.js' ),
+		overflowElements = require( './overflowElements/index.js' ),
+		{ createContentEnhancements } = require( './contentEnhancements.js' ),
+		config = require( './config.json' );
+
+	// Collapsable sections
+	createSections( { document, bodyContent } ).init();
+	// Overflow element enhancements
+	overflowElements.init( {
+		document, window, mw, IntersectionObserver, ResizeObserver,
+		bodyContent, config
+	} );
+	// Content enhancements
+	createContentEnhancements( { document, bodyContent } ).init();
+}
+
+/**
+ * @param {Window} window
+ * @return {void}
+ */
+function main( window ) {
+	const
+		config = require( './config.json' ),
+		{ createNotifications } = require( './notifications.js' ),
+		search = require( './search.js' ),
+		dropdown = require( './dropdown.js' ),
+		{ createLastModified } = require( './lastModified.js' ),
+		{ createPageAside } = require( './pageAside.js' ),
+		{ createShare } = require( './share.js' ),
+		setupObservers = require( './setupObservers.js' ),
+		deferUntilFrame = require( './deferUntilFrame.js' ),
+		{ createPageTools } = require( './pageTools.js' ),
+		{ createPreferences } = require( './preferences.js' ),
+		{ createCommandPalette } = require( './commandPalette.js' );
+
+	// Taken before the palette can save a go note, so the landing check below
+	// can tell a note this page saved from one the page before it saved.
+	const pageStart = Date.now();
+	const commandPalette = createCommandPalette( { document, mw } );
+	commandPalette.init();
+	// Only the palette reads where a go landed, and only once it is opened,
+	// so the check need not run during startup. The timeout keeps it well
+	// inside the go note's lifetime on a page that is never idle.
+	mw.requestIdleCallback( () => {
+		const { recordGoLanding } = require( './goLanding.js' );
+		recordGoLanding( { mw, performance: window.performance, pageStart } );
+	}, { timeout: 3000 } );
+
+	search.init( { window, document, triggerOpen: commandPalette.triggerOpen } );
+	createNotifications( { document, mw } ).init();
+	// Observer setup reads geometry (getComputedStyle, full heading sweep).
+	// Wait two frames so the reads hit the clean layout left by the first
+	// paint instead of forcing one before it; the observers drive scroll-time
+	// UI, so nothing is lost during those frames.
+	deferUntilFrame( () => {
+		setupObservers.init( { document, window, mw, IntersectionObserver } );
+	}, 2 );
+	dropdown.init( { document, window } );
+	createPageTools( { document, window } ).init();
+	createLastModified( { document, Intl } ).init();
+	createPageAside( { document, mw } ).init();
+	createShare( {
+		document,
+		window,
+		mw,
+		navigator,
+		mode: config.wgCitizenShareMode
+	} ).init();
+
+	mw.hook( 'wikipage.content' ).add( ( content ) => {
+		// content is a jQuery object
+		// note that this refers to .mw-body-content, not #bodyContent
+		initBodyContent(
+			content[ 0 ], { document, window, mw, IntersectionObserver, ResizeObserver }
+		);
+	} );
+
+	// Preferences module
+	if ( config.wgCitizenEnablePreferences === true ) {
+		createPreferences( { document, mw } ).init();
+	}
+
+	// Defer non-essential tasks
+	mw.requestIdleCallback(
+		() => deferredTasks( { document, window, mw, navigator, HTMLScriptElement } ),
+		{ timeout: 3000 }
+	);
+}
+
+if ( document.readyState === 'interactive' || document.readyState === 'complete' ) {
+	main( window );
+} else {
+	document.addEventListener( 'DOMContentLoaded', () => {
+		main( window );
+	} );
+}

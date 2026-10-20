@@ -1,0 +1,59 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Skins\Citizen\Components;
+
+/**
+ * A panel in the page aside.
+ *
+ * A panel describes itself and supplies the template data its own partial
+ * renders from, so the container can order, filter and render it without
+ * knowing what it is.
+ *
+ * Placement picks the panel's zone: flow panels are the aside's own children,
+ * and sticky panels share one block after them that stays in view.
+ *
+ * How a panel collapses is deliberately not part of this contract while that
+ * design is unsettled; a panel that needs to say something about it must wait
+ * for the question to be answered rather than invent an answer here.
+ *
+ * @internal
+ */
+interface CitizenAsidePanel {
+
+	/** Scrolls away with the article. */
+	public const PLACEMENT_FLOW = 'flow';
+
+	/** Stays in view, in the block every sticky panel shares. */
+	public const PLACEMENT_STICKY = 'sticky';
+
+	/** Stable identity: ordering, styling hook, and per-panel state. */
+	public function getId(): string;
+
+	/** Heading when open; the control's accessible name when collapsed. */
+	public function getLabel(): string;
+
+	/** Codex icon name, or an empty string for none. */
+	public function getIcon(): string;
+
+	/** Position within its placement zone, ascending. */
+	public function getOrder(): int;
+
+	/** Whether the panel has anything to show on this page. */
+	public function hasContent(): bool;
+
+	public function getPlacement(): string;
+
+	/**
+	 * The ResourceLoader module that fills the body on the client, or null
+	 * when the server renders the body itself.
+	 */
+	public function getModule(): ?string;
+
+	/**
+	 * Template data for the panel's own partial. The container nests it under
+	 * `body`, so nothing a panel returns can meet the container's own keys.
+	 */
+	public function getTemplateData(): array;
+}

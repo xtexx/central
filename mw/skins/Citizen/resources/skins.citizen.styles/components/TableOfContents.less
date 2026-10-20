@@ -1,0 +1,442 @@
+.citizen-toc {
+	.mixin-citizen-font-styles( 'small' );
+
+	&-contents {
+		position: relative;
+		margin-block: var( --space-xxs );
+		// Longhand, as CSSJanus does not mirror a shorthand of var() calls.
+		// The extra rail width gives the toggle's target a full 24px.
+		margin-left: ~'calc( var( --space-xs ) + var( --border-width-thick ) )';
+		border-left: var( --border-width-thick ) solid var( --border-color-base );
+
+		// Reset padding on the direct child list since indentation is only for sublists
+		> .citizen-toc-list {
+			padding-left: 0;
+		}
+	}
+
+	&-list {
+		position: relative;
+		width: 100%;
+		padding-left: var( --space-xs );
+		margin: 0;
+		list-style: none;
+	}
+
+	// The row layout on top of the quiet Codex button comes from
+	// .citizen-page-aside__link, which these anchors also carry. What is left
+	// here is what the indicator rail needs: a row that fills the track and
+	// meets the rail with square corners. Scoped under .citizen-toc to beat
+	// Codex .cdx-button specificity.
+	.citizen-toc-link {
+		flex-grow: 1;
+		// The outline is a dense list, so its rows sit at the interactive
+		// minimum rather than the taller panel-link height. Same specificity as
+		// that rule, so this wins by skin.less importing this file after
+		// PageAside.less.
+		min-height: @min-size-interactive-pointer;
+		// Keeps a wrapped label clear of the next row, with its first line
+		// level with the toggle
+		padding-block: var( --space-xxs );
+		text-wrap: balance;
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+
+		&.citizen-toc-top {
+			height: 0;
+			min-height: 0;
+			padding: 0;
+			overflow: hidden;
+			opacity: 0;
+			transition-timing-function: var( --transition-timing-function-ease-out );
+			transition-duration: var( --transition-duration-medium );
+			transition-property: opacity, padding;
+		}
+	}
+
+	// Use .citizen-toc .citizen-toc-toggle to beat Codex .cdx-button specificity
+	.citizen-toc-toggle {
+		display: none;
+		padding: 0;
+	}
+
+	&-indicator {
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 1;
+		width: var( --border-width-thick );
+		height: var( --indicator-unit-height, 2rem );
+		margin-left: ~'calc( var( --border-width-thick ) * -1 )';
+		background-color: var( --color-progressive );
+		border-radius: var( --border-width-thick );
+		// Use transform for GPU-composited animation instead of top/height
+		transform: translateY( var( --indicator-top, 0 ) ) scaleY( var( --indicator-scale, 0 ) );
+		transform-origin: top center;
+		transition-timing-function: var( --transition-timing-function-ease-out );
+		transition-duration: var( --transition-duration-medium );
+		transition-property: transform;
+	}
+
+	&-text {
+		display: flex;
+		gap: var( --space-xs );
+	}
+
+	&-numb {
+		display: none;
+		color: var( --color-subtle );
+	}
+
+	&-summary {
+		color: var( --color-subtle );
+	}
+
+	&-list-item {
+		position: relative;
+		display: flex;
+		flex-wrap: wrap;
+	}
+
+	// Scoped under .citizen-toc for (0,3,0) specificity to beat Codex .cdx-button color
+	.citizen-toc-list-item--active > .citizen-toc-link {
+		color: var( --color-progressive );
+	}
+}
+
+// Collapse ToC sections when enabled via CitizenTableOfContentsCollapseAtCount, excluding no-js
+.client-js .citizen-toc--collapse-enabled {
+	// Small enough that its focus ring clears the panel's clipped edge
+	@size-toc-node: 1.125rem;
+	// Centres the node on the row's first line
+	@offset-toc-node: ~'calc( ( @{min-size-interactive-pointer} - @{size-toc-node} ) / 2 )';
+
+	.citizen-toc-level-1 .citizen-toc-list-item {
+		display: none;
+	}
+
+	.citizen-toc-level-1.citizen-toc-list-item--expanded .citizen-toc-list-item {
+		display: flex;
+	}
+
+	// A node on the rail, out of the row's flow so it takes no width from the label
+	.citizen-toc-toggle {
+		--size-icon: var( --font-size-x-small );
+		position: absolute;
+		top: @offset-toc-node;
+		left: ~'calc( var( --border-width-thick ) / -2 - @{size-toc-node} / 2 )';
+		// Above the rail gap and the indicator
+		z-index: 3;
+		display: grid;
+		place-content: center;
+		width: @size-toc-node;
+		min-width: 0;
+		height: @size-toc-node;
+		min-height: 0;
+		// Codex clips buttons, which would cut off the enlarged target
+		overflow: visible;
+		border-radius: 50%;
+
+		// Enlarges the target to the row's height and the label's text.
+		// Insets count from inside the border.
+		&::after {
+			position: absolute;
+			inset: ~'calc( var( --border-width-base ) * -1 - @{offset-toc-node} )' ~'calc( @{size-toc-node} / 2 - var( --border-width-thick ) / 2 - var( --border-width-base ) - @{spacing-75} )';
+			content: '';
+		}
+
+		.citizen-ui-icon {
+			&::before {
+				// Points at the label when closed, down when open
+				transform: rotate( 90deg );
+				transition: var( --transition-hover );
+				transition-property: transform;
+			}
+
+			// CSSJanus does not mirror rotations
+			&:dir( rtl )::before {
+				transform: rotate( -90deg );
+			}
+		}
+	}
+
+	.citizen-toc-level-1.citizen-toc-list-item--expanded .citizen-toc-toggle .citizen-ui-icon {
+		&::before {
+			transform: rotate( 180deg );
+		}
+
+		// Negative, so the turn is a quarter rather than three quarters
+		&:dir( rtl )::before {
+			transform: rotate( -180deg );
+		}
+	}
+
+	// Parts the rail by painting over it in the background colour. Drawn by
+	// the row rather than the toggle, so the toggle's hover tint lands on top.
+	.citizen-toc-level-1:has( > .citizen-toc-toggle )::before {
+		position: absolute;
+		top: @offset-toc-node;
+		left: ~'calc( var( --border-width-thick ) * -1 )';
+		z-index: 2;
+		width: var( --border-width-thick );
+		height: @size-toc-node;
+		content: '';
+		background-color: var( --color-surface-0 );
+
+		// The contents card's surface
+		@media ( max-width: @max-width-breakpoint-tablet ) {
+			.mixin-citizen-opaque-background( 1 );
+		}
+	}
+
+	// Matches the indicator running through it
+	.citizen-toc-list-item--active > .citizen-toc-toggle {
+		color: var( --color-progressive );
+	}
+}
+
+// "Back to top" is only worth a row once there is a top to go back to. Keyed on
+// having scrolled past the page header rather than on the sticky header being
+// up, because below tablet that bar does not exist and the row still should.
+.citizen-below-page-title {
+	.citizen-toc .citizen-toc-top.citizen-toc-link {
+		height: auto;
+		min-height: 2rem;
+		padding-block: var( --space-xxs );
+		overflow: visible;
+		opacity: 1;
+	}
+}
+
+@media ( max-width: ( @max-width-breakpoint-tablet ) ) {
+	.citizen-toc {
+		position: fixed;
+		// Inset by the offsets, not by a margin on the control inside. The
+		// margin made this box 16px larger than the control in both axes, which
+		// is what the pointer-events dance existed to undo, and it stacked on
+		// the block-end offset so the bottom gap was twice the side gap.
+		bottom: ~'calc( var( --header-size-block-end ) + max( env( safe-area-inset-bottom ), var( --space-xs ) ) )';
+		left: var( --space-xs );
+		z-index: @z-index-sticky; // Keep ToC above sticky header and page action, but below site header
+
+		// The pill is the control at this width; the panel heading would be a
+		// second label for it, standing outside the popover.
+		> .citizen-page-aside__heading {
+			display: none;
+		}
+
+		&-card {
+			// Sits on the control with the gap stated here rather than left to
+			// .citizen-menu__card's margin, which would also offset the card
+			// from the control's own inline edge.
+			bottom: ~'calc( 100% + var( --space-xs ) )';
+			width: max-content;
+			// This is not bulletproof since it will get covered by page header
+			// in extremely short height. but it should be good for now
+			max-height: ~'calc( var( --header-card-maxheight ) - 8rem )';
+			margin: 0;
+			// Floating button at the bottom; card expands upward.
+			.mixin-citizen-card-expand( up );
+
+			// Padding belongs to the scrolling box, not the card. The content
+			// takes its max-height from the card, so padding out here makes the
+			// two disagree by that much: the list scrolls to what the container
+			// calls the end while its last row is still below the border, and
+			// rows disappear into the padding rather than at the border.
+			.citizen-menu__card-content {
+				padding: var( --space-xs );
+			}
+		}
+
+		.citizen-dropdown {
+			&-summary {
+				box-sizing: border-box;
+				display: flex;
+				gap: var( --space-xs );
+				align-items: center;
+				justify-content: center;
+				width: auto;
+				// Border-box with a 1px border, so a bare --toolbar-size would
+				// leave a 38px content box and stand 2px shorter than the page
+				// actions beside it. Same expression they use, so the two agree
+				// by construction rather than by coincidence.
+				min-width: ~'calc( var( --toolbar-size ) + var( --border-width-base ) * 2 )';
+				height: ~'calc( var( --toolbar-size ) + var( --border-width-base ) * 2 )';
+				background-color: var( --color-surface-1 );
+				border: 1px solid var( --border-color-base );
+				border-radius: var( --border-radius-medium );
+				box-shadow: var( --box-shadow-large );
+
+				// The hover state colors are not great but it will do for now
+				&:hover {
+					background: ~'linear-gradient( var( --background-color-button-quiet--hover ), var( --background-color-button-quiet--hover ) ) var( --color-surface-1 )';
+				}
+
+				&:active {
+					background: ~'linear-gradient( var( --background-color-button-quiet--active ), var( --background-color-button-quiet--active ) ) var( --color-surface-1 )';
+				}
+			}
+
+			&-details[ open ] {
+				> .citizen-dropdown-summary {
+					background: ~'linear-gradient( var( --background-color-button-quiet--active ), var( --background-color-button-quiet--active ) ) var( --color-surface-1 )';
+				}
+			}
+		}
+	}
+}
+
+@media ( min-width: @min-width-breakpoint-desktop ) {
+	.citizen-toc {
+		// The heading is the panel's first child by contract, but the "Back to
+		// top" row reads better above it. The card wrappers only exist for the
+		// below-desktop popover, so at this width they contribute no box and
+		// the row, heading and list become siblings that `order` can arrange.
+		display: flex;
+		flex-direction: column;
+		padding: var( --space-xs ) 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+
+		// The dropdown card's closed-state styles (opacity, transform, clip-path,
+		// border and the like) have nothing to paint while these have no box,
+		// so if `contents` ever goes they need resetting here again. HTML cached
+		// before this generation has the old nav#mw-panel-toc here; new markup
+		// makes it a plain div, so the difference ends with the compat window.
+		.citizen-menu__card,
+		.citizen-menu__card-content {
+			display: contents;
+		}
+
+		.citizen-toc-top {
+			// A long outline overflows this scrolling column. The heading and list
+			// cannot shrink below their content, but the row's explicit min-height
+			// replaces that floor, so without this the row alone absorbs the overflow.
+			flex-shrink: 0;
+			order: -1;
+		}
+
+		// Hide button in desktop viewport
+		.citizen-dropdown-summary {
+			display: none;
+		}
+	}
+}
+
+// The contents control's current section. Below tablet only: above it the
+// outline is a standing list in the margin and the control is not a pill.
+@media ( max-width: ( @max-width-breakpoint-tablet ) ) {
+	// Absent until there is a section to name, which is also the state of every
+	// page with no headings — the control is then the glyph it has always been.
+	.citizen-toc-current {
+		display: none;
+	}
+
+	// The control carries the section you are in as its value, so it is a pill
+	// that grows rather than a fixed square. Sized from content rather than
+	// left to shrink-to-fit: the summary is a flex item inside a fixed,
+	// shrink-to-fit block, and an auto width resolves through that chain to the
+	// min-content of a track that is allowed to reach zero — which is zero.
+	// Bounded so it can never reach the page actions at the other edge; both
+	// are fixed to the same block position and neither knows the other is there.
+	.citizen-toc--tracking .citizen-dropdown-summary {
+		inline-size: max-content;
+		// Against the viewport, not the parent: this control's own ancestors are
+		// content-sized, so a percentage here resolves against a box that is
+		// itself waiting on this one.
+		max-inline-size: ~'calc( 100vw - var( --toolbar-size ) * 4 - var( --space-xs ) * 4 )';
+		padding-inline: var( --space-sm );
+		overflow: hidden;
+	}
+
+	.citizen-toc--tracking {
+		// The chevron says the same thing as the list glyph and says it about
+		// the value beside it, so the glyph is redundant once there is one.
+		.citizen-dropdown-summary > .citizen-ui-icon {
+			display: none;
+		}
+
+		.citizen-toc-current {
+			display: flex;
+			gap: var( --space-xs );
+			align-items: center;
+			min-width: 0;
+
+			> .citizen-ui-icon {
+				flex: none;
+			}
+		}
+	}
+
+	.citizen-toc-current__track {
+		position: relative;
+		flex: 0 1 auto;
+		min-width: 0;
+		height: 1lh;
+		overflow: hidden;
+		font-size: var( --font-size-small );
+		font-weight: var( --font-weight-semi-bold );
+		line-height: 1lh;
+		color: var( --color-emphasized );
+		text-align: start;
+		white-space: nowrap;
+	}
+
+	// The arriving label stays in flow: it is what gives the track a width, and
+	// so the pill a width. Only the one on its way out is taken out of flow,
+	// which also stops the two stacking during the change.
+	.citizen-toc-current__line {
+		display: block;
+		overflow: hidden;
+		text-overflow: ellipsis;
+
+		&.is-leaving {
+			position: absolute;
+			inset: 0;
+		}
+	}
+
+	@media ( prefers-reduced-motion: no-preference ) {
+		.citizen-toc-current__line {
+			&.is-entering-below {
+				animation: citizen-toc-line-in-below var( --transition-duration-medium ) var( --transition-timing-function-ease-out );
+			}
+
+			&.is-entering-above {
+				animation: citizen-toc-line-in-above var( --transition-duration-medium ) var( --transition-timing-function-ease-out );
+			}
+
+			&.is-leaving-above {
+				animation: citizen-toc-line-out-above var( --transition-duration-medium ) var( --transition-timing-function-ease-out ) forwards;
+			}
+
+			&.is-leaving-below {
+				animation: citizen-toc-line-out-below var( --transition-duration-medium ) var( --transition-timing-function-ease-out ) forwards;
+			}
+		}
+	}
+}
+
+@keyframes citizen-toc-line-in-below {
+	from {
+		transform: translateY( 100% );
+	}
+}
+
+@keyframes citizen-toc-line-in-above {
+	from {
+		transform: translateY( -100% );
+	}
+}
+
+@keyframes citizen-toc-line-out-above {
+	to {
+		transform: translateY( -100% );
+	}
+}
+
+@keyframes citizen-toc-line-out-below {
+	to {
+		transform: translateY( 100% );
+	}
+}

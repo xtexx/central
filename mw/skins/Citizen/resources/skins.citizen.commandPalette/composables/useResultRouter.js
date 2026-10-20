@@ -1,0 +1,231 @@
+const { nextTick } = require( 'vue' );
+const { HELP_MODE_ID } = require( '../modes/help.js' );
+
+// Actions that act on whichever mode is active. Help mode only lists commands,
+// so a command picked from it leaves help first and acts as it would at root,
+// rather than filtering, tokenizing or drilling into the help list.
+const CURRENT_MODE_ACTIONS = [ 'updateQuery', 'addToken', 'pushModeContext' ];
+
+/**
+ * Open a URL in a new browsing context, severing the opener.
+ *
+ * The opener is cleared by hand rather than through the `noopener` feature,
+ * which makes `window.open` return null even on success and so would cost the
+ * caller its only signal that the context never opened.
+ *
+ * @param {string} url
+ * @return {boolean} False when the context could not be opened, so the caller
+ *   can fall back rather than swallow the activation.
+ */
+function openInNewTab( url ) {
+	const opened = window.open( url, '_blank' );
+	if ( !opened ) {
+		return false;
+	}
+	opened.opener = null;
+	return true;
+}
+
+/**
+ * Composable that owns the palette's result-action dispatch.
+ *
+ * Two functions are returned: `selectResult` for row activations, and
+ * `handleAction` for action-button events emitted by row components.
+ * Both are switch-based dispatchers; the action sets are intentionally
+ * closed (the palette's contract enumerates them).
+ *
+ * The composable does not own state — it reads from and mutates the
+ * passed-in orchestrator and tokenInput. The grouped-interface options
+ * bag keeps the caller's wiring explicit:
+ *  - `orchestrator` and `tokenInput` are passed through opaquely; the
+ *    composable consumes their public surfaces as documented in the
+ *    design (handleSelection, enterMode, addToken, setFreeText, etc.).
+ *  - `navigation` exposes cross-mode lookups (`findModeByQuery`,
+ *    `getHandler`).
+ *  - `control` carries the DOM and lifecycle handles
+ *    (`focusInput`, `close`, `paletteRoot`).
+ *  - `preview` is the injected preview-handler service; the duck-typed
+ *    contract is `{ isAvailable, triggerForAnchor }`. Other consumers
+ *    of the service (palette-level processContext / onReady wiring)
+ *    live in App.vue.
+ *
+ * @param {Object} options
+ * @param {Object} options.orchestrator
+ * @param {Object} options.tokenInput
+ * @param {Object} options.navigation
+ * @param {Function} options.navigation.findModeByQuery
+ * @param {Function} options.navigation.getHandler
+ * @param {Object} options.control
+ * @param {() => void} options.control.focusInput
+ * @param {() => void} options.control.close
+ * @param {import('vue').Ref<HTMLElement|null>} options.control.paletteRoot
+ * @param {Object} options.preview
+ * @param {Function} options.preview.isAvailable
+ * @param {Function} options.preview.triggerForAnchor
+ * @return {{ selectResult: Function, handleAction: Function }}
+ */
+function useResultRouter( {
+	orchestrator,
+	tokenInput,
+	navigation,
+	control,
+	preview
+} ) {
+	const { findModeByQuery, getHandler } = navigation;
+	const { focusInput, close, paletteRoot } = control;
+
+	/**
+	 * Dispatch a row activation. The orchestrator decides what action
+	 * the row produced (via `handleSelection`); this function carries
+	 * out the side effects.
+	 *
+	 * @param {Object} result The selected item.
+	 */
+	async function selectResult( result ) {
+		const action = await orchestrator.handleSelection( result );
+
+		if (
+			CURRENT_MODE_ACTIONS.includes( action.action ) &&
+			orchestrator.activeMode.value?.id === HELP_MODE_ID
+		) {
+			orchestrator.exitMode();
+		}
+
+		switch ( action.action ) {
+			case 'navigate':
+				if ( action.payload ) {
+					// Previewable result with a preview handler available:
+					// keep the palette open so the user can dismiss the
+					// preview and pick another row. Plain mouse clicks are
+					// intercepted by the handler; keyboard activation
+					// synthesizes a click on the highlighted row's anchor
+					// so the handler can take over. A modified activation --
+					// a non-primary or modifier click, or Ctrl/Cmd+Enter --
+					// falls through to the navigate+close path so users keep
+					// their browser-level escape hatches.
+					if (
+						result.previewable &&
+						preview.isAvailable() &&
+						!result.modifierClick
+					) {
+						if ( !result.isMouseClick && paletteRoot.value ) {
+							const anchor = paletteRoot.value.querySelector(
+								'.citizen-command-palette-list-item--highlighted a'
+							);
+							if ( anchor ) {
+								preview.triggerForAnchor( anchor );
+							}
+						}
+						break;
+					}
+
+					// <a> tags are handled by the browser on mouse click,
+					// so we don't need to navigate.
+					if ( !result.isMouseClick ) {
+						// A blocked popup falls back to this tab rather than
+						// leaving the activation to do nothing at all.
+						if ( !result.newTab || !openInNewTab( action.payload ) ) {
+							window.location.href = action.payload;
+						}
+					}
+					close();
+				}
+				break;
+			case 'exitWithQuery': {
+				// A payload that is exactly a mode's trigger names that mode, so
+				// switch to it as if it were picked from the `/` list. Anything
+				// else, even text that only starts with a trigger — a namespace
+				// called `!Archive`, say — goes into the input whole rather than
+				// switching modes from here.
+				const match = findModeByQuery( action.payload );
+				if ( match && match.trigger.toLowerCase() === action.payload.toLowerCase() ) {
+					tokenInput.clear();
+					orchestrator.enterMode( match.mode );
+				} else {
+					if ( orchestrator.activeMode.value ) {
+						orchestrator.exitMode();
+					}
+					tokenInput.setFreeText( action.payload );
+				}
+				nextTick( focusInput );
+				break;
+			}
+			case 'updateQuery':
+				tokenInput.setFreeText( action.payload );
+				nextTick( focusInput );
+				break;
+			case 'addToken':
+				tokenInput.addToken( action.payload );
+				tokenInput.setFreeText( '' );
+				// Force re-query: adding a token while clearing freeText
+				// produces the same fullQuery string, so the watcher won't
+				// fire. Push the value through explicitly.
+				// TODO: A generation counter on useTokenizedInput could
+				// replace this workaround by making the watcher always
+				// see a new value.
+				orchestrator.updateQuery( tokenInput.fullQuery.value );
+				nextTick( focusInput );
+				break;
+			case 'pushModeContext':
+				orchestrator.pushModeContext( action.payload );
+				tokenInput.clear();
+				nextTick( focusInput );
+				break;
+			case 'toggleHelp': {
+				tokenInput.clear();
+				// Help at root is a mode, so toggling there enters it and
+				// toggling inside it leaves it. Inside any other mode, help is
+				// an overlay that describes that mode without leaving it.
+				const activeMode = orchestrator.activeMode.value;
+				if ( !activeMode ) {
+					const helpMode = getHandler( HELP_MODE_ID );
+					if ( helpMode ) {
+						orchestrator.enterMode( helpMode );
+					}
+				} else if ( activeMode.id === HELP_MODE_ID ) {
+					orchestrator.exitMode();
+				} else {
+					orchestrator.toggleHelp();
+				}
+				nextTick( focusInput );
+				break;
+			}
+			case 'none':
+			default:
+				break;
+		}
+	}
+
+	/**
+	 * Dispatch a row-button action (dismiss, navigate, event).
+	 *
+	 * @param {Object} action
+	 */
+	function handleAction( action ) {
+		switch ( action.type ) {
+			case 'dismiss':
+				if ( action.itemId !== undefined ) {
+					orchestrator.dismissRecentItem( action.itemId );
+				} else {
+					mw.log.warn( '[CommandPalette] Dismiss action missing itemId:', action );
+				}
+				break;
+			case 'navigate':
+				if ( action.url ) {
+					window.location.href = action.url;
+					close();
+				} else {
+					mw.log.warn( '[CommandPalette] Navigate action missing url:', action );
+				}
+				break;
+			case 'event':
+				break;
+			default:
+				mw.log.warn( '[CommandPalette] Unknown or missing action type received:', action );
+		}
+	}
+
+	return { selectResult, handleAction };
+}
+
+module.exports = useResultRouter;

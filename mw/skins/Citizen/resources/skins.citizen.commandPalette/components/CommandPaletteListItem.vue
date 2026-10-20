@@ -1,0 +1,238 @@
+<!--
+Partially based on the MenuItem component from Codex.
+@see https://github.com/wikimedia/design-codex/blob/main/packages/codex/src/components/menu-item/MenuItem.vue
+-->
+<!-- eslint-disable max-len -->
+<template>
+	<li
+		:id="id"
+		ref="rootRef"
+		role="option"
+		:aria-selected="highlighted"
+		class="citizen-command-palette-list-item"
+		:class="rootClasses"
+		:data-type="type"
+		@mousedown.prevent="onMouseDown"
+	>
+		<command-palette-list-item-content
+			:label="label"
+			:description="description"
+			:thumbnail="thumbnail"
+			:thumbnail-icon="thumbnailIcon"
+			:metadata="metadata"
+			:search-query="searchQuery"
+			:url="url"
+			:highlight-query="highlightQuery"
+			:compact="compact"
+			:previewable="previewable"
+			@click="onClick"
+			@auxclick="onAuxClick"
+		></command-palette-list-item-content>
+		<command-palette-list-item-actions
+			ref="actionsRef"
+			:item-id="id"
+			:actions="actions"
+			:highlighted="highlighted"
+			@action="onAction"
+		></command-palette-list-item-actions>
+	</li>
+</template>
+
+<script>
+const { defineComponent, computed, ref } = require( 'vue' );
+// Import the new sub-components
+const CommandPaletteListItemContent = require( './CommandPaletteListItemContent.vue' );
+const CommandPaletteListItemActions = require( './CommandPaletteListItemActions.vue' );
+
+// @vue/component
+module.exports = exports = defineComponent( {
+	name: 'CommandPaletteListItem',
+	components: {
+		// Register the new sub-components
+		CommandPaletteListItemContent,
+		CommandPaletteListItemActions
+	},
+	props: {
+		id: {
+			type: String,
+			required: true
+		},
+		active: {
+			type: Boolean,
+			default: false
+		},
+		highlighted: {
+			type: Boolean,
+			default: false
+		},
+		type: {
+			type: String,
+			required: true
+		},
+		label: {
+			type: String,
+			required: true
+		},
+		url: {
+			type: String,
+			default: ''
+		},
+		value: {
+			type: String,
+			default: ''
+		},
+		thumbnail: {
+			type: [ Object, null ],
+			default: null
+		},
+		thumbnailIcon: {
+			type: [ String, Object ],
+			default: ''
+		},
+		description: {
+			type: [ String, null ],
+			default: ''
+		},
+		searchQuery: {
+			type: String,
+			default: ''
+		},
+		metadata: {
+			type: Array,
+			default: () => []
+		},
+		actions: {
+			type: Array,
+			default: () => []
+		},
+		highlightQuery: {
+			type: Boolean,
+			default: false
+		},
+		compact: {
+			type: Boolean,
+			default: false
+		},
+		source: {
+			type: String,
+			default: undefined
+		},
+		previewable: {
+			type: Boolean,
+			default: false
+		}
+	},
+	emits: [
+		'select',
+		'action',
+		'change'
+	],
+	setup( props, { emit, expose } ) {
+		const rootRef = ref( null );
+		const actionsRef = ref( null );
+
+		// --- Item Interaction Logic ---
+		const onMouseDown = ( e ) => {
+			// Prevents focus shifting from the input field
+			// and triggering blur on the command palette.
+			// Also used to set the item to 'active' visually.
+			if ( e.button === 0 ) {
+				emit( 'change', 'active', true );
+			}
+		};
+
+		const onClick = ( event ) => {
+			// Modifier or non-primary clicks (Ctrl, Cmd, Alt, Shift,
+			// middle-click) signal "I want a different action than the
+			// row's default" — open in new tab, navigate fully past a
+			// preview gadget, etc. App-level select handler reads this
+			// to skip preview-keep-open behavior in that case.
+			const modifierClick = !!( event && (
+				event.button > 0 ||
+				event.ctrlKey ||
+				event.metaKey ||
+				event.altKey ||
+				event.shiftKey
+			) );
+			emit( 'select',
+				/** @type {import('../types.js').CommandPaletteItem} */ ( {
+					id: props.id,
+					label: props.label,
+					url: props.url,
+					type: props.type,
+					value: props.value,
+					thumbnail: props.thumbnail,
+					thumbnailIcon: props.thumbnailIcon,
+					description: props.description,
+					metadata: props.metadata,
+					actions: props.actions,
+					source: props.source,
+					previewable: props.previewable,
+					isMouseClick: true,
+					modifierClick
+				} )
+			);
+		};
+
+		// A middle click arrives as `auxclick`, never as `click`, and the
+		// browser opens the link in a new tab itself. It is the same
+		// activation as a Ctrl+click, so the row is selected the same way.
+		const onAuxClick = ( event ) => {
+			if ( event.button === 1 && props.url ) {
+				onClick( event );
+			}
+		};
+
+		// --- Action Handling ---
+		const onAction = ( actionPayload ) => {
+			// Simply forward the event from the actions sub-component
+			emit( 'action', actionPayload );
+		};
+
+		// --- Computed Properties ---
+		const rootClasses = computed( () => ( {
+			'citizen-command-palette-list-item--active': props.active && props.highlighted,
+			'citizen-command-palette-list-item--highlighted': props.highlighted
+		} ) );
+
+		// --- Expose Methods ---
+		expose( {
+			focusFirstButton: () => actionsRef.value?.focusFirstButton(),
+			focusButtonAtIndex: ( index ) => actionsRef.value?.focusButtonAtIndex?.( index ),
+			clickButtonAtIndex: ( index ) => actionsRef.value?.clickButtonAtIndex?.( index )
+		} );
+
+		return {
+			// Refs
+			rootRef,
+			actionsRef,
+			// Event Handlers
+			onMouseDown,
+			onClick,
+			onAuxClick,
+			onAction,
+			// Computed
+			rootClasses
+		};
+	}
+} );
+</script>
+
+<style lang="less">
+.citizen-command-palette-list-item {
+	position: relative;
+	outline: 0;
+	list-style: none;
+
+	&--highlighted {
+		cursor: pointer;
+		background-color: var( --background-color-interactive-subtle--hover );
+		--actions-fade-color: var( --background-color-interactive-subtle--hover );
+	}
+
+	&--active {
+		background-color: var( --background-color-interactive-subtle--active );
+		--actions-fade-color: var( --background-color-interactive-subtle--active );
+	}
+}
+</style>

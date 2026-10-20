@@ -1,0 +1,82 @@
+// The scroll offset and both widths are each rounded from fractional values,
+// so at the very end their sum can fall up to 1px short of scrollWidth
+const SCROLL_END_TOLERANCE = 1;
+
+/**
+ * Manages overflow state detection and class toggling for an overflow element.
+ * Tracks element dimensions and scroll position, toggling left/right overflow
+ * indicator classes.
+ *
+ * @param {Object} params
+ * @param {Window} params.window
+ * @param {HTMLElement} params.element
+ * @param {HTMLElement} params.content
+ * @param {HTMLElement} params.wrapper
+ * @return {{updateState: Function, hasOverflowed: Function}}
+ */
+function createOverflowState( { window, element, content, wrapper } ) {
+	let elementWidth = 0;
+	let contentScrollLeft = 0;
+	let contentWidth = 0;
+
+	function hasStateChanged() {
+		return (
+			element.scrollWidth !== elementWidth ||
+			Math.round( content.scrollLeft ) !== contentScrollLeft ||
+			content.offsetWidth !== contentWidth
+		);
+	}
+
+	function hasOverflowed() {
+		return element.scrollWidth > content.offsetWidth;
+	}
+
+	function toggleClasses( classes ) {
+		classes.forEach( ( [ condition, className ] ) => {
+			const hasClass = wrapper.classList.contains( className );
+			if ( condition && !hasClass ) {
+				wrapper.classList.add( className );
+			} else if ( !condition && hasClass ) {
+				wrapper.classList.remove( className );
+			}
+		} );
+	}
+
+	function updateState() {
+		if ( !hasStateChanged() ) {
+			return;
+		}
+
+		elementWidth = element.scrollWidth;
+		contentScrollLeft = Math.round( content.scrollLeft );
+		contentWidth = content.offsetWidth;
+
+		let isLeftOverflowing, isRightOverflowing;
+
+		if ( !hasOverflowed() ) {
+			isLeftOverflowing = false;
+			isRightOverflowing = false;
+		} else {
+			// scrollLeft is 0 at the start edge in both directions, but RTL
+			// content starts on the right and scrolls into negative values
+			const scrolled = Math.abs( contentScrollLeft );
+			const isStartOverflowing = scrolled > 0;
+			const isEndOverflowing =
+				scrolled + contentWidth < elementWidth - SCROLL_END_TOLERANCE;
+			const isRtl = window.getComputedStyle( content ).direction === 'rtl';
+			isLeftOverflowing = isRtl ? isEndOverflowing : isStartOverflowing;
+			isRightOverflowing = isRtl ? isStartOverflowing : isEndOverflowing;
+		}
+
+		window.requestAnimationFrame( () => {
+			toggleClasses( [
+				[ isLeftOverflowing, 'citizen-overflow--left' ],
+				[ isRightOverflowing, 'citizen-overflow--right' ]
+			] );
+		} );
+	}
+
+	return { updateState, hasOverflowed };
+}
+
+module.exports = { createOverflowState };

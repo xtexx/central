@@ -1,0 +1,29 @@
+<div class="citizen-sticky-header-container">
+	<div id="citizen-sticky-header" class="citizen-sticky-header">
+		<div class="citizen-sticky-header-background"></div>
+		<div class="citizen-sticky-header-inner">
+			<div class="citizen-sticky-header-start">
+				<a
+					href="#top"
+					title="{{msg-citizen-jumptotop}}"
+					class="citizen-sticky-header-backtotop cdx-button cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--size-large cdx-button--weight-quiet"
+					tabindex="-1"
+					aria-hidden="true"
+				>
+					<div class="citizen-ui-icon mw-ui-icon-wikimedia-arrowUp"></div>
+					<div class="citizen-sticky-header-page-info">
+						<div class="citizen-sticky-header-page-title">{{{html-title}}}</div>
+						<div class="citizen-sticky-header-page-tagline">{{{html-sticky-header-tagline}}}</div>
+					</div>
+				</a>
+			</div>
+			<div class="citizen-sticky-header-end" aria-hidden="true">
+				{{#array-icon-buttons}}
+					{{>Button}}
+				{{/array-icon-buttons}}
+				<div id="citizen-sticky-header-languages" class="citizen-sticky-header-dropdown-container"></div>
+				<div id="citizen-sticky-header-more" class="citizen-sticky-header-dropdown-container"></div>
+			</div>
+		</div>
+	</div>
+</div>

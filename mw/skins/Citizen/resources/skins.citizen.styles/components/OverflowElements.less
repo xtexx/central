@@ -1,0 +1,304 @@
+.hideOverflowButton() {
+	visibility: hidden;
+	pointer-events: none;
+}
+
+.showOverflowButton() {
+	z-index: @z-index-stacking-3;
+	visibility: visible;
+	pointer-events: auto;
+}
+
+// Elements enhanced by overflowElements.js
+.citizen-overflow {
+	// The wrapper this element is about to be moved into is a scroll
+	// container, so it contains the margins of everything inside it. Match
+	// that here or the block grows by those margins the moment the script
+	// runs. `.wikitable` is already a scroll container for the same reason.
+	overflow: auto hidden;
+
+	&-wrapper {
+		position: relative;
+		display: flex; /* So that it respects float elements (#878) */
+
+		&:has( .citizen-overflow-content > .wikitable ) {
+			// Shrink to the table rather than filling the column, matching
+			// the `max-width` a bare `.wikitable` carries. Anything else
+			// opted in by hand is a plain block and stays full width.
+			max-width: max-content;
+			margin-block: var( --space-content-unit );
+			margin-inline: var( --border-width-base ); // Fix clipping border
+			border-radius: var( --border-radius-medium );
+			box-shadow: var( --box-shadow-border );
+		}
+
+		&:has( .citizen-overflow-content > .wikitable--fluid ) {
+			max-width: none;
+		}
+
+		// The skin gives these elements a block margin of their own, and it
+		// has to be zeroed once they sit inside the scroll container, so the
+		// wrapper carries it instead. Same value, same place in the flow.
+		// `.wikitable` is not in the list: the card rule above already gives
+		// the wrapper this margin.
+		&:has( .citizen-overflow-content > :is( ul, ol, dl, blockquote ) ) {
+			margin-block: var( --space-content-unit );
+
+			// hacks.less zeroes the margins of a `floatleft`/`floatright`
+			// element, and that class migrates to the wrapper — so the zero
+			// has to migrate with it. Floats detected from an inline style
+			// keep the margin: nothing zeroed it before the wrap either.
+			&.floatleft,
+			&.floatright {
+				margin-block: 0;
+			}
+		}
+
+		// typography.less pulls a list, table, or quote that directly follows
+		// a paragraph closer to it. Wrapping happens client-side, so from
+		// first paint onwards it is this element sitting in that position
+		// instead: without the same tightening the content, and everything
+		// below it, drops by that much the moment the script runs. Keep the
+		// element list in step with typography.less.
+		p:not( .mw-empty-elt ) + &:has( .citizen-overflow-content > :is( ul, ol, table, dl, blockquote ) ) {
+			margin-top: calc( var( --space-content-half ) * -1 );
+		}
+
+		// Both spellings of a floated wrapper: `--float*` when the float was
+		// detected on the element, the bare class when it migrated over
+		&--floatleft,
+		&--floatright,
+		&.floatleft,
+		&.floatright {
+			margin: 0;
+
+			// The float and its margins are re-expressed on the wrapper —
+			// zero them on the inner element so author float-spacing does
+			// not double up inside the wrapper
+			.citizen-overflow-content > * {
+				margin: 0 !important;
+			}
+		}
+
+		// Keep this block last: two separate same-specificity ties resolve
+		// by source order and both need this media block to come after the
+		// rules above.
+		//   1. The mixin's margin-left/right ( on `&--float*` ) must beat the
+		//      `margin: 0` base above ( both 0,1,0 ) — the non-table float case.
+		//   2. The nested `:has()` override below must beat the card rule's
+		//      margin-inline ( both 0,3,0 ) — the floated-wikitable case.
+		@media ( min-width: @min-width-breakpoint-tablet ) {
+			&--floatright {
+				.mixin-citizen-float-declarations( right );
+
+				// The card rule's margin-inline (border-clipping fix) has
+				// equal specificity — restore the text-facing gap
+				&:has( .citizen-overflow-content > .wikitable ) {
+					/* @noflip */
+					margin-left: var( --space-lg );
+				}
+			}
+
+			&--floatleft {
+				.mixin-citizen-float-declarations( left );
+
+				&:has( .citizen-overflow-content > .wikitable ) {
+					/* @noflip */
+					margin-right: var( --space-lg );
+				}
+			}
+		}
+	}
+
+	&-content {
+		width: 100%;
+		overflow: auto hidden;
+		border-radius: inherit;
+
+		// A float directly inside the scroll container is never meaningful;
+		// detected floats are re-expressed on the wrapper as --float*
+		// modifiers. !important so inline styles cannot win
+		> * {
+			float: none !important;
+		}
+
+		// The wrapper is the scroll container now, so hand back the
+		// containment the element carries in its unwrapped state. Block
+		// margins go with it: kept here they would be trapped inside the
+		// scroll container instead of collapsing with the surrounding flow.
+		// Inline margins stay — they indent list markers.
+		> .citizen-overflow {
+			margin-block: 0;
+			overflow: initial;
+		}
+
+		> .wikitable {
+			display: table;
+			max-width: none;
+			// Handle margin and box-shadow on outer wrapper
+			margin: 0;
+			overflow: initial;
+			box-shadow: none;
+
+			// A `table` box shrinks to its content, so `--fluid` has to ask
+			// for the full width here — unlike the unwrapped block box
+			&--fluid {
+				width: 100%;
+			}
+		}
+
+		.citizen-overflow--left > & {
+			.mixin-citizen-mask-gradient(90deg, transparent, #000 var( --overflow-gradient-size ));
+		}
+
+		.citizen-overflow--right > & {
+			.mixin-citizen-mask-gradient(270deg, transparent, #000 var( --overflow-gradient-size ));
+		}
+
+		.citizen-overflow--left.citizen-overflow--right > & {
+			.mixin-citizen-mask-gradient(90deg, transparent, #000 var( --overflow-gradient-size ), #000 ~'calc( 100% - var( --overflow-gradient-size ) )', transparent);
+		}
+	}
+
+	&-nav {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		justify-content: space-between;
+		pointer-events: none;
+		// The buttons and the overflow classes name physical sides, so the
+		// buttons must not swap places in RTL content. Content direction is
+		// independent of the interface direction, so this must not flip.
+		/* @noflip */
+		direction: ltr;
+	}
+
+	&-navButton {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 100%;
+		padding: 0;
+		appearance: none;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var( --border-radius-medium );
+		.hideOverflowButton();
+
+		&::before {
+			width: 1.25rem;
+		}
+
+		&-left {
+			.citizen-overflow--left & {
+				.showOverflowButton();
+			}
+
+			&::before {
+				transform: rotate( -90deg );
+			}
+		}
+
+		&-right {
+			.citizen-overflow--right & {
+				.showOverflowButton();
+			}
+
+			&::before {
+				transform: rotate( 90deg );
+			}
+		}
+
+		&:hover {
+			background-color: var( --background-color-button-quiet--hover );
+		}
+
+		&:active {
+			background-color: var( --background-color-button-quiet--active );
+		}
+	}
+}
+
+// Sticky band — real rows translated to follow the page scroll (no clone).
+// The rows stay inside the horizontal scroll container, so horizontal
+// position needs no syncing at all.
+.citizen-overflow-sticky-row {
+	position: relative;
+	z-index: @z-index-above-content;
+
+	// While stuck the band slides over body rows, so its cells need an
+	// opaque surface. Same surface the old clone used underneath its glass.
+	> th,
+	> td {
+		background-color: var( --color-surface-0 );
+	}
+
+	&:not( tr ) {
+		background-color: var( --color-surface-0 );
+	}
+}
+
+.citizen-overflow-sticky-row--boundary {
+	// Shadow, not border: must not change row height
+	> th,
+	> td {
+		box-shadow: 0 1px 0 0 var( --border-color-base );
+	}
+
+	&:not( tr ) {
+		box-shadow: 0 1px 0 0 var( --border-color-base );
+	}
+}
+
+// JS drive: overflowElements/index.js writes the wrapper's viewport top
+// into --citizen-overflow-sticky-top each frame; the offset math stays in
+// CSS so the live --header-offset-block-start var chain resolves here.
+// The 9999px default keeps the band parked until the first write.
+.citizen-overflow-wrapper--sticky-js .citizen-overflow-sticky-row {
+	.mixin-citizen-header-offset-block-start();
+	transform: ~'translateY( clamp( 0px, calc( var( --header-offset-block-start ) - var( --citizen-overflow-sticky-top, 9999px ) ), var( --citizen-overflow-sticky-travel, 0px ) ) )';
+}
+
+// CSS drive: compositor-synced scroll-driven animation. The wrapper is the
+// view-timeline subject — its nearest scroll container is the root, unlike
+// the table, which sits inside the horizontal scroller.
+@supports ( animation-timeline: view() ) and ( animation-range: exit-crossing 0% ) {
+	.citizen-overflow-wrapper--sticky-css {
+		.mixin-citizen-header-offset-block-start();
+		// Not yet baseline, but the enclosing feature check gates it and
+		// browsers that fail the probe take the JS drive instead.
+		// stylelint-disable-next-line plugin/use-baseline
+		view-timeline: --citizen-overflow block;
+		// stylelint-disable-next-line plugin/use-baseline
+		view-timeline-inset: var( --header-offset-block-start ) 0;
+
+		.citizen-overflow-sticky-row {
+			animation: citizen-overflow-sticky-band linear both;
+			animation-timeline: --citizen-overflow;
+			animation-range: ~'exit-crossing 0% exit-crossing calc( 100% - var( --citizen-overflow-sticky-band, 0px ) )';
+		}
+	}
+}
+
+@keyframes citizen-overflow-sticky-band {
+	from {
+		transform: translateY( 0 );
+	}
+
+	to {
+		transform: translateY( var( --citizen-overflow-sticky-travel, 0 ) );
+	}
+}
+
+@media print {
+	.citizen-overflow-sticky-row {
+		transform: none !important;
+		animation: none !important;
+	}
+}
+
+.citizen-animations-ready .citizen-overflow-content {
+	scroll-behavior: smooth;
+}

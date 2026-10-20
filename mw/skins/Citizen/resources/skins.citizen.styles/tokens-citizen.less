@@ -1,0 +1,295 @@
+/**
+ * Citizen non-color tokens — layout, spacing, fonts, header
+ * positioning, transitions. Color tokens themselves are emitted by
+ * skins.citizen.tokens or skins.citizen.tokens.new (one or the other
+ * per request, picked by SkinHooks).
+ *
+ * TODO: Remove HSL fallback when OKLCH is supported in all browsers.
+ * TODO: Use CSS relative color syntax when supported in all browsers.
+ */
+
+// Spacing for wiki content, scaled to the reading text rather than the root.
+// Emitted at the root too: the consumers are bare element selectors that also
+// match chrome, where an undefined custom property would drop the declaration.
+// Not `em` — wikitext templates nest their own font-size percentages, which
+// would compound.
+.mixin-citizen-content-space( @unit ) {
+	--space-content-unit: @unit;
+	--space-content-half: calc( 0.5 * var( --space-content-unit ) );
+}
+
+:root {
+	// Border
+	--border-radius-medium: calc( var( --border-radius-base ) * 2 );
+	--border-radius-large: calc( var( --border-radius-base ) * 3 );
+
+	// Box shadow
+	--box-shadow-border: var( --border-color-base ) 0 0 0 1px;
+
+	// Filter
+	--filter-invert-fixed: invert( 1 ) hue-rotate( 180deg );
+	--filter-image-brightness: none; // Revisit on the next LTS (T401654)
+
+	// Font
+	// Customization point — set just the brand font (plus a metric-matched fallback if any).
+	// Generic and OS-level fallbacks (system-ui, sans-serif, etc.) are composed downstream in variables.less.
+	--font-family-citizen-base: 'Roboto', 'Roboto-fallback';
+	--font-family-citizen-serif: 'Roboto Serif';
+	--font-family-citizen-monospace: 'Roboto Mono';
+	--font-family-language-base: '';
+	--font-family-language-serif: '';
+	--font-family-language-monospace: '';
+
+	// Size
+	// TODO: Need to standardize the naming convention
+	// TODO: Perhaps move some of these into a scoped element?
+	--size-icon: @size-icon;
+	// Height of the bottom toolbar used by page tools and ToC toggle
+	--toolbar-size: 2.5rem;
+	// Measured sticky header bar height, written by stickyHeader.js. Not
+	// zeroed while the bar is hidden — visibility is gated per consumer by
+	// .mixin-citizen-header-offset-block-start.
+	// stylelint-disable-next-line length-zero-no-unit -- Need the unit for calc() (#1058)
+	--height-sticky-header: 0px;
+	// Width or height of citizen-header, depending on the orientation
+	--header-size: @header-size;
+	// Max-height allowed for header card. Uses dvh, not vh: on mobile vh
+	// resolves to the largest viewport (address bar retracted), so the card
+	// overflows the visible area while the bar is showing. dvh tracks the
+	// currently-visible height.
+	--header-card-maxheight: calc( 100dvh - var( --header-size ) - var( --space-xs ) * 2 );
+	// Width of the gradient in citizen-overflow
+	--overflow-gradient-size: 2rem;
+	// Width of the body content
+	--width-layout: @width-layout;
+	// Width of the body content when the page should be extended (e.g. special, category pages)
+	--width-layout--extended: calc( var( --width-layout ) * 1.5 );
+	// Width of the page aside
+	--width-page-aside: @width-page-aside;
+	/// Width of the page
+	--width-page: @width-layout;
+	// Side padding used for the page
+	// This is set in px to enforce safe area on a page
+	--padding-page: @padding-page;
+
+	// Spacing
+	--space-unit: @space-unit;
+	--space-xxs: calc( 0.25 * var( --space-unit ) );
+	--space-xs: calc( 0.5 * var( --space-unit ) );
+	--space-sm: calc( 0.75 * var( --space-unit ) );
+	--space-md: var( --space-unit );
+	--space-lg: calc( 1.25 * var( --space-unit ) );
+	--space-xl: calc( 1.5 * var( --space-unit ) );
+	--space-xxl: calc( 2 * var( --space-unit ) );
+	.mixin-citizen-content-space( var( --space-md ) );
+
+	// Multiples of the heading's own font size. Both heading markups read these,
+	// so they cannot drift apart.
+	--heading-space-h1-h2: 2;
+	--heading-space-h3-h4: 1.5;
+	--heading-space-h5-h6: 1.25;
+	// Many wikis expect headings to carry a bottom margin.
+	--heading-space-end: 0.25;
+
+	// Transition
+	--transition-timing-function-ease: cubic-bezier( 0.2, 0, 0, 1 );
+	--transition-timing-function-ease-in: cubic-bezier( 0.3, 0, 0.8, 0.15 );
+	--transition-timing-function-ease-out: cubic-bezier( 0.05, 0.7, 0.1, 1 );
+
+	// Transform
+	// Add affordance to thumbnails to replace magnify icon
+	// On hover, enlarge the image to inform the user that a full-size image will be shown (to MMV or file page)
+	--transform-image-hover: scale( 1.1 );
+
+	// Card open animation — closed-state direction tokens.
+	// Each name describes the direction the card visually expands; the trigger
+	// sits on the OPPOSITE side. Consumers pick a direction via the
+	// .mixin-citizen-card-expand mixin or inherit one from the page-level
+	// cascade defined alongside the header-position tokens below.
+	--citizen-clip-expand-up: inset( 100% 0 0 0 );
+	--citizen-clip-expand-down: inset( 0 0 100% 0 );
+	--citizen-clip-expand-right: inset( 0 100% 0 0 );
+	--citizen-clip-expand-left: inset( 0 0 0 100% );
+	--citizen-translate-expand-up: translateY( var( --space-xs ) );
+	--citizen-translate-expand-down: translateY( calc( var( --space-xs ) * -1 ) );
+	--citizen-translate-expand-right: translateX( calc( var( --space-xs ) * -1 ) );
+	--citizen-translate-expand-left: translateX( var( --space-xs ) );
+
+	// Codex Design Tokens but not included as CSS variables
+	--border-base: var( --border-width-base ) solid var( --border-color-base );
+	--border-subtle: var( --border-width-base ) solid var( --border-color-subtle );
+	--border-width-base: 1px;
+	--border-width-thick: 2px;
+	--border-radius-base: 4px;
+	--border-radius-sharp: 0;
+	--border-radius-pill: 9999px;
+	--border-radius-circle: 50%;
+	--box-shadow-small: 0 0 0 1px var( --border-color-base );
+	// @see https://www.joshwcomeau.com/shadow-palette
+	--box-shadow-medium: 0 0.5px 0.6px var( --box-shadow-color-alpha-base ), 0 1.6px 1.8px -0.8px var( --box-shadow-color-alpha-base ), 0 4px 4.5px -1.7px var( --box-shadow-color-alpha-base ), 0 9.8px 11px -2.5px var( --box-shadow-color-alpha-base );
+	--box-shadow-large: 0 0.5px 0.6px var( --box-shadow-color-alpha-base ), 0 2.8px 3.1px -0.4px var( --box-shadow-color-alpha-base ), 0 5.3px 6px -0.7px var( --box-shadow-color-alpha-base ), 0 8.7px 9.8px -1.1px var( --box-shadow-color-alpha-base ), 0 13.9px 15.6px -1.4px var( --box-shadow-color-alpha-base ), 0 21.8px 24.5px -1.8px var( --box-shadow-color-alpha-base );
+	--font-family-base: @font-family-base;
+	--font-family-serif: @font-family-serif;
+	--font-family-monospace: @font-family-monospace;
+	--font-weight-normal: 400;
+	--font-weight-medium: calc( var( --font-weight-normal ) + 100 );
+	--font-weight-semi-bold: calc( var( --font-weight-normal ) + 200 );
+	--font-weight-bold: calc( var( --font-weight-normal ) + 300 );
+	--font-family-overline: var( --font-family-base );
+	--font-weight-overline: var( --font-weight-medium );
+	--font-size-overline: var( --font-size-small );
+	--line-height-overline: var( --line-height-small );
+	--text-transform-overline: none;
+	--letter-spacing-overline: normal;
+
+	@media ( min-width: @min-width-breakpoint-tablet ) {
+		--padding-page: calc( @padding-page * 1.5 );
+	}
+
+	@media ( min-width: @min-width-breakpoint-desktop ) {
+		--padding-page: calc( @padding-page * 2 );
+	}
+
+	@media ( prefers-contrast: more ) {
+		--font-weight-normal: 500;
+	}
+
+	@media ( prefers-contrast: less ) {
+		--font-weight-normal: 300;
+	}
+
+	// Card open animation — page-level direction cascade.
+	// The default below is overridden by the per-position cascade inside the
+	// header-position media query a few lines down. Header-anchored cards
+	// (drawer, header__end menus) inherit these values without local
+	// declarations; cards with a fixed direction call .mixin-citizen-card-expand
+	// in their own scope.
+	.mixin-citizen-card-expand( up );
+
+	// Header position tokens
+	// These drive dynamic layout calc()s; a unitless 0 is type <number>
+	// and silently invalidates <number> + <length> calcs (#1058).
+	/* stylelint-disable length-zero-no-unit -- Need the unit for calc() (#1058) */
+	--header-direction: row;
+	--header-size-inline-start: 0px;
+	--header-size-inline-end: 0px;
+	--header-size-block-start: 0px;
+	--header-size-block-end: 0px;
+	--header-inset-block-start: 0px;
+	--header-inset-block-end: 0px;
+	--header-inset-inline-start: 0px;
+	--header-inset-inline-end: 0px;
+	--header-border-block-start-width: 0px;
+	--header-border-block-end-width: 0px;
+	--header-border-inline-start-width: 0px;
+	--header-border-inline-end-width: 0px;
+
+	// Mobile and tablet placement — bottom unless the wiki opts into top
+	// via $wgCitizenHeaderPositionMobile
+	@media ( max-width: @max-width-breakpoint-tablet ) {
+		--header-direction: row;
+		--header-inset-inline-start: 0px;
+		--header-inset-inline-end: 0px;
+		--header-size-block-end: var( --header-size );
+		--header-inset-block-start: auto;
+		--header-inset-block-end: 0px;
+		--header-border-block-start-width: var( --border-width-base );
+	}
+
+	&.citizen-header-position-mobile-top {
+		@media ( max-width: @max-width-breakpoint-tablet ) {
+			--header-size-block-start: var( --header-size );
+			--header-size-block-end: 0px;
+			--header-inset-block-start: 0px;
+			--header-inset-block-end: auto;
+			--header-border-block-start-width: 0px;
+			--header-border-block-end-width: var( --border-width-base );
+			.mixin-citizen-card-expand( down );
+		}
+	}
+
+	&.citizen-header-position {
+		@media ( min-width: @min-width-breakpoint-desktop ) {
+			&-left,
+			&-right {
+				--header-direction: column;
+				--header-inset-block-start: 0px;
+				--header-inset-block-end: 0px;
+				--header-card-maxheight: calc( 100dvh - var( --space-xs ) * 2 );
+			}
+
+			&-top,
+			&-bottom {
+				--header-direction: row;
+				--header-inset-inline-start: 0px;
+				--header-inset-inline-end: 0px;
+			}
+
+			&-left {
+				--header-size-inline-start: var( --header-size );
+				--header-inset-inline-start: 0px;
+				--header-inset-inline-end: auto;
+				--header-border-inline-end-width: var( --border-width-base );
+				.mixin-citizen-card-expand( right );
+			}
+
+			&-right {
+				--header-size-inline-end: var( --header-size );
+				--header-inset-inline-start: auto;
+				--header-inset-inline-end: 0px;
+				--header-border-inline-start-width: var( --border-width-base );
+				.mixin-citizen-card-expand( left );
+			}
+
+			&-top {
+				--header-size-block-start: var( --header-size );
+				--header-inset-block-start: 0px;
+				--header-inset-block-end: auto;
+				--header-border-block-end-width: var( --border-width-base );
+				.mixin-citizen-card-expand( down );
+			}
+
+			&-bottom {
+				--header-size-block-end: var( --header-size );
+				--header-inset-block-start: auto;
+				--header-inset-block-end: 0px;
+				--header-border-block-start-width: var( --border-width-base );
+				.mixin-citizen-card-expand( up );
+			}
+		}
+	}
+	/* stylelint-enable length-zero-no-unit */
+
+	// Derived header offset tokens. Deliberately static at the root — the
+	// dynamic states live in .mixin-citizen-header-offset-block-start.
+	--header-offset-block-start: var( --header-size-block-start );
+	--header-offset-block-end: var( --header-size-block-end );
+
+	// Deprecated aliases — drop alongside the legacy pipeline.
+	--color-primary__h: var( --color-progressive-hsl__h );
+	--color-primary__s: var( --color-progressive-hsl__s );
+	--color-primary__l: var( --color-progressive-hsl__l );
+	--font-size-base: var( --font-size-medium );
+	--line-height: 1.6;
+	--line-height-xxx-small: 1.25; // Deprecated with Codex 2.0
+	--line-height-xx-small: 1.375; // Deprecated with Codex 2.0
+	--box-shadow-drop-small: var( --box-shadow-small );
+	--box-shadow-drop-medium: var( --box-shadow-medium );
+	--box-shadow-drop-xx-large: var( --box-shadow-large );
+}
+
+.citizen-body {
+	// The reader's font-size preference is declared on this element, and a
+	// `var()` substitutes where it is declared — deriving this at the root
+	// instead would freeze it at the default size.
+	.mixin-citizen-content-space( var( --font-size-medium ) );
+}
+
+// TODO: Update with implementation on T376559 when it is finalized
+.citizen-animations-ready {
+	// Only apply transition when page is ready for it
+	--transition-hover: @transition-hover;
+	--transition-menu: @transition-menu;
+	--transition-duration-base: 100ms;
+	--transition-duration-medium: 250ms;
+}

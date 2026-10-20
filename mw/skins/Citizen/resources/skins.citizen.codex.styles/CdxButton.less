@@ -1,0 +1,69 @@
+@import '../variables.less';
+
+// Citizen's large button size override for Codex buttons (40px)
+.citizen-cdx-button--size-large {
+	&.cdx-button {
+		min-height: 40px;
+	}
+
+	&.cdx-button--icon-only {
+		display: grid;
+		place-items: center;
+		min-width: 40px;
+		padding: 0;
+	}
+}
+
+.skin-citizen {
+	.cdx-button {
+		font-weight: var( --font-weight-medium );
+		border-radius: var( --border-radius-base );
+
+		&--weight-quiet {
+			// Fixes: #1105
+			// Citizen already handles the quiet button hover color,
+			// and the multiply blend mode has issue with gradient backgrounds.
+			--mix-blend-mode-blend: normal;
+		}
+
+		&:enabled,
+		&.cdx-button--fake-button--enabled {
+			// Use focus-visible instead of focus for more subtle appearance
+			// The default Codex focus style is too explicit and can be distracting
+			// Now we are only keeping the default focus styles for keyboard navigation
+			&:not( :active ):not( .cdx-button--is-active ) {
+				&:focus {
+					border-color: transparent;
+					box-shadow: none;
+				}
+
+				&:focus-visible {
+					outline: @outline-base--focus;
+					border-color: var( --border-color-progressive--focus );
+					box-shadow: @box-shadow-inset-small var( --color-progressive );
+				}
+			}
+		}
+	}
+}
+
+// Polyfill for Codex 2.x button styles. Remove once the minimum
+// supported MW bundles Codex >= 2.0 (currently MW 1.43 ships
+// Codex 1.14, so this stays as long as we target REL1_43).
+.citizen-v4 .cdx-button {
+	&:enabled,
+	&.cdx-button--fake-button--enabled {
+		color: var( --color-neutral );
+
+		&.cdx-button--weight-primary {
+			&.cdx-button--action-progressive,
+			&.cdx-button--action-destructive {
+				&,
+				&:hover,
+				&:active {
+					border-color: transparent;
+				}
+			}
+		}
+	}
+}

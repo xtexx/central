@@ -1,0 +1,62 @@
+# git-deploy status file:
+/.deploy
+
+# Editors
+*.kate-swp
+*~
+\#*#
+.#*
+.*.swp
+.project
+cscope.files
+cscope.out
+/.vscode
+## NetBeans
+nbproject*
+project.index
+## Sublime
+sublime-*
+sftp-config.json
+
+# Building & testing
+/composer.lock
+/coverage
+/vendor
+/node_modules
+.eslintcache
+
+# Operating systems
+## Mac OS X
+.DS_Store
+## Windows
+Thumbs.db
+
+# Working artifacts
+/design
+
+# Misc
+.buildpath
+.classpath
+.idea
+.metadata*
+.settings
+/static*
+/tags
+/.htaccess
+/.htpasswd
+.eslintcache
+
+# Codex audit cache
+scripts/.cache/
+.playwright-cli/
+
+# Scratch output from the showcase refresh jobs
+/docs/showcase-alerts.json
+/docs/showcase-failures.json
+
+# Local screenshot captures. Screenshots live in R2, never in git.
+/docs/tmp-shots/
+
+# Local credentials
+.env*
+*.env

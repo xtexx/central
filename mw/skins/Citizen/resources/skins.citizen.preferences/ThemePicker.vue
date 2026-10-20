@@ -1,0 +1,206 @@
+<template>
+	<div
+		ref="rootEl"
+		class="citizen-preferences-themepicker"
+	>
+		<div
+			class="citizen-preferences-themepicker__grid"
+			@mouseleave="$emit( 'update:hovered', null )"
+		>
+			<cdx-radio
+				v-for="option in options"
+				:key="option.value"
+				:model-value="modelValue"
+				:input-value="option.value"
+				:name="featureName"
+				@update:model-value="$emit( 'update:modelValue', $event )"
+				@mouseenter="$emit( 'update:hovered', option.value )"
+			>
+				<span
+					class="citizen-preferences-themecircle citizen-theme-preview"
+					:class="option.value === 'os' ?
+						'citizen-preferences-themecircle--adaptive' :
+						'skin-theme-clientpref-' + option.value"
+				></span>
+				<span class="citizen-preferences-themepicker__srlabel">{{ option.label }}</span>
+			</cdx-radio>
+		</div>
+	</div>
+</template>
+
+<script>
+const { defineComponent, ref, onMounted } = require( 'vue' );
+const { CdxRadio } = require( '../../codex.js' );
+const { measureIdentityBaseline } = require( './themePreviewBaseline.js' );
+
+// @vue/component
+module.exports = exports = defineComponent( {
+	name: 'ThemePicker',
+	components: { CdxRadio },
+	props: {
+		modelValue: { type: String, required: true },
+		options: { type: Array, required: true },
+		featureName: { type: String, required: true }
+	},
+	emits: [ 'update:modelValue', 'update:hovered' ],
+	setup() {
+		const rootEl = ref( null );
+		// Publish the wiki's identity-knob baseline (defaults plus any
+		// admin rebrand at :root) on the picker root: the circles'
+		// theme-preview scope (themePreview.less) declares its knobs as
+		// var( --citizen-preview-<knob>, <default> ), so these inline
+		// properties inherit into every circle as the pre-theme baseline.
+		onMounted( () => {
+			const baseline = measureIdentityBaseline();
+			for ( const knob in baseline ) {
+				rootEl.value.style.setProperty(
+					'--citizen-preview-' + knob.slice( 2 ),
+					baseline[ knob ]
+				);
+			}
+		} );
+		return { rootEl };
+	}
+} );
+</script>
+
+<style lang="less">
+@import 'mediawiki.skin.variables.less';
+@import '../mixins.less';
+
+// The circles re-derive every token to the theme they preview
+// (themePreview.less), but the hairline ring and the hover/active/
+// selected/focus outline are panel chrome and must follow the CURRENT
+// theme instead. Registering these relay properties as `<color>`
+// absolutizes them — palette and light-dark side — where they are
+// declared (the grid, outside the preview scope), so they inherit into
+// the circles as concrete ambient colors. Browsers without `@property`
+// still relay the ambient pair, resolved per-circle scheme.
+@property --citizen-themepicker-ambient-border {
+	syntax: '<color>';
+	inherits: true;
+	initial-value: transparent;
+}
+
+@property --citizen-themepicker-ambient-border-hover {
+	syntax: '<color>';
+	inherits: true;
+	initial-value: transparent;
+}
+
+@property --citizen-themepicker-ambient-border-active {
+	syntax: '<color>';
+	inherits: true;
+	initial-value: transparent;
+}
+
+@property --citizen-themepicker-ambient-accent {
+	syntax: '<color>';
+	inherits: true;
+	initial-value: transparent;
+}
+
+.citizen-preferences-themepicker {
+	&__grid {
+		--citizen-themepicker-ambient-border: var( --border-color-interactive );
+		--citizen-themepicker-ambient-border-hover: var( --border-color-interactive--hover );
+		--citizen-themepicker-ambient-border-active: var( --border-color-interactive--active );
+		--citizen-themepicker-ambient-accent: var( --color-progressive );
+		display: flex;
+		flex-wrap: wrap;
+		gap: var( --space-sm );
+	}
+
+	// The circle is the control's visual; hide Codex's native radio dot
+	// and reset wrapper/label spacing.
+	.cdx-radio__icon {
+		display: none;
+	}
+
+	// The whole radio is one small circular control: keep the pointer
+	// cursor across all of it — Codex's invisible input overlay and label
+	// wrappers otherwise reset the cursor over parts of the circle. The
+	// selected one is a no-op to click, so it gets no pointer affordance.
+	.cdx-radio,
+	.cdx-radio * {
+		cursor: pointer;
+	}
+
+	.cdx-radio:has( .cdx-radio__input:checked ),
+	.cdx-radio:has( .cdx-radio__input:checked ) * {
+		cursor: default;
+	}
+
+	.cdx-radio {
+		margin-bottom: 0;
+	}
+
+	.cdx-radio__wrapper {
+		gap: 0;
+	}
+
+	.cdx-label {
+		padding: 0;
+	}
+
+	// Visually hidden, but present in the accessibility tree so each radio
+	// has an accessible name even though no label is shown.
+	&__srlabel {
+		.mixin-citizen-screen-reader-only();
+	}
+}
+
+// Split the two halves with a linear gradient, not a conic one: a conic
+// stop is angular, so the junction resolves per row and tears under
+// fractional display scaling. The hairline band keeps the edge antialiased.
+.mixin-themecircle-split( @dir; @from; @to ) {
+	background: linear-gradient( @dir, @from calc( 50% - 0.5px ), @to calc( 50% + 0.5px ) );
+}
+
+.citizen-preferences-themecircle {
+	display: block;
+	width: @min-size-interactive-touch;
+	height: @min-size-interactive-touch;
+	// Always-on outline, transparent at rest: the hover/active/selected
+	// states only swap its color, so nothing pops in or shifts. Like the
+	// ring below, it is panel chrome, not preview content — the ambient
+	// relays (declared on the grid) keep it in the current theme's colors.
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	// The circle wears `citizen-theme-preview` (the token scope in
+	// themePreview.less, which re-derives every token locally) plus the
+	// theme's clientpref class, so these tokens resolve to that theme's
+	// real surface + accent.
+	.mixin-themecircle-split( to right; var( --color-progressive ); var( --color-surface-0 ) );
+	border-radius: var( --border-radius-circle );
+	// The hairline ring keeps a light-surface circle visible against a
+	// light panel.
+	box-shadow: inset 0 0 0 1px var( --citizen-themepicker-ambient-border );
+	transition-duration: var( --transition-duration-base );
+	transition-property: outline-color, border-radius;
+
+	// os / Auto — adaptive: a static light/dark split (a live media query
+	// can't be shown in a static swatch).
+	&--adaptive {
+		.mixin-themecircle-split( to top right; var( --color-neutral-1000 ); var( --color-white ) );
+	}
+
+	.cdx-radio:hover & {
+		outline-color: var( --citizen-themepicker-ambient-border-hover );
+		border-radius: var( --border-radius-large );
+	}
+
+	.cdx-radio:active & {
+		outline-color: var( --citizen-themepicker-ambient-border-active );
+		border-radius: var( --border-radius-large );
+	}
+
+	// :has() outranks the hover/active rules, so the selection stays
+	// accent-colored while hovered or pressed.
+	.cdx-radio:has( .cdx-radio__input:checked ) &,
+	.cdx-radio:has( .cdx-radio__input:focus-visible ) & {
+		outline-color: var( --citizen-themepicker-ambient-accent );
+		border-radius: var( --border-radius-large );
+	}
+}
+</style>

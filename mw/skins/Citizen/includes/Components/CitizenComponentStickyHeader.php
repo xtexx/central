@@ -1,0 +1,122 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Skins\Citizen\Components;
+
+/**
+ * CitizenComponentStickyHeader component
+ */
+class CitizenComponentStickyHeader implements CitizenComponent {
+
+	private const SHARE_ICON = [
+		'id' => 'citizen-share-sticky-header',
+		'clickTarget' => '#citizen-share',
+		'icon' => 'wikimedia-share'
+	];
+
+	private const TALK_ICON = [
+		'id' => 'ca-talk-sticky-header',
+		'clickTarget' => '#ca-talk > a',
+		'icon' => 'speechBubbles'
+	];
+
+	private const VIEW_ICON = [
+		'id' => 'ca-view-sticky-header',
+		'clickTarget' => '#ca-view > a',
+		'icon' => 'eye'
+	];
+
+	// The subject/associated page tab id is namespace-specific (ca-nstab-main,
+	// ca-nstab-user, ...) and is marked `selected` on the subject page itself, so
+	// target any unselected nstab tab — i.e. the "back to the article" link shown
+	// on talk pages.
+	private const SUBJECT_ICON = [
+		'id' => 'ca-subject-sticky-header',
+		'clickTarget' => "[id^='ca-nstab-']:not(.selected) > a",
+		'icon' => 'article'
+	];
+
+	private const HISTORY_ICON = [
+		'id' => 'ca-history-sticky-header',
+		'clickTarget' => '#ca-history > a',
+		'icon' => 'wikimedia-history'
+	];
+
+	private const EDIT_VE_ICON = [
+		'id' => 'ca-ve-edit-sticky-header',
+		'clickTarget' => '#ca-ve-edit > a',
+		'icon' => 'wikimedia-edit'
+	];
+
+	private const EDIT_WIKITEXT_ICON = [
+		'id' => 'ca-edit-sticky-header',
+		'clickTarget' => '#ca-edit > a',
+		'icon' => 'wikimedia-wikiText'
+	];
+
+	private const EDIT_PROTECTED_ICON = [
+		'id' => 'ca-viewsource-sticky-header',
+		'clickTarget' => '#ca-viewsource > a',
+		'icon' => 'wikimedia-editLock'
+	];
+
+	private const ADD_SECTION_ICON = [
+		'id' => 'ca-addsection-sticky-header',
+		'clickTarget' => '#ca-addsection > a',
+		'icon' => 'speechBubbleAdd'
+	];
+
+	public function __construct(
+		private readonly bool $visualEditorTabPositionFirst = false,
+		private readonly bool $enableShare = true
+	) {
+	}
+
+	/**
+	 * Creates array of Button components in the sticky header
+	 */
+	private function getIconButtons(): array {
+		$icons = [];
+
+		if ( $this->enableShare ) {
+			$icons[] = self::SHARE_ICON;
+		}
+
+		array_push( $icons,
+			self::VIEW_ICON,
+			self::SUBJECT_ICON,
+			self::HISTORY_ICON,
+			$this->visualEditorTabPositionFirst ? self::EDIT_VE_ICON : self::EDIT_WIKITEXT_ICON,
+			$this->visualEditorTabPositionFirst ? self::EDIT_WIKITEXT_ICON : self::EDIT_VE_ICON,
+			self::EDIT_PROTECTED_ICON,
+			self::ADD_SECTION_ICON,
+			self::TALK_ICON
+		);
+		$iconButtons = [];
+		foreach ( $icons as $icon ) {
+			$button = new CitizenComponentButton(
+				icon: $icon['icon'],
+				id: $icon['id'],
+				// @phan-suppress-next-line PhanCoalescingAlwaysNullInLoop
+				class: $icon['class'] ?? '',
+				attributes: [
+					'tabindex' => '-1',
+					// @phan-suppress-next-line PhanCoalescingNeverNullInLoop
+					'data-mw-citizen-click-target' => $icon['clickTarget'] ?? null,
+				],
+				weight: 'quiet',
+				size: 'large',
+				iconOnly: true,
+			);
+			$iconButtons[] = $button->getTemplateData();
+		}
+		return $iconButtons;
+	}
+
+	public function getTemplateData(): array {
+		return [
+			'array-icon-buttons' => $this->getIconButtons()
+		];
+	}
+}

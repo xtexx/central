@@ -1,0 +1,357 @@
+/**
+ * @module types
+ * Shared JSDoc type definitions for the Command Palette.
+ */
+
+/**
+ * @typedef {Object} CommandPaletteItemAction
+ * @property {string} id Action identifier (e.g., 'edit').
+ * @property {string} label Localized action label.
+ * @property {string} icon SVG icon string or object.
+ * @property {string} [url] URL for the action.
+ */
+
+/**
+ * @typedef {Object} CommandPaletteItemMetadata
+ * @property {string} [icon] Optional SVG icon string or object.
+ * @property {string} label Metadata label (e.g., matched title for redirect).
+ * @property {boolean} [highlightQuery] Whether to highlight the query in the label.
+ * @property {'success'|'error'} [status] Optional status tint for the badge (e.g. the size-delta direction in the history mode).
+ */
+
+/**
+ * @typedef {Object} CommandPaletteItemThumbnail
+ * @property {string} url Thumbnail URL.
+ * @property {number} [width] Thumbnail width.
+ * @property {number} [height] Thumbnail height.
+ */
+
+/**
+ * A key-value pair displayed in the detail panel.
+ *
+ * @typedef {Object} CommandPaletteDetailPair
+ * @property {string} label The property/field name.
+ * @property {string} [value] The property/field value. Used as a fallback
+ *   when no slot is provided for this pair.
+ * @property {string} [key] Optional slot name. When set, the detail panel
+ *   renders the named slot in place of `value`, allowing rich content like
+ *   chips, lists, or other components.
+ * @property {string[]} [keys] Text the user types, rendered as key caps.
+ *   Takes precedence over value.
+ * @property {string} [html] Trusted, already-sanitised markup (e.g.
+ *   mw.message().parse() output), rendered as HTML. Never pass user or API
+ *   content. Takes precedence over value.
+ */
+
+/**
+ * Optional header rendered above the detail panel's pairs. When set, the
+ * panel renders a label + subtitle (and an inline copy-to-clipboard button
+ * when `copyValue` is provided). Consumers needing a fully custom header
+ * can still override the panel's `#header` slot — the inline default
+ * shape exists so modes don't have to.
+ *
+ * @typedef {Object} CommandPaletteItemDetailHeader
+ * @property {string} label Primary heading text (e.g. a filename).
+ * @property {string} [description] Subtle subtitle text (e.g. "PNG image").
+ * @property {Object|string} [icon] Codex icon drawn beside the label.
+ * @property {string} [copyValue] When set, the panel renders a copy
+ *   button next to the label. Clicking it (or pressing Cmd/Ctrl+C with
+ *   the item highlighted and no text selected) copies this value to the
+ *   clipboard and shows a success-tinted check icon for ~1.5s.
+ */
+
+/**
+ * Media block rendered at the top of the detail panel.
+ *
+ * @typedef {Object} CommandPaletteItemDetailMedia
+ * @property {string} src Image URL; empty string when the item has no renderable thumbnail.
+ * @property {?number} width Intrinsic width, when known.
+ * @property {?number} height Intrinsic height, when known.
+ * @property {Object|null} [placeholderIcon] Codex icon shown while loading, on load error, or when `src` is empty.
+ */
+
+/**
+ * Detail data shown in the side panel when an item is focused.
+ *
+ * @typedef {Object} CommandPaletteItemDetail
+ * @property {Array<CommandPaletteDetailPair>} [pairs] Key-value pairs to display.
+ * @property {CommandPaletteItemDetailHeader} [header] Optional header rendered above the pairs.
+ * @property {CommandPaletteItemDetailMedia} [media] Optional media block rendered above the header and pairs.
+ */
+
+/**
+ * Represents a display item in the Command Palette list.
+ * Based on the props of CommandPaletteListItem.vue.
+ *
+ * @typedef {Object} CommandPaletteItem
+ * @property {string} id Unique identifier for the item (used as :key and element id).
+ * @property {string} type Type identifier (e.g., 'page', 'user', 'command'). Used for styling and to route the item on selection.
+ * @property {string} label The primary display label (e.g., page title, command name).
+ * @property {string} [url] The primary URL to navigate to when the item is selected. May not apply to all types (e.g., commands that trigger other actions).
+ * @property {string} [description] Optional secondary description text.
+ * @property {CommandPaletteItemThumbnail} [thumbnail] Optional thumbnail object.
+ * @property {string} [thumbnailIcon] Optional placeholder icon identifier (e.g., cdxIcon...) if thumbnail URL is missing. Passed to cdx-thumbnail :placeholder-icon prop.
+ * @property {Array<CommandPaletteItemMetadata>} [metadata] Optional list of metadata badges/tags.
+ * @property {Array<CommandPaletteItemAction>} [actions] Optional list of actions available for the item.
+ * @property {string} [value] Optional mode-specific payload associated with the item (e.g. the namespace trigger '/ns:', or the SMW property name for value suggestions).
+ * @property {boolean} [highlightQuery] Whether to highlight the query in the label.
+ * @property {string} [highlightTerm] Overrides the term highlighted in the label — set by providers whose sub-query differs from the full input. Falls back to the current search query.
+ * @property {CommandPaletteItemDetail} [detail] Optional detail data shown in the side panel when focused.
+ * @property {string} [source] Identifier of the provider that generated this item (e.g., 'recent', 'command', 'search').
+ * @property {boolean} [isMouseClick] True if the selection was triggered by a mouse click.
+ * @property {boolean} [previewable] Whether the item's URL is suitable for in-place preview by an external preview gadget (e.g. Instant Diffs).
+ * @property {boolean} [modifierClick] True if the click had a modifier key held (Ctrl, Cmd, Alt, Shift) or was non-primary (middle-click). Signals "I want different behavior than the row's default" — open in new tab, navigate fully past a preview, etc.
+ * @property {boolean} [newTab] True if the activation asked for a new browsing context and nothing else will open it. Set for keyboard activation only — a mouse click reaches the row's <a>, where the browser reads the modifier itself.
+ */
+
+/**
+ * Content displayed in the empty or no-results state of the command palette.
+ *
+ * @typedef {Object} StateContent
+ * @property {string} title The heading text.
+ * @property {string} description The body text.
+ * @property {Object} icon Codex icon object.
+ */
+
+/**
+ * Optional help content for a mode or command. Help mode shows it in its
+ * detail pane for the highlighted entry, and a mode's own help can also be
+ * opened over that mode while it is active. The description is an i18n message
+ * key whose body is rendered via `mw.message( key ).parse()` — so it may
+ * contain inline HTML such as `<kbd>`, `<code>`, and `<strong>` for keyboard
+ * hints or examples. Used as a longer-form continuation of the mode's one-line
+ * `description`. Keyboard shortcuts live in the palette footer rather than
+ * here.
+ *
+ * @typedef {Object} PaletteHelp
+ * @property {string} [description] Localised i18n message key whose parsed (HTML) body is rendered wherever the entry's help is shown.
+ */
+
+/**
+ * A mode switches the palette into a different search/browse context.
+ *
+ * @typedef {Object} PaletteMode
+ * @property {string} id Unique identifier for this mode.
+ * @property {string[]} triggers Prefixes that activate the mode (e.g., ['/ns:', ':']).
+ * @property {string} [label] Display label for this mode in the command list.
+ * @property {string} [description] Short explanation shown in the command list.
+ * @property {string} [placeholder] Input placeholder when mode is active (e.g., "Search users").
+ * @property {Object} [icon] Codex icon object for the header when mode is active.
+ * @property {'list'|'gallery'} [layout='list'] Result rendering layout. `'list'` (default) renders a vertical list. `'gallery'` renders a tiled grid for thumbnail-driven content and widens the palette to fit. Mutually exclusive with `compactResults`.
+ * @property {boolean} [compactResults=false] Render results in a denser layout — small icon instead of thumbnail, description inline. Use for command-style modes whose items lack real thumbnails. Ignored in gallery layout.
+ * @property {number} [debounceMs=120] Delay in milliseconds between a keystroke and `getResults` for a non-empty query. 0 runs it on every keystroke; an empty query never waits.
+ * @property {KeyBinding[]} [keybindings] Optional mode-contributed keyboard bindings. Prepended onto the core binding list at dispatch time, so mode bindings win on key collisions within their own zone.
+ * @property {StateContent} [emptyState] Content shown when the mode is active with no query. Falls back to default search messaging.
+ * @property {( query: string, tokens?: CommandPaletteToken[] ) => StateContent} [noResults] Returns content shown when query produces no results. Receives the query string and optional tokens array. Falls back to default no-results messaging.
+ * @property {TokenPattern|TokenPattern[]} [tokenPattern] Optional token detection pattern(s) for auto-tokenization.
+ * @property {PaletteHelp} [help] Optional long-form help, shown in help mode's detail pane, and over this mode when help is opened inside it.
+ * @property {( query: string, signal?: AbortSignal, tokens?: CommandPaletteToken[], modeContext?: Object[] ) => Promise<CommandPaletteItem[]>} getResults Returns result items for the given sub-query. Optional signal for abort, optional tokens array, optional mode context array (only meaningful for modes that opt in to drill-down state). The signal is honoured by mw.Api on MediaWiki 1.44+ and ignored on 1.43.
+ * @property {( item: CommandPaletteItem, signal?: AbortSignal ) => Promise<Object>} [getItemDetail] Lazy detail-pane data for the highlighted item, resolving to `{ description, pairs }` — each field is merged into the item's `detail` when present. Use when the data is too heavy to compute for every item upfront. Same signal caveat as `getResults`.
+ * @property {( item: CommandPaletteItem ) => (CommandPaletteActionResult|Promise<CommandPaletteActionResult>)} [onResultSelect] Handles selection of a result item.
+ * @property {( item: CommandPaletteItem ) => (RecentRemembered|null|undefined)} [remember] Internal for now, not part of the documented mode API: how Recent remembers a row this mode opened. Return null to leave the row out of Recent, or nothing to let Recent read the place from the row's link.
+ * @property {( modeContext: Object[] ) => string} [headerLabel] Optional breadcrumb label rendered in the header. Receives the current modeContext stack. Falls back to the input placeholder when absent.
+ */
+
+/**
+ * What a mode tells Recent about a row it opened. Internal for now.
+ *
+ * @typedef {Object} RecentRemembered
+ * @property {'user'|'revision'|'file'} kind
+ * @property {string} label
+ * @property {Object<string, string>} [data] What Recent draws the row with, so it need not ask the wiki again: a revision's author, timestamp and summary, a file's media type and the link to the thumbnail the row showed.
+ */
+
+/**
+ * Defines a token detection pattern for auto-tokenization in the input field.
+ *
+ * @typedef {Object} TokenPattern
+ * @property {string} modeId Which mode produced this pattern.
+ * @property {'prefix'|'any'} position Where the token must appear in the query.
+ * @property {'root'|string} activeIn Controls when pattern is eligible: 'root' = only when no mode active, a mode id string = only when that mode is active.
+ * @property {( text: string ) => {label: string, raw: string}|null} match Tests text and returns token data or null.
+ * @property {( text: string ) => {label: string, raw: string}|null} [eagerMatch] Optional lenient matcher used after the standard pass matched at least one token (e.g. paste). Allows end-of-string as a valid terminator.
+ * @property {string} [variant] Optional visual variant for the chip (e.g. 'outlined').
+ */
+
+/**
+ * Either kind of registry entry. Both carry `id` and `triggers`; only a mode
+ * produces results, and only a command handles selection.
+ *
+ * @typedef {PaletteMode|PaletteCommand} PaletteHandler
+ */
+
+/**
+ * A command executes an action immediately on selection (no sub-query).
+ *
+ * @typedef {Object} PaletteCommand
+ * @property {string} id Unique identifier for this command.
+ * @property {string[]} triggers Prefixes that activate the command.
+ * @property {string} [label] Display label for this command in the command list.
+ * @property {string} [description] Short explanation shown in the command list.
+ * @property {PaletteHelp} [help] Optional long-form help, shown in help mode's detail pane.
+ * @property {( item: CommandPaletteItem ) => (CommandPaletteActionResult|Promise<CommandPaletteActionResult>)} [onResultSelect] Handles selection — executes the command action. Picked from help mode, the action applies as it would at root: help closes before an `updateQuery`, `addToken` or `pushModeContext` takes effect.
+ */
+
+/**
+ * A footer hint surfaced when its parent binding's `when` predicate
+ * passes. Bindings with `keys: []` are hint-only — the corresponding
+ * handler lives in a sibling binding entry.
+ *
+ * @typedef {Object} KeyBindingHint
+ * @property {string} msgKey i18n message key for the hint label.
+ * @property {string} kbd Keyboard glyph(s) next to the label (e.g. '↵', '↑↓', '⌘C').
+ *   A lone '←' or '→' is swapped on RTL interface languages so the hint names
+ *   the key the user actually presses.
+ * @property {string[]} [keys] `kbd` split into individual keys, one cap each.
+ * @property {number} [order] Sort order within the footer (lower = leftmost).
+ */
+
+/**
+ * A single keyboard binding in the palette's binding registry. Both the
+ * dispatcher and the footer derive from this list, so a hint is visible
+ * iff its handler will fire — by construction.
+ *
+ * @typedef {Object} KeyBinding
+ * @property {string} id Unique binding identifier (used for debugging).
+ * @property {'input'|'action'} zone Which focus zone the binding applies to.
+ * @property {string[]} keys Event `key` values that fire `handle`. An empty array marks the binding as hint-only. Declare 'ArrowLeft'/'ArrowRight' logically (previous/next): the palette mirrors the physical arrow on RTL interface languages before resolving.
+ * @property {string|string[]} [modifiers='none'] Which modifier state the binding claims, from 'none', 'shift', 'accel' (Ctrl, or Command on a Mac), 'accel+shift', or 'any'. An array accepts several. A character composed with AltGr, and a capital typed with Shift, count as 'none' — they are typed text, not chords. Anything not named here stays with the browser.
+ * @property {( state: Object ) => boolean} when Predicate over the dispatch state — false suppresses both the handler and the hint.
+ * @property {( state: Object, event: KeyboardEvent ) => void} handle Called when a `keys` entry matches and `when` passes. Should call `event.preventDefault()` to claim the keystroke.
+ * @property {boolean} [worksDuringHelp] When true, the binding fires even with the help overlay open. Defaults to false.
+ * @property {KeyBindingHint|null} [hint] Footer hint to surface, or null to omit one.
+ */
+
+/**
+ * Action to navigate to a URL in the current tab.
+ *
+ * @typedef {Object} CommandPaletteNavigateAction
+ * @property {'navigate'} action
+ * @property {string} payload - The URL to navigate to.
+ */
+
+/**
+ * Action to leave any mode and put the payload in the input. A payload that
+ * is exactly a mode trigger (compared case-insensitively) instead switches to
+ * that mode, with an empty input and no remembered trigger.
+ *
+ * @typedef {Object} CommandPaletteExitWithQueryAction
+ * @property {'exitWithQuery'} action
+ * @property {string} payload - Text for the input, or a mode trigger to switch to.
+ */
+
+/**
+ * Action to update the query string within the current mode without exiting.
+ *
+ * @typedef {Object} CommandPaletteUpdateQueryAction
+ * @property {'updateQuery'} action
+ * @property {string} payload - The new query string.
+ */
+
+/**
+ * Action to push a context value onto the active mode's context stack
+ * and clear the input query.
+ *
+ * @typedef {Object} CommandPalettePushModeContextAction
+ * @property {'pushModeContext'} action
+ * @property {*} payload The value pushed onto activeModeContext.
+ */
+
+/**
+ * A token chip in the input. A mode contributes one through a `tokenPattern`
+ * match or an `addToken` action; `id` is assigned when the token is stored.
+ *
+ * @typedef {Object} CommandPaletteToken
+ * @property {string} id Unique identifier for the chip.
+ * @property {string} label Text shown in the chip.
+ * @property {string} raw Source text the token was matched from.
+ * @property {string} modeId Mode that produced the token.
+ * @property {string} position Where the token may appear. Defaults to 'any'.
+ * @property {string} [variant] Optional visual variant for the chip.
+ */
+
+/**
+ * Action to append a token chip to the input and clear the free text,
+ * without leaving the current mode.
+ *
+ * @typedef {Object} CommandPaletteAddTokenAction
+ * @property {'addToken'} action
+ * @property {Omit<CommandPaletteToken, 'id'>} payload The token to append — the shape TokenPattern matchers produce, plus its owning mode.
+ */
+
+/**
+ * Action to toggle help. At root it opens help mode, and inside help mode it
+ * leaves it. Inside any other mode it shows or hides that mode's help over it,
+ * without leaving the mode.
+ *
+ * @typedef {Object} CommandPaletteToggleHelpAction
+ * @property {'toggleHelp'} action
+ * @property {undefined} [payload] - Payload is not applicable for 'toggleHelp'.
+ */
+
+/**
+ * Action indicating no operation or that the action was self-contained.
+ *
+ * @typedef {Object} CommandPaletteNoneAction
+ * @property {'none'} action
+ * @property {undefined} [payload] - Payload is not applicable for 'none' action.
+ */
+
+/**
+ * Describes the action the UI should take after an item selection is handled.
+ * This is a discriminated union based on the 'action' property.
+ *
+ * @typedef {CommandPaletteNavigateAction | CommandPaletteExitWithQueryAction | CommandPaletteUpdateQueryAction | CommandPalettePushModeContextAction | CommandPaletteAddTokenAction | CommandPaletteToggleHelpAction | CommandPaletteNoneAction} CommandPaletteActionResult
+ */
+
+/**
+ * Describes the payload emitted when an action button within a CommandPaletteItem is clicked.
+ *
+ * @typedef {Object} CommandPaletteActionEvent
+ * @property {'dismiss'|'navigate'|'event'|string} type The type of action triggered.
+ * @property {string} itemId The ID of the parent CommandPaletteItem.
+ * @property {string} actionId The ID of the specific action that was clicked (e.g., 'dismiss', 'edit').
+ * @property {string} [url] The URL associated with the action, if any.
+ * @property {*} [event] Optional event data for 'event' type actions.
+ */
+
+/**
+ * @typedef {Object} CitizenCommandPaletteSearchClient
+ * @property {( query: string ) => Promise<CommandPaletteSearchResponse>} fetchByQuery
+ */
+
+/**
+ * @typedef {Object} CommandPaletteSearchResponse
+ * @property {string} query
+ * @property {CommandPaletteItem[]} results
+ */
+
+/**
+ * Defines the interface for a provider of search results for the Command Palette.
+ *
+ * @interface CommandPaletteProvider
+ * @property {string} id - Unique identifier for the provider.
+ * @property {number} debounceMs - Debounce in milliseconds; 0 fetches immediately on every keystroke.
+ * @property {boolean} keepStaleResults - Whether the previous results stay on screen while fresh ones load.
+ * @property {( query: string ) => boolean} canProvide - Method to check if the provider can handle the query.
+ * @property {( query: string ) => Array<CommandPaletteItem>|Promise<Array<CommandPaletteItem>>} getResults - Method to fetch results.
+ * @property {?( item: CommandPaletteItem ) => CommandPaletteActionResult|Promise<CommandPaletteActionResult>} onResultSelect - Optional method to handle result selection.
+ */
+
+/**
+ * Result returned by a provider's getResults method.
+ *
+ * @typedef {Object} ProviderResult
+ * @property {Array<CommandPaletteItem>} items The result items.
+ * @property {boolean} [stale] If true, these are stale results shown while fresh ones load.
+ */
+
+/**
+ * Configuration for a provider, passed to createProvider.
+ *
+ * @typedef {Object} ProviderConfig
+ * @property {number} [debounceMs=120] Debounce delay in milliseconds.
+ * @property {boolean} [keepStaleResults=false] Whether to show previous results while loading.
+ */
+
+module.exports = {/* Types are only used for JSDoc */};

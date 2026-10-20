@@ -1,0 +1,147 @@
+.citizen-section-heading,
+section[ data-mw-section-id ] > .mw-heading,
+.mw-editsection {
+	--size-icon: 1.125rem;
+}
+
+.citizen-section {
+	&-heading {
+		display: flex;
+		align-items: center;
+
+		.mw-headline {
+			flex-grow: 1;
+		}
+	}
+}
+
+// The chevron. Drawn on the heading's ::before so first paint carries the
+// affordance with no layout shift and noscript clients never see it, then
+// handed to the injected button once sections.js runs. Each form sets its own
+// box; they must match or the handover shifts the row.
+// Trade-off: this claims the heading's single ::before slot, so any extension
+// or gadget styling these headings' ::before will conflict.
+.mixin-citizen-section-chevron() {
+	display: block;
+	content: '';
+	background-color: currentcolor;
+	-webkit-mask-image: url( assets/images/cdxIconCollapse.svg );
+	mask-image: url( assets/images/cdxIconCollapse.svg );
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	transition: var( --transition-hover );
+	transition-property: transform;
+}
+
+// All markup shapes share one recipe: the legacy transform's sections
+// (heading inside, carrying .citizen-section-heading) and native Parsoid
+// sections (<section data-mw-section-id> with the heading inside).
+.client-js .citizen-sections-enabled {
+	section:is( [ data-mw-section-id ], .citizen-section ) > :is( .mw-heading, .citizen-section-heading ) {
+		cursor: pointer;
+		-webkit-user-select: none;
+		user-select: none;
+
+		// The flex item itself, so it carries the button's whole footprint.
+		&::before {
+			flex-shrink: 0;
+			order: 3;
+			width: @min-size-interactive-pointer;
+			height: @min-size-interactive-pointer;
+			-webkit-mask-size: var( --size-icon );
+			mask-size: var( --size-icon );
+			.mixin-citizen-section-chevron();
+		}
+
+		:is( .mw-headline, h1, h2, h3, h4, h5, h6 ) {
+			transition: var( --transition-hover );
+			transition-property: opacity;
+
+			@media ( hover: hover ) {
+				&:hover {
+					opacity: var( --opacity-icon-base--hover );
+				}
+
+				&:active {
+					opacity: var( --opacity-icon-base--selected );
+				}
+			}
+		}
+	}
+
+	// sections.js injects the real control, so the heading's own chevron
+	// stands down. The class only lands once every toggle is in place, which
+	// keeps the affordance continuous across the handover.
+	&.citizen-sections-interactive {
+		section:is( [ data-mw-section-id ], .citizen-section ) > :is( .mw-heading, .citizen-section-heading )::before {
+			content: none;
+		}
+	}
+
+	// The Codex classes come from sections.js, so the box, colours and focus
+	// ring track the edit links rather than being restated. Order 3 keeps it
+	// outboard of them and of DiscussionTools' subscribe control, which
+	// skinStyles/extensions/DiscussionTools holds at 2.
+	.citizen-section-toggle {
+		flex-shrink: 0;
+		order: 3;
+
+		&::before {
+			width: var( --size-icon );
+			height: var( --size-icon );
+			-webkit-mask-size: contain;
+			mask-size: contain;
+			.mixin-citizen-section-chevron();
+		}
+	}
+
+	section:is( [ data-mw-section-id ], .citizen-section ).citizen-section--collapsed > :is( .mw-heading, .citizen-section-heading ) {
+		// Nothing is left for this margin to separate the heading from, and it
+		// can no longer collapse away: hiding the body applies
+		// `content-visibility: hidden`, whose implied layout containment makes
+		// the body a formatting context, so whatever follows adds to this
+		// margin instead of merging with it.
+		margin-block-end: 0;
+
+		// Hide edit section buttons when section is collapsed,
+		// since user no longer needs the section.
+		.mw-editsection {
+			display: none;
+		}
+
+		&::before,
+		> .citizen-section-toggle::before {
+			transform: rotate3d( 1, 0, 0, 180deg );
+		}
+
+		:is( .mw-headline, h1, h2, h3, h4, h5, h6 ) {
+			color: var( --color-subtle );
+		}
+	}
+
+	// Collapsing hides each child with `hidden="until-found"`, but the
+	// attribute alone cannot be trusted to hide anything: its UA rendering
+	// loses to any author `display` declaration, and its `content-visibility`
+	// form is a no-op on elements whose inner display type is table. Thumbnail
+	// figures and bare wikitables hit both cases and stayed fully painted
+	// while the rest of the section collapsed.
+	section:is( [ data-mw-section-id ], .citizen-section ).citizen-section--collapsed > [ hidden ] {
+		display: none;
+	}
+
+	// The attribute only reads back as `until-found` on engines that accept
+	// the value, and those are exactly the engines that render it as
+	// `content-visibility: hidden`; elsewhere it reflects as a bare `hidden`
+	// and keeps the plain hide above. Giving it a block box makes size
+	// containment apply, so that content-visibility takes hold and
+	// find-in-page still reaches the collapsed content.
+	// The UA matches this keyword case-insensitively and we cannot: less.php
+	// rejects the `i` flag in a selector. Collapsing writes the attribute
+	// through the `hidden` IDL setter on every child, so it is always
+	// canonically cased by the time these rules can match.
+	section:is( [ data-mw-section-id ], .citizen-section ).citizen-section--collapsed > [ hidden='until-found' ] {
+		display: block;
+	}
+}

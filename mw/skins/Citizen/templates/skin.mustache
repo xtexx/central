@@ -1,0 +1,40 @@
+{{!
+	string|null html-site-notice the contents of a banner defined in MediaWiki:Sitenotice.
+		Also used by CentralNotice to inject banners into Vector.
+	string html-subtitle
+	string html-undelete-link
+	string html-user-message
+	string html-body-content--formatted
+	string html-categories
+	string html-after-content
+	string msg-citizen-jumptocontent label for the link that skips the site header and jumps to the page content
+	bool aside-enabled whether the page aside has a sticky panel with content
+	bool is-mainpage whether this is a view of the wiki's main page
+	object data-footer for footer template partial. see Footer.mustache for documentation.
+}}
+
+<a class="mw-jump-link citizen-jump-link" href="#bodyContent">{{msg-citizen-jumptocontent}}</a>
+{{>Header}}
+<div class="citizen-page-container">
+	<div class="citizen-sitenotice-container">{{{html-site-notice}}}</div>
+	<main class="mw-body" id="content">
+		{{! On the main page the header renders below the content, so it is
+			emitted after it — matching DOM order to visual order keeps
+			mid-stream paints from shifting the header. }}
+		{{^is-mainpage}}{{>PageHeader}}{{/is-mainpage}}
+		<div class="citizen-body-container">
+			<div id="bodyContent" class="citizen-body">
+				<div id="contentSub"{{{html-user-language-attributes}}}>{{{html-subtitle}}}</div>
+				{{#html-undelete-link}}<div id="contentSub2">{{{.}}}</div>{{/html-undelete-link}}
+				{{{html-user-message}}}
+				{{#data-body-content}}{{{html-body-content}}}{{/data-body-content}}
+			</div>
+			{{#aside-enabled}}{{>PageAside}}{{/aside-enabled}}
+			{{>PageFooter}}
+		</div>
+		{{#is-mainpage}}{{>PageHeader}}{{/is-mainpage}}
+	</main>
+	{{{html-after-content}}}
+	{{#data-footer}}{{>Footer}}{{/data-footer}}
+</div>
+{{#data-sticky-header}}{{>StickyHeader}}{{/data-sticky-header}}

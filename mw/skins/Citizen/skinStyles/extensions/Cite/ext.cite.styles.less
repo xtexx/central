@@ -1,0 +1,32 @@
+/*
+ * Citizen
+ *
+ * SkinStyles for Extension:Cite
+ * Module: ext.cite.styles
+ * Version: REL1_43
+ *
+ * Date: 2025-06-25
+*/
+
+@import '../../../resources/mixins.less';
+
+.mw-references-wrap {
+	margin-top: var( --space-md );
+	color: var( --color-base );
+	.mixin-citizen-font-styles( 'small' );
+}
+
+.mw-body-content {
+	.references {
+		margin: 0 var( --space-xl );
+
+		code {
+			font-size: 0.875em;
+			line-height: inherit;
+		}
+
+		li {
+			margin-bottom: var( --space-xxs );
+		}
+	}
+}

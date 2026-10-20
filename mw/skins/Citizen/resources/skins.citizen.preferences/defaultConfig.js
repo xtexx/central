@@ -1,0 +1,112 @@
+const { PreferencesConfig } = require( './types.js' );
+
+/**
+ * Built-in default preferences configuration.
+ * Uses the same schema as admin overrides from MediaWiki:Citizen-preferences.json.
+ *
+ * @param {boolean} [isV4] Whether the v4 preview generation is active. Defaults
+ *   to the root class; the docs reference generator passes it explicitly so it
+ *   can render both channels from Node, where there is no DOM.
+ * @return {PreferencesConfig} Default config with sections and preferences
+ */
+function getDefaultConfig( isV4 = document.documentElement.classList.contains( 'citizen-v4' ) ) {
+	// Black ships as a theme on the preview channel; the legacy world
+	// keeps the pure-black switch instead.
+	// citizen-v4-remove — at the 4.0 flip, drop the isV4 parameter, inline the
+	// v4 branches, and delete the pure-black entry.
+	const themeOptions = [
+		{ value: 'os', labelMsg: 'citizen-theme-os-label' },
+		{ value: 'day', labelMsg: 'citizen-theme-day-label' },
+		{ value: 'night', labelMsg: 'citizen-theme-night-label' }
+	];
+	if ( isV4 ) {
+		themeOptions.push( { value: 'black', labelMsg: 'citizen-theme-black-label' } );
+	}
+
+	return {
+		sections: {
+			appearance: { labelMsg: 'citizen-preferences-section-appearance' },
+			behavior: { labelMsg: 'citizen-preferences-section-behavior' }
+		},
+		preferences: {
+			'skin-theme': {
+				section: 'appearance',
+				options: themeOptions,
+				// The legacy world draws the themes as a segmented track of
+				// icons. On v4 the ThemePicker claims skin-theme before a
+				// widget type is read, so this type is inert there.
+				type: isV4 ? 'radio' : 'segmented',
+				// citizen-v4-remove
+				...( isV4 ? {} : { variant: 'theme' } ),
+				// v4 relabels this to just "Theme".
+				// The legacy arm is deleted at the 4.0 flip when this
+				// conditional collapses to the v4 value.
+				labelMsg: isV4 ? 'citizen-theme-name-v4' : 'citizen-theme-name',
+				visibilityCondition: 'always'
+			},
+			'citizen-feature-custom-font-size': {
+				section: 'appearance',
+				options: [
+					{ value: 'small', labelMsg: 'citizen-feature-custom-font-size-small-label' },
+					{ value: 'standard', labelMsg: 'citizen-feature-custom-font-size-standard-label' },
+					{ value: 'large', labelMsg: 'citizen-feature-custom-font-size-large-label' },
+					{ value: 'xlarge', labelMsg: 'citizen-feature-custom-font-size-xlarge-label' }
+				],
+				type: 'segmented',
+				variant: 'font-size',
+				labelMsg: 'citizen-feature-custom-font-size-name',
+				visibilityCondition: 'always'
+			},
+			'citizen-feature-custom-width': {
+				section: 'appearance',
+				options: [
+					{ value: 'standard', labelMsg: 'citizen-feature-custom-width-standard-label' },
+					{ value: 'wide', labelMsg: 'citizen-feature-custom-width-wide-label' },
+					{ value: 'full', labelMsg: 'citizen-feature-custom-width-full-label' }
+				],
+				type: 'segmented',
+				variant: 'width',
+				labelMsg: 'citizen-feature-custom-width-name',
+				visibilityCondition: 'always'
+			},
+			// Switch preferences use short-form options (strings).
+			// normalizeConfig() converts these to { value: '0' } / { value: '1' }.
+			...( isV4 ? {} : {
+				'citizen-feature-pure-black': {
+					section: 'appearance',
+					options: [ '0', '1' ],
+					type: 'switch',
+					labelMsg: 'citizen-feature-pure-black-name',
+					descriptionMsg: 'citizen-feature-pure-black-description',
+					visibilityCondition: 'dark-theme'
+				}
+			} ),
+			'citizen-feature-image-dimming': {
+				section: 'appearance',
+				options: [ '0', '1' ],
+				type: 'switch',
+				labelMsg: 'citizen-feature-image-dimming-name',
+				descriptionMsg: 'citizen-feature-image-dimming-description',
+				visibilityCondition: 'dark-theme'
+			},
+			'citizen-feature-autohide-navigation': {
+				section: 'behavior',
+				options: [ '0', '1' ],
+				type: 'switch',
+				labelMsg: 'citizen-feature-autohide-navigation-name',
+				descriptionMsg: 'citizen-feature-autohide-navigation-description',
+				visibilityCondition: 'tablet-viewport'
+			},
+			'citizen-feature-performance-mode': {
+				section: 'behavior',
+				options: [ '0', '1' ],
+				type: 'switch',
+				labelMsg: 'citizen-feature-performance-mode-name',
+				descriptionMsg: 'citizen-feature-performance-mode-description',
+				visibilityCondition: 'always'
+			}
+		}
+	};
+}
+
+module.exports = getDefaultConfig;

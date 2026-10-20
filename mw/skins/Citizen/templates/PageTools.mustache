@@ -1,0 +1,16 @@
+{{!
+	object data-page-views
+	object data-page-associated-pages
+	object data-page-actions
+}}
+<div class="citizen-page-actions">
+	{{#is-sharable}}{{>Share}}{{/is-sharable}}
+	{{#has-languages}}{{>PageTools__languages}}{{/has-languages}}
+	{{#is-visible}}
+	<div class="citizen-page-actions__tabs">
+		{{#data-portlets.data-views}}{{>Menu}}{{/data-portlets.data-views}}
+		{{#data-portlets.data-associated-pages}}{{>Menu}}{{/data-portlets.data-associated-pages}}
+	</div>
+	{{/is-visible}}
+	{{#has-overflow}}{{>PageTools__more}}{{/has-overflow}}
+</div>

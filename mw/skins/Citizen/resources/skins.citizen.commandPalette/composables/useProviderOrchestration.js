@@ -1,0 +1,873 @@
+const { ref, shallowRef, computed } = require( 'vue' );
+const useOperationLifecycle = require( './useOperationLifecycle.js' );
+const destinationKey = require( '../utils/destinationKey.js' );
+const { DEFAULT_DEBOUNCE_MS } = require( '../providers/createProvider.js' );
+
+const SHOW_PENDING_DELAY_MS = 300;
+
+const RECENT_ITEMS_SHOWN = 8;
+
+// Per-item detail fetches fire on focus changes (arrow keys, hover).
+// Lower than the query debounce because the user expects detail to settle
+// faster than they expect search results, and aborts handle rapid
+// scrubbing — a settled focus of ~80ms is the threshold beyond which the
+// fetch is worth running.
+const DETAIL_DEBOUNCE_MS = 80;
+
+const DEFAULT_STATE_CONFIG = {
+	emptyState: {
+		title: mw.message( 'searchsuggest-search' ).text(),
+		description: mw.message( 'citizen-search-empty-desc' ).text(),
+		icon: null
+	},
+	noResults( query ) {
+		return {
+			title: mw.message( 'citizen-search-noresults-title', query ).text(),
+			description: mw.message( 'search-nonefound' ).text(),
+			icon: null
+		};
+	}
+};
+
+/**
+ * Normalizes a provider result into an array of items.
+ * Providers may return { items: [...] }, a raw array, or something else.
+ *
+ * @param {*} result The raw provider result.
+ * @return {Array} The normalized items array.
+ */
+function normalizeProviderResult( result ) {
+	if ( result && result.items ) {
+		return result.items;
+	}
+	return Array.isArray( result ) ? result : [];
+}
+
+/**
+ * What opening a row would only reload: the view you are on; when a
+ * redirect led here, the redirect, whose own link opens this view again;
+ * and on search results, the full-text search for the same query.
+ *
+ * @return {string[]} Destination keys.
+ */
+function currentViewKeys() {
+	const keys = [ destinationKey( { id: '', url: window.location.href } ) ];
+	const redirectedFrom = mw.config.get( 'wgRedirectedFrom' );
+	if ( redirectedFrom ) {
+		keys.push( destinationKey( { id: '', url: mw.util.getUrl( redirectedFrom ) } ) );
+	}
+	// A go that found no page shows these results at its own link, which
+	// keys as the page it named, while Recent remembers it as the full-text
+	// search it ran.
+	if ( mw.config.get( 'wgCanonicalSpecialPageName' ) === 'Search' ) {
+		const search = mw.util.getParamValue( 'search' );
+		if ( typeof search === 'string' && search !== '' ) {
+			keys.push( destinationKey( {
+				id: '',
+				url: mw.util.getUrl( 'Special:Search', { search, fulltext: 1 } )
+			} ) );
+		}
+	}
+	return keys;
+}
+
+/**
+ * What Recent leaves out: what its row would only reload, and any page
+ * Related already lists, however each of them links to it.
+ *
+ * @param {Array<Object>} relatedItems The rows Related lists.
+ * @return {Set<string>} Destination keys.
+ */
+function recentLeftOut( relatedItems ) {
+	return new Set( [
+		...currentViewKeys(),
+		...relatedItems.filter( ( item ) => item.url ).map( destinationKey )
+	] );
+}
+
+/**
+ * Composable that orchestrates provider selection, dispatching, debouncing,
+ * abort coordination, and result assembly.
+ *
+ * Replaces the Pinia searchStore.
+ *
+ * @param {Array<Object>} providers Array of validated provider objects.
+ * @param {{queryActions: ( query: string, options?: { leads?: boolean, results?: Array<Object> } ) => { lead: Array<Object>, trail: Array<Object> }}} resultDecorator
+ *   `createAppendQueryActions()`'s return.
+ * @param {Object} [deps={}] Optional dependencies for presults.
+ * @param {Object} [deps.recentItemsProvider] Provider for recent items (presults).
+ * @param {Object} [deps.relatedArticlesProvider] Provider for related articles (presults).
+ * @param {Object} [deps.recentItemsService] Service for dismissing recent items.
+ * @param {import('vue').Ref<Array>} [deps.tokens] Ref containing the current token array.
+ * @param {Function} [deps.isHeldLiteral] Returns whether a query's leading span is text the user declared literal.
+ * @return {Object} Orchestration state and methods.
+ */
+function useProviderOrchestration( providers, resultDecorator, deps = {} ) {
+
+	const query = ref( '' );
+	const isPending = ref( false );
+	const showPending = ref( false );
+	/** @type {import('vue').ShallowRef<import('../types.js').PaletteMode|null>} */
+	const activeMode = shallowRef( null );
+	/** @type {import('vue').Ref<Object[]>} */
+	const activeModeContext = ref( [] );
+	// The trigger text the user typed to enter the active mode, so backing out
+	// of the mode can hand that text back as a literal query. Empty when the
+	// mode was entered some other way, e.g. by picking it from the list.
+	const enteredTrigger = ref( '' );
+	const helpVisible = ref( false );
+
+	// Identifies the surface a request belongs to. Every staleness decision
+	// keys off this one value, so a surface change cannot be half-honoured.
+	const surfaceKey = computed( () => JSON.stringify( [
+		query.value,
+		activeMode.value ? activeMode.value.id : null,
+		activeModeContext.value,
+		helpVisible.value
+	] ) );
+
+	// Every surface has at most one asynchronous group. `forSurface` is the
+	// staleness test: items are stale until a landing stamps them with the
+	// surface that is current when they arrive.
+	/** @type {import('vue').Ref<{ items: import('../types.js').CommandPaletteItem[], forSurface: string|null, providerId: string|null }>} */
+	const content = ref( { items: [], forSurface: null, providerId: null } );
+	/** @type {import('vue').Ref<{ items: import('../types.js').CommandPaletteItem[], settled: boolean }>} */
+	const related = ref( { items: [], settled: false } );
+	/** @type {import('vue').Ref<import('../types.js').CommandPaletteItem[]>} */
+	const recents = ref( [] );
+
+	const isPresultsSurface = computed(
+		() => !query.value && !activeMode.value
+	);
+	const isContentCurrent = computed(
+		() => content.value.forSurface === surfaceKey.value
+	);
+
+	// The lead action restates the typed query as a search, so it only leads
+	// when the query IS a search. A trigger-prefixed query (`#cat`) means
+	// something else, and its own results keep the lead. An empty query here
+	// is how modes and presults opt out of query actions entirely.
+	const queryActionQuery = computed(
+		() => activeMode.value ? '' : query.value
+	);
+	const queryActions = computed( () => resultDecorator.queryActions(
+		queryActionQuery.value,
+		{
+			leads: content.value.providerId === 'search',
+			results: content.value.items
+		}
+	) );
+
+	/**
+	 * @param {?string} heading
+	 * @param {Array} items
+	 * @return {?Object} Section, or null when there is nothing to render.
+	 */
+	function section( heading, items ) {
+		return items.length > 0 ? { heading: heading, items: items } : null;
+	}
+
+	// Each surface names its own groups, in render order. A group therefore
+	// cannot survive into a surface that does not mention it.
+	const displayedItems = computed( () => {
+		// The help overlay describes the mode in place of its results, so
+		// Enter cannot select a row nobody can see.
+		if ( helpVisible.value ) {
+			return [];
+		}
+
+		if ( isPresultsSurface.value ) {
+			// Recent is asked to leave these out already, but its rows are
+			// first fetched before Related settles, and an entry saved under
+			// an older key escapes that check.
+			const leftOut = recentLeftOut( related.value.items );
+			return [
+				section(
+					'citizen-command-palette-heading-related', related.value.items
+				),
+				section(
+					'citizen-command-palette-heading-recent',
+					recents.value
+						.filter( ( item ) => !item.url || !leftOut.has( destinationKey( item ) ) )
+						.slice( 0, RECENT_ITEMS_SHOWN )
+				)
+			].filter( Boolean );
+		}
+
+		const { lead, trail } = queryActions.value;
+		// The lead can stand in for one of the results, which is then not
+		// repeated below it.
+		const inLead = new Set( lead.map( ( item ) => item.id ) );
+		return [
+			section( null, lead ),
+			section( null, content.value.items.filter( ( item ) => !inLead.has( item.id ) ) ),
+			section( null, trail )
+		].filter( Boolean );
+	} );
+
+	const flatItems = computed(
+		() => displayedItems.value.flatMap( ( s ) => s.items )
+	);
+	const hasDisplayedItems = computed( () => flatItems.value.length > 0 );
+
+	// The lead group owns the default highlight: the synchronous query-action
+	// row when there is one, otherwise the async content group.
+	const isLeadReady = computed( () => {
+		if ( helpVisible.value ) {
+			return true;
+		}
+		if ( isPresultsSurface.value ) {
+			return related.value.settled;
+		}
+		return queryActions.value.lead.length > 0 || isContentCurrent.value;
+	} );
+
+	const isLoading = computed( () => {
+		if ( helpVisible.value ) {
+			return false;
+		}
+		if ( isPresultsSurface.value ) {
+			return !related.value.settled;
+		}
+		return !isContentCurrent.value;
+	} );
+
+	const defaultHighlightIndex = computed( () => {
+		// Presults are the only list shown without being asked for, so they
+		// get no default highlight and Enter does nothing. A mode's root
+		// listing also renders at an empty query, but the user elicited it,
+		// so it keeps its highlight.
+		if ( isPresultsSurface.value ) {
+			return -1;
+		}
+		return ( isLeadReady.value && flatItems.value.length > 0 ) ? 0 : -1;
+	} );
+
+	const stateConfig = computed( () => {
+		const mode = activeMode.value;
+		if ( !mode ) {
+			return DEFAULT_STATE_CONFIG;
+		}
+		return {
+			emptyState: mode.emptyState || DEFAULT_STATE_CONFIG.emptyState,
+			noResults: mode.noResults || DEFAULT_STATE_CONFIG.noResults
+		};
+	} );
+
+	const lifecycle = useOperationLifecycle( {
+		isPending,
+		showPending,
+		pendingDelayMs: SHOW_PENDING_DELAY_MS
+	} );
+	const resetOperationState = lifecycle.reset;
+
+	// Detail fetches run in their own abort domain so a focus change does
+	// not cancel an in-flight list fetch and a list refresh does not cancel
+	// a settled detail fetch. Pending state is internal — the UI today does
+	// not need a detail-specific spinner.
+	const detailPending = ref( false );
+	const detailShowPending = ref( false );
+	const detailLifecycle = useOperationLifecycle( {
+		isPending: detailPending,
+		showPending: detailShowPending,
+		pendingDelayMs: SHOW_PENDING_DELAY_MS
+	} );
+	const resetDetailState = detailLifecycle.reset;
+
+	/**
+	 * Lands provider output on the content group, but only if the surface it
+	 * was dispatched for is still the current one. This is the single
+	 * staleness gate — it replaces the per-call combinations of query, mode
+	 * and mode-context checks that each covered a different subset.
+	 *
+	 * @param {Array} items Items from the content provider.
+	 * @param {string} dispatchSurface surfaceKey captured when the request was issued.
+	 * @param {string|null} [providerId] Id of the provider that produced the items,
+	 *   or null when none did.
+	 */
+	function applyContent( items, dispatchSurface, providerId ) {
+		if ( surfaceKey.value !== dispatchSurface ) {
+			return;
+		}
+		content.value = {
+			items: Array.isArray( items ) ? items : [],
+			forSurface: dispatchSurface,
+			providerId: providerId !== undefined ?
+				providerId :
+				content.value.providerId
+		};
+	}
+
+	/**
+	 * Empties the content group. Used where a new level genuinely replaces the
+	 * old one (mode entry, drilling in or out) rather than refining it.
+	 */
+	function resetContent() {
+		content.value = { items: [], forSurface: null, providerId: null };
+	}
+
+	/**
+	 * Dispatches a provider with debouncing, abort and pending state.
+	 *
+	 * A provider declaring `debounceMs: 0` still comes through here: it skips
+	 * the wait, not the cancellation. Resolving that 0 with `||` would silently
+	 * promote it to the default and was why a no-debounce provider previously
+	 * had to bypass abort and pending state altogether.
+	 *
+	 * @param {Object} provider The provider.
+	 * @param {string} currentQuery The query at dispatch time.
+	 * @param {string} dispatchSurface surfaceKey at dispatch time.
+	 */
+	function dispatchProvider( provider, currentQuery, dispatchSurface ) {
+		const isStale = () => surfaceKey.value !== dispatchSurface;
+		lifecycle.runDebouncedAbortable( {
+			debounceMs: provider.debounceMs ?? DEFAULT_DEBOUNCE_MS,
+			isStale,
+			run: ( signal ) => provider.getResults( currentQuery, signal ),
+			onResult: ( result ) => applyContent(
+				normalizeProviderResult( result ), dispatchSurface, provider.id
+			),
+			onError: ( error ) => {
+				mw.log.error(
+					'[commandPalette] Async provider "' + provider.id + '" failed:', error
+				);
+				applyContent( [], dispatchSurface, provider.id );
+			}
+		} );
+	}
+
+	/**
+	 * Recent's rows for the presults surface, only as many as it shows.
+	 *
+	 * @param {Array<Object>} relatedItems The rows Related lists.
+	 * @return {Array<Object>|null} The rows, or null when Recent failed.
+	 */
+	function fetchRecents( relatedItems ) {
+		if ( !deps.recentItemsProvider ) {
+			return [];
+		}
+		try {
+			return normalizeProviderResult( deps.recentItemsProvider.getResults( '', {
+				leftOut: recentLeftOut( relatedItems ),
+				limit: RECENT_ITEMS_SHOWN
+			} ) );
+		} catch ( e ) {
+			mw.log.error( '[commandPalette] Failed to get recent items:', e );
+			return null;
+		}
+	}
+
+	/**
+	 * Clears the search and populates presults.
+	 *
+	 * Related outranks recents because navigation intent is higher. That
+	 * ranking is structural — it is the order the two appear in the presults
+	 * branch of `displayedItems` — so however late related arrives it lands
+	 * above recents. This surface has no default highlight, and an explicit
+	 * selection is restored by item id, so the list settling underneath the
+	 * user cannot redirect them.
+	 */
+	async function clearSearch() {
+		query.value = '';
+		resetOperationState();
+		resetDetailState();
+		resetContent();
+
+		recents.value = fetchRecents( [] ) || [];
+		related.value = { items: [], settled: !deps.relatedArticlesProvider };
+
+		if ( !deps.relatedArticlesProvider ) {
+			return;
+		}
+
+		const dispatchSurface = surfaceKey.value;
+		let relatedItems = [];
+		try {
+			relatedItems = normalizeProviderResult(
+				await deps.relatedArticlesProvider.getResults( '' )
+			);
+		} catch ( e ) {
+			mw.log.error( '[commandPalette] Failed to get related articles:', e );
+		}
+
+		// The provider takes no AbortSignal, so this is the only gate standing
+		// between a slow related fetch and a surface that has moved on.
+		if ( surfaceKey.value !== dispatchSurface ) {
+			return;
+		}
+		// Recent refills the rows Related took, landing with Related in the
+		// same tick so the list is drawn once.
+		if ( relatedItems.some( ( item ) => item.url ) ) {
+			recents.value = fetchRecents( relatedItems ) || recents.value;
+		}
+		related.value = { items: relatedItems, settled: true };
+	}
+
+	/**
+	 * Handles a query routed through the active mode's getResults.
+	 *
+	 * Previous results stay on screen while a refinement runs — they are
+	 * stamped with the surface that produced them, so they render but cannot
+	 * be the default Enter target.
+	 *
+	 * @param {Object} mode The active mode object.
+	 * @param {string} currentQuery The query string.
+	 */
+	function handleModeQuery( mode, currentQuery ) {
+		const tokens = deps.tokens ? deps.tokens.value : [];
+		const dispatchSurface = surfaceKey.value;
+
+		// Empty query: fire immediately. No debounce, no abort — modes
+		// load their root state on entry and the user expects no delay.
+		// Uncancellable, so `dispatchSurface` is the only thing stopping a
+		// late landing from overwriting a level the user has left.
+		if ( !currentQuery ) {
+			isPending.value = true;
+			( async () => {
+				try {
+					const result = await mode.getResults(
+						'', undefined, tokens, activeModeContext.value
+					);
+					applyContent(
+						normalizeProviderResult( result ), dispatchSurface
+					);
+				} catch ( error ) {
+					mw.log.error(
+						'[commandPalette] Mode "' + mode.id + '" failed:', error
+					);
+					applyContent( [], dispatchSurface );
+				} finally {
+					if ( surfaceKey.value === dispatchSurface ) {
+						isPending.value = false;
+					}
+				}
+			} )();
+			return;
+		}
+
+		const isStale = () => surfaceKey.value !== dispatchSurface;
+		lifecycle.runDebouncedAbortable( {
+			debounceMs: mode.debounceMs ?? DEFAULT_DEBOUNCE_MS,
+			isStale,
+			run: ( signal ) => mode.getResults( currentQuery, signal, tokens, activeModeContext.value ),
+			onResult: ( result ) => applyContent(
+				normalizeProviderResult( result ), dispatchSurface
+			),
+			onError: ( error ) => {
+				mw.log.error(
+					'[commandPalette] Mode "' + mode.id + '" failed:', error
+				);
+				applyContent( [], dispatchSurface );
+			}
+		} );
+	}
+
+	/**
+	 * Enters a mode, clearing query and displayed items.
+	 *
+	 * @param {Object} mode The mode to enter.
+	 * @param {string} [trigger] The trigger text that entered the mode.
+	 */
+	function enterMode( mode, trigger ) {
+		helpVisible.value = false;
+		resetOperationState();
+		resetDetailState();
+		activeMode.value = mode;
+		activeModeContext.value = [];
+		enteredTrigger.value = trigger || '';
+		query.value = '';
+		resetContent();
+		handleModeQuery( mode, '' );
+	}
+
+	/**
+	 * Exits the current mode and reloads initial results.
+	 *
+	 * @return {Promise} Resolves when initial results are loaded.
+	 */
+	function exitMode() {
+		helpVisible.value = false;
+		activeMode.value = null;
+		activeModeContext.value = [];
+		enteredTrigger.value = '';
+		// clearSearch() also calls resetDetailState(), but the direct call
+		// here keeps exitMode's contract self-evident — every navigation
+		// function explicitly resets both lifecycles.
+		resetDetailState();
+		return clearSearch();
+	}
+
+	/**
+	 * Pushes a value onto the active mode's context stack and re-runs
+	 * the mode's getResults with an empty query. Cancels any in-flight
+	 * fetch and clears the displayed list so the previous level's
+	 * results don't bleed into the new one.
+	 *
+	 * @param {*} value Value to append to activeModeContext.
+	 */
+	function pushModeContext( value ) {
+		if ( !activeMode.value ) {
+			return;
+		}
+		activeModeContext.value = activeModeContext.value.concat( [ value ] );
+		resetOperationState();
+		resetDetailState();
+		query.value = '';
+		resetContent();
+		handleModeQuery( activeMode.value, '' );
+	}
+
+	/**
+	 * Pops the last entry from the active mode's context stack.
+	 * No-op when the stack is empty or no mode is active. Cancels any
+	 * in-flight fetch and clears the displayed list so the deeper
+	 * level's results don't bleed into the parent.
+	 */
+	function popModeContext() {
+		if ( !activeMode.value || activeModeContext.value.length === 0 ) {
+			return;
+		}
+		activeModeContext.value = activeModeContext.value.slice( 0, -1 );
+		resetOperationState();
+		resetDetailState();
+		query.value = '';
+		resetContent();
+		handleModeQuery( activeMode.value, '' );
+	}
+
+	/**
+	 * Updates the search query and triggers the appropriate provider.
+	 *
+	 * @param {string} newQuery The new search query.
+	 */
+	function updateQuery( newQuery ) {
+		query.value = newQuery;
+		resetOperationState();
+		resetDetailState();
+
+		// The overlay hides the mode's results; closeHelp re-runs the mode for
+		// whatever query it left.
+		if ( helpVisible.value ) {
+			return;
+		}
+
+		if ( activeMode.value ) {
+			handleModeQuery( activeMode.value, newQuery );
+			return;
+		}
+
+		if ( !newQuery ) {
+			clearSearch();
+			return;
+		}
+
+		// A latched literal is text the user asked to search for, so a trigger
+		// sitting at the front of it is not a command. Trigger-reading
+		// providers stand down and the query falls through to plain text.
+		const heldLiteral = deps.isHeldLiteral ?
+			deps.isHeldLiteral( newQuery ) :
+			false;
+		const contentProvider = providers.find(
+			( p ) => !( heldLiteral && p.readsTriggers ) && p.canProvide( newQuery )
+		);
+		const dispatchSurface = surfaceKey.value;
+
+		if ( !contentProvider ) {
+			applyContent( [], dispatchSurface, null );
+			return;
+		}
+
+		// Keep the previous fetch's rows on screen while the new one runs, when
+		// the provider opts in. They keep the surface stamp they were produced
+		// for, so they render without becoming a valid activation target.
+		content.value = {
+			items: contentProvider.keepStaleResults ?
+				content.value.items.filter(
+					( item ) => item.source && (
+						item.source.startsWith( contentProvider.id + ':' ) ||
+						item.source === contentProvider.id
+					)
+				) :
+				[],
+			forSurface: content.value.forSurface,
+			providerId: contentProvider.id
+		};
+
+		dispatchProvider( contentProvider, newQuery, dispatchSurface );
+	}
+
+	/**
+	 * Processes a provider action result.
+	 *
+	 * @param {Object} actionResult The action from the provider.
+	 * @param {Object} result The original selected item.
+	 * @param {import('../types.js').PaletteMode|null} mode The mode the item was selected in.
+	 * @return {Object} The processed action result.
+	 */
+	function processAction( actionResult, result, mode ) {
+		if ( !actionResult ) {
+			return { action: 'none' };
+		}
+
+		if ( actionResult.action === 'navigate' && result.type !== 'command' ) {
+			if ( deps.recentItemsService ) {
+				// A lead row standing in for a result carries that result's id
+				// with the go link. Recent keeps the result's own link, so the
+				// saved place is the page and not a trip through Special:Search.
+				// Any other row is remembered by the link its handler returned,
+				// which a mode may choose differently from the row's own link.
+				const standsFor = content.value.items.find(
+					( item ) => item.id === result.id && item.url !== result.url
+				);
+				deps.recentItemsService.saveRecentItem(
+					standsFor || result,
+					standsFor ? standsFor.url : actionResult.payload,
+					standsFor ? null : mode
+				);
+			}
+		}
+
+		return actionResult;
+	}
+
+	/**
+	 * The displayed row a selection came from, carrying the selection's
+	 * activation flags.
+	 *
+	 * A copy is matched on its link as well as its id: rows from some modes
+	 * share an id, and rows that also share a link open the same place.
+	 *
+	 * @param {Object} result The selected item.
+	 * @return {Object} The full row, or the selection itself when it is not displayed.
+	 */
+	function resolveSelection( result ) {
+		if ( flatItems.value.includes( result ) ) {
+			return result;
+		}
+		const found = flatItems.value.find(
+			( item ) => String( item.id ) === String( result.id ) && item.url === result.url
+		);
+		if ( !found ) {
+			return result;
+		}
+		const row = { ...found };
+		for ( const flag of [ 'isMouseClick', 'modifierClick', 'newTab' ] ) {
+			if ( result[ flag ] !== undefined ) {
+				row[ flag ] = result[ flag ];
+			}
+		}
+		return row;
+	}
+
+	/**
+	 * Handles selection of a result item.
+	 *
+	 * @param {Object} result The selected item.
+	 * @return {Promise<Object>} Action result for the UI.
+	 */
+	async function handleSelection( result ) {
+		if ( !result ) {
+			return { action: 'none' };
+		}
+
+		// A mouse click emits only the row component's props, so without this
+		// a handler would miss fields its mode keeps on the row, such as a
+		// revision id.
+		const item = resolveSelection( result );
+		// Read before any handler runs: the reader can switch modes while a
+		// handler is still working, and Recent must ask the mode the row was
+		// opened in.
+		const mode = activeMode.value;
+
+		// If in a mode, delegate to the mode's onResultSelect
+		if ( mode && typeof mode.onResultSelect === 'function' ) {
+			try {
+				const actionResult = await mode.onResultSelect( item );
+				return processAction( actionResult, item, mode );
+			} catch ( error ) {
+				mw.log.error(
+					'[commandPalette] Mode selection handler failed:', error
+				);
+				return { action: 'none' };
+			}
+		}
+
+		const sourceMatch = ( /^([^:]+)(?::.*)?$/ ).exec(
+			item.source ?? ''
+		);
+		const providerId = sourceMatch ? sourceMatch[ 1 ] : item.source;
+		const sourceProvider = providers.find(
+			( p ) => p.id === providerId
+		);
+
+		if ( sourceProvider && typeof sourceProvider.onResultSelect === 'function' ) {
+			try {
+				const actionResult =
+					await sourceProvider.onResultSelect( item );
+				return processAction( actionResult, item, mode );
+			} catch ( error ) {
+				mw.log.error(
+					'[commandPalette] Selection handler failed:', error
+				);
+				return { action: 'none' };
+			}
+		}
+
+		// Fallback
+		const fallback = item.url ?
+			{ action: 'navigate', payload: item.url } : { action: 'none' };
+		return processAction( fallback, item, mode );
+	}
+
+	/**
+	 * Lazy-load detail data for a focused item. Modes that opt in by
+	 * declaring `getItemDetail` (validated by defineMode) get this hook
+	 * called when the highlighted item changes. The mode owns the API
+	 * call and any per-item caching; the orchestration provides debounce,
+	 * abort, and reactive mutation.
+	 *
+	 * On result, `item.detail.header.description` and `item.detail.pairs`
+	 * are mutated in place — Vue 3 deep reactivity propagates through
+	 * displayedItems so App.vue's highlightedItemDetail computed picks
+	 * up the new fields without explicit invalidation.
+	 *
+	 * `isStale` checks both the mode (rejects results from a mode swap)
+	 * and item identity in `flatItems` (rejects results for items that
+	 * have been replaced by a list refresh). A focus change to a new item
+	 * before this resolves aborts via the lifecycle on the next call.
+	 *
+	 * @param {Object} item Highlighted palette item.
+	 */
+	function requestItemDetail( item ) {
+		const mode = activeMode.value;
+		if ( !mode || typeof mode.getItemDetail !== 'function' || !item ) {
+			return;
+		}
+		const capturedItem = item;
+		// Captured after the guard above; the narrowing does not survive into the
+		// closure that runs it.
+		const getItemDetail = mode.getItemDetail;
+		const isStale = () => activeMode.value !== mode ||
+			!flatItems.value.includes( capturedItem );
+		detailLifecycle.runDebouncedAbortable( {
+			debounceMs: DETAIL_DEBOUNCE_MS,
+			isStale,
+			run: ( signal ) => getItemDetail( capturedItem, signal ),
+			onResult: ( result ) => {
+				if ( !result || !capturedItem.detail ) {
+					return;
+				}
+				if ( !capturedItem.detail.header ) {
+					capturedItem.detail.header = {};
+				}
+				if ( result.description !== undefined ) {
+					capturedItem.detail.header.description = result.description;
+				}
+				if ( result.pairs !== undefined ) {
+					capturedItem.detail.pairs = result.pairs;
+				}
+			},
+			onError: ( error ) => {
+				mw.log.error(
+					'[commandPalette] Mode "' + mode.id + '" item detail failed:', error
+				);
+			}
+		} );
+	}
+
+	/**
+	 * Opens the help overlay over the active mode. It describes that mode
+	 * without modifying query, activeMode or activeModeContext, so closing it
+	 * returns the user to where they were. At root, help is a mode instead.
+	 */
+	function openHelp() {
+		if ( helpVisible.value || !activeMode.value ) {
+			return;
+		}
+		helpVisible.value = true;
+		resetOperationState();
+		resetDetailState();
+	}
+
+	/**
+	 * Closes the help overlay. By default it re-runs the mode for the query the
+	 * overlay left, so the list hidden under help comes back.
+	 *
+	 * A caller about to send a new query through `updateQuery` passes
+	 * `{ rerun: false }`, since that query refills the list and a re-run would
+	 * only fetch results it replaces. Without such a query nothing refills the
+	 * list, so every other caller keeps the default.
+	 *
+	 * @param {Object} [options]
+	 * @param {boolean} [options.rerun=true] Whether to re-run the mode.
+	 */
+	function closeHelp( { rerun = true } = {} ) {
+		if ( !helpVisible.value ) {
+			return;
+		}
+		helpVisible.value = false;
+		if ( rerun && activeMode.value ) {
+			handleModeQuery( activeMode.value, query.value );
+		}
+	}
+
+	/**
+	 * Toggles the help overlay.
+	 */
+	function toggleHelp() {
+		if ( helpVisible.value ) {
+			closeHelp();
+		} else {
+			openHelp();
+		}
+	}
+
+	/**
+	 * Dismisses a recent item and refreshes presults.
+	 *
+	 * @param {string|number} itemId The ID of the item to dismiss.
+	 */
+	function dismissRecentItem( itemId ) {
+		const itemToRemove = flatItems.value.find(
+			( item ) => String( item.id ) === String( itemId ) &&
+				item.source === 'recent'
+		);
+
+		if ( itemToRemove && deps.recentItemsService ) {
+			deps.recentItemsService.removeRecentItem( itemToRemove );
+			clearSearch();
+		}
+	}
+
+	return {
+		query,
+		displayedItems,
+		flatItems,
+		isPending,
+		showPending,
+		hasDisplayedItems,
+		isLoading,
+		surfaceKey,
+		isLeadReady,
+		defaultHighlightIndex,
+		stateConfig,
+		activeMode,
+		activeModeContext,
+		enteredTrigger,
+		helpVisible,
+		updateQuery,
+		clearSearch,
+		enterMode,
+		exitMode,
+		pushModeContext,
+		popModeContext,
+		toggleHelp,
+		openHelp,
+		closeHelp,
+		handleSelection,
+		requestItemDetail,
+		dismissRecentItem
+	};
+}
+
+module.exports = useProviderOrchestration;

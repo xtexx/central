@@ -1,0 +1,40 @@
+.citizen-drawer {
+	.citizen-dropdown-summary {
+		> svg {
+			> rect {
+				transform-origin: center;
+				transform-box: fill-box;
+				transition: var( --transition-hover );
+				transition-property: transform, opacity;
+			}
+		}
+
+		// Shorten the first bar from the end on hover
+		@media ( hover: hover ) {
+			&:hover > svg > rect:first-child {
+				transform: translateX( -25% ) scaleX( 0.5 );
+			}
+		}
+	}
+
+	> .citizen-dropdown-details[ open ] {
+		> .citizen-dropdown-summary {
+			> svg {
+				> rect {
+					&:first-child {
+						transform: translateY( 6px ) rotate( 45deg );
+					}
+
+					&:nth-child( 2 ) {
+						opacity: 0;
+						transform: scaleX( 0 );
+					}
+
+					&:last-child {
+						transform: translateY( -6px ) rotate( -45deg );
+					}
+				}
+			}
+		}
+	}
+}

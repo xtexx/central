@@ -1,0 +1,338 @@
+@import '../../../resources/mixins.less';
+@import '../../../resources/variables.less';
+
+// HACK: Hide trailing colon by using a custom font to make the colon zero-width
+// A fixed-width clip would cut the last letter of translations that end without a colon
+// `.notdef` carries a box because the OTS font sanitizer rejects an empty glyf table
+@font-face {
+	font-family: 'citizen-hide-colon';
+	src: url( data:font/woff2;base64,d09GMgABAAAAAAEkAAoAAAAAAnwAAADeAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAAPAoYNgE2AiQDCAsGAAQgBWYHJhvfAcgeB3aTD7UO3lzk6oz0IZ7v24/dN7OoJNFESOK1kAK1QUpy+pK/um0815dnQxHBI8L4QDCkrv3A89RHJydykij3MNGitsAsorYAI2yeTu54ONwOYRAm1NZGnZlPKwYiyD68t8DTctJXywN95RsAwBUoNI614Nhwi1VD1NiXhTy3fPlFAFBgIBhYAQwQRnqnzDmBINx8/Dv+r3f/wc9jKGRmohUIGywT8QATKxMQlCGgAAAw3AmIDQSUNRtaxoY4tF9Rdt3cwNJF1W/UBRC2KTkhKU1aLhoOY+n0HA== ) format( 'woff2' );
+	font-display: block;
+	unicode-range: U+003A, U+FF1A;
+}
+
+#mw-upload-form {
+	fieldset {
+		// Fieldsets grow to their content by default, so a long license name would widen the form past the page.
+		min-width: 0;
+		border-radius: var( --border-radius-medium );
+
+		/* Source field */
+		&:first-of-type {
+			display: flex;
+			flex-wrap: wrap;
+			gap: var( --space-lg );
+			padding-bottom: var( --space-sm );
+			margin: var( --space-xl ) 0;
+			color: var( --color-subtle );
+		}
+	}
+
+	#mw-htmlform-source {
+		flex-grow: 1;
+		order: -1;
+		.mixin-citizen-font-styles( 'small' );
+
+		&,
+		tbody,
+		tr,
+		td {
+			display: block;
+		}
+
+		.mw-htmlform-field-UploadSourceField {
+			margin-bottom: var( --space-xs );
+
+			// Core adds the source radios to the label cell, which is otherwise redundant with the dropzone.
+			&:not( :has( input[ name='wpSourceType' ] ) ) .mw-label {
+				display: none;
+			}
+		}
+
+		&:has( input[ name='wpSourceType' ] ) {
+			// Cancels the fieldset's top padding so the tabs sit right under the legend.
+			margin-top: calc( -1 * var( --space-xs ) );
+
+			> tbody {
+				display: flex;
+				flex-wrap: wrap;
+				row-gap: var( --space-xs );
+
+				> tr {
+					flex-basis: 100%;
+				}
+
+				// Rows ahead of the first source, such as a hook's intro text, stay ahead of the tabs.
+				> .mw-htmlform-field-UploadSourceField ~ tr {
+					order: 1;
+				}
+
+				// Each source's label cell becomes a tab on the first line, its field a panel below.
+				> .mw-htmlform-field-UploadSourceField {
+					display: contents;
+
+					> .mw-label {
+						position: relative;
+						display: flex;
+						align-items: center;
+						min-width: 0;
+						padding: var( --space-xs ) var( --space-sm );
+						font-size: var( --font-size-medium );
+						font-weight: var( --font-weight-medium );
+						color: var( --color-emphasized );
+						white-space: nowrap;
+						box-shadow: inset 0 calc( -1 * var( --border-width-base ) ) 0 var( --border-color-base );
+						transition-duration: var( --transition-duration-base );
+						transition-property: color, box-shadow;
+
+						&:hover {
+							color: var( --color-progressive--hover );
+							box-shadow: inset 0 calc( -1 * var( --border-width-thick ) ) 0 var( --color-progressive--hover );
+						}
+
+						&:has( > input:checked ) {
+							color: var( --color-progressive );
+							box-shadow: inset 0 calc( -1 * var( --border-width-thick ) ) 0 var( --color-progressive );
+						}
+
+						> label {
+							overflow: hidden;
+							text-overflow: ellipsis;
+							font-family: 'citizen-hide-colon', var( --font-family-base );
+						}
+
+						// The label names the source field, not the radio, so the radio covers the tab to
+						// take the click core's script listens for.
+						> input {
+							position: absolute;
+							inset: 0;
+							margin: 0;
+							appearance: none;
+							cursor: pointer;
+							background: none;
+							border: 0;
+							border-radius: var( --border-radius-base );
+
+							&:checked {
+								cursor: default;
+							}
+
+							&:focus-visible {
+								outline: var( --border-width-thick ) solid var( --color-progressive );
+								outline-offset: calc( -1 * var( --border-width-thick ) );
+							}
+						}
+					}
+
+					> .mw-input {
+						flex-basis: 100%;
+						order: 1;
+					}
+				}
+
+				// Continues the tab baseline to the end of the line.
+				&::after {
+					flex: 1 1 0;
+					content: '';
+					box-shadow: inset 0 calc( -1 * var( --border-width-base ) ) 0 var( --border-color-base );
+				}
+			}
+		}
+
+		// Hides unselected sources; with none selected, every field stays visible.
+		&:has( input[ name='wpSourceType' ]:checked ) .mw-htmlform-field-UploadSourceField:not( :has( input[ name='wpSourceType' ]:checked ) ) {
+			> .mw-input,
+			+ tr:has( > .htmlform-tip ) {
+				display: none;
+			}
+		}
+	}
+
+	// A table cannot narrow past its widest field, so each label stacks above its field instead.
+	#mw-htmlform-description {
+		&,
+		tbody,
+		tr,
+		td {
+			display: block;
+		}
+
+		// The warning box keeps the padding its own class gives it.
+		td:not( .mw-destfile-warning ) {
+			padding: 0;
+		}
+
+		// Unlabelled rows such as the edit tools and the license preview belong to the field above,
+		// unlike the name warning that core appends after them.
+		tr:has( > .mw-label, > .mw-destfile-warning ):not( :first-child ) {
+			margin-top: var( --space-md );
+		}
+
+		.mw-label {
+			margin-bottom: var( --space-xxs );
+		}
+
+		// HTMLForm gives every text field a `size`, which would otherwise set its width.
+		input[ size ] {
+			width: 100%;
+		}
+
+		// An inline textarea leaves a line's descender gap below it.
+		textarea {
+			display: block;
+		}
+
+		select {
+			max-width: 100%;
+		}
+
+		// Images in a table are left uncapped, but this table no longer widens to fit them, as with the taken file shown in a name warning.
+		img {
+			max-width: 100%;
+			height: auto;
+		}
+	}
+
+	#wpUploadFile {
+		/* `align-content` and `text-align-last` are the only levers that reach the UA shadow content:
+		   flex and grid do not, and Blink and WebKit force `text-align: start !important` on file inputs. */
+		align-content: center;
+		width: 100%;
+		height: @size-1600;
+		color: inherit;
+		text-align-last: center;
+		cursor: pointer;
+		border-style: dashed;
+		border-radius: var( --border-radius-medium );
+
+		&:hover {
+			background-color: var( --background-color-button-quiet--hover );
+		}
+
+		&:active {
+			background-color: var( --background-color-button-quiet--active );
+		}
+
+		&::before {
+			width: @size-250 !important;
+			height: @size-250 !important;
+			margin-bottom: var( --space-sm );
+			content: '';
+			mask-size: @size-250 !important;
+			.cdx-mixin-css-icon( @cdx-icon-upload );
+		}
+
+		&::file-selector-button,
+		&::-webkit-file-upload-button {
+			display: block;
+			min-height: @min-size-interactive-pointer;
+			padding-inline: @spacing-horizontal-button;
+			margin-inline: auto;
+			margin-bottom: var( --space-sm );
+			font-family: inherit;
+			font-size: var( --font-size-medium );
+			font-weight: var( --font-weight-semi-bold );
+			appearance: none;
+			cursor: pointer;
+			background: transparent;
+			border: 1px solid var( --border-color-interactive );
+			border-radius: var( --border-radius-base );
+			.mixin-citizen-button-quiet();
+		}
+	}
+
+	#wpUploadFileURL {
+		width: 100%;
+	}
+
+	#mw-upload-thumbnail {
+		margin: 0 auto;
+		text-align: center;
+		.mixin-citizen-font-styles( 'small' );
+
+		canvas {
+			border: var( --border-base );
+			border-radius: var( --border-radius-medium );
+		}
+	}
+
+	&:has( #mw-upload-thumbnail ) {
+		#wpUploadFile {
+			&::before {
+				.cdx-mixin-css-icon( @cdx-icon-success, @color-success );
+			}
+		}
+	}
+
+	// Core keeps the file preview when another source is selected.
+	&:has( #wpSourceTypeFile:not( :checked ) ) #mw-upload-thumbnail {
+		display: none;
+	}
+
+	#mw-upload-permitted > p {
+		margin: 0;
+	}
+
+	.mw-htmlform-field-HTMLCheckField .mw-input * {
+		cursor: pointer;
+	}
+
+	input#wpDestFile,
+	input#wpUploadFileURL,
+	textarea,
+	select#wpLicense {
+		font-family: inherit;
+		.mixin-citizen-cdx-input();
+	}
+
+	// The summary is the file page's initial wikitext; on a re-upload the same ID is a one-line input.
+	textarea#wpUploadDescription {
+		font-family: var( --font-family-monospace );
+		font-size: var( --font-size-small );
+		line-height: 1.5em;
+	}
+
+	input[ name='wpUpload' ] {
+		width: 100%;
+		min-height: @min-size-interactive-touch;
+		padding-inline: @spacing-horizontal-button;
+		font-size: var( --font-size-medium );
+		font-weight: var( --font-weight-semi-bold );
+		cursor: pointer;
+		border: 1px solid transparent;
+		border-radius: var( --border-radius-base );
+		.mixin-citizen-button-progressive();
+	}
+
+	// The warning form offers its choices beside the submit button.
+	.mw-htmlform-submit-buttons {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var( --space-sm );
+
+		> :not( [ name='wpUpload' ] ) {
+			flex: 1 1 0;
+			min-width: fit-content;
+			min-height: @min-size-interactive-touch;
+			padding-inline: @spacing-horizontal-button;
+			font-family: inherit;
+			font-size: var( --font-size-medium );
+			font-weight: var( --font-weight-semi-bold );
+			color: var( --color-base );
+			cursor: pointer;
+			background-color: var( --background-color-interactive-subtle );
+			border: var( --border-width-base ) solid var( --border-color-interactive );
+			border-radius: var( --border-radius-base );
+
+			&:hover {
+				background-color: var( --background-color-interactive-subtle--hover );
+				border-color: var( --border-color-interactive--hover );
+			}
+
+			&:active {
+				background-color: var( --background-color-interactive-subtle--active );
+				border-color: var( --border-color-interactive--active );
+			}
+		}
+	}
+}

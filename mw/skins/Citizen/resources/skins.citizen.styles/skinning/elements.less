@@ -1,0 +1,191 @@
+/*
+ * Citizen
+ *
+ * Module: mediawiki.skinning.elements
+ * Version: REL1_39
+ *
+ * Date: 2022-11-14
+ */
+
+// Inline Elements
+img {
+	vertical-align: middle;
+}
+
+hr {
+	margin-block: var( --space-content-unit );
+	border: 0;
+	border-top: var( --border-width-base ) solid var( --border-color-base );
+}
+
+/* Structural Elements */
+// Two heading markups are live on the same wiki — a bare `hN`, and MediaWiki's
+// `<div class="mw-heading mw-headingN">` wrapper (T13555) — so every gap is
+// spelled twice below and only the measure differs. A bare heading uses `em`,
+// safe because the skin pins its font-size, so a deliberate override still
+// scales its spacing to match. The wrapper is a plain div inheriting body text
+// size, so it names its heading's font token instead.
+.mixin-citizen-heading-space( @ratio, @font-size ) {
+	margin-block: calc( @ratio * @font-size ) calc( var( --heading-space-end ) * @font-size );
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	color: var( --color-emphasized );
+}
+
+h1,
+h2 {
+	.mixin-citizen-heading-space( var( --heading-space-h1-h2 ), 1em );
+}
+
+h3,
+h4 {
+	.mixin-citizen-heading-space( var( --heading-space-h3-h4 ), 1em );
+}
+
+h5,
+h6 {
+	.mixin-citizen-heading-space( var( --heading-space-h5-h6 ), 1em );
+	font-size: var( --font-size-medium );
+	font-weight: var( --font-weight-semi-bold );
+}
+
+h1 {
+	.mixin-citizen-font-styles( 'heading-1' );
+}
+
+h2 {
+	.mixin-citizen-font-styles( 'heading-2' );
+}
+
+h3 {
+	.mixin-citizen-font-styles( 'heading-3' );
+}
+
+h4 {
+	.mixin-citizen-font-styles( 'heading-4' );
+}
+
+// Only hand-written wikitext omits the level class, and nothing here can tell
+// which heading the wrapper holds, so it takes the smallest step. The levelled
+// rules share this specificity and must follow it.
+.mw-heading {
+	.mixin-citizen-heading-space( var( --heading-space-h5-h6 ), var( --font-size-medium ) );
+}
+
+.mw-heading1 {
+	.mixin-citizen-heading-space( var( --heading-space-h1-h2 ), var( --font-size-xxx-large ) );
+}
+
+.mw-heading2 {
+	.mixin-citizen-heading-space( var( --heading-space-h1-h2 ), var( --font-size-xx-large ) );
+}
+
+.mw-heading3 {
+	.mixin-citizen-heading-space( var( --heading-space-h3-h4 ), var( --font-size-x-large ) );
+}
+
+.mw-heading4 {
+	.mixin-citizen-heading-space( var( --heading-space-h3-h4 ), var( --font-size-large ) );
+}
+
+// The wrapper owns the spacing in every medium, so the heading inside it is
+// fully reset; that also neutralises any `hN` margin an extension or on-wiki
+// stylesheet lands inside the wrapper.
+.mw-heading :is( h1, h2, h3, h4, h5, h6 ) {
+	margin: 0;
+}
+
+p {
+	margin-block: var( --space-content-unit );
+	overflow-wrap: break-word; // Force wrap to preserve layout
+}
+
+p img {
+	margin: 0;
+}
+
+ol,
+ul {
+	padding: 0;
+	margin-block: var( --space-content-unit );
+
+	ol,
+	ul {
+		margin-block: 0;
+	}
+}
+
+ul {
+	margin-inline: 1.25em 0;
+}
+
+// Reserve for the marker; 2.5em holds three digits.
+ol {
+	margin-inline: 2.5em 0;
+}
+
+dt {
+	font-weight: var( --font-weight-semi-bold );
+	color: var( --color-emphasized );
+}
+
+dl {
+	margin-block: var( --space-content-unit );
+}
+
+dd {
+	margin-inline-start: var( --space-xl );
+}
+
+pre,
+code,
+tt,
+kbd,
+samp,
+.mw-code {
+	font-family: var( --font-family-monospace );
+	.mixin-citizen-font-styles( 'small' );
+}
+
+pre,
+code,
+.mw-code {
+	color: var( --color-emphasized );
+	background-color: var( --color-surface-1 );
+	border: var( --border-width-base ) solid var( --border-color-base );
+}
+
+code {
+	padding: 2px 4px;
+	border-radius: var( --border-radius-base );
+}
+
+pre,
+.mw-code {
+	padding: 1rem;
+	overflow: auto;
+	border-radius: var( --border-radius-large );
+}
+
+/* Forms */
+fieldset {
+	padding: var( --space-xs ) var( --space-md );
+	margin: var( --space-md ) 0;
+	border: var( --border-width-base ) solid var( --border-color-base );
+}
+
+legend {
+	padding: var( --space-xxs );
+	color: var( --color-subtle );
+}
+
+// Figure
+figure {
+	margin: 0;
+}

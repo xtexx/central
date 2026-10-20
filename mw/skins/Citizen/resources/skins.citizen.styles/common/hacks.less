@@ -1,0 +1,40 @@
+// Hide RSS icon
+a.feedlink {
+	background-image: none !important;
+}
+
+.screen-reader-text {
+	.mixin-citizen-screen-reader-only;
+}
+
+// Utility legacy classes that are commonly used
+.center {
+	width: 100%;
+	text-align: center;
+}
+
+*.center * {
+	margin-inline: auto;
+}
+
+.floatleft,
+.floatright {
+	margin: 0;
+}
+
+div.tleft,
+div.tright {
+	margin: var( --space-content-half ) 0 var( --space-content-unit ) 0;
+}
+
+@media ( min-width: @min-width-breakpoint-tablet ) {
+	div.tright,
+	.floatright {
+		.mixin-citizen-float-declarations( right );
+	}
+
+	div.tleft,
+	.floatleft {
+		.mixin-citizen-float-declarations( left );
+	}
+}

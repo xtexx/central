@@ -1,0 +1,126 @@
+const { cdxIconEdit, cdxIconUserAvatar } = require( '../icons.json' );
+const config = require( '../config.json' );
+const { getNavigationAction } = require( '../utils/providerActions.js' );
+const userActions = require( '../utils/userActions.js' );
+const { defineMode } = require( '../services/defineMode.js' );
+
+/**
+ * Creates the user command handler.
+ *
+ * @param {typeof mw.Api} ApiConstructor The mw.Api constructor.
+ * @return {Object} The command handler.
+ */
+function createUserCommand( ApiConstructor ) {
+	const loadedMessageKeys = new Set();
+
+	function getUsefulUserGroups( groups, implicitgroups ) {
+		const g = Array.isArray( groups ) ? groups : [];
+		const ig = Array.isArray( implicitgroups ) ? implicitgroups : [];
+		return g.filter( ( group ) => !ig.includes( group ) );
+	}
+
+	function getUserGroupString( groups, implicitgroups ) {
+		return getUsefulUserGroups( groups, implicitgroups )
+			.map( ( group ) => mw.message( 'group-' + group + '-member' ).text() )
+			.join( ', ' );
+	}
+
+	function adaptUserResult( apiUser ) {
+		return {
+			id: 'citizen-command-palette-item-user-' + apiUser.userid,
+			thumbnailIcon: cdxIconUserAvatar,
+			type: 'user',
+			label: apiUser.name,
+			description: getUserGroupString( apiUser.groups, apiUser.implicitgroups ),
+			url: mw.util.getUrl( 'User:' + apiUser.name ),
+			metadata: [
+				{
+					label: mw.language.convertNumber( apiUser.editcount ),
+					icon: cdxIconEdit
+				}
+			],
+			actions: userActions( apiUser.name ),
+			highlightQuery: true
+		};
+	}
+
+	async function loadUserGroupMessages( api, users ) {
+		const safeUsers = Array.isArray( users ) ? users : [];
+		const allKeys = safeUsers.flatMap( ( user ) => getUsefulUserGroups( user.groups, user.implicitgroups )
+			.map( ( group ) => 'group-' + group + '-member' ) );
+		const uniqueKeys = new Set(
+			allKeys.filter( ( key ) => !loadedMessageKeys.has( key ) )
+		);
+
+		if ( uniqueKeys.size > 0 ) {
+			const keysArray = Array.from( uniqueKeys );
+			await api.loadMessagesIfMissing( keysArray );
+			keysArray.forEach( ( key ) => loadedMessageKeys.add( key ) );
+		}
+	}
+
+	async function getUserResults( subQuery ) {
+		if ( !subQuery || subQuery.trim() === '' ) {
+			return [];
+		}
+
+		const api = new ApiConstructor();
+		try {
+			const data = await api.get( {
+				action: 'query',
+				format: 'json',
+				list: 'allusers',
+				auprefix: subQuery,
+				aulimit: 10,
+				auprop: 'editcount|groups|implicitgroups',
+				maxage: config.wgSearchSuggestCacheExpiry,
+				smaxage: config.wgSearchSuggestCacheExpiry
+			} );
+
+			if ( !data?.query?.allusers?.length ) {
+				return [];
+			}
+
+			const usersFromApi = data.query.allusers;
+			await loadUserGroupMessages( api, usersFromApi );
+			return usersFromApi.map( adaptUserResult );
+		} catch ( error ) {
+			mw.log.error( '[commandPalette] User search failed:', error );
+			return [];
+		}
+	}
+
+	return defineMode( {
+		id: 'user',
+		triggers: [ '/user:', '@' ],
+		label: mw.message( 'citizen-command-palette-command-user-label' ).text(),
+		description: mw.message( 'citizen-command-palette-command-user-description' ).text(),
+		placeholder: mw.message( 'citizen-command-palette-mode-user-placeholder' ).text(),
+		icon: cdxIconUserAvatar,
+		compactResults: true,
+		emptyState: {
+			title: mw.message( 'citizen-command-palette-mode-user-empty-title' ).text(),
+			description: mw.message( 'citizen-command-palette-mode-user-empty-description' ).text(),
+			icon: cdxIconUserAvatar
+		},
+		noResults() {
+			return {
+				title: mw.message( 'citizen-command-palette-mode-user-noresults-title' ).text(),
+				description: mw.message( 'citizen-command-palette-mode-user-noresults-description' ).text(),
+				icon: cdxIconUserAvatar
+			};
+		},
+		help: {
+			description: 'citizen-command-palette-mode-user-description-help'
+		},
+		getResults: getUserResults,
+		async onResultSelect( item ) {
+			return getNavigationAction( item );
+		},
+		remember( item ) {
+			return { kind: 'user', label: item.label };
+		}
+	} );
+}
+
+module.exports = createUserCommand;

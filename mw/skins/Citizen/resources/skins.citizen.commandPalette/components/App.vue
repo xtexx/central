@@ -1,0 +1,781 @@
+<template>
+	<Transition name="citizen-command-palette-backdrop">
+		<div
+			v-if="isOpen"
+			class="citizen-command-palette-backdrop"
+			@click="close"></div>
+	</Transition>
+	<Transition
+		name="citizen-command-palette"
+		@after-enter="setupResizeObserver"
+		@after-leave="teardownResizeObserver"
+	>
+		<div
+			v-if="isOpen"
+			ref="paletteRoot"
+			class="citizen-command-palette"
+			role="search"
+			:aria-label="$i18n( 'citizen-command-palette-label' ).text()"
+			:data-palette-layout="paletteLayout"
+			tabindex="-1"
+			@keydown="keyboard.handleKeydown"
+		>
+			<command-palette-header
+				ref="searchHeader"
+				:tokens="tokenInput.tokens.value"
+				:free-text="tokenInput.freeText.value"
+				:selected-token-index="tokenInput.selectedIndex.value"
+				:show-pending="showPending"
+				:activation-queued="activationQueued"
+				:active-mode="activeMode"
+				:active-mode-context="activeModeContext"
+				:help-visible="helpVisible"
+				:expanded="flatItems.length > 0"
+				:active-descendant-id="activeDescendantId"
+				@exit-mode="exitMode"
+				@close-help="orchCloseHelp"
+				@update:free-text="handleFreeTextUpdate( $event )"
+				@select-token="tokenInput.selectToken( $event )"
+				@remove-token="handleRemoveToken( $event )"
+			></command-palette-header>
+			<div
+				ref="bodyContainer"
+				class="citizen-command-palette__body"
+			>
+				<div
+					ref="bodyViewport"
+					class="citizen-command-palette__body-viewport"
+					:class="{
+						'citizen-command-palette__body-viewport--has-detail': viewportHasDetail
+					}"
+				>
+					<command-palette-detail-panel
+						v-if="helpVisible && activeModeHelpDetail"
+						class="citizen-command-palette__results"
+						:detail="activeModeHelpDetail"
+					></command-palette-detail-panel>
+					<template v-else>
+						<div class="citizen-command-palette__results">
+							<command-palette-empty-state
+								v-if="!isLoading && flatItems.length === 0"
+								:title="emptyStateContent.title"
+								:description="emptyStateContent.description"
+								:icon="emptyStateContent.icon"
+							></command-palette-empty-state>
+							<command-palette-gallery
+								v-else-if="isGalleryLayout && displayedItems.length > 0"
+								ref="galleryRef"
+								:sections="displayedItems"
+								:highlighted-item-index="highlightedItemIndex"
+								:set-item-ref="setItemRef"
+								@select="selectResult"
+								@hover="handleHover"
+							></command-palette-gallery>
+							<command-palette-list
+								v-else-if="displayedItems.length > 0"
+								:sections="displayedItems"
+								:highlighted-item-index="highlightedItemIndex"
+								:search-query="query"
+								:set-item-ref="setItemRef"
+								:compact="!!activeMode?.compactResults"
+								@select="selectResult"
+								@action="handleAction"
+								@hover="handleHover"
+							></command-palette-list>
+						</div>
+						<Transition name="citizen-command-palette-detail">
+							<command-palette-detail-panel
+								v-if="highlightedItemDetail"
+								class="citizen-command-palette__detail"
+								:detail="highlightedItemDetail"
+								:copy-trigger="copyTrigger"
+							></command-palette-detail-panel>
+						</Transition>
+					</template>
+				</div>
+			</div>
+			<command-palette-footer
+				:hints="keyboard.keyboardHints.value"
+			></command-palette-footer>
+		</div>
+	</Transition>
+</template>
+
+<script>
+const { defineComponent, ref, nextTick, computed, watch, inject } = require( 'vue' );
+const useActionNavigation = require( '../composables/useActionNavigation.js' );
+const useBodyHeightAnimation = require( '../composables/useBodyHeightAnimation.js' );
+const useGalleryColumnCount = require( '../composables/useGalleryColumnCount.js' );
+const useListNavigation = require( '../composables/useListNavigation.js' );
+const useGridNavigation = require( '../composables/useGridNavigation.js' );
+const useHelpInput = require( '../composables/useHelpInput.js' );
+const useKeyboard = require( '../composables/useKeyboard.js' );
+const usePendingActivation = require( '../composables/usePendingActivation.js' );
+const useProviderOrchestration = require( '../composables/useProviderOrchestration.js' );
+const useResultRouter = require( '../composables/useResultRouter.js' );
+const useTokenizedInput = require( '../composables/useTokenizedInput.js' );
+const CommandPaletteList = require( './CommandPaletteList.vue' );
+const CommandPaletteGallery = require( './CommandPaletteGallery.vue' );
+const CommandPaletteEmptyState = require( './CommandPaletteEmptyState.vue' );
+const CommandPaletteFooter = require( './CommandPaletteFooter.vue' );
+const CommandPaletteHeader = require( './CommandPaletteHeader.vue' );
+const CommandPaletteDetailPanel = require( './CommandPaletteDetailPanel.vue' );
+const modeHelpDetail = require( '../utils/modeHelpDetail.js' );
+const { cdxIconArticleNotFound, cdxIconArticlesSearch } = require( '../icons.json' );
+
+// @vue/component
+module.exports = exports = defineComponent( {
+	name: 'App',
+	compilerOptions: {
+		whitespace: 'condense'
+	},
+	components: {
+		CommandPaletteList,
+		CommandPaletteGallery,
+		CommandPaletteEmptyState,
+		CommandPaletteDetailPanel,
+		CommandPaletteFooter,
+		CommandPaletteHeader
+	},
+	props: {},
+	setup() {
+		// Inject dependencies provided by init.js
+		const providers = inject( 'providers' );
+		const recentItemsService = inject( 'recentItemsService' );
+		const resultDecorator = inject( 'resultDecorator' );
+		const recentItemsProvider = inject( 'recentItemsProvider' );
+		const relatedArticlesProvider = inject( 'relatedArticlesProvider' );
+		const findModeByTrigger = inject( 'findModeByTrigger' );
+		const findModeByQuery = inject( 'findModeByQuery' );
+		const getTokenPatterns = inject( 'getTokenPatterns' );
+		const getHandler = inject( 'getHandler' );
+		// Duck-typed { isAvailable, processContext, triggerForAnchor, onReady }
+		// service — today the InstantDiffs gadget bridge, swappable via init.js.
+		const previewService = inject( 'previewService' );
+		// Provided by commandPalette.js so the trigger orchestrator can hide
+		// its overlay wrapper after the palette closes from inside (Esc, backdrop).
+		const paletteExternalClose = inject( 'paletteExternalClose', null );
+
+		// Core refs
+		const isOpen = ref( false );
+		const paletteRoot = ref( null );
+		const searchHeader = ref( null );
+		const itemRefs = ref( new Map() );
+		const bodyContainer = ref( null );
+		const bodyViewport = ref( null );
+		const galleryRef = ref( null );
+
+		const { setupResizeObserver, teardownResizeObserver } = useBodyHeightAnimation( {
+			bodyContainer,
+			bodyViewport
+		} );
+
+		const galleryColumnCount = useGalleryColumnCount( { galleryRef } );
+
+		// Provider orchestration (replaces Pinia searchStore)
+		const orchDeps = {
+			recentItemsProvider,
+			relatedArticlesProvider,
+			recentItemsService
+		};
+		const orch = useProviderOrchestration( providers, resultDecorator, orchDeps );
+
+		const tokenInput = useTokenizedInput( getTokenPatterns, orch.activeMode );
+		const helpInput = useHelpInput( { orchestrator: orch, tokenInput } );
+		// Late-bind tokens so handleModeQuery can read them at call time
+		orchDeps.tokens = tokenInput.tokens;
+		// Same late bind: provider selection has to see the literal latch, or
+		// a trigger the user backed out of would still route to its mode.
+		orchDeps.isHeldLiteral = tokenInput.isHeldLiteral;
+
+		const flatItems = computed( () => orch.flatItems.value );
+
+		const emptyStateContent = computed( () => {
+			const config = orch.stateConfig.value;
+			if ( orch.query.value ) {
+				const content = config.noResults( orch.query.value, tokenInput.tokens.value );
+				return {
+					title: content.title,
+					description: content.description,
+					icon: content.icon || cdxIconArticleNotFound
+				};
+			}
+			return {
+				title: config.emptyState.title,
+				description: config.emptyState.description,
+				icon: config.emptyState.icon || cdxIconArticlesSearch
+			};
+		} );
+
+		// List + grid navigation share a single highlightedIndex ref so the
+		// active selection is preserved across layout swaps (e.g. entering a
+		// gallery mode from a list mode and back).
+		const sharedHighlightedIndex = ref( -1 );
+		const listNav = useListNavigation( orch.flatItems, {
+			highlightedIndex: sharedHighlightedIndex
+		} );
+		const gridNav = useGridNavigation( orch.flatItems, galleryColumnCount, {
+			highlightedIndex: sharedHighlightedIndex
+		} );
+
+		const isGalleryLayout = computed(
+			() => Boolean( orch.activeMode.value && orch.activeMode.value.layout === 'gallery' )
+		);
+
+		// String form for the [data-palette-layout] attribute, which CSS
+		// targets to widen the modal in gallery layouts.
+		const paletteLayout = computed( () => isGalleryLayout.value ? 'gallery' : 'list' );
+
+		const highlightedItem = computed( () => {
+			const index = listNav.highlightedIndex.value;
+			const items = orch.flatItems.value;
+			return index >= 0 && index < items.length ? items[ index ] : null;
+		} );
+
+		const highlightedItemDetail = computed( () => {
+			const item = highlightedItem.value;
+			if ( !item ) {
+				return null;
+			}
+			const detail = item.detail;
+			if ( detail && (
+				( detail.pairs && detail.pairs.length ) ||
+				detail.header ||
+				detail.media
+			) ) {
+				return detail;
+			}
+			return null;
+		} );
+
+		// Modes that opt in via `getItemDetail` (file mode, currently)
+		// fetch per-item detail lazily when an item is focused. The
+		// orchestration handles debounce, abort, and reactive mutation
+		// — App.vue just needs to call `requestItemDetail` whenever the
+		// highlighted item changes. `immediate: true` covers the case
+		// where the first item is auto-highlighted on initial render.
+		watch( highlightedItem, ( item ) => {
+			if ( item ) {
+				orch.requestItemDetail( item );
+			}
+		}, { immediate: true } );
+
+		// The help overlay is a single pane that fills the dialog.
+		const viewportHasDetail = computed(
+			() => orch.helpVisible.value ? false : highlightedItemDetail.value !== null
+		);
+
+		const activeModeHelpDetail = computed(
+			() => orch.activeMode.value ? modeHelpDetail( orch.activeMode.value ) : null
+		);
+
+		const actionNav = useActionNavigation( {
+			items: orch.flatItems,
+			highlightedIndex: listNav.highlightedIndex,
+			itemRefs
+		} );
+
+		// Bound below: close() must exist before useResultRouter, which must
+		// exist before usePendingActivation can take its selectResult.
+		let cancelPendingActivation = () => {};
+
+		const close = () => {
+			if ( !isOpen.value ) {
+				return;
+			}
+			cancelPendingActivation();
+			isOpen.value = false;
+			if ( typeof paletteExternalClose === 'function' ) {
+				paletteExternalClose();
+			}
+		};
+
+		const focusInput = () => {
+			searchHeader.value?.focus();
+		};
+
+		const { selectResult, handleAction } = useResultRouter( {
+			orchestrator: orch,
+			tokenInput,
+			navigation: { findModeByQuery, getHandler },
+			control: { focusInput, close, paletteRoot },
+			preview: previewService
+		} );
+
+		const pendingActivation = usePendingActivation( {
+			surfaceKey: orch.surfaceKey,
+			isLeadReady: orch.isLeadReady,
+			items: orch.flatItems,
+			defaultHighlightIndex: orch.defaultHighlightIndex,
+			onActivate: selectResult
+		} );
+		cancelPendingActivation = pendingActivation.cancel;
+
+		// Only a surface the user drove with input may hold an Enter.
+		const canQueueActivation = computed(
+			() => !orch.isLeadReady.value &&
+				Boolean( orch.query.value || orch.activeMode.value )
+		);
+
+		const handleRemoveToken = ( index ) => {
+			const token = tokenInput.tokens.value[ index ];
+			if ( !token ) {
+				return;
+			}
+			tokenInput.removeToken( index );
+			// Prepend the raw text back to freeText. removeToken latched that
+			// text as literal, so detection leaves it alone.
+			tokenInput.setFreeText( token.raw + tokenInput.freeText.value );
+		};
+
+		// Backing out of a mode from an empty input hands the trigger the user
+		// typed back as literal text, so a title that starts with a trigger
+		// character is reachable. A mode entered from the list has no trigger
+		// to restore, and just exits.
+		const handleExitModeToLiteral = () => {
+			const trigger = orch.enteredTrigger.value;
+			orch.exitMode();
+			if ( trigger ) {
+				tokenInput.setLiteralPrefix( trigger );
+				tokenInput.setFreeText( trigger );
+			}
+			nextTick( focusInput );
+		};
+
+		// Bumped by the keyboard's Cmd/Ctrl+C handler so the detail panel
+		// can run the same copy + feedback path the click handler uses.
+		// Counter rather than a boolean flag because two copies in a row
+		// must each fire — booleans wouldn't trigger the watcher again.
+		const copyTrigger = ref( 0 );
+		function requestHeaderCopy() {
+			copyTrigger.value++;
+		}
+
+		// Keyboard handler. Options group into named buckets so each
+		// dependency's role is self-documenting at the call site.
+		const keyboard = useKeyboard( {
+			core: {
+				inputRef: searchHeader,
+				itemRefs,
+				items: orch.flatItems,
+				query: orch.query,
+				requestHeaderCopy,
+				canQueueActivation,
+				onQueueActivation: pendingActivation.arm,
+				onSelect: selectResult,
+				onClose: close,
+				onClearQuery: () => {
+					pendingActivation.cancel();
+					tokenInput.clear();
+					orch.updateQuery( '' );
+				}
+			},
+			navigation: {
+				listNav,
+				gridNav,
+				isGalleryLayout,
+				actionNav
+			},
+			mode: {
+				activeMode: orch.activeMode,
+				activeModeContext: orch.activeModeContext,
+				findModeByTrigger,
+				onEnterMode: ( m, trigger ) => orch.enterMode( m, trigger ),
+				onExitMode: () => orch.exitMode(),
+				onExitModeToLiteral: handleExitModeToLiteral,
+				onPopModeContext: () => orch.popModeContext()
+			},
+			tokens: {
+				tokens: tokenInput.tokens,
+				selectedTokenIndex: tokenInput.selectedIndex,
+				onSelectToken: ( index ) => tokenInput.selectToken( index ),
+				onRemoveToken: handleRemoveToken
+			},
+			help: {
+				helpVisible: orch.helpVisible,
+				helpAvailable: helpInput.helpAvailable,
+				onToggleHelp: () => orch.toggleHelp(),
+				onCloseHelp: () => orch.closeHelp()
+			}
+		} );
+
+		// setItemRef expects the GLOBAL index within displayedItems
+		const setItemRef = ( el, globalIndex ) => {
+			if ( el ) {
+				itemRefs.value.set( globalIndex, el );
+			} else {
+				itemRefs.value.delete( globalIndex );
+			}
+		};
+
+		/**
+		 * Updates the highlighted index only if it has changed.
+		 * Prevents unnecessary updates from frequent hover events.
+		 *
+		 * @param {number} newIndex The index received from the hover event.
+		 */
+		const handleHover = ( newIndex ) => {
+			if ( newIndex !== listNav.highlightedIndex.value ) {
+				listNav.highlightedIndex.value = newIndex;
+			}
+		};
+
+		const handleFreeTextUpdate = ( text ) => {
+			if ( !helpInput.handleText( text ) ) {
+				tokenInput.setFreeText( text );
+			}
+			// When the text was consumed (by the help toggle, or by detection
+			// creating tokens), the DOM input still holds the old value until
+			// Vue flushes. Force-sync it so the next keystroke event carries
+			// the correct value.
+			if ( tokenInput.freeText.value !== text ) {
+				nextTick( () => {
+					const el = searchHeader.value?.getInputElement?.();
+					if ( el && el.value !== tokenInput.freeText.value ) {
+						el.value = tokenInput.freeText.value;
+					}
+				} );
+			}
+		};
+
+		// Sync tokenized fullQuery to orchestrator
+		// Auto-enter mode when typed query matches a multi-char trigger (e.g. '/smw:')
+		watch( tokenInput.fullQuery, ( newQuery ) => {
+			// A latched literal occupies the front of the query, so a trigger
+			// sitting there is text the user asked to search for, not a mode
+			// to re-enter.
+			if ( !orch.activeMode.value && newQuery &&
+				!tokenInput.isHeldLiteral( newQuery ) ) {
+				const match = findModeByQuery( newQuery );
+				if ( match ) {
+					const subQuery = newQuery.slice( match.trigger.length );
+					// Triggers match case-insensitively, so record what was
+					// typed rather than the registered spelling — backing out
+					// of the mode types this straight back into the input.
+					orch.enterMode(
+						match.mode, newQuery.slice( 0, match.trigger.length )
+					);
+					tokenInput.setFreeText( subQuery );
+					nextTick( focusInput );
+					return;
+				}
+			}
+			orch.updateQuery( newQuery );
+		} );
+
+		// A surface change drops any selection the user made and returns the
+		// highlight to the default. A refresh within the same surface keeps
+		// their selection by item id, so a late-arriving group cannot re-point
+		// it at whatever inherits its index.
+		let appliedSurface = null;
+
+		watch( orch.flatItems, ( newItems, oldItems ) => {
+			itemRefs.value.clear();
+			actionNav.deactivate();
+
+			const sameSurface = orch.surfaceKey.value === appliedSurface;
+			appliedSurface = orch.surfaceKey.value;
+
+			const previousIndex = listNav.highlightedIndex.value;
+			const previousItem = sameSurface && oldItems && previousIndex >= 0 ?
+				oldItems[ previousIndex ] :
+				null;
+
+			let nextIndex = orch.defaultHighlightIndex.value;
+			if ( previousItem ) {
+				// Match on id, not object identity: providers rebuild their
+				// item objects on every fetch.
+				const restored = newItems.findIndex(
+					( candidate ) => candidate.id === previousItem.id
+				);
+				if ( restored >= 0 ) {
+					nextIndex = restored;
+				}
+			}
+			listNav.highlightedIndex.value = nextIndex;
+
+			// Notify the preview handler (if any) so it can scan the
+			// freshly-rendered list for previewable anchors and attach
+			// its click listeners. The watcher's `flush: 'post'` already
+			// runs us after DOM updates from the items mutation.
+			if ( paletteRoot.value ) {
+				previewService.processContext( paletteRoot.value );
+			}
+		}, { flush: 'post' } );
+
+		// Late-load handler: if the preview handler initializes after the
+		// palette is already open, re-process whatever is currently
+		// rendered so the existing anchors get wired up.
+		previewService.onReady( () => {
+			if ( paletteRoot.value ) {
+				previewService.processContext( paletteRoot.value );
+			}
+		} );
+
+		// This function is called externally from commandPalette.js
+		const open = ( prefillText ) => {
+			isOpen.value = true;
+			if ( orch.activeMode.value ) {
+				orch.exitMode();
+			} else {
+				orch.clearSearch();
+			}
+			tokenInput.clear();
+			if ( typeof prefillText === 'string' && prefillText.length > 0 ) {
+				tokenInput.setFreeText( prefillText );
+			}
+			nextTick( focusInput );
+		};
+
+		return {
+			// State
+			isOpen,
+			paletteRoot,
+			searchHeader,
+			bodyContainer,
+			bodyViewport,
+			galleryRef,
+			isGalleryLayout,
+			paletteLayout,
+			// Body height animation
+			setupResizeObserver,
+			teardownResizeObserver,
+			// Orchestration
+			activeMode: orch.activeMode,
+			activeModeContext: orch.activeModeContext,
+			exitMode: orch.exitMode,
+			query: orch.query,
+			displayedItems: orch.displayedItems,
+			flatItems,
+			isLoading: orch.isLoading,
+			// Exposed at the top level so Vue unwraps the ref for the template.
+			activationQueued: pendingActivation.isActivationQueued,
+			showPending: orch.showPending,
+			helpVisible: orch.helpVisible,
+			orchCloseHelp: orch.closeHelp,
+			// Token state
+			tokenInput,
+			handleFreeTextUpdate,
+			handleRemoveToken,
+			// Keyboard
+			keyboard,
+			// Exposed at the top level so Vue unwraps the ref for the template.
+			// Reading it off `keyboard` would bind the Ref object itself, which
+			// renders as "[object Object]" and resolves to no element.
+			activeDescendantId: keyboard.activeDescendantId,
+			viewportHasDetail,
+			activeModeHelpDetail,
+			// List nav
+			highlightedItemIndex: listNav.highlightedIndex,
+			// Empty state
+			emptyStateContent,
+			// Detail panel
+			highlightedItemDetail,
+			copyTrigger,
+			// Methods
+			// eslint-disable-next-line vue/no-unused-properties -- Used by skins.citizen.scripts/commandPalette.js
+			open,
+			// Restore focus to the search input without resetting anything, for
+			// a trigger fired while the palette is already on screen.
+			// eslint-disable-next-line vue/no-unused-properties -- Used by skins.citizen.scripts/commandPalette.js
+			focus: () => nextTick( focusInput ),
+			close,
+			selectResult,
+			handleAction,
+			handleHover,
+			setItemRef
+		};
+	}
+} );
+</script>
+
+<style lang="less">
+@import 'mediawiki.skin.variables.less';
+@import '../../mixins.less';
+
+.citizen-command-palette {
+	--citizen-command-palette-side-padding: var( --space-md );
+	position: fixed;
+	top: var( --space-xs );
+	right: var( --space-xs );
+	left: var( --space-xs );
+	display: flex;
+	flex-direction: column;
+	max-width: @size-5600;
+	max-height: calc( 100vh - var( --space-xs ) * 2 );
+	margin-inline: auto;
+	overflow: hidden;
+	border: var( --border-base );
+	border-radius: var( --border-radius-medium );
+	box-shadow: var( --box-shadow-drop-xx-large );
+	// Steady-state width transition — when a mode flips the palette
+	// into gallery layout (or back), the modal eases between widths
+	// so the grid doesn't snap. The mount/unmount entrance and exit
+	// transitions override transition-property to transform+opacity,
+	// so this only fires on user-driven layout swaps.
+	transition-timing-function: var( --transition-timing-function-ease-out );
+	transition-duration: var( --transition-duration-medium );
+	transition-property: max-width;
+
+	// Modes that declare layout='gallery' (e.g. the file mode) get a wider
+	// frame so the tile grid can fit ~6 columns at the desktop breakpoint.
+	// In gallery layout the left pane (the tile grid) carries the visual
+	// weight, so it gets 60% of the row to the detail panel's 40% — flipped
+	// from the list default where rows are compact and the detail pane
+	// holds the rich content.
+	&[ data-palette-layout='gallery' ] {
+		max-width: 60rem;
+
+		.citizen-command-palette__body-viewport--has-detail {
+			@media ( min-width: @min-width-breakpoint-tablet ) {
+				.citizen-command-palette__results {
+					flex: 3;
+				}
+
+				.citizen-command-palette__detail {
+					flex: 2;
+				}
+			}
+		}
+	}
+	.mixin-citizen-frosted-glass;
+	.mixin-citizen-font-styles( 'small' );
+
+	@media ( min-width: @max-width-breakpoint-tablet ) {
+		top: 3rem;
+		max-height: calc( 100vh - 3rem * 2 );
+	}
+
+	&-backdrop {
+		position: fixed;
+		inset: 0;
+		background-color: var( --background-color-backdrop-light );
+	}
+
+	&__body {
+		min-height: 0;
+		overflow: hidden;
+		border-top: var( --border-subtle );
+		transition-timing-function: var( --transition-timing-function-ease-out );
+		transition-duration: var( --transition-duration-medium );
+		transition-property: height;
+	}
+
+	// Viewport: normal block-flow child of the animated body.
+	// Must NOT have explicit height — its clientHeight must be
+	// determined solely by its children so the ResizeObserver
+	// reads a stable value independent of the body's animated height.
+	&__body-viewport {
+		@media ( min-width: @min-width-breakpoint-tablet ) {
+			&--has-detail {
+				display: flex;
+			}
+		}
+	}
+
+	&__results {
+		// Self-constraining max-height so the viewport wrapper has a
+		// stable clientHeight for the ResizeObserver to read
+		max-height: calc( 100vh - 12rem );
+		overflow-y: auto;
+		overscroll-behavior: contain;
+
+		.citizen-command-palette__body-viewport--has-detail & {
+			@media ( min-width: @min-width-breakpoint-tablet ) {
+				flex: 2;
+				border-inline-end: var( --border-subtle );
+
+				// In two-pane mode the right pane carries the rich content,
+				// so the catalog rows on the left stay compact — drop the
+				// badges and inline description that would otherwise crowd
+				// the row.
+				.citizen-command-palette-list-item__metadata,
+				.citizen-command-palette-list-item__text__description,
+				.citizen-command-palette-list-item__text-inline__description {
+					display: none;
+				}
+			}
+		}
+	}
+
+	&__detail {
+		display: none;
+
+		@media ( min-width: @min-width-breakpoint-tablet ) {
+			display: block;
+			flex: 3;
+			max-height: calc( 100vh - 12rem );
+			overflow-y: auto;
+			overscroll-behavior: contain;
+		}
+	}
+
+	&__no-results {
+		padding: var( --space-md ) var( --citizen-command-palette-side-padding );
+		text-align: center;
+	}
+}
+
+// Palette entrance/exit — clip-path expand from top + translate, matching the
+// menu animation pattern. Asymmetric timing: decelerate enter, accelerate exit.
+.citizen-command-palette-enter-active {
+	transition-timing-function: var( --transition-timing-function-ease-out );
+	transition-duration: var( --transition-duration-medium );
+	transition-property: clip-path, transform, opacity;
+}
+
+.citizen-command-palette-leave-active {
+	transition-timing-function: var( --transition-timing-function-ease-in );
+	transition-duration: var( --transition-duration-base );
+	transition-property: clip-path, transform, opacity;
+}
+
+.citizen-command-palette-enter-from,
+.citizen-command-palette-leave-to {
+	opacity: 0;
+	clip-path: inset( 0 0 100% 0 );
+	transform: translateY( calc( var( --space-xs ) * -1 ) );
+}
+
+// Explicit open-state endpoints so clip-path has two inset() values to
+// interpolate between. Without this, clip-path animates discretely between
+// inset() and the default (none) and the reveal jumps.
+.citizen-command-palette-enter-to,
+.citizen-command-palette-leave-from {
+	opacity: 1;
+	clip-path: inset( 0 0 0 0 );
+	transform: translateY( 0 );
+}
+
+// Backdrop entrance/exit — sync timing with the palette
+.citizen-command-palette-backdrop-enter-active {
+	transition-timing-function: var( --transition-timing-function-ease-out );
+	transition-duration: var( --transition-duration-medium );
+	transition-property: opacity;
+}
+
+.citizen-command-palette-backdrop-leave-active {
+	transition-timing-function: var( --transition-timing-function-ease-in );
+	transition-duration: var( --transition-duration-base );
+	transition-property: opacity;
+}
+
+.citizen-command-palette-backdrop-enter-from,
+.citizen-command-palette-backdrop-leave-to {
+	opacity: 0;
+}
+
+// Detail panel slide-in
+.citizen-command-palette-detail-enter-active,
+.citizen-command-palette-detail-leave-active {
+	transition-timing-function: var( --transition-timing-function-ease-out );
+	transition-duration: var( --transition-duration-medium );
+	transition-property: flex, opacity;
+}
+
+.citizen-command-palette-detail-enter-from,
+.citizen-command-palette-detail-leave-to {
+	flex: 0;
+	opacity: 0;
+}
+</style>

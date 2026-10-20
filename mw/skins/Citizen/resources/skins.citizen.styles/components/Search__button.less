@@ -1,0 +1,57 @@
+// Circle circumference: 2 * pi * 6 = 37.699
+@search-circle-circumference: 37.699;
+// Handle length: sqrt((18-12.5)^2 + (18-12.5)^2) ≈ 7.778
+@search-handle-length: 7.778;
+
+.citizen-search {
+	.citizen-dropdown-summary {
+		> svg {
+			> circle {
+				stroke-dasharray: @search-circle-circumference;
+				stroke-dashoffset: 0;
+				transition: var( --transition-hover );
+				transition-property: stroke-dashoffset, opacity;
+			}
+
+			.citizen-icon-search__handle {
+				stroke-dasharray: @search-handle-length;
+				stroke-dashoffset: 0;
+				transition: var( --transition-hover );
+				transition-property: stroke-dashoffset, opacity;
+			}
+
+			.citizen-icon-search__close {
+				opacity: 0;
+				transition: var( --transition-hover );
+				transition-property: opacity;
+			}
+		}
+
+		@media ( hover: hover ) {
+			&:hover > svg {
+				.citizen-icon-search__handle {
+					stroke-dashoffset: -( @search-handle-length / 2 );
+				}
+			}
+		}
+	}
+
+	> .citizen-dropdown-details[ open ] {
+		> .citizen-dropdown-summary {
+			> svg {
+				> circle {
+					opacity: 0;
+					stroke-dashoffset: @search-circle-circumference;
+				}
+
+				.citizen-icon-search__handle {
+					opacity: 0;
+				}
+
+				.citizen-icon-search__close {
+					opacity: 1;
+				}
+			}
+		}
+	}
+}

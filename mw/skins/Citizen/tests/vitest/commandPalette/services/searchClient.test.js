@@ -1,0 +1,376 @@
+/* global globalThis */
+
+const mw = require( '../../mocks/mw.js' );
+globalThis.mw = mw;
+
+const mwTitle = require( '../../mocks/mwTitle.js' );
+
+const createRestSearchClient = require( '../../../../resources/skins.citizen.commandPalette/services/searchClient.js' );
+
+describe( 'createRestSearchClient', () => {
+	let client;
+
+	beforeEach( () => {
+		vi.restoreAllMocks();
+		mw.Title = mwTitle;
+		client = createRestSearchClient( '/w' );
+	} );
+
+	describe( 'processQuery', () => {
+		it( 'converts template syntax to Template namespace', () => {
+			expect( client.processQuery( '{{Infobox}}' ) ).toBe( 'Template:Infobox' );
+		} );
+
+		it( 'converts partial template syntax (no closing braces)', () => {
+			expect( client.processQuery( '{{Navbox' ) ).toBe( 'Template:Navbox' );
+		} );
+
+		it( 'converts wikilink syntax to plain title', () => {
+			expect( client.processQuery( '[[Main Page]]' ) ).toBe( 'Main Page' );
+		} );
+
+		it( 'converts partial wikilink syntax (no closing brackets)', () => {
+			expect( client.processQuery( '[[Main Page' ) ).toBe( 'Main Page' );
+		} );
+
+		it( 'returns plain queries unchanged', () => {
+			expect( client.processQuery( 'cats' ) ).toBe( 'cats' );
+		} );
+	} );
+
+	describe( 'fetchByQuery', () => {
+		/**
+		 * Build a minimal REST API response fixture.
+		 *
+		 * @param {Array} pages
+		 * @return {Object}
+		 */
+		function makeResponse( pages ) {
+			return { pages };
+		}
+
+		function stubFetch( body, status = 200 ) {
+			global.fetch = vi.fn( () => Promise.resolve( {
+				ok: status >= 200 && status < 300,
+				status,
+				json: () => Promise.resolve( body )
+			} ) );
+		}
+
+		it( 'builds the correct URL from scriptPath and query', async () => {
+			stubFetch( makeResponse( [] ) );
+
+			await client.fetchByQuery( 'cats', 5 );
+
+			expect( global.fetch ).toHaveBeenCalledWith(
+				'/w/rest.php/v1/search/title?q=cats&limit=5',
+				expect.objectContaining( {
+					headers: { accept: 'application/json' }
+				} )
+			);
+		} );
+
+		it( 'processes template syntax before building URL', async () => {
+			stubFetch( makeResponse( [] ) );
+
+			await client.fetchByQuery( '{{Infobox}}', 10 );
+
+			expect( global.fetch ).toHaveBeenCalledWith(
+				expect.stringContaining( 'q=Template%3AInfobox' ),
+				expect.anything()
+			);
+		} );
+
+		it( 'passes the abort signal to fetch', async () => {
+			stubFetch( makeResponse( [] ) );
+			const controller = new AbortController();
+
+			await client.fetchByQuery( 'test', 10, controller.signal );
+
+			expect( global.fetch ).toHaveBeenCalledWith(
+				expect.any( String ),
+				expect.objectContaining( { signal: controller.signal } )
+			);
+		} );
+
+		it( 'throws on non-ok responses', async () => {
+			stubFetch( {}, 404 );
+
+			await expect( client.fetchByQuery( 'test', 10 ) )
+				.rejects.toThrow( 'Network request failed with HTTP code 404' );
+		} );
+
+		it( 'adapts a basic page result', async () => {
+			stubFetch( makeResponse( [
+				{
+					id: 1,
+					key: 'Cat',
+					title: 'Cat',
+					matched_title: null,
+					description: 'A small animal',
+					thumbnail: null
+				}
+			] ) );
+
+			const result = await client.fetchByQuery( 'cat', 10 );
+
+			expect( result.query ).toBe( 'cat' );
+			expect( result.results ).toHaveLength( 1 );
+
+			const item = result.results[ 0 ];
+			expect( item.id ).toBe( 'citizen-command-palette-item-page-Cat' );
+			expect( item.type ).toBe( 'page' );
+			expect( item.label ).toBe( 'Cat' );
+			expect( item.description ).toBe( 'A small animal' );
+			expect( item.url ).toBe( '/wiki/Cat' );
+			expect( item.thumbnail ).toBeUndefined();
+			expect( item.metadata ).toBeUndefined();
+			expect( item.highlightQuery ).toBe( true );
+		} );
+
+		it( 'adapts a page with thumbnail', async () => {
+			stubFetch( makeResponse( [
+				{
+					id: 2,
+					key: 'Dog',
+					title: 'Dog',
+					matched_title: null,
+					thumbnail: {
+						url: 'https://example.com/dog.jpg',
+						width: 200,
+						height: 150
+					}
+				}
+			] ) );
+
+			const result = await client.fetchByQuery( 'dog', 10 );
+			const item = result.results[ 0 ];
+
+			expect( item.thumbnail ).toEqual( {
+				url: 'https://example.com/dog.jpg',
+				width: 200,
+				height: 150
+			} );
+		} );
+
+		it( 'adapts a redirect with metadata', async () => {
+			stubFetch( makeResponse( [
+				{
+					id: 3,
+					key: 'Kitty',
+					title: 'Cat',
+					matched_title: 'Kitty',
+					thumbnail: null
+				}
+			] ) );
+
+			const result = await client.fetchByQuery( 'kitty', 10 );
+			const item = result.results[ 0 ];
+
+			expect( item.url ).toBe( '/wiki/Kitty' );
+			expect( item.metadata ).toHaveLength( 1 );
+			expect( item.metadata[ 0 ].label ).toBe( 'Kitty' );
+			expect( item.metadata[ 0 ].highlightQuery ).toBe( true );
+		} );
+
+		it( 'omits a redirect that only adds an affix to the title', async () => {
+			stubFetch( makeResponse( [
+				{
+					id: 4,
+					key: 'Nutrition_Bar',
+					title: 'Nutrition Bar (Grilled Steak)',
+					matched_title: "'One Meal' Nutrition Bar (Grilled Steak)",
+					thumbnail: null
+				}
+			] ) );
+
+			const result = await client.fetchByQuery( 'one meal', 10 );
+
+			expect( result.results[ 0 ].metadata ).toBeUndefined();
+		} );
+
+		it( 'omits a redirect the title already contains', async () => {
+			stubFetch( makeResponse( [
+				{
+					id: 5,
+					key: 'Nutrition_Bar',
+					title: 'Nutrition Bar (Grilled Steak)',
+					matched_title: 'Nutrition Bar',
+					thumbnail: null
+				}
+			] ) );
+
+			const result = await client.fetchByQuery( 'nutrition', 10 );
+
+			expect( result.results[ 0 ].metadata ).toBeUndefined();
+		} );
+
+		it( 'ignores case when comparing the two titles', async () => {
+			stubFetch( makeResponse( [
+				{
+					id: 8,
+					key: 'Nutrition_Bar',
+					title: 'Nutrition Bar (Grilled Steak)',
+					matched_title: 'NUTRITION BAR (GRILLED STEAK)',
+					thumbnail: null
+				}
+			] ) );
+
+			const result = await client.fetchByQuery( 'nutrition', 10 );
+
+			expect( result.results[ 0 ].metadata ).toBeUndefined();
+		} );
+
+		it( 'treats spacing and dashes as the same title', async () => {
+			stubFetch( makeResponse( [
+				{
+					id: 6,
+					key: 'New_York_City',
+					title: 'New York City',
+					matched_title: 'New-York City',
+					thumbnail: null
+				}
+			] ) );
+
+			const result = await client.fetchByQuery( 'new york', 10 );
+
+			expect( result.results[ 0 ].metadata ).toBeUndefined();
+		} );
+
+		it( 'still links to the redirect when its label is omitted', async () => {
+			stubFetch( makeResponse( [
+				{
+					id: 7,
+					key: 'Nutrition_Bar',
+					title: 'Nutrition Bar (Grilled Steak)',
+					matched_title: "'One Meal' Nutrition Bar (Grilled Steak)",
+					thumbnail: null
+				}
+			] ) );
+
+			const result = await client.fetchByQuery( 'one meal', 10 );
+
+			expect( result.results[ 0 ].url ).toBe( "/wiki/'One Meal' Nutrition Bar (Grilled Steak)" );
+		} );
+
+		describe( 'a special page matched by another of its names', () => {
+			const special = ( title ) => ( {
+				id: 0,
+				key: title.replace( / /g, '_' ),
+				title,
+				matched_title: null,
+				thumbnail: null
+			} );
+
+			it( 'is shown under its local name, as a redirect is', async () => {
+				stubFetch( makeResponse( [ special( 'Special:ImageList' ) ] ) );
+
+				const result = await client.fetchByQuery( 'Special:ImageList', 10 );
+				const item = result.results[ 0 ];
+
+				expect( item.id ).toBe( 'citizen-command-palette-item-page-Special:ListFiles' );
+				expect( item.label ).toBe( 'Special:ListFiles' );
+				expect( item.metadata ).toEqual( [
+					expect.objectContaining( { label: 'Special:ImageList' } )
+				] );
+			} );
+
+			it( 'links straight to the page, not through the name that matched', async () => {
+				stubFetch( makeResponse( [ special( 'Special:ImageList' ) ] ) );
+
+				const result = await client.fetchByQuery( 'Special:ImageList', 10 );
+
+				expect( result.results[ 0 ].url ).toBe( '/wiki/Special:ListFiles' );
+			} );
+
+			it( 'is one result however many of its names matched', async () => {
+				stubFetch( makeResponse( [
+					special( 'Special:FileList' ),
+					special( 'Special:Version' ),
+					special( 'Special:ImageList' )
+				] ) );
+
+				const result = await client.fetchByQuery( 'Special:', 10 );
+
+				expect( result.results.map( ( item ) => item.label ) )
+					.toEqual( [ 'Special:ListFiles', 'Special:Версия' ] );
+				expect( result.results[ 0 ].metadata[ 0 ].label ).toBe( 'Special:FileList' );
+			} );
+
+			it( 'shows no matched name that differs only in case', async () => {
+				stubFetch( makeResponse( [ special( 'Special:Listfiles' ) ] ) );
+
+				const result = await client.fetchByQuery( 'Special:Listfiles', 10 );
+
+				expect( result.results[ 0 ].label ).toBe( 'Special:ListFiles' );
+				expect( result.results[ 0 ].metadata ).toBeUndefined();
+			} );
+
+			it( 'is left as it is when it is already under its local name', async () => {
+				stubFetch( makeResponse( [ special( 'Special:ListFiles' ) ] ) );
+
+				const result = await client.fetchByQuery( 'Special:ListFiles', 10 );
+
+				expect( result.results[ 0 ] ).toMatchObject( {
+					id: 'citizen-command-palette-item-page-Special:ListFiles',
+					label: 'Special:ListFiles',
+					url: '/wiki/Special:ListFiles',
+					metadata: undefined
+				} );
+			} );
+		} );
+
+		it( 'includes an edit action linking to the edit form', async () => {
+			stubFetch( makeResponse( [
+				{
+					id: 4,
+					key: 'Fox',
+					title: 'Fox',
+					matched_title: null,
+					thumbnail: null
+				}
+			] ) );
+
+			const result = await client.fetchByQuery( 'fox', 10 );
+			const action = result.results[ 0 ].actions[ 0 ];
+
+			expect( action.id ).toBe( 'edit' );
+			expect( action.label ).toBe( 'action-edit' );
+			expect( action.url ).toBe( '/wiki/Fox?action=edit' );
+		} );
+
+		it( 'omits the edit action for a title that cannot be a real page', async () => {
+			stubFetch( makeResponse( [
+				{
+					id: 0,
+					key: 'Special:Version',
+					title: 'Special:Version',
+					matched_title: null,
+					thumbnail: null
+				}
+			] ) );
+
+			const result = await client.fetchByQuery( 'Special:Version', 10 );
+
+			expect( result.results[ 0 ].actions ).toEqual( [] );
+		} );
+
+		it( 'omits descriptions when showDescription is false', async () => {
+			stubFetch( makeResponse( [
+				{
+					id: 5,
+					key: 'Ant',
+					title: 'Ant',
+					matched_title: null,
+					description: 'An insect',
+					thumbnail: null
+				}
+			] ) );
+
+			const result = await client.fetchByQuery( 'ant', 10, undefined, false );
+			const item = result.results[ 0 ];
+
+			expect( item.description ).toBeUndefined();
+		} );
+	} );
+} );

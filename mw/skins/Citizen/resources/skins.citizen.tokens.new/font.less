@@ -1,0 +1,16 @@
+/**
+ * font tokens
+ * https://doc.wikimedia.org/codex/main/design-tokens/font.html
+ */
+.new-font-decls() {
+	// Codex — emits font-size, font-weight, line-height, etc.
+	// Mixin lives in the legacy module's tokens-codex.less (shared
+	// between modes — eligible for a future shared-font module).
+	.cdx-mode-medium();
+}
+
+.new-font() {
+	:where( :root.citizen-v4 ) {
+		.new-font-decls();
+	}
+}

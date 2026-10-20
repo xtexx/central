@@ -1,0 +1,1520 @@
+// @vitest-environment jsdom
+const mw = require( '../../mocks/mw.js' );
+globalThis.mw = mw;
+const mwTitle = require( '../../mocks/mwTitle.js' );
+
+const useTokenizedInput = require(
+	'../../../../resources/skins.citizen.commandPalette/composables/useTokenizedInput.js'
+);
+
+const useProviderOrchestration = require(
+	'../../../../resources/skins.citizen.commandPalette/composables/useProviderOrchestration.js'
+);
+const { DEFAULT_DEBOUNCE_MS } = require(
+	'../../../../resources/skins.citizen.commandPalette/providers/createProvider.js'
+);
+const destinationKey = require(
+	'../../../../resources/skins.citizen.commandPalette/utils/destinationKey.js'
+);
+
+describe( 'useProviderOrchestration', () => {
+	let mockSyncProvider;
+	let mockAsyncProvider;
+	let mockDecorator;
+
+	beforeEach( () => {
+		vi.useFakeTimers();
+
+		mockSyncProvider = {
+			id: 'sync',
+			canProvide: vi.fn( ( q ) => q === 'sync-query' ),
+			getResults: vi.fn( () => ( { items: [ { id: '1', label: 'Result 1' } ] } ) ),
+			onResultSelect: vi.fn(),
+			debounceMs: 0,
+			keepStaleResults: false
+		};
+
+		mockAsyncProvider = {
+			id: 'async',
+			canProvide: vi.fn( ( q ) => q === 'async-query' ),
+			getResults: vi.fn( () => Promise.resolve( {
+				items: [ { id: '2', label: 'Async Result' } ]
+			} ) ),
+			onResultSelect: vi.fn(),
+			debounceMs: 250,
+			keepStaleResults: false
+		};
+
+		// Mirrors createAppendQueryActions: a search leads with the go row and
+		// every query gets the full-text row after the results.
+		mockDecorator = {
+			queryActions: vi.fn( ( query, { leads = false } = {} ) => {
+				if ( !query ) {
+					return { lead: [], trail: [] };
+				}
+				const fulltext = { id: 'action', label: query, type: 'action', source: 'queryAction:fulltext-search' };
+				return leads ?
+					{ lead: [ { id: 'go', label: query, type: 'action', source: 'queryAction:go' } ], trail: [ fulltext ] } :
+					{ lead: [], trail: [ fulltext ] };
+			} )
+		};
+	} );
+
+	afterEach( () => {
+		vi.restoreAllMocks();
+		vi.useRealTimers();
+	} );
+
+	it( 'should initialize with empty state', () => {
+		const orch = useProviderOrchestration(
+			[ mockSyncProvider ], mockDecorator
+		);
+
+		expect( orch.query.value ).toBe( '' );
+		expect( orch.displayedItems.value ).toEqual( [] );
+		expect( orch.isPending.value ).toBe( false );
+	} );
+
+	describe( 'updateQuery — zero-debounce provider', () => {
+		it( 'should find the matching provider and display results', async () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+
+			orch.updateQuery( 'sync-query' );
+			await vi.runAllTimersAsync();
+
+			expect( mockSyncProvider.getResults ).toHaveBeenCalledWith(
+				'sync-query', expect.any( AbortSignal )
+			);
+			expect( orch.flatItems.value ).toHaveLength( 2 );
+			expect( orch.flatItems.value[ 0 ].label ).toBe( 'Result 1' );
+			expect( orch.flatItems.value[ 1 ].type ).toBe( 'action' );
+		} );
+	} );
+
+		it( 'dispatches without waiting when debounceMs is 0', async () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+
+			orch.updateQuery( 'sync-query' );
+			// A zero-debounce provider skips the wait, not the cancellation:
+			// resolving that 0 to the default would delay it by 120ms.
+			await vi.advanceTimersByTimeAsync( 0 );
+
+			expect( mockSyncProvider.getResults ).toHaveBeenCalled();
+		} );
+
+		it( 'aborts an in-flight zero-debounce request when the query moves on', async () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+
+			orch.updateQuery( 'sync-query' );
+			await vi.advanceTimersByTimeAsync( 0 );
+			const firstSignal = mockSyncProvider.getResults.mock.calls[ 0 ][ 1 ];
+			orch.updateQuery( 'sync-query-2' );
+			await vi.runAllTimersAsync();
+
+			expect( firstSignal.aborted ).toBe( true );
+		} );
+
+		it( 'tracks pending state for a zero-debounce provider', () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+
+			orch.updateQuery( 'sync-query' );
+
+			expect( orch.isPending.value ).toBe( true );
+		} );
+
+	describe( 'updateQuery — async provider', () => {
+		it( 'should debounce and show results after delay', async () => {
+			const orch = useProviderOrchestration(
+				[ mockAsyncProvider ], mockDecorator
+			);
+
+			orch.updateQuery( 'async-query' );
+
+			expect( orch.isPending.value ).toBe( true );
+			expect( mockAsyncProvider.getResults ).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime( 250 );
+			await vi.runAllTimersAsync();
+
+			expect( mockAsyncProvider.getResults ).toHaveBeenCalled();
+			expect( orch.flatItems.value[ 0 ].label ).toBe( 'Async Result' );
+			expect( orch.isPending.value ).toBe( false );
+		} );
+	} );
+
+	describe( 'updateQuery — no matching provider', () => {
+		it( 'should display only decorator results', () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+
+			orch.updateQuery( 'unmatched' );
+
+			expect( orch.flatItems.value ).toHaveLength( 1 );
+			expect( orch.flatItems.value[ 0 ].type ).toBe( 'action' );
+		} );
+	} );
+
+	describe( 'updateQuery — clears on empty', () => {
+		it( 'should clear results when query becomes empty', () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+
+			orch.updateQuery( 'sync-query' );
+			orch.updateQuery( '' );
+
+			expect( orch.query.value ).toBe( '' );
+		} );
+	} );
+
+	describe( 'mode management', () => {
+		let orch;
+		let mockProviders;
+
+		beforeEach( () => {
+			mockProviders = [ mockSyncProvider, mockAsyncProvider ];
+			orch = useProviderOrchestration( mockProviders, mockDecorator );
+		} );
+
+		it( 'enterMode sets activeMode and clears query', () => {
+			const mode = { id: 'ns', getResults: vi.fn().mockResolvedValue( [] ) };
+
+			orch.enterMode( mode );
+
+			expect( orch.activeMode.value ).toBe( mode );
+			expect( orch.query.value ).toBe( '' );
+		} );
+
+		it( 'exitMode clears activeMode and loads presults', async () => {
+			const mode = { id: 'ns', getResults: vi.fn().mockResolvedValue( [] ) };
+			orch.enterMode( mode );
+
+			await orch.exitMode();
+
+			expect( orch.activeMode.value ).toBeNull();
+		} );
+
+		it( 'enterMode fetches initial results with empty query', async () => {
+			const mode = {
+				id: 'ns',
+				getResults: vi.fn().mockResolvedValue( [
+					{ id: 'ns-1', label: 'Talk', type: 'namespace' }
+				] )
+			};
+
+			orch.enterMode( mode );
+			await vi.runAllTimersAsync();
+
+			expect( mode.getResults ).toHaveBeenCalledWith( '', undefined, [], [] );
+		} );
+
+		it( 'updateQuery routes through active mode getResults when mode is active', async () => {
+			const mode = {
+				id: 'ns',
+				getResults: vi.fn().mockResolvedValue( [
+					{ id: 'result-1', label: 'Talk', type: 'namespace' }
+				] )
+			};
+			orch.enterMode( mode );
+			await vi.runAllTimersAsync();
+			mode.getResults.mockClear();
+
+			orch.updateQuery( 'Talk' );
+			vi.advanceTimersByTime( DEFAULT_DEBOUNCE_MS );
+			await vi.runAllTimersAsync();
+
+			expect( mode.getResults ).toHaveBeenCalledWith( 'Talk', expect.any( AbortSignal ), [], [] );
+		} );
+
+		it( 'updateQuery uses normal provider dispatch when no mode is active', async () => {
+			await orch.updateQuery( 'test' );
+
+			expect( mockProviders[ 0 ].canProvide ).toHaveBeenCalledWith( 'test' );
+		} );
+
+		it( 'enterMode clears displayed items and withholds the highlight while loading', () => {
+			const mode = { id: 'ns', getResults: vi.fn().mockResolvedValue( [] ) };
+
+			orch.enterMode( mode );
+
+			expect( orch.displayedItems.value ).toEqual( [] );
+			expect( orch.isLoading.value ).toBe( true );
+			expect( orch.isLeadReady.value ).toBe( false );
+			expect( orch.defaultHighlightIndex.value ).toBe( -1 );
+		} );
+
+		it( 'exitMode resets to presults', async () => {
+			const mode = { id: 'ns', getResults: vi.fn().mockResolvedValue( [] ) };
+			orch.enterMode( mode );
+
+			await orch.exitMode();
+
+			// After exitMode, clearSearch should have been called
+			// which populates presults. activeMode should be null.
+			expect( orch.activeMode.value ).toBeNull();
+		} );
+
+		it( 'handleSelection delegates to active mode onResultSelect', async () => {
+			const mode = {
+				id: 'ns',
+				getResults: vi.fn().mockResolvedValue( [] ),
+				onResultSelect: vi.fn().mockReturnValue( {
+					action: 'exitWithQuery', payload: 'Talk:'
+				} )
+			};
+			orch.enterMode( mode );
+
+			const result = { id: 'ns-1', label: 'Talk', value: 'Talk:', type: 'namespace' };
+			const action = await orch.handleSelection( result );
+
+			expect( mode.onResultSelect ).toHaveBeenCalledWith( result );
+			expect( action ).toEqual( { action: 'exitWithQuery', payload: 'Talk:' } );
+		} );
+
+		it( 'handleSelection does not check providers when mode is active', async () => {
+			const mode = {
+				id: 'ns',
+				getResults: vi.fn().mockResolvedValue( [] ),
+				onResultSelect: vi.fn().mockReturnValue( { action: 'none' } )
+			};
+			orch.enterMode( mode );
+			mockSyncProvider.onResultSelect.mockClear();
+
+			const result = { id: 'ns-1', label: 'Talk', source: 'sync' };
+			await orch.handleSelection( result );
+
+			expect( mode.onResultSelect ).toHaveBeenCalled();
+			expect( mockSyncProvider.onResultSelect ).not.toHaveBeenCalled();
+		} );
+
+		it( 'hands Recent the mode a row was opened in', async () => {
+			const recentItemsService = { saveRecentItem: vi.fn() };
+			const modeOrch = useProviderOrchestration( mockProviders, mockDecorator, { recentItemsService } );
+			const mode = {
+				id: 'history',
+				getResults: vi.fn().mockResolvedValue( [] ),
+				onResultSelect: () => ( { action: 'navigate', payload: '/w/index.php?title=P&diff=prev&oldid=1' } ),
+				remember: vi.fn()
+			};
+			modeOrch.enterMode( mode );
+			const row = { id: 'r1', label: 'x', url: '/w/index.php?title=P&oldid=1' };
+
+			await modeOrch.handleSelection( row );
+
+			expect( recentItemsService.saveRecentItem ).toHaveBeenCalledWith(
+				row, '/w/index.php?title=P&diff=prev&oldid=1', mode
+			);
+		} );
+
+		it( 'hands Recent the mode a row was opened in, though another is entered while it opens', async () => {
+			const recentItemsService = { saveRecentItem: vi.fn() };
+			const modeOrch = useProviderOrchestration( mockProviders, mockDecorator, { recentItemsService } );
+			let finishSelect;
+			const history = {
+				id: 'history',
+				getResults: vi.fn().mockResolvedValue( [] ),
+				onResultSelect: () => new Promise( ( resolve ) => {
+					finishSelect = resolve;
+				} ),
+				remember: vi.fn()
+			};
+			const user = { id: 'user', getResults: vi.fn().mockResolvedValue( [] ), remember: vi.fn() };
+			modeOrch.enterMode( history );
+			const row = { id: 'r1', label: 'x', url: '/w/index.php?title=P&oldid=1' };
+
+			const selection = modeOrch.handleSelection( row );
+			modeOrch.enterMode( user );
+			finishSelect( { action: 'navigate', payload: '/w/index.php?title=P&diff=prev&oldid=1' } );
+			await selection;
+
+			expect( recentItemsService.saveRecentItem ).toHaveBeenCalledWith(
+				row, '/w/index.php?title=P&diff=prev&oldid=1', history
+			);
+		} );
+	} );
+
+	describe( 'stateConfig', () => {
+		it( 'should return defaults when no mode is active', () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+
+			const config = orch.stateConfig.value;
+
+			expect( config.emptyState.title ).toBe( 'searchsuggest-search' );
+			expect( config.emptyState.description ).toBe( 'citizen-search-empty-desc' );
+			expect( config.emptyState.icon ).toBeNull();
+		} );
+
+		it( 'should return default noResults function when no mode is active', () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+
+			const result = orch.stateConfig.value.noResults( 'test query' );
+
+			expect( result.title ).toBe( 'citizen-search-noresults-title' );
+			expect( result.description ).toBe( 'search-nonefound' );
+			expect( result.icon ).toBeNull();
+		} );
+
+		it( 'should use mode emptyState when mode provides it', () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+			const mode = {
+				id: 'test',
+				getResults: vi.fn().mockResolvedValue( [] ),
+				emptyState: {
+					title: 'Custom empty',
+					description: 'Custom desc',
+					icon: 'customIcon'
+				}
+			};
+
+			orch.enterMode( mode );
+
+			expect( orch.stateConfig.value.emptyState.title ).toBe( 'Custom empty' );
+			expect( orch.stateConfig.value.emptyState.icon ).toBe( 'customIcon' );
+		} );
+
+		it( 'should use mode noResults when mode provides it', () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+			const mode = {
+				id: 'test',
+				getResults: vi.fn().mockResolvedValue( [] ),
+				noResults: ( query ) => ( {
+					title: 'No results for ' + query,
+					description: 'Try again',
+					icon: 'warningIcon'
+				} )
+			};
+
+			orch.enterMode( mode );
+			const result = orch.stateConfig.value.noResults( 'foo' );
+
+			expect( result.title ).toBe( 'No results for foo' );
+			expect( result.icon ).toBe( 'warningIcon' );
+		} );
+
+		it( 'should fall back to defaults for missing mode fields', () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+			const mode = {
+				id: 'test',
+				getResults: vi.fn().mockResolvedValue( [] )
+			};
+
+			orch.enterMode( mode );
+
+			expect( orch.stateConfig.value.emptyState.title ).toBe( 'searchsuggest-search' );
+			expect( typeof orch.stateConfig.value.noResults ).toBe( 'function' );
+		} );
+
+		it( 'should update when mode changes', async () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+			const mode = {
+				id: 'test',
+				getResults: vi.fn().mockResolvedValue( [] ),
+				emptyState: {
+					title: 'Mode title',
+					description: 'Mode desc',
+					icon: null
+				}
+			};
+
+			expect( orch.stateConfig.value.emptyState.title ).toBe( 'searchsuggest-search' );
+
+			orch.enterMode( mode );
+
+			expect( orch.stateConfig.value.emptyState.title ).toBe( 'Mode title' );
+
+			await orch.exitMode();
+
+			expect( orch.stateConfig.value.emptyState.title ).toBe( 'searchsuggest-search' );
+		} );
+	} );
+
+	describe( 'abort coordination', () => {
+		it( 'should abort previous async request on new query', async () => {
+			const orch = useProviderOrchestration(
+				[ mockAsyncProvider ], mockDecorator
+			);
+
+			orch.updateQuery( 'async-query' );
+			vi.advanceTimersByTime( 100 );
+			orch.updateQuery( 'async-query' );
+
+			vi.advanceTimersByTime( 250 );
+			await vi.runAllTimersAsync();
+
+			expect( mockAsyncProvider.getResults ).toHaveBeenCalledTimes( 1 );
+		} );
+	} );
+
+	describe( 'mode context', () => {
+		const stubMode = ( id, getResults ) => ( {
+			id,
+			getResults: getResults || vi.fn().mockResolvedValue( [] )
+		} );
+
+		it( 'initialises activeModeContext to empty array', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+
+			expect( orch.activeModeContext.value ).toEqual( [] );
+		} );
+
+		it( 'enterMode resets activeModeContext', async () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( stubMode( 'm' ) );
+			orch.pushModeContext( { name: 'A' } );
+			orch.enterMode( stubMode( 'm2' ) );
+			await vi.runAllTimersAsync();
+
+			expect( orch.activeModeContext.value ).toEqual( [] );
+		} );
+
+		it( 'exitMode clears activeModeContext', async () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( stubMode( 'm' ) );
+			orch.pushModeContext( { name: 'A' } );
+			orch.exitMode();
+			await vi.runAllTimersAsync();
+
+			expect( orch.activeModeContext.value ).toEqual( [] );
+		} );
+
+		it( 'pushModeContext appends and clears query', async () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( stubMode( 'm' ) );
+			orch.updateQuery( 'foo' );
+			orch.pushModeContext( { name: 'A' } );
+			orch.pushModeContext( { name: 'B' } );
+			await vi.runAllTimersAsync();
+
+			expect( orch.activeModeContext.value ).toEqual(
+				[ { name: 'A' }, { name: 'B' } ]
+			);
+			expect( orch.query.value ).toBe( '' );
+		} );
+
+		it( 'popModeContext removes last entry', async () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( stubMode( 'm' ) );
+			orch.pushModeContext( { name: 'A' } );
+			orch.pushModeContext( { name: 'B' } );
+			orch.popModeContext();
+			await vi.runAllTimersAsync();
+
+			expect( orch.activeModeContext.value ).toEqual( [ { name: 'A' } ] );
+		} );
+
+		it( 'popModeContext is a no-op when stack is empty', async () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( stubMode( 'm' ) );
+			orch.popModeContext();
+			await vi.runAllTimersAsync();
+
+			expect( orch.activeModeContext.value ).toEqual( [] );
+		} );
+
+		it( 'pushModeContext is a no-op when no mode is active', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.pushModeContext( { name: 'A' } );
+
+			expect( orch.activeModeContext.value ).toEqual( [] );
+		} );
+
+		it( 'passes activeModeContext as 4th arg to mode.getResults', async () => {
+			const getResults = vi.fn().mockResolvedValue( [] );
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( stubMode( 'm', getResults ) );
+			orch.pushModeContext( { name: 'A' } );
+			await vi.runAllTimersAsync();
+
+			const lastCall = getResults.mock.calls[ getResults.mock.calls.length - 1 ];
+			expect( lastCall[ 3 ] ).toEqual( [ { name: 'A' } ] );
+		} );
+	} );
+
+	describe( 'help overlay', () => {
+		it( 'starts hidden', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+
+			expect( orch.helpVisible.value ).toBe( false );
+		} );
+
+		it( 'openHelp inside an active mode preserves the mode', async () => {
+			const mode = {
+				id: 'cat',
+				triggers: [ '#' ],
+				getResults: vi.fn( () => [ { id: 'r1', label: 'In-mode result' } ] )
+			};
+			const orch = useProviderOrchestration( [], mockDecorator );
+
+			orch.enterMode( mode );
+			await vi.runAllTimersAsync();
+			orch.openHelp();
+
+			expect( orch.helpVisible.value ).toBe( true );
+			expect( orch.activeMode.value ).toBe( mode );
+		} );
+
+		it( 'does not open the overlay without a mode to describe', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+
+			orch.openHelp();
+
+			expect( orch.helpVisible.value ).toBe( false );
+		} );
+
+		it( 'shows no results while the overlay describes the mode', async () => {
+			const mode = { id: 'cat', getResults: vi.fn( () => [ { id: 'r1', label: 'R' } ] ) };
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( mode );
+			await vi.runAllTimersAsync();
+
+			orch.openHelp();
+
+			expect( orch.displayedItems.value ).toEqual( [] );
+		} );
+
+		it( 'drops the overlay when the mode changes', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( { id: 'cat', getResults: () => [] } );
+			orch.openHelp();
+
+			orch.exitMode();
+
+			expect( orch.helpVisible.value ).toBe( false );
+		} );
+
+		it( 'drops the overlay when another mode is entered', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( { id: 'cat', getResults: () => [] } );
+			orch.openHelp();
+
+			orch.enterMode( { id: 'user', getResults: () => [] } );
+
+			expect( orch.helpVisible.value ).toBe( false );
+		} );
+
+		it( 'brings the mode results back when the overlay closes', async () => {
+			const mode = { id: 'cat', getResults: vi.fn( () => [ { id: 'r1', label: 'R' } ] ) };
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( mode );
+			await vi.runAllTimersAsync();
+			orch.openHelp();
+
+			orch.closeHelp();
+			await vi.runAllTimersAsync();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r1' ] );
+		} );
+
+		it( 'closeHelp inside an active mode preserves activeMode and modeContext', async () => {
+			const mode = {
+				id: 'cat',
+				triggers: [ '#' ],
+				getResults: vi.fn( () => [ { id: 'r1', label: 'A' } ] )
+			};
+			const orch = useProviderOrchestration( [], mockDecorator );
+
+			orch.enterMode( mode );
+			await vi.runAllTimersAsync();
+			orch.pushModeContext( { name: 'Animals' } );
+			await vi.runAllTimersAsync();
+
+			orch.openHelp();
+			orch.closeHelp();
+
+			expect( orch.helpVisible.value ).toBe( false );
+			expect( orch.activeMode.value ).toBe( mode );
+			expect( orch.activeModeContext.value ).toEqual( [ { name: 'Animals' } ] );
+		} );
+
+		it( 'toggleHelp flips the flag both directions', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( { id: 'cat', getResults: () => [] } );
+
+			orch.toggleHelp();
+			expect( orch.helpVisible.value ).toBe( true );
+
+			orch.toggleHelp();
+			expect( orch.helpVisible.value ).toBe( false );
+		} );
+
+		it( 'open/close are idempotent', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( { id: 'cat', getResults: () => [] } );
+
+			orch.openHelp();
+			orch.openHelp();
+			expect( orch.helpVisible.value ).toBe( true );
+
+			orch.closeHelp();
+			orch.closeHelp();
+			expect( orch.helpVisible.value ).toBe( false );
+		} );
+	} );
+
+	describe( 'presult slots', () => {
+		const recentItems = [ { id: 'r1', url: '/R', label: 'R', source: 'recent' } ];
+		const relatedItems = [ { id: 'a1', url: '/A', label: 'A', source: 'related' } ];
+
+		const build = ( relatedResolver ) => useProviderOrchestration( [], mockDecorator, {
+			recentItemsProvider: { getResults: () => ( { items: recentItems } ) },
+			relatedArticlesProvider: { getResults: relatedResolver }
+		} );
+
+		// Takes the view's own config too, wgPageName included, so a test
+		// fails if Recent compares by title rather than by the view.
+		const useWikiPaths = ( view = {} ) => {
+			vi.spyOn( mw.config, 'get' ).mockImplementation( ( key ) => ( {
+				wgArticlePath: '/wiki/$1',
+				wgScript: '/w/index.php',
+				...view
+			} )[ key ] ?? null );
+			mw.Title = mwTitle;
+		};
+
+		const { Title } = mw;
+		afterEach( () => {
+			mw.Title = Title;
+			window.history.replaceState( null, '', '/' );
+		} );
+
+		it( 'does not repeat under Recent a page Related already lists', async () => {
+			useWikiPaths();
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( { items: [
+					{ id: 'go', type: 'action', url: '/w/index.php?title=Special:Search&search=akita', source: 'recent' },
+					{ id: 'r1', url: '/wiki/Other', source: 'recent' }
+				] } ) },
+				relatedArticlesProvider: {
+					getResults: () => Promise.resolve( { items: [ { id: 'a1', url: '/wiki/Akita', source: 'related' } ] } )
+				}
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'a1', 'r1' ] );
+		} );
+
+		it( 'leaves the page you are on out of Recent', async () => {
+			useWikiPaths( { wgPageName: 'Akita' } );
+			window.history.replaceState( null, '', '/wiki/Akita#History' );
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( { items: [
+					{ id: 'r1', url: '/w/index.php?title=Akita', source: 'recent' },
+					{ id: 'r2', url: '/wiki/Other', source: 'recent' }
+				] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r2' ] );
+		} );
+
+		it( 'leaves out the redirect that brought you to the page', async () => {
+			useWikiPaths( { wgPageName: 'Dog', wgRedirectedFrom: 'Doggo' } );
+			window.history.replaceState( null, '', '/wiki/Dog' );
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( { items: [
+					{ id: 'r1', url: '/wiki/Doggo', source: 'recent' },
+					{ id: 'r2', url: '/wiki/Other', source: 'recent' }
+				] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r2' ] );
+		} );
+
+		it( 'leaves out the special page you are on, under whichever of its names', async () => {
+			useWikiPaths( { wgPageName: 'Special:Версия' } );
+			window.history.replaceState( null, '', '/wiki/Special:%D0%92%D0%B5%D1%80%D1%81%D0%B8%D1%8F' );
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( { items: [
+					{ id: 'r1', url: '/wiki/Special:Version', source: 'recent' },
+					{ id: 'r2', url: '/wiki/Special:ImageList', source: 'recent' }
+				] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r2' ] );
+		} );
+
+		it( 'leaves out the search a go ran while you are on its results', async () => {
+			useWikiPaths( { wgPageName: 'Special:Search', wgCanonicalSpecialPageName: 'Search' } );
+			window.history.replaceState( null, '', '/wiki/Special:Search?search=zzqx+yy' );
+			vi.spyOn( mw.util, 'getParamValue' ).mockImplementation(
+				( name ) => new URL( window.location.href ).searchParams.get( name )
+			);
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( { items: [
+					{ id: 'r1', url: mw.util.getUrl( 'Special:Search', { search: 'zzqx yy', fulltext: 1 } ), source: 'recent' },
+					{ id: 'r2', url: '/wiki/Special:Search?search=other&fulltext=1', source: 'recent' }
+				] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r2' ] );
+		} );
+
+		it( 'keeps a page under Recent while you view its history', async () => {
+			useWikiPaths( { wgPageName: 'Akita' } );
+			window.history.replaceState( null, '', '/w/index.php?title=Akita&action=history' );
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( { items: [
+					{ id: 'r1', url: '/wiki/Akita', source: 'recent' }
+				] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r1' ] );
+		} );
+
+		it( 'shows eight Recent entries after leaving some out', async () => {
+			useWikiPaths( { wgPageName: 'P1' } );
+			window.history.replaceState( null, '', '/wiki/P1' );
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider: { getResults: () => ( {
+					items: Array.from( { length: 11 }, ( _, i ) => (
+						{ id: `r${ i + 1 }`, url: `/wiki/P${ i + 1 }`, source: 'recent' }
+					) )
+				} ) },
+				relatedArticlesProvider: {
+					getResults: () => Promise.resolve( { items: [ { id: 'a1', url: '/wiki/P2', source: 'related' } ] } )
+				}
+			} );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual(
+				[ 'a1', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10' ]
+			);
+		} );
+
+		it( 'asks Recent for only the entries it shows, leaving out the page you are on', () => {
+			useWikiPaths( { wgPageName: 'Elsewhere' } );
+			window.history.replaceState( null, '', '/wiki/Elsewhere' );
+			const recentItemsProvider = { getResults: vi.fn( () => ( { items: [] } ) ) };
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider,
+				relatedArticlesProvider: { getResults: () => new Promise( () => {} ) }
+			} );
+
+			orch.clearSearch();
+
+			expect( recentItemsProvider.getResults ).toHaveBeenCalledWith( '', {
+				leftOut: new Set( [ destinationKey( { id: '', url: '/wiki/Elsewhere' } ) ] ),
+				limit: 8
+			} );
+		} );
+
+		it( 'refills Recent to eight entries once Related takes some', async () => {
+			useWikiPaths( { wgPageName: 'Elsewhere' } );
+			window.history.replaceState( null, '', '/wiki/Elsewhere' );
+			const stored = Array.from( { length: 10 }, ( _, i ) => (
+				{ id: `r${ i + 1 }`, url: `/wiki/P${ i + 1 }`, source: 'recent' }
+			) );
+			// Answers as the service does: it passes over the places left out
+			// and returns no more rows than asked for.
+			const recentItemsProvider = {
+				getResults: ( query, { leftOut = new Set(), limit = Infinity } = {} ) => ( {
+					items: stored.filter( ( row ) => !leftOut.has( destinationKey( row ) ) ).slice( 0, limit )
+				} )
+			};
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider,
+				relatedArticlesProvider: {
+					getResults: () => Promise.resolve( { items: [
+						{ id: 'a1', url: '/wiki/P2', source: 'related' },
+						{ id: 'a2', url: '/wiki/P5', source: 'related' }
+					] } )
+				}
+			} );
+
+			await orch.clearSearch();
+
+			const recent = orch.displayedItems.value.find(
+				( s ) => s.heading === 'citizen-command-palette-heading-recent'
+			);
+			expect( recent.items.map( ( i ) => i.id ) ).toEqual(
+				[ 'r1', 'r3', 'r4', 'r6', 'r7', 'r8', 'r9', 'r10' ]
+			);
+		} );
+
+		it( 'reads Recent once when Related lists nothing', async () => {
+			const recentItemsProvider = { getResults: vi.fn( () => ( { items: recentItems } ) ) };
+			const orch = useProviderOrchestration( [], mockDecorator, {
+				recentItemsProvider,
+				relatedArticlesProvider: { getResults: () => Promise.resolve( { items: [] } ) }
+			} );
+
+			await orch.clearSearch();
+
+			expect( recentItemsProvider.getResults ).toHaveBeenCalledTimes( 1 );
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r1' ] );
+		} );
+
+		it( 'declares related above recents before related has resolved', async () => {
+			let resolveRelated;
+			const orch = build( () => new Promise( ( resolve ) => {
+				resolveRelated = resolve;
+			} ) );
+
+			await orch.clearSearch;
+			orch.clearSearch();
+
+			// Related has not resolved, so it draws nothing yet — but it is
+			// reported as loading and holds its declared position for later.
+			expect( orch.isLoading.value ).toBe( true );
+			expect( orch.displayedItems.value.map( ( s ) => s.heading ) ).toEqual( [
+				'citizen-command-palette-heading-recent'
+			] );
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'r1' ] );
+
+			resolveRelated( { items: relatedItems } );
+		} );
+
+		it( 'does not reorder the list when related resolves late', async () => {
+			const orch = build( () => Promise.resolve( { items: relatedItems } ) );
+
+			await orch.clearSearch();
+
+			// Related is declared above recents, so it lands above them
+			// however late it resolves.
+			expect( orch.displayedItems.value.map( ( s ) => s.heading ) ).toEqual( [
+				'citizen-command-palette-heading-related',
+				'citizen-command-palette-heading-recent'
+			] );
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'a1', 'r1' ] );
+		} );
+
+		it( 'withholds the default highlight on presults even once settled', async () => {
+			const orch = build( () => Promise.resolve( { items: relatedItems } ) );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value ).toHaveLength( 2 );
+			expect( orch.defaultHighlightIndex.value ).toBe( -1 );
+		} );
+
+		it( 'retires presult slots once the user types', async () => {
+			const orch = build( () => Promise.resolve( { items: relatedItems } ) );
+			await orch.clearSearch();
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'a1', 'r1' ] );
+
+			orch.updateQuery( 'anything' );
+
+			// Recents and related belong to the empty-query surface only; a
+			// query must not leave them rendering under its results.
+			const sources = orch.flatItems.value.map( ( i ) => i.source );
+			expect( sources ).not.toContain( 'recent' );
+			expect( sources ).not.toContain( 'related' );
+			expect( orch.displayedItems.value.map( ( sec ) => sec.heading ) )
+				.not.toContain( 'citizen-command-palette-heading-recent' );
+		} );
+
+		it( 'restores presult slots when the query is cleared again', async () => {
+			const orch = build( () => Promise.resolve( { items: relatedItems } ) );
+			await orch.clearSearch();
+			orch.updateQuery( 'anything' );
+
+			await orch.clearSearch();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).toEqual( [ 'a1', 'r1' ] );
+		} );
+
+		it( 'drops a related result that lands after the user typed', async () => {
+			let resolveRelated;
+			const orch = build( () => new Promise( ( resolve ) => {
+				resolveRelated = resolve;
+			} ) );
+
+			const pending = orch.clearSearch();
+			orch.query.value = 'moved on';
+			resolveRelated( { items: relatedItems } );
+			await pending;
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) ).not.toContain( 'a1' );
+		} );
+	} );
+
+	describe( 'surface isolation', () => {
+		it( 'drops a mode result that lands after the mode context changed', async () => {
+			// One resolver per call: the drilled level's request is the one
+			// that must be ignored, and it is not the most recent.
+			const resolvers = [];
+			const mode = {
+				id: 'cat',
+				getResults: vi.fn( () => new Promise( ( resolve ) => {
+					resolvers.push( resolve );
+				} ) )
+			};
+			const orch = useProviderOrchestration( [], mockDecorator, {} );
+
+			orch.enterMode( mode );
+			orch.pushModeContext( 'Animals' );
+			// Back out before the drilled level's unabortable fetch resolves.
+			orch.popModeContext();
+			// Resolve ONLY the drilled level's request. Leaving the others
+			// pending means nothing can overwrite its landing, so the
+			// assertion tests the staleness gate rather than write order.
+			resolvers[ 1 ]( [ { id: 'abandoned', label: 'Abandoned member' } ] );
+			await vi.runAllTimersAsync();
+
+			expect( orch.flatItems.value.map( ( i ) => i.id ) )
+				.not.toContain( 'abandoned' );
+		} );
+	} );
+
+	describe( 'enteredTrigger', () => {
+		function makeMode() {
+			return { id: 'user', getResults: vi.fn().mockResolvedValue( [] ) };
+		}
+
+		it( 'records the trigger that entered the mode', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+
+			orch.enterMode( makeMode(), '@' );
+
+			expect( orch.enteredTrigger.value ).toBe( '@' );
+		} );
+
+		it( 'is empty for a mode entered without a trigger', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+
+			orch.enterMode( makeMode() );
+
+			expect( orch.enteredTrigger.value ).toBe( '' );
+		} );
+
+		it( 'clears when the mode exits', async () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( makeMode(), '@' );
+
+			await orch.exitMode();
+
+			expect( orch.enteredTrigger.value ).toBe( '' );
+		} );
+
+		it( 'does not carry a trigger over from a previous mode', () => {
+			const orch = useProviderOrchestration( [], mockDecorator );
+			orch.enterMode( makeMode(), '@' );
+
+			orch.enterMode( makeMode() );
+
+			expect( orch.enteredTrigger.value ).toBe( '' );
+		} );
+	} );
+
+	describe( 'literal query routing', () => {
+		const triggerProvider = {
+			id: 'command',
+			canProvide: ( q ) => q.startsWith( '#' ),
+			getResults: () => ( { items: [ { id: 'c1', label: 'Cat', source: 'command:cat' } ] } ),
+			onResultSelect: vi.fn(),
+			debounceMs: 0,
+			keepStaleResults: false,
+			readsTriggers: true
+		};
+		const textProvider = {
+			id: 'search',
+			canProvide: ( q ) => !!q,
+			getResults: () => ( { items: [ { id: 'p1', label: 'Page', source: 'search' } ] } ),
+			onResultSelect: vi.fn(),
+			debounceMs: 0,
+			keepStaleResults: false
+		};
+
+		// Drives the real tokenizer rather than a stand-in predicate: the
+		// latch and the provider skip are the two halves of one contract, and
+		// a hand-written stub here would pass even if they disagreed.
+		async function sourcesFor( literal, query ) {
+			const tokenInput = useTokenizedInput( () => [] );
+			if ( literal ) {
+				tokenInput.setLiteralPrefix( literal );
+			}
+			const orch = useProviderOrchestration(
+				[ triggerProvider, textProvider ],
+				mockDecorator,
+				{ isHeldLiteral: tokenInput.isHeldLiteral }
+			);
+
+			orch.updateQuery( query );
+			await vi.runAllTimersAsync();
+
+			return orch.flatItems.value.map( ( i ) => i.source );
+		}
+
+		it( 'sends a query held literal past the trigger-reading provider', async () => {
+			const sources = await sourcesFor( '#', '#cat' );
+
+			expect( sources ).toContain( 'search' );
+			expect( sources ).not.toContain( 'command:cat' );
+		} );
+
+		it( 'lets the trigger-reading provider claim the query with no latch', async () => {
+			const sources = await sourcesFor( '', '#cat' );
+
+			expect( sources ).toContain( 'command:cat' );
+		} );
+
+		it( 'only holds back the provider for queries the latch actually covers', async () => {
+			const sources = await sourcesFor( '@', '#cat' );
+
+			expect( sources ).toContain( 'command:cat' );
+		} );
+	} );
+
+	describe( 'query action placement', () => {
+		const searchProvider = {
+			id: 'search',
+			canProvide: ( q ) => !!q && !q.startsWith( '#' ),
+			getResults: () => ( { items: [ { id: 'p1', label: 'Page', source: 'search' } ] } ),
+			onResultSelect: vi.fn(),
+			debounceMs: 0,
+			keepStaleResults: false
+		};
+		const commandProvider = {
+			id: 'command',
+			canProvide: ( q ) => q.startsWith( '#' ),
+			getResults: () => ( { items: [ { id: 'c1', label: 'Cat', source: 'command:cat' } ] } ),
+			onResultSelect: vi.fn(),
+			debounceMs: 0,
+			keepStaleResults: false
+		};
+
+		it( 'pins the lead action first when the search provider matched', async () => {
+			const orch = useProviderOrchestration(
+				[ commandProvider, searchProvider ], mockDecorator, {}
+			);
+
+			orch.updateQuery( 'sunset' );
+			await vi.runAllTimersAsync();
+
+			expect( orch.flatItems.value[ 0 ].source )
+				.toBe( 'queryAction:go' );
+			expect( orch.defaultHighlightIndex.value ).toBe( 0 );
+		} );
+
+		it( 'does not repeat a result the lead stands in for', async () => {
+			mockDecorator.queryActions = vi.fn( ( query, { results = [] } = {} ) => ( {
+				lead: results.filter( ( item ) => item.label === query )
+					.map( ( item ) => ( { ...item, url: 'go' } ) ),
+				trail: []
+			} ) );
+			const orch = useProviderOrchestration(
+				[ commandProvider, searchProvider ], mockDecorator, {}
+			);
+
+			orch.updateQuery( 'Page' );
+			await vi.runAllTimersAsync();
+
+			expect( orch.flatItems.value ).toEqual( [
+				{ id: 'p1', label: 'Page', source: 'search', url: 'go' }
+			] );
+			expect( orch.defaultHighlightIndex.value ).toBe( 0 );
+		} );
+
+		it( 'saves the result a lead stands in for to Recent, with the result\'s own link', async () => {
+			mockDecorator.queryActions = vi.fn( ( query, { results = [] } = {} ) => ( {
+				lead: results.filter( ( item ) => item.label === query )
+					.map( ( item ) => ( { ...item, url: 'go' } ) ),
+				trail: []
+			} ) );
+			const linkingProvider = {
+				...searchProvider,
+				getResults: () => ( {
+					items: [ { id: 'p1', label: 'Page', source: 'search', url: '/wiki/Page' } ]
+				} ),
+				onResultSelect: ( item ) => ( { action: 'navigate', payload: item.url } )
+			};
+			const recentItemsService = { saveRecentItem: vi.fn() };
+			const orch = useProviderOrchestration(
+				[ commandProvider, linkingProvider ], mockDecorator, { recentItemsService }
+			);
+			orch.updateQuery( 'Page' );
+			await vi.runAllTimersAsync();
+
+			const action = await orch.handleSelection( orch.flatItems.value[ 0 ] );
+
+			expect( action ).toEqual( { action: 'navigate', payload: 'go' } );
+			expect( recentItemsService.saveRecentItem ).toHaveBeenCalledWith(
+				{ id: 'p1', label: 'Page', source: 'search', url: '/wiki/Page' },
+				'/wiki/Page',
+				null
+			);
+		} );
+
+		it( 'saves the link a row actually opened, not the row\'s own link', async () => {
+			const revisionProvider = {
+				...searchProvider,
+				getResults: () => ( {
+					items: [ { id: 'r1', label: 'Page', source: 'search', url: '/w/index.php?title=Page&oldid=1' } ]
+				} ),
+				onResultSelect: () => ( {
+					action: 'navigate',
+					payload: '/w/index.php?title=Page&diff=prev&oldid=1'
+				} )
+			};
+			const recentItemsService = { saveRecentItem: vi.fn() };
+			const orch = useProviderOrchestration(
+				[ commandProvider, revisionProvider ], mockDecorator, { recentItemsService }
+			);
+			orch.updateQuery( 'Page' );
+			await vi.runAllTimersAsync();
+			const row = orch.flatItems.value.find( ( item ) => item.id === 'r1' );
+
+			await orch.handleSelection( row );
+
+			expect( recentItemsService.saveRecentItem ).toHaveBeenCalledWith(
+				row,
+				'/w/index.php?title=Page&diff=prev&oldid=1',
+				null
+			);
+		} );
+
+		describe( 'a row that keeps more than it renders', () => {
+			const revisionRow = { id: 'r1', label: 'Page', source: 'search', url: '/w/index.php?title=Page&oldid=1', revid: 1 };
+			const clickedCopy = { id: 'r1', label: 'Page', url: '/w/index.php?title=Page&oldid=1', source: 'search', isMouseClick: true };
+
+			async function setup() {
+				const revisionProvider = {
+					...searchProvider,
+					getResults: () => ( { items: [ { ...revisionRow } ] } ),
+					onResultSelect: ( item ) => ( {
+						action: 'navigate',
+						payload: '/w/index.php?title=Page&diff=prev&oldid=' + item.revid
+					} )
+				};
+				const recentItemsService = { saveRecentItem: vi.fn() };
+				const orch = useProviderOrchestration(
+					[ commandProvider, revisionProvider ], mockDecorator, { recentItemsService }
+				);
+				orch.updateQuery( 'Page' );
+				await vi.runAllTimersAsync();
+				return { orch, recentItemsService };
+			}
+
+			it( 'gives a mouse-clicked row\'s handler the full row it was built from', async () => {
+				const { orch, recentItemsService } = await setup();
+
+				const action = await orch.handleSelection( { ...clickedCopy } );
+
+				expect( action.payload ).toBe( '/w/index.php?title=Page&diff=prev&oldid=1' );
+				expect( recentItemsService.saveRecentItem ).toHaveBeenCalledWith(
+					{ ...revisionRow, isMouseClick: true },
+					'/w/index.php?title=Page&diff=prev&oldid=1',
+					null
+				);
+			} );
+
+			it( 'saves the same link when a row is activated twice', async () => {
+				const { orch, recentItemsService } = await setup();
+				const row = orch.flatItems.value.find( ( item ) => item.id === 'r1' );
+
+				await orch.handleSelection( row );
+				await orch.handleSelection( { ...clickedCopy } );
+
+				const savedLinks = recentItemsService.saveRecentItem.mock.calls.map( ( call ) => call[ 1 ] );
+				expect( savedLinks ).toEqual( [
+					'/w/index.php?title=Page&diff=prev&oldid=1',
+					'/w/index.php?title=Page&diff=prev&oldid=1'
+				] );
+			} );
+		} );
+
+		describe( 'rows that share an id', () => {
+			const first = { id: 'menuitem-edit', label: 'Edit', source: 'search', url: '/a', marker: 1 };
+			const second = { id: 'menuitem-edit', label: 'Edit', source: 'search', url: '/b', marker: 2 };
+
+			async function setup() {
+				const sharedIdProvider = {
+					...searchProvider,
+					getResults: () => ( { items: [ { ...first }, { ...second } ] } ),
+					onResultSelect: vi.fn( ( item ) => ( { action: 'navigate', payload: item.url } ) )
+				};
+				const orch = useProviderOrchestration(
+					[ commandProvider, sharedIdProvider ], mockDecorator, {}
+				);
+				orch.updateQuery( 'Edit' );
+				await vi.runAllTimersAsync();
+				return { orch, onResultSelect: sharedIdProvider.onResultSelect };
+			}
+
+			it( 'opens the row that was activated, not the first with its id', async () => {
+				const { orch, onResultSelect } = await setup();
+				const row = orch.flatItems.value.find( ( item ) => item.marker === 2 );
+
+				const action = await orch.handleSelection( row );
+
+				expect( action.payload ).toBe( '/b' );
+				expect( onResultSelect ).toHaveBeenCalledWith( row );
+			} );
+
+			it( 'matches a clicked copy by its link as well as its id', async () => {
+				const { orch, onResultSelect } = await setup();
+
+				const action = await orch.handleSelection(
+					{ id: 'menuitem-edit', label: 'Edit', source: 'search', url: '/b', isMouseClick: true }
+				);
+
+				expect( action.payload ).toBe( '/b' );
+				expect( onResultSelect ).toHaveBeenCalledWith( { ...second, isMouseClick: true } );
+			} );
+		} );
+
+		it( 'leaves a trigger-prefixed query its own results in the lead', async () => {
+			const orch = useProviderOrchestration(
+				[ commandProvider, searchProvider ], mockDecorator, {}
+			);
+
+			orch.updateQuery( '#cat' );
+			await vi.runAllTimersAsync();
+
+			// Enter must not search for the literal "#cat"; the command
+			// results lead, and the actions drop to the trailing set.
+			expect( orch.flatItems.value[ 0 ].source ).toBe( 'command:cat' );
+			expect( mockDecorator.queryActions ).toHaveBeenLastCalledWith(
+				'#cat', expect.objectContaining( { leads: false } )
+			);
+			expect( orch.flatItems.value.map( ( i ) => i.source ) )
+				.toContain( 'queryAction:fulltext-search' );
+		} );
+	} );
+
+	describe( 'requestItemDetail', () => {
+		// Build a mode with a getItemDetail mock and pre-load it as activeMode
+		// with a known list of items in displayedItems.
+		function setupModeWithItems( items, getItemDetailImpl ) {
+			const mode = {
+				id: 'file',
+				getResults: vi.fn().mockResolvedValue( items ),
+				getItemDetail: vi.fn( getItemDetailImpl )
+			};
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+			orch.enterMode( mode );
+			return { orch, mode };
+		}
+
+		it( 'is a no-op when there is no active mode', () => {
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+
+			expect( () => orch.requestItemDetail( { id: '1' } ) ).not.toThrow();
+		} );
+
+		it( 'is a no-op when the active mode does not declare getItemDetail', () => {
+			const mode = {
+				id: 'plain',
+				getResults: vi.fn().mockResolvedValue( [] )
+			};
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+			orch.enterMode( mode );
+
+			expect( () => orch.requestItemDetail( { id: '1' } ) ).not.toThrow();
+		} );
+
+		it( 'is a no-op when item is null/undefined', () => {
+			const { orch, mode } = setupModeWithItems(
+				[ { id: '1', detail: { header: {} } } ],
+				() => Promise.resolve( { description: 'x', pairs: [] } )
+			);
+
+			orch.requestItemDetail( null );
+			vi.advanceTimersByTime( 100 );
+
+			expect( mode.getItemDetail ).not.toHaveBeenCalled();
+		} );
+
+		it( 'calls mode.getItemDetail after the detail debounce and mutates item.detail', async () => {
+			const { orch, mode } = setupModeWithItems(
+				[ { id: '1', detail: { header: { label: 'F' } } } ],
+				() => Promise.resolve( {
+					description: 'PNG image',
+					pairs: [ { key: 'size', label: 'Size', value: '1 KB' } ]
+				} )
+			);
+			await vi.runAllTimersAsync();
+			// App.vue passes the live (proxied) item from flatItems; doing
+			// the same here ensures the staleness identity check matches.
+			const item = orch.flatItems.value[ 0 ];
+
+			orch.requestItemDetail( item );
+			expect( mode.getItemDetail ).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime( 80 );
+			await vi.runAllTimersAsync();
+
+			expect( mode.getItemDetail ).toHaveBeenCalledTimes( 1 );
+			expect( mode.getItemDetail ).toHaveBeenCalledWith( item, expect.any( AbortSignal ) );
+			expect( item.detail.header.description ).toBe( 'PNG image' );
+			expect( item.detail.pairs ).toEqual( [
+				{ key: 'size', label: 'Size', value: '1 KB' }
+			] );
+		} );
+
+		it( 'aborts a prior in-flight detail fetch when called again with a different item', async () => {
+			const seenSignals = [];
+			const { orch, mode } = setupModeWithItems(
+				[
+					{ id: '1', detail: { header: {} } },
+					{ id: '2', detail: { header: {} } }
+				],
+				( _item, signal ) => {
+					seenSignals.push( signal );
+					// Resolve only the second call; leave the first hanging until aborted.
+					return seenSignals.length === 1 ?
+						new Promise( () => {} ) :
+						Promise.resolve( { description: 'd', pairs: [] } );
+				}
+			);
+			await vi.runAllTimersAsync();
+			const item1 = orch.flatItems.value[ 0 ];
+			const item2 = orch.flatItems.value[ 1 ];
+
+			orch.requestItemDetail( item1 );
+			vi.advanceTimersByTime( 80 );
+			await vi.runAllTimersAsync();
+
+			orch.requestItemDetail( item2 );
+			vi.advanceTimersByTime( 80 );
+			await vi.runAllTimersAsync();
+
+			expect( mode.getItemDetail ).toHaveBeenCalledTimes( 2 );
+			expect( seenSignals[ 0 ].aborted ).toBe( true );
+			expect( seenSignals[ 1 ].aborted ).toBe( false );
+		} );
+
+		it( 'drops a stale result when the item has been replaced in flatItems', async () => {
+			let resolveDetail;
+			const orch = useProviderOrchestration(
+				[ mockSyncProvider ], mockDecorator
+			);
+			const mode = {
+				id: 'file',
+				getResults: vi.fn().mockResolvedValue( [
+					{ id: 'a', detail: { header: {} } }
+				] ),
+				getItemDetail: vi.fn( () => new Promise( ( resolve ) => {
+					resolveDetail = resolve;
+				} ) )
+			};
+			orch.enterMode( mode );
+			await vi.runAllTimersAsync();
+
+			const captured = orch.flatItems.value[ 0 ];
+			orch.requestItemDetail( captured );
+			vi.advanceTimersByTime( 80 );
+			await vi.runAllTimersAsync();
+
+			// Replace the items array (simulates a list refresh from a new query).
+			mode.getResults.mockResolvedValueOnce( [
+				{ id: 'b', detail: { header: {} } }
+			] );
+			orch.updateQuery( 'b' );
+			vi.advanceTimersByTime( DEFAULT_DEBOUNCE_MS );
+			await vi.runAllTimersAsync();
+
+			// updateQuery's resetDetailState() aborts the in-flight signal,
+			// so the lifecycle's finally block already cleared it. The
+			// resolution we trigger here arrives at a no-op onResult because
+			// isStale is true (captured no longer in flatItems).
+			resolveDetail( { description: 'late', pairs: [ { key: 'k', label: 'L', value: 'V' } ] } );
+			await vi.runAllTimersAsync();
+
+			expect( captured.detail.header.description ).toBeUndefined();
+			expect( captured.detail.pairs ).toBeUndefined();
+		} );
+
+		it( 'enterMode resets the detail lifecycle (aborts in-flight fetch)', async () => {
+			let seenSignal;
+			const { orch, mode } = setupModeWithItems(
+				[ { id: '1', detail: { header: {} } } ],
+				( _item, signal ) => {
+					seenSignal = signal;
+					return new Promise( () => {} ); // never resolves
+				}
+			);
+			await vi.runAllTimersAsync();
+			const item = orch.flatItems.value[ 0 ];
+
+			orch.requestItemDetail( item );
+			vi.advanceTimersByTime( 80 );
+			await vi.runAllTimersAsync();
+
+			expect( seenSignal.aborted ).toBe( false );
+
+			orch.enterMode( Object.assign( {}, mode, { id: 'other' } ) );
+
+			expect( seenSignal.aborted ).toBe( true );
+		} );
+
+		it( 'exitMode resets the detail lifecycle (aborts in-flight fetch)', async () => {
+			let seenSignal;
+			const { orch } = setupModeWithItems(
+				[ { id: '1', detail: { header: {} } } ],
+				( _item, signal ) => {
+					seenSignal = signal;
+					return new Promise( () => {} );
+				}
+			);
+			await vi.runAllTimersAsync();
+			const item = orch.flatItems.value[ 0 ];
+
+			orch.requestItemDetail( item );
+			vi.advanceTimersByTime( 80 );
+			await vi.runAllTimersAsync();
+
+			expect( seenSignal.aborted ).toBe( false );
+
+			orch.exitMode();
+
+			expect( seenSignal.aborted ).toBe( true );
+		} );
+
+		it( 'logs and leaves item.detail untouched when getItemDetail rejects', async () => {
+			mw.log.error.mockClear();
+			const { orch } = setupModeWithItems(
+				[ { id: '1', detail: { header: { label: 'F' } } } ],
+				() => Promise.reject( new Error( 'boom' ) )
+			);
+			await vi.runAllTimersAsync();
+			const item = orch.flatItems.value[ 0 ];
+
+			orch.requestItemDetail( item );
+			vi.advanceTimersByTime( 80 );
+			await vi.runAllTimersAsync();
+
+			expect( mw.log.error ).toHaveBeenCalled();
+			expect( item.detail.header.description ).toBeUndefined();
+			expect( item.detail.pairs ).toBeUndefined();
+		} );
+	} );
+} );

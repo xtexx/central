@@ -1,0 +1,104 @@
+.citizen-menu {
+	.mixin-citizen-font-styles( 'small' );
+
+	&__card {
+		// Closed-state animation direction (--citizen-clip-closed and
+		// --citizen-translate-closed) comes from the page-level cascade in
+		// tokens-citizen.less, keyed off the active .citizen-header-position-*
+		// class on <html>. That is correct for cards anchored to the header
+		// (drawer, header__end menus) — they inherit and require no per-scope
+		// declaration. Any new card whose trigger is NOT on the same edge as
+		// the active header (search, page-actions, sticky header, mobile ToC,
+		// future menus) MUST call .mixin-citizen-card-expand( ... ) in its own
+		// scope to pick its direction; inheriting the page-level value will
+		// produce a wrong animation direction.
+		margin: var( --space-xs );
+		contain: content;
+		-webkit-user-select: none;
+		user-select: none;
+		border: var( --border-width-base ) solid var( --border-color-base );
+		border-radius: var( --border-radius-medium );
+		box-shadow: var( --box-shadow-large );
+		clip-path: var( --citizen-clip-closed );
+		transform: var( --citizen-translate-closed );
+		.mixin-citizen-frosted-glass;
+
+		&-content {
+			max-width: inherit;
+			max-height: inherit;
+			overflow: auto;
+			overscroll-behavior: contain;
+		}
+	}
+
+	&__heading {
+		padding: var( --space-xs ) var( --space-md );
+		color: var( --color-subtle );
+		.mixin-citizen-font-styles( 'overline' );
+	}
+
+	&__content-list {
+		margin: 0;
+		list-style: none;
+	}
+
+	.mw-list-item {
+		a {
+			display: flex;
+			gap: var( --space-sm );
+			align-items: center;
+			min-height: 2.25rem;
+			padding-inline: var( --space-md );
+			font-weight: var( --font-weight-medium );
+			color: var( --color-base );
+			transition: var( --transition-hover );
+			transition-property: opacity;
+
+			&:hover {
+				background-color: var( --background-color-button-quiet--hover );
+			}
+
+			&:active {
+				background-color: var( --background-color-button-quiet--active );
+			}
+
+			&:hover,
+			&:focus {
+				text-decoration: none;
+			}
+		}
+	}
+}
+
+.mw-portlet {
+	// Hide selected item. The link is hidden from the tab order and from
+	// assistive technology too: it only points back at the page already
+	// open, and a focusable link nobody can see leaves a tab stop with no
+	// visible focus (WCAG 2.4.7).
+	.selected {
+		.mixin-citizen-screen-reader-only;
+		visibility: hidden;
+	}
+
+	// Hide empty menu
+	&-empty {
+		display: none !important;
+	}
+}
+
+// HACK: Restore view button on revision page (#845)
+// There are no good way to target revision page
+.action-view {
+	&:has( .diff ),
+	&:has( .mw-revision ) {
+		#ca-view {
+			position: relative;
+			visibility: visible;
+			width: auto;
+			height: auto;
+			overflow: initial;
+			white-space: unset;
+			clip-path: unset;
+		}
+	}
+}

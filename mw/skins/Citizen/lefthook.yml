@@ -1,0 +1,36 @@
+glob_matcher: doublestar
+
+pre-commit:
+  jobs:
+    - group:
+        parallel: true
+        jobs:
+          - name: js-lint
+            run: npx eslint {staged_files}
+            glob: "**/*.{js,vue}"
+          - name: style-lint
+            run: npx stylelint --allow-empty-input {staged_files}
+            glob: "**/*.{less,css,vue}"
+          - name: i18n-lint
+            run: npm run lint:i18n
+            glob: "i18n/*.json"
+          - name: md-lint
+            run: npm run lint:md
+            glob: "*.md"
+    - name: test
+      run: npx vitest run
+      glob: "**/*.{js,vue}"
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx commitlint --edit {1}
+
+prepare-commit-msg:
+  commands:
+    devmoji:
+      # devmoji's -e flag walks up looking for `.git` as a directory, but in a git
+      # worktree `.git` is a file (a gitdir pointer), so it fails to find COMMIT_EDITMSG.
+      # Workaround per https://github.com/folke/devmoji/issues/227 — pipe through
+      # stdin/stdout using the path git supplies as {1} (worktree-aware).
+      run: 'tmp=$(mktemp); npx devmoji --lint < {1} > "$tmp" && mv "$tmp" {1}'
