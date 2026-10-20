@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+
+set -e
+
+oldHead="$(git rev-parse HEAD)"
+oldBranch="$(yq ". | filter(.name == \"core\") | .[0].defaultBranch // .[0].branch" repositories.yaml)"
+branch="$1"
+count=0
+step=0
+
+echo "Upgrading to from $oldBranch to $1"
+
+if ! git diff-index --quiet HEAD --; then
+	echo "Please cleanup the worktree"
+	exit 1
+fi
+
+if [[ -n $2 ]]; then
+	step=$2
+fi
+
+# Archive the old tree
+if ((step <= count)); then
+	git tag -fs -m "Archive of $oldBranch branch" "$oldBranch"/last main
+	git branch -D tmp-upgrade || true
+	git switch --orphan tmp-upgrade
+fi
+((count++)) || true
+
+# Begin commit
+if ((step <= count)); then
+	git commit --allow-empty \
+		-m "$(printf 'tree-wide: upgrade(%s/%s): Begin upgrading MediaWiki to %s' "$branch" "$count" "$branch")" \
+		--trailer "MW-Upgrade-Begin: $branch"
+fi
+((count++)) || true
+
+# Restore misc files
+if ((step <= count)); then
+	while read -r path; do
+		echo "Re-adding $path"
+		git checkout -f "$oldHead" "$path"
+	done < <(git cat-file --textconv "$oldHead^{tree}:" | cut -d$'\t' -f2 | grep -v -E '^mw$')
+	git commit --no-edit \
+		-m "$(printf 'tree-wide: upgrade(%s/%s): Initialize misc files from %s' "$branch" "$count" "$oldBranch")"
+fi
+((count++)) || true
+
+# Update default branch
+if ((step <= count)); then
+	yq -i ". | filter(.name == \"core\") | .[0].defaultBranch |= \"$1\", . | filter(.name != \"core\")" repositories.yaml
+	git add repositories.yaml
+	git commit --no-edit -m "$(printf 'tree-wide: upgrade(%s/%s): Upgrade MW branch' "$branch" "$count")"
+fi
+((count++)) || true
+
+# Initialize mw tree
+if ((step <= count)); then
+	headBeforeAdds="$(git rev-parse HEAD)"
+	echo "== Please run scripts/update to add subtrees"
+	read -rp "Press [Enter] key to continue AFTER FINISHED ADDING ..."
+	headAfterAdds="$(git rev-parse HEAD)"
+
+	git commit --allow-empty \
+		-m "$(printf 'tree-wide: upgrade(%s/%s): Added MediaWiki trees' "$branch" "$count")" \
+		--trailer "MW-Upgrade-From: $headBeforeAdds" \
+		--trailer "MW-Upgrade-To: $headAfterAdds"
+fi
+((count++)) || true
+
+# Include downstream composer file
+if ((step <= count)); then
+	sed -E -i -e "s/composer\.local\.json/composer.xvmw.json/g" mw/composer.json
+	git add mw/composer.json
+	git commit --no-edit -m "$(printf 'tree-wide: upgrade(%s/%s): Include downstream composer file' "$branch" "$count")"
+fi
+((count++)) || true
+
+# Add downstream files back
+if ((step <= count)); then
+	git checkout -f "$oldHead" \
+		mw/extensions/XensTweaks \
+		mw/composer.xvmw.json
+	git add mw
+	git commit --no-edit -m "$(printf 'tree-wide: upgrade(%s/%s): Introduce downstream trees' "$branch" "$count")"
+fi
+((count++)) || true
+
+# Apply patches
+if ((step <= count)); then
+	scripts/pick 1022466 # sql.php: Add noshared to sql.php to avoid operations on shared DB
+fi
+((count++)) || true
+
+# End commit
+if ((step <= count)); then
+	git commit --allow-empty \
+		-m "$(printf 'tree-wide: upgrade(%s/%s): Finish upgrading MediaWiki to %s' "$branch" "$count" "$branch")" \
+		--trailer "MW-Upgrade-End: $branch" \
+		--trailer "MW-Upgrade-Steps: $count"
+fi
+((count++)) || true
+
+# Finalize branch
+git update-ref --create-reflog -m "MW upgrade to $branch" refs/heads/main "$(git rev-parse tmp-upgrade)"
+git switch main
+git reset --hard tmp-upgrade
+git tag -s -m "Initial tree of $1 branch" "$branch"/init HEAD
+git branch -D tmp-upgrade
+
+echo "Done/remember to check patches manually"
