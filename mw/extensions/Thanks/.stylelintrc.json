@@ -1,0 +1,6 @@
+{
+	"extends": "stylelint-config-wikimedia",
+	"rules": {
+		"no-empty-source": null
+	}
+}
