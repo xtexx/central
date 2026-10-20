@@ -1,0 +1,18 @@
+{
+	"@metadata": {
+		"authors": [
+			"Kaszeba",
+			"Kirsan",
+			"Orbitminis",
+			"Terrus38"
+		]
+	},
+	"betafeatures-auto-enroll": "Samòczinno aktiwùjë wikszosc doswiôdczalnëch fùnkcji",
+	"betafeatures-desc": "Zezwôlô brëkòwnikòm właczac ë wëłączac funkcëje, chtërné nie sã jesz do kùńca fardich",
+	"betafeatures-extension-type": "Fùnkcje beta",
+	"betafeatures-toplink": "Beta",
+	"mw-ui-feature-discuss": "Diskùsjô",
+	"mw-ui-feature-info": "Infòrmacje",
+	"prefs-betafeatures": "Doswiôdczalné fùnkcje",
+	"tooltip-pt-betafeatures": "Fùnkcje beta"
+}
