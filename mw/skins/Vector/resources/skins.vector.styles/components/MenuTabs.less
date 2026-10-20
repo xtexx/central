@@ -1,0 +1,96 @@
+/**
+ * Styling for namespace tabs (page, discussion) and views (read, edit, view history, watch and other actions)
+ */
+
+/* Tab list items */
+.vector-menu-tabs {
+	.vector-menu-content {
+		width: 100%;
+	}
+
+	.vector-menu-content-list {
+		display: flex;
+		align-items: center;
+		justify-content: end;
+	}
+
+	// Expand watchstar and wikilove links it to cover full touch area
+	.mw-list-item {
+		// Only apply no wrap
+		white-space: nowrap;
+		margin-bottom: 0; /* overrides default `li` styling */
+
+		// Override button styles in the page toolbar to match the styles of the tabs in the titlebar
+		// Except bookmark icon
+		.cdx-button:not( .cdx-button--icon-only ) {
+			gap: 3px;
+			padding: 0 @spacing-horizontal-tabs;
+
+			// Reduce icon size for icon in the page toolbar (i.e. watchstar, wikilove)
+			.vector-icon {
+				.cdx-mixin-css-icon-background( @size-icon-small );
+				.cdx-mixin-css-icon-size( @size-icon-small );
+				.cdx-mixin-css-icon-alignment( );
+
+				// Override Codex icon size to make the icon the same height as the text
+				/* stylelint-disable-next-line declaration-no-important */
+				mask-size: @font-size-small !important;
+			}
+		}
+	}
+
+	/* Tab list item appearance. Applies to <li>'s inside .vector-menu-tabs */
+	.mw-list-item.vector-tab-noicon {
+		margin: 0 @spacing-horizontal-tabs;
+
+		a {
+			display: inline-flex;
+			// In lieu of padding, vertically center tab text.
+			align-items: center;
+			position: relative;
+			cursor: pointer;
+			// Ensure tabs are the same height as buttons.
+			min-height: @min-size-interactive-pointer;
+
+			// T361841 add invisible bottom border by default.
+			// T430657 use pseudo-element to simplify vertical alignment.
+			&::after {
+				position: absolute;
+				bottom: 0;
+				left: 0;
+				width: 100%;
+				height: @height-tab-underline;
+				background-color: @background-color-transparent;
+				content: '';
+			}
+		}
+
+		/* focus and hover have outlines. Text underline interferes with bottom border */
+		a:focus,
+		a:hover {
+			text-decoration: none;
+
+			&::after {
+				background-color: @color-progressive--hover;
+			}
+		}
+	}
+
+	// T316574 Override visited link styles
+	.mw-list-item a {
+		.mixin-vector-unvisited-link-base();
+	}
+
+	// Override visited red link styles
+	.mw-list-item.new a {
+		.mixin-vector-unvisited-link-red();
+	}
+
+	.mw-list-item.selected a {
+		.mixin-vector-selected-link();
+
+		&::after {
+			background-color: @color-base;
+		}
+	}
+}

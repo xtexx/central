@@ -1,0 +1,91 @@
+{
+    "is-wide": true,
+    "data-user-links-notifications": {
+        "id": "p-vector-user-menu-notifications",
+        "class": "mw-portlet emptyPortlet",
+        "label": null,
+        "html-items": null,
+        "array-list-items": [],
+        "html-tooltip": "",
+        "label-class": "",
+        "html-before-portal": "",
+        "html-after-portal": ""
+    },
+    "data-user-links-overflow": {
+        "id": "p-vector-user-menu-overflow",
+        "class": "mw-portlet emptyPortlet",
+        "label": null,
+        "html-items": null,
+        "array-list-items": [],
+        "html-tooltip": "",
+        "label-class": "",
+        "html-before-portal": "",
+        "html-after-portal": ""
+    },
+    "data-user-links-preferences": {
+        "id": "p-vector-user-menu-preferences",
+        "class": "mw-portlet",
+        "label": null,
+        "html-items": null,
+        "array-list-items": [
+            {
+                "html-item": "ignore",
+                "name": "uls",
+                "html": "English",
+                "id": "ca-uls",
+                "class": "mw-list-item vector-menu-item--collapsible",
+                "array-links": [
+                    {
+                        "data-button": {
+                            "label": "English",
+                            "icon": "wikimedia-language",
+                            "id": "",
+                            "class": "cdx-button cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--weight-quiet uls",
+                            "href": "#",
+                            "array-attributes": []
+                        }
+                    }
+                ]
+            }
+        ],
+        "html-tooltip": "",
+        "label-class": "",
+        "html-before-portal": "",
+        "html-after-portal": ""
+    },
+    "data-user-links-user-page": {
+        "id": "p-vector-user-menu-userpage",
+        "class": "mw-portlet emptyPortlet",
+        "label": null,
+        "html-items": null,
+        "array-list-items": [],
+        "html-after-portal": "",
+        "html-tooltip": "",
+        "label-class": "",
+        "html-before-portal": ""
+    },
+    "data-user-links-dropdown": {
+        "id": "vector-user-links-dropdown",
+        "label": "personaltools",
+        "label-class": "cdx-button cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--weight-quiet cdx-button--icon-only ",
+        "icon": "testAvatar",
+        "html-vector-menu-label-attributes": "",
+        "html-vector-menu-checkbox-attributes": "",
+        "class": "vector-user-menu vector-button-flush-right vector-user-menu-logged-out vector-user-links-dropdown--collapsible--none",
+        "html-tooltip": " title=\"vector-personal-tools-tooltip\"",
+        "checkbox-class": ""
+    },
+    "data-user-links-menus": [
+        {
+            "id": "p-personal",
+            "label": null,
+            "class": "",
+            "html-tooltip": "",
+            "array-list-items": [],
+            "label-class": "",
+            "html-before-portal": "",
+            "html-items": "",
+            "html-after-portal": ""
+        }
+    ]
+}

@@ -1,0 +1,40 @@
+[
+    {
+        "html-item": "<li><a>link1<\/a><\/li>",
+        "name": "link1",
+        "html": "<a>link1<\/a>",
+        "id": "link-1",
+        "class": "",
+        "array-links": [
+            {
+                "data-button": {
+                    "label": "Link1",
+                    "icon": "heart",
+                    "id": "",
+                    "class": "cdx-button cdx-button--weight-quiet cdx-button--icon-only",
+                    "href": "",
+                    "array-attributes": []
+                }
+            }
+        ]
+    },
+    {
+        "html-item": "<li><a>link2<\/a><\/li>",
+        "name": "link2",
+        "html": "<a>link2<\/a>",
+        "id": "link-2",
+        "class": "",
+        "array-links": [
+            {
+                "data-button": {
+                    "label": "Link2",
+                    "icon": "userAdd",
+                    "id": "",
+                    "class": "cdx-button cdx-button--weight-quiet cdx-button--icon-only",
+                    "href": "",
+                    "array-attributes": []
+                }
+            }
+        ]
+    }
+]

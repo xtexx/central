@@ -1,0 +1,25 @@
+// Ensure there is only 1 page tools landmark at anytime
+.vector-feature-page-tools-pinned-enabled .vector-page-toolbar-container,
+.vector-feature-page-tools-pinned-disabled .vector-column-end {
+	.vector-page-tools-landmark {
+		display: none;
+	}
+}
+
+.vector-page-tools {
+	// Limit icons to mobile viewports
+	// Limit collapsible menu items to mobile viewports
+	.vector-icon,
+	.vector-menu-item--collapsible {
+		@media ( min-width: @min-width-breakpoint-page-tools-dropdown ) {
+			display: none;
+		}
+	}
+
+	// [T432149] Display `#p-cactions` on lower resolutions (even if .emptyPortlet present).
+	.vector-has-collapsible-items {
+		@media ( max-width: @min-width-breakpoint-page-tools-dropdown ) {
+			display: block;
+		}
+	}
+}

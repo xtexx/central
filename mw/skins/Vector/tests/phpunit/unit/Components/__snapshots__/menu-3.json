@@ -1,0 +1,57 @@
+{
+    "html-items": null,
+    "array-list-items": [
+        {
+            "html-item": "<li><a>link1<\/a><\/li>",
+            "name": "link1",
+            "html": "<a>link1<\/a>",
+            "id": "link-1",
+            "class": "",
+            "array-links": [
+                {
+                    "icon": "heart",
+                    "array-attributes": [
+                        {
+                            "key": "href",
+                            "value": ""
+                        },
+                        {
+                            "key": "class",
+                            "value": ""
+                        }
+                    ],
+                    "text": "Link1"
+                }
+            ]
+        },
+        {
+            "html-item": "<li><a>link2<\/a><\/li>",
+            "name": "link2",
+            "html": "<a>link2<\/a>",
+            "id": "link-2",
+            "class": "",
+            "array-links": [
+                {
+                    "icon": "userAdd",
+                    "array-attributes": [
+                        {
+                            "key": "href",
+                            "value": ""
+                        },
+                        {
+                            "key": "class",
+                            "value": ""
+                        }
+                    ],
+                    "text": "Link2"
+                }
+            ]
+        }
+    ],
+    "class": "",
+    "label": "",
+    "html-tooltip": "",
+    "label-class": "",
+    "html-before-portal": "",
+    "html-after-portal": ""
+}

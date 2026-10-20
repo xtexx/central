@@ -1,0 +1,44 @@
+[
+    {
+        "html-item": "<li><a>link1<\/a><\/li>",
+        "name": "link1",
+        "html": "<a>link1<\/a>",
+        "id": "link-1",
+        "class": "",
+        "array-links": [
+            {
+                "icon": "star",
+                "array-attributes": [
+                    {
+                        "key": "href",
+                        "value": ""
+                    },
+                    {
+                        "key": "class",
+                        "value": ""
+                    }
+                ],
+                "text": "Link1"
+            }
+        ]
+    },
+    {
+        "html-item": "<li><a>link2<\/a><\/li>",
+        "name": "link2",
+        "html": "<a>link2<\/a>",
+        "id": "link-2",
+        "class": "",
+        "array-links": [
+            {
+                "data-button": {
+                    "label": "Link2",
+                    "icon": "userAdd",
+                    "id": "",
+                    "class": "cdx-button cdx-button--weight-quiet",
+                    "href": "",
+                    "array-attributes": []
+                }
+            }
+        ]
+    }
+]

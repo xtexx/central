@@ -1,0 +1,16 @@
+{{!-
+	Page Precontent - Placed below the page toolbar on all pages.
+	Contains the indicators (if the language button is beside the title)
+	qnd tagline, which is only rendered on article page.
+}}
+<div class="vector-body-before-content">
+	{{#has-buttons-in-content-top}}
+		{{>Indicators}}
+	{{/has-buttons-in-content-top}}
+
+	{{#is-article}}<div id="siteSub" class="noprint">{{msg-tagline}}</div>{{/is-article}}
+	{{! the #contentSub element is currently used by editors, do not hide or remove it
+		until https://phabricator.wikimedia.org/T316830 has been addressed}}
+	<div id="contentSub"{{{html-user-language-attributes}}}>{{{html-subtitle}}}</div>
+	{{#html-undelete-link}}<div id="contentSub2">{{{.}}}</div>{{/html-undelete-link}}
+</div>
