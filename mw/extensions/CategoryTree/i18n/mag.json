@@ -1,0 +1,35 @@
+{
+	"@metadata": {
+		"authors": [
+			"ऐक्टिवेटेड्"
+		]
+	},
+	"categorytree": "श्रेणी वृक्ष",
+	"categorytree-portlet": "श्रेणी",
+	"categorytree-legend": "श्रेणीवृक्ष देखावथिन",
+	"categorytree-desc": "विकिके [[Special:CategoryTree|श्रेणी संरचना]] देखथिन",
+	"categorytree-header": "कौनो श्रेणीके सामग्रीवृक्षके रूपमे देखावेला ओकर नाम देथिन । (जावास्क्रिप्ट अनिवार्य हे)",
+	"categorytree-category": "श्रेणी:",
+	"categorytree-go": "वृक्ष देखावथिन",
+	"categorytree-parents": "जनक",
+	"categorytree-mode-label": "अवस्था:",
+	"categorytree-mode-categories": "खाली श्रेणी",
+	"categorytree-mode-pages": "सञ्चिकाके अतिरिक्त पन्ना",
+	"categorytree-mode-all": "सब पन्ना",
+	"categorytree-collapse": "सिकोड़थिन",
+	"categorytree-expand": "फैलावथिन",
+	"categorytree-member-counts": "एकरामे {{PLURAL:$1|एगो उपश्रेणी|$1 उपश्रेणी}}, {{PLURAL:$2|एगो पन्ना|$2 पन्ना}}, आउ {{PLURAL:$3|एगो सञ्चिका|$3 सञ्चिका}} हे ।",
+	"categorytree-num-categories": "$1 श्रे",
+	"categorytree-num-pages": "$1 प",
+	"categorytree-num-files": "$1 स",
+	"categorytree-num-empty": "खाली",
+	"categorytree-load": "लोड करथिन",
+	"categorytree-loading": "लोड होवैत...",
+	"categorytree-nothing-found": "कुछो न भेटलै",
+	"categorytree-no-subcategories": "कौनो उपश्रेणी नै",
+	"categorytree-no-parent-categories": "कौनो जनक श्रेणी नै",
+	"categorytree-no-pages": "कौनो पन्ना वा उपश्रेणी नै",
+	"categorytree-not-found": "श्रेणी <i>$1</i> न भेटलै",
+	"categorytree-error": "डेटा लोड करेमे समस्या ।",
+	"categorytree-retry": "कृपया कुछ समय पश्चात् पुनः प्रयास करथिन ।"
+}
