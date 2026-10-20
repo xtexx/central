@@ -1,0 +1,33 @@
+{
+	"@metadata": {
+		"authors": [
+			"GilPe",
+			"Macofe",
+			"Robby",
+			"Volvox"
+		]
+	},
+	"revisionslider": "Versiouns-Slider",
+	"revisionslider-preference-disable": "De Versiouns-Slider net weisen",
+	"revisionslider-toggle-label": "Interaktiv am Historique sichen",
+	"revisionslider-page-size": "$1 {{PLURAL:$2|Byte}}",
+	"revisionslider-change-size": "$1 {{PLURAL:$3|Byte}}",
+	"revisionslider-label-date": "Datum",
+	"revisionslider-label-page-size": "Gréisst vun der Säit",
+	"revisionslider-label-change-size": "Gréisst vun der Ännerung",
+	"revisionslider-label-comment": "Resümmee vun der Ännerung",
+	"revisionslider-label-username": "{{GENDER:$1|Benotzernumm}}",
+	"revisionslider-minoredit": "Dëst ass eng kleng Ännerung",
+	"revisionslider-loading-failed": "De Versiouns-Slider konnt net geluede ginn.",
+	"revisionslider-toggle-title-expand": "Versiouns-Slider opmaachen",
+	"revisionslider-toggle-title-collapse": "Versiouns-Slider zouklappen",
+	"revisionslider-turn-on-auto-expand-title": "De Versiouns-Slider ëmmer opklappen",
+	"revisionslider-turn-off-auto-expand-title": "De Versiouns-Slider net automatesch opklappen",
+	"revisionslider-arrow-tooltip-newer": "Méi nei Versioune weisen",
+	"revisionslider-arrow-tooltip-older": "Méi al Versioune weisen",
+	"revisionslider-show-help-tooltip": "Hëllefstext weisen",
+	"revisionslider-tutorial": "Guide fir de Versiouns-Slider",
+	"revisionslider-previous-dialog": "Zeréck",
+	"revisionslider-next-dialog": "Weider",
+	"revisionslider-close-dialog": "Zoumaachen"
+}
