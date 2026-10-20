@@ -1,0 +1,20 @@
+{
+	"@metadata": {
+		"authors": [
+			"Anakmalaysia",
+			"Aviator",
+			"Hakimi97",
+			"Jeluang Terluang",
+			"Pizza1016",
+			"Tofeiku"
+		]
+	},
+	"spam-blacklist": "#<!-- leave this line exactly as it is --><pre> \n# URL luaran yang sepadan dengan senarai ini akan disekat apabila ditambah pada sesuatu laman.\n# Senarai ini hanya terhad kepada wiki ini; rujuk juga senarai sekatan sejagat.\n# Untuk pendokumenan, sila lihat https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:SpamBlacklist\n#\n# Sintaks adalah seperti berikut:\n# * Semua yang bermula dengan aksara \"#\" hingga aksara akhir pada sesuatu baris itu merupakan komen\n# * Setiap baris bukan kosong ialah serpihan regex yang hanya akan berpadnaan dengan hos di dalam URL\n\n #</pre><!-- leave this line exactly as it is -->",
+	"spam-whitelist": "#<!-- leave this line exactly as it is --><pre> \n# URL luaran yang berpadanan dengan senarai ini *tidak* akan disekat walaupun\n# telah disekat oleh entri senarai sekatan.\n#\n# Sintaks adalah seperti berikut:\n# * Semua yang bermula dengan aksara \"#\" hingga aksara akhir pada sesuatu baris itu merupakan komen\n# * Setiap baris bukan kosong ialah serpihan regex yang hanya akan berpadnaan dengan hos di dalam URL\n\n #</pre><!-- leave this line exactly as it is -->",
+	"email-blacklist": "#<!-- leave this line exactly as it is --><pre> \n# Alamat e-mel yang berpadanan dengan senarai ini akan disekat daripada mendaftar atau menghantar e-mel\n# Senarai ini hanya mengganggu wiki ini; rujuk juga senarai sekatan global.\n# Untuk pendokumenan, sila lihat https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:SpamBlacklist\n#\n# Sintaks adalah seperti berikut:\n# * Semua yang bermula dengan aksara \"#\" hingga aksara akhir pada sesuatu baris itu merupakan komen\n# * Setiap baris bukan kosong ialah serpihan regex yang hanya akan berpadnaan dengan hos di dalam URL\n\n #</pre><!-- leave this line exactly as it is -->",
+	"email-whitelist": "#<!-- leave this line exactly as it is --><pre> \n# Alamat e-mel yang berpadanan dengan senarai ini *tidak* akan disekat walaupun\n# telah disekat oleh entri senarai sekatan.\n#\n# Sintaks adalah seperti berikut:\n# * Semua yang bermula dengan aksara \"#\" hingga aksara akhir pada sesuatu baris itu merupakan komen\n# * Setiap baris bukan kosong ialah serpihan regex yang hanya akan berpadnaan dengan hos di dalam URL\n\n #</pre><!-- leave this line exactly as it is -->",
+	"spam-blacklisted-email": "E-mel yang dilarang",
+	"spam-blacklisted-email-text": "Alamat e-mel anda kini dilarang daripada menghantar e-mel kepada pengguna lain.",
+	"spam-blacklisted-email-signup": "Alamat e-mel yang diberikan dilarang digunakan buat masa ini.",
+	"spam-blacklist-desc": "Alat anti-spam berasaskan regex yang membolehkan penyekatan URL tersenarai dalam laman dan alamat e-mel untuk pengguna berdaftar"
+}
