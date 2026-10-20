@@ -1,0 +1,36 @@
+/node_modules/
+/vendor/
+/composer.lock
+
+# Editors
+*.kate-swp
+*~
+\#*#
+.#*
+.*.swp
+.project
+.buildpath
+.classpath
+.settings
+cscope.files
+cscope.out
+*.orig
+## NetBeans
+nbproject*
+project.index
+## Sublime
+sublime-*
+sftp-config.json
+
+## Linters
+.eslintcache
+.stylelintcache
+
+# Cypress
+/tests/cypress/.cache
+/tests/cypress/videos
+/tests/cypress/screenshots
+/tests/cypress/downloads
+/runner-results/
+
+/docs/js

@@ -1,0 +1,120 @@
+@import 'mediawiki.skin.variables.less';
+
+// Should be in sync with Popups/src/ui/variables.less
+@popupPadding: 16px;
+@lineHeight: 20px;
+
+/* stylelint-disable selector-class-pattern */
+.popups-icon--reference-generic {
+	.cdx-mixin-css-icon( @cdx-icon-reference );
+}
+
+.popups-icon--reference-book {
+	.cdx-mixin-css-icon( @cdx-icon-book );
+}
+
+.popups-icon--reference-journal {
+	.cdx-mixin-css-icon( @cdx-icon-journal );
+}
+
+.popups-icon--reference-news {
+	.cdx-mixin-css-icon( @cdx-icon-newspaper );
+}
+
+.popups-icon--reference-map {
+	.cdx-mixin-css-icon( @cdx-icon-map );
+}
+
+.popups-icon--reference-web {
+	.cdx-mixin-css-icon( @cdx-icon-browser );
+}
+
+.popups-icon--preview-disambiguation {
+	.cdx-mixin-css-icon( @cdx-icon-articles );
+}
+
+// Don't do any event bubbling on childs like <a><span>[</span>2]</a>
+// see https://phabricator.wikimedia.org/T214693
+/* stylelint-disable-next-line selector-max-id */
+#mw-content-text .reference a[ href*='#' ] * {
+	pointer-events: none;
+}
+
+.mwe-popups.mwe-popups-type-reference .mwe-popups-container {
+	.mwe-popups-title .popups-icon--reference-note {
+		// There is currently no "reference-note" icon specified in extension.json
+		display: none;
+	}
+
+	footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+
+		.mwe-popups-settings {
+			margin-left: auto;
+		}
+	}
+
+	.mwe-popups-extract {
+		margin-right: 0;
+		max-height: inherit;
+		margin-bottom: 55px;
+
+		.mwe-popups-scroll {
+			// This is how the @previewFooterHeight in popup.less is calculated
+			@marginBottom: @popupPadding + 39px;
+			// Same as @previewPointerHeight in popup.less
+			@pointerHeight: 8px;
+			max-height: 401px - @popupPadding - @marginBottom + @pointerHeight;
+			overflow: auto;
+			padding-right: @popupPadding;
+		}
+
+		.mw-parser-output {
+			overflow-wrap: break-word;
+		}
+
+		// Remove the default fade-out effect set by popup.less
+		&::after {
+			display: none;
+		}
+
+		.mwe-popups-fade {
+			position: absolute;
+			width: @size-full;
+			height: @lineHeight;
+			background-color: @background-color-transparent;
+			background-image: linear-gradient( @background-color-transparent, @background-color-base );
+			opacity: @opacity-transparent;
+			pointer-events: none; // Allows clicking "through" the element
+			transition: @transition-property-fade @transition-duration-medium @transition-timing-function-system;
+		}
+
+		&.mwe-popups-fade-out .mwe-popups-fade {
+			opacity: @opacity-base;
+		}
+	}
+
+	.mwe-popups-reflist-link-hidden {
+		display: none;
+	}
+
+	.mwe-popups-reflist-link {
+		text-decoration: none;
+	}
+
+	.mwe-collapsible-placeholder {
+		font-weight: @font-weight-bold;
+		margin: 1em 0;
+		position: relative;
+	}
+
+	.mw-reference-previews-parent {
+		margin-bottom: 1em;
+	}
+}
+
+.mwe-popups-ref-highlight {
+	background-color: @background-color-progressive-subtle;
+}

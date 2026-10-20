@@ -1,0 +1,424 @@
+'use strict';
+
+{
+	const { MWReferenceNode } = require( 'ext.cite.visualEditor' ).test;
+
+	QUnit.module( 've.dm.MWReferenceNode (Cite)', ve.test.utils.newMwEnvironment() );
+
+	const sharedMainKey = 'literal/main';
+	const subKey = 'literal/sub';
+	const subRefWithContentUsed = { attributes: {
+		contentsUsed: true,
+		listGroup: '',
+		listKey: subKey,
+		listIndex: 2,
+		mainListKey: sharedMainKey,
+		mainListIndex: 0
+	} };
+	const fixtures = {
+		shouldAvoidContentOverride: [
+			{
+				msg: 'Content not used in current node',
+				dataElement: { attributes: { contentsUsed: false, listGroup: '', listKey: sharedMainKey } },
+				nodesInGroup: [],
+				expected: false
+			},
+			{
+				msg: 'Content used in current node and no other node before',
+				dataElement: { attributes: { contentsUsed: true, listGroup: '', listKey: sharedMainKey } },
+				nodesInGroup: [ { attributes: { contentsUsed: false, listGroup: '', listKey: sharedMainKey } } ],
+				expected: false
+			},
+			{
+				msg: 'Content used in current node and another node before',
+				dataElement: { attributes: { contentsUsed: true, listGroup: '', listKey: sharedMainKey } },
+				nodesInGroup: [
+					{
+						attributes: { contentsUsed: true, listGroup: '', listKey: sharedMainKey },
+						originalDomElementsHash: 'foo'
+					},
+					{ attributes: { contentsUsed: true, listGroup: '', listKey: sharedMainKey } }
+				],
+				expected: true
+			},
+			{
+				msg: 'Content used in current sub-ref and in a unrelated main ref before',
+				dataElement: subRefWithContentUsed,
+				nodesInGroup: [
+					{
+						attributes: { contentsUsed: true, listGroup: '', listKey: 'literal/solomain', listIndex: 5 }
+					},
+					subRefWithContentUsed
+				],
+				expected: false
+			},
+			{
+				msg: 'Main content used in current sub-ref and in a main ref before',
+				dataElement: subRefWithContentUsed,
+				nodesInGroup: [
+					{
+						attributes: { contentsUsed: true, listGroup: '', listKey: sharedMainKey, listIndex: 0 }
+					},
+					subRefWithContentUsed
+				],
+				expected: true
+			}
+		],
+		shouldGetMainContent: [
+			{
+				msg: 'If there\'s only this ref with that key it should get the content',
+				dataElement: { attributes: { listGroup: '', listKey: 'literal/main' } },
+				nodesInGroup: [
+					{ attributes: { listGroup: '', listKey: 'literal/main' } }
+				],
+				expected: true
+			},
+			{
+				msg: 'If this ref owned the content before it should get it',
+				dataElement: { attributes: { listGroup: '', listKey: 'literal/main', contentsUsed: true } },
+				nodesInGroup: [
+					{ attributes: { listGroup: '', listKey: 'literal/main', contentsUsed: true } },
+					{ attributes: { listGroup: '', listKey: 'literal/main' } }
+				],
+				expected: true
+			},
+			{
+				msg: 'If there\'s another ref with that key that owned the content this ref should not get it',
+				dataElement: { attributes: { listGroup: '', listKey: 'literal/main' } },
+				nodesInGroup: [
+					{ attributes: { listGroup: '', listKey: 'literal/main' } },
+					{ attributes: { listGroup: '', listKey: 'literal/main', contentsUsed: true } }
+				],
+				expected: false
+			},
+			{
+				msg: 'If there\'s no other ref with that key that owned the content the first node get\'s it',
+				dataElement: { attributes: { listGroup: '', listKey: 'literal/main' } },
+				nodesInGroup: [
+					{ attributes: { listGroup: '', listKey: 'literal/main' } },
+					{ attributes: { listGroup: '', listKey: 'literal/main', contentsUsed: false } }
+				],
+				expected: true
+			},
+			{
+				msg: 'Sub-ref: If there\'s a sub-ref with that main key that owned the content this ref should not get it',
+				dataElement: { attributes: { listGroup: '', listKey: 'literal/main' } },
+				nodesInGroup: [
+					{ attributes: { listGroup: '', listKey: 'literal/main' } },
+					{ attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main', contentsUsed: true } }
+				],
+				expected: false
+			},
+			{
+				msg: 'Sub-ref: If there\'s only this sub-ref with that main key it should get the content',
+				dataElement: { attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main' } },
+				nodesInGroup: [
+					{ attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main' } }
+				],
+				expected: true
+			},
+			{
+				msg: 'Sub-ref: If there\'s another main ref with that key that owned the content this ref should not get it',
+				dataElement: { attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main' } },
+				nodesInGroup: [
+					{ attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main' } },
+					{ attributes: { listGroup: '', listKey: 'literal/main', contentsUsed: true } }
+				],
+				expected: false
+			},
+			{
+				msg: 'Sub-ref: If there\'s no other ref with that key that owned the content the first node get\'s it',
+				dataElement: { attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main' } },
+				nodesInGroup: [
+					{ attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main' } },
+					{ attributes: { listGroup: '', listKey: 'literal/main', contentsUsed: false } }
+				],
+				expected: true
+			},
+			{
+				msg: 'Sub-ref: If there\'s another sub-ref with that key that owned the content this ref should not get it',
+				dataElement: { attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main' } },
+				nodesInGroup: [
+					{ attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main' } },
+					{ attributes: { listGroup: '', listKey: 'literal/subOther', mainListKey: 'literal/main', contentsUsed: true } }
+				],
+				expected: false
+			},
+			{
+				msg: 'Sub-ref: If this sub-ref was holding the content before it should always get it',
+				dataElement: { attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main', contentsUsed: true } },
+				nodesInGroup: [
+					{ attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main' } }
+				],
+				expected: true
+			},
+			{
+				msg: 'Sub-ref: If no other ref his holding the content the frist node get it, also if it\'s a sub-ref',
+				dataElement: { attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main' } },
+				nodesInGroup: [
+					{ attributes: { listGroup: '', listKey: 'literal/sub', mainListKey: 'literal/main' } },
+					{ attributes: { listGroup: '', listKey: 'literal/subOther', mainListKey: 'literal/main' } },
+					{ attributes: { listGroup: '', listKey: 'literal/main' } }
+				],
+				expected: true
+			}
+		]
+	};
+
+	QUnit.test( 'shouldAvoidContentOverride', ( assert ) => {
+		fixtures.shouldAvoidContentOverride.forEach( ( caseItem ) => {
+			const nodeGroup = new ve.dm.InternalListNodeGroup();
+			caseItem.nodesInGroup.forEach( ( element ) => {
+				nodeGroup.appendNode(
+					element.attributes.listKey,
+					new ve.dm.MWReferenceNode( element )
+				);
+			} );
+			assert.strictEqual(
+				MWReferenceNode.static.shouldAvoidContentOverride(
+					caseItem.dataElement,
+					nodeGroup
+				),
+				caseItem.expected,
+				caseItem.msg
+			);
+		} );
+	} );
+
+	QUnit.test( 'shouldGetMainContent', ( assert ) => {
+		fixtures.shouldGetMainContent.forEach( ( caseItem ) => {
+			const nodeGroup = new ve.dm.InternalListNodeGroup();
+			caseItem.nodesInGroup.forEach( ( element ) => {
+				nodeGroup.appendNode(
+					element.attributes.listKey,
+					new ve.dm.MWReferenceNode( element )
+				);
+			} );
+			assert.strictEqual(
+				ve.dm.MWReferenceNode.static.shouldGetMainContent(
+					caseItem.dataElement,
+					nodeGroup
+				),
+				caseItem.expected,
+				caseItem.msg
+			);
+		} );
+	} );
+
+	QUnit.test( 'getSubRefs and getRefsWithSameMain', ( assert ) => {
+		const firstSubRef = new ve.dm.Node( { attributes: { mainListKey: 'auto/0', mainListIndex: 0 } } );
+		firstSubRef.getOffset = () => 10;
+		const secondSubRef = new ve.dm.Node( { attributes: { mainListKey: 'auto/0', mainListIndex: 0 } } );
+		secondSubRef.getOffset = () => 20;
+		const firstSubRefReuse = new ve.dm.Node( { attributes: { mainListKey: 'auto/0', mainListIndex: 0 } } );
+		firstSubRefReuse.getOffset = () => 30;
+
+		// Add sub-refs to the test setup
+		const nodeGroup = new ve.dm.InternalListNodeGroup();
+		nodeGroup.appendNode( 'literal/second', secondSubRef );
+		nodeGroup.appendNode( 'literal/first', firstSubRef );
+		nodeGroup.appendNode( 'literal/first', firstSubRefReuse );
+
+		// Add main refs inbetween the sub-refs to the test setup
+		const firstMainRef = new ve.dm.Node( { attributes: { listKey: 'auto/0', listIndex: 0 } } );
+		firstMainRef.getOffset = () => 5;
+		const firstMainRefReuse = new ve.dm.Node( { attributes: { listKey: 'auto/0', listIndex: 0 } } );
+		firstMainRefReuse.getOffset = () => 15;
+
+		nodeGroup.appendNode( 'auto/0', firstMainRef );
+		nodeGroup.appendNode( 'auto/0', firstMainRefReuse );
+
+		// Add unrelated sub-ref to the test setup
+		const unrelatedRef = new ve.dm.Node( { attributes: {
+			listKey: 'auto/1',
+			listIndex: 1,
+			mainListKey: 'auto/3',
+			mainListIndex: 3
+		} } );
+		unrelatedRef.getOffset = () => 25;
+
+		nodeGroup.appendNode( 'auto/1', unrelatedRef );
+
+		nodeGroup.sortGroupIndexes();
+
+		const subRefs = MWReferenceNode.static.getSubRefs( 0, nodeGroup );
+		assert.strictEqual( subRefs.length, 3, 'The list of sub-refs does include reuses' );
+		assert.strictEqual( subRefs[ 0 ].getOffset(), 10, 'The list of sub-refs is in document order' );
+
+		const refsWithSameMain = MWReferenceNode.static.getRefsWithSameMain( 0, nodeGroup );
+		assert.strictEqual( refsWithSameMain.length, 5, 'The list of refs does only relevant include main and sub-refs' );
+		assert.strictEqual( refsWithSameMain[ 1 ].getOffset(), 15, 'The list is not in document order' );
+		assert.strictEqual( refsWithSameMain[ 2 ].getOffset(), 10, 'The list is not in document order' );
+	} );
+
+	QUnit.test( 'hasSubRefs', ( assert ) => {
+		const attributes = { listGroup: '', listIndex: 0 };
+		const nodeGroup = new ve.dm.InternalListNodeGroup();
+		const internalList = { getNodeGroup: () => nodeGroup };
+		assert.false( MWReferenceNode.static.hasSubRefs( attributes, internalList ) );
+
+		nodeGroup.appendNode( 'a', new ve.dm.MWReferenceNode( { attributes: { listGroup: '', mainListIndex: 0 } } ) );
+		assert.true( MWReferenceNode.static.hasSubRefs( attributes, internalList ) );
+
+		// But when it's a sub-ref it cannot have sub-refs
+		attributes.mainListIndex = 0;
+		assert.false( MWReferenceNode.static.hasSubRefs( attributes, internalList ) );
+	} );
+
+	QUnit.test( 'remapInternalListIndexes', ( assert ) => {
+		const dataElement = { attributes: {
+			listIndex: 'oldIndex', listKey: 'auto/', mainListIndex: 'oldMainIndex'
+		} };
+		const listIndexMap = { oldIndex: 'newIndex', oldMainIndex: 'newMainIndex' };
+		const internalListMock = { getNextUniqueNumber: () => 7 };
+
+		MWReferenceNode.static.remapInternalListIndexes(
+			dataElement,
+			listIndexMap,
+			internalListMock
+		);
+
+		assert.deepEqual(
+			dataElement.attributes,
+			{ listIndex: 'newIndex', listKey: 'auto/7', mainListIndex: 'newMainIndex' },
+			'Maps the listIndex and mainListIndex according to the mapping'
+		);
+	} );
+
+	QUnit.test( 'remapInternalListKeys', ( assert ) => {
+		const mainRefNode = new ve.dm.Node( { attributes: {
+			listKey: 'literal/mainKey'
+		} } );
+		const subRefNode = new ve.dm.Node( { attributes: {
+			listKey: 'auto/0',
+			mainListKey: 'literal/subMainKey'
+		} } );
+		const nodeGroup = new ve.dm.InternalListNodeGroup();
+		nodeGroup.appendNode( 'literal/mainKey', mainRefNode );
+		nodeGroup.appendNode( 'auto/0', subRefNode );
+
+		const internalListMock = {
+			getNodeGroup: () => nodeGroup
+		};
+
+		let dataElement = { attributes: { listKey: 'literal/otherKey' } };
+		MWReferenceNode.static.remapInternalListKeys( dataElement, internalListMock );
+		assert.strictEqual(
+			dataElement.attributes.listKey,
+			'literal/otherKey',
+			'No deduplication if key not used'
+		);
+
+		dataElement = { attributes: { listKey: 'literal/mainKey' } };
+		MWReferenceNode.static.remapInternalListKeys( dataElement, internalListMock );
+		assert.strictEqual(
+			dataElement.attributes.listKey,
+			'literal/mainKey2',
+			'Deduplicates listKey if found on an exising main node'
+		);
+
+		dataElement = { attributes: { listKey: 'literal/subMainKey' } };
+		MWReferenceNode.static.remapInternalListKeys( dataElement, internalListMock );
+		assert.strictEqual(
+			dataElement.attributes.listKey,
+			'literal/subMainKey2',
+			'Deduplicates listKey if found on an exising sub-ref node'
+		);
+
+		dataElement = { attributes: {
+			listKey: 'auto/1',
+			mainListKey: 'literal/subMainKey',
+			mainListIndex: 0
+		} };
+		MWReferenceNode.static.remapInternalListKeys( dataElement, internalListMock );
+		assert.strictEqual(
+			dataElement.attributes.mainListKey,
+			'literal/subMainKey2',
+			'Deduplicates mainListKey if found on an exising sub-ref node'
+		);
+	} );
+
+	QUnit.test( 'getGroup', ( assert ) => {
+		const dataElement = { attributes: { refGroup: 'g' } };
+		assert.deepEqual( MWReferenceNode.static.getGroup( dataElement ), 'g' );
+	} );
+
+	QUnit.test( 'cloneElement', ( assert ) => {
+		const element = {
+			attributes: { contentsUsed: true, mw: {}, originalMw: {} }
+		};
+		const store = { value: () => false };
+		const clone = MWReferenceNode.static.cloneElement( element, store );
+		assert.deepEqual( clone.attributes, {} );
+		assert.true( isFinite( clone.originalDomElementsHash ) );
+	} );
+
+	QUnit.test( 'getHashObject and getInstanceHashObject', ( assert ) => {
+		const refData = { type: 'ref', attributes: {
+			listGroup: '',
+			listKey: 'auto/0',
+			listIndex: 0
+		} };
+		const refDataSameGroup = { type: 'ref', attributes: {
+			listGroup: '',
+			listKey: 'auto/1',
+			listIndex: 1
+		} };
+		const refDataOtherGroup = { type: 'ref', attributes: {
+			listGroup: 'other',
+			listKey: 'auto/0',
+			listIndex: 3
+		} };
+
+		assert.deepEqual(
+			MWReferenceNode.static.getHashObject( refData ),
+			MWReferenceNode.static.getHashObject( refData ),
+			'refs with identical data result in indentical hashes'
+		);
+
+		assert.deepEqual(
+			MWReferenceNode.static.getHashObject( refData ),
+			MWReferenceNode.static.getHashObject( refDataSameGroup ),
+			'refs with different data but the same group result in indentical hashes'
+		);
+
+		assert.notDeepEqual(
+			MWReferenceNode.static.getHashObject( refData ),
+			MWReferenceNode.static.getHashObject( refDataOtherGroup ),
+			'refs with different groups result in different hashes'
+		);
+
+		assert.deepEqual(
+			MWReferenceNode.static.getInstanceHashObject( refData ),
+			MWReferenceNode.static.getInstanceHashObject( refData ),
+			'refs with identical data result in indentical instance object hashes'
+		);
+
+		assert.notDeepEqual(
+			MWReferenceNode.static.getInstanceHashObject( refData ),
+			MWReferenceNode.static.getInstanceHashObject( refDataSameGroup ),
+			'refs with different data but the same group result in different instance object hashes'
+		);
+
+		assert.notDeepEqual(
+			MWReferenceNode.static.getInstanceHashObject( refData ),
+			MWReferenceNode.static.getInstanceHashObject( refDataOtherGroup ),
+			'refs with different data  result in different instance object hashes'
+		);
+	} );
+
+	QUnit.test( 'describeChange', ( assert ) => {
+		for ( const [ key, change, expected ] of [
+			[ 'refGroup', { to: 'b' }, 'cite-ve-changedesc-ref-group-to,<ins>b</ins>' ],
+			[ 'refGroup', { from: 'a' }, 'cite-ve-changedesc-ref-group-from,<del>a</del>' ],
+			[ 'refGroup', { from: 'a', to: 'b' }, 'cite-ve-changedesc-ref-group-both,<del>a</del>,<ins>b</ins>' ],
+			[ '', {}, undefined ]
+		] ) {
+			let msg = MWReferenceNode.static.describeChange( key, change );
+			if ( Array.isArray( msg ) ) {
+				msg = $( '<span>' ).append( msg ).html();
+			}
+			assert.strictEqual( msg, expected );
+		}
+	} );
+}

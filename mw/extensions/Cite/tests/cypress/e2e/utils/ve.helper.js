@@ -1,0 +1,162 @@
+import * as helpers from './functions.helper.js';
+
+export function checkModuleDependencies() {
+	helpers.visitTitle( '' );
+	cy.window()
+		.should( 'have.property', 'mw' )
+		.and( 'have.property', 'loader' )
+		.and( 'have.property', 'getModuleNames' );
+	return cy.window().then( ( win ) => {
+		const names = win.mw.loader.getModuleNames();
+		return {
+			citoid: names.includes( 'ext.citoid.visualEditor' ),
+			templateData: names.includes( 'ext.templateData' ),
+			visualEditor: names.includes( 'ext.cite.visualEditor' )
+		};
+	} );
+}
+
+export function setVECookiesToDisableDialogs() {
+	cy.window().then( async ( win ) => {
+		win.localStorage.setItem( 've-beta-welcome-dialog', 1 );
+		// Don't show the VE education popups with the blue
+		// pulsating dots (ve.ui.MWEducationPopupWidget)
+		win.localStorage.setItem( 've-hideusered', 1 );
+		win.localStorage.setItem( 'mw-cite-hide-subref-help', 1 );
+	} );
+}
+
+export function openVEForEditingReferences( title, usesCitoid ) {
+	helpers.visitTitle( title, { veaction: 'edit' } );
+	waitForVECiteToLoad();
+	if ( usesCitoid ) {
+		waitForVECitoidToLoad();
+	}
+	cy.get( '.ve-ce-surface' ).should( 'be.visible' );
+}
+
+export function openVEForSourceEditingReferences( title, usesCitoid ) {
+	helpers.visitTitle( title, { veaction: 'editsource' } );
+	waitForVECiteToLoad();
+	if ( usesCitoid ) {
+		waitForVECitoidToLoad();
+	}
+	cy.get( '.ve-ce-surface' ).click();
+}
+
+export function waitForVECiteToLoad() {
+	// Only DesktopArticleTarget sets "ve-init-mw-desktopArticleTarget-toolbar-open"
+	// MobileArticleTarget only sets "ve-init-mw-mobileArticleTarget-toolbar" but not "…-open"
+	cy.get( '.ve-ui-targetToolbar', { timeout: 20000 } )
+		.should( 'be.visible' );
+	helpers.waitForModuleReady( 'ext.cite.visualEditor' );
+}
+
+export function waitForVECitoidToLoad() {
+	helpers.waitForModuleReady( 'ext.citoid.visualEditor' );
+}
+
+export function getVEFootnoteMarker( refName, sequenceNumber, index ) {
+	return cy.get( '.ve-ce-surface:visible' ).find( `sup#cite_ref-${ refName }_${ sequenceNumber }-${ index - 1 }` );
+}
+
+export function getVEReferenceContextItem() {
+	return cy.get( '.ve-ui-mwReferenceContextItem' );
+}
+
+export function getVEReferenceContextItemEdit() {
+	return cy.get( '.ve-ui-mwReferenceContextItem .ve-ui-linearContextItem-actions .oo-ui-buttonElement-button' );
+}
+
+export function getVEReferenceContextItemDetailsEdit() {
+	return cy.get( '.ve-ui-mwReferenceContextItem-subrefHeader .ve-ui-mwReferenceContextItem-editButton' );
+}
+
+export function getVEReferenceEditDialog() {
+	return cy.get( '.ve-ui-mwReferenceDialog' );
+}
+
+export function openVECiteReuseDialog() {
+	helpers.clickUntilVisible(
+		cy.get( '.ve-ui-toolbar-group-cite' ),
+		'.ve-ui-toolbar .oo-ui-tool-name-reference-existing'
+	);
+	cy.get( '.ve-ui-toolbar .oo-ui-tool-name-reference-existing' ).click();
+	cy.get( '.ve-ui-mwReferenceSearchWidget' ).should( 'be.visible' );
+}
+
+export function openVECitoidInspector() {
+	cy.get( 'body' ).type( '{ctrl}{shift}k' );
+	cy.get( '.ve-ui-citoidInspector .oo-ui-tabSelectWidget' )
+		.should( 'be.visible' );
+	// FIXME: Citoid inspector is flaky when openening up
+	//  if clicking to fast the selected tab gets reset again
+	// eslint-disable-next-line cypress/no-unnecessary-waiting
+	cy.wait( 300 );
+}
+
+export function openVECitoidReuseDialog() {
+	this.openVECitoidInspector();
+	cy.get( '.ve-ui-citoidInspector .oo-ui-tabSelectWidget .oo-ui-labelElement-label' )
+		.contains( 'Re-use' ).click();
+	cy.get( '.ve-ui-citoidInspector .ve-ui-mwReferenceSearchWidget' )
+		.should( 'be.visible' );
+}
+
+export function openVECitoidSourceSelector() {
+	this.openVECitoidInspector();
+	cy.get( '.ve-ui-citoidInspector .oo-ui-tabSelectWidget .oo-ui-labelElement-label' )
+		.contains( 'Manual' ).click();
+	cy.get( '.ve-ui-citoidInspector .ve-ui-citoidInspector-sourceSelect' )
+		.should( 'be.visible' );
+}
+
+export function saveEdits() {
+	cy.get( '.ve-ui-toolbar-saveButton' )
+		.should( 'not.have.class', 'oo-ui-widget-disabled' )
+		.click();
+	cy.get( '.ve-ui-mwSaveDialog' ).should( 'be.visible' );
+	cy.get( '.ve-ui-mwSaveDialog .oo-ui-processDialog-actions-primary .oo-ui-buttonWidget' ).click();
+	// Don't wait on the post-edit notification: mediawiki.notification only adds
+	// "mw-notification-visible" after two requestAnimationFrame callbacks, while the
+	// 5s auto-hide timer starts immediately, so under load it may never be matchable.
+	// Wait for VE to finish deactivating instead. DesktopArticleTarget drops
+	// "ve-active" when teardown starts and "ve-deactivating" only once it has moved
+	// the original content back, which is what makes the read-mode tabs clickable.
+	cy.get( 'html' )
+		.should( 'not.have.class', 've-active' )
+		.and( 'not.have.class', 've-deactivating' );
+}
+
+export function getCiteReuseDialogRefResult( rowNumber ) {
+	return cy.get( '.ve-ui-mwReferenceSearchWidget .ve-ui-mwReferenceResultWidget' )
+		.eq( rowNumber - 1 );
+}
+
+export function getCiteReuseDialogRefResultName( rowNumber ) {
+	return cy.get( '.ve-ui-mwReferenceSearchWidget .ve-ui-mwReferenceResultWidget .ve-ui-mwReferenceResultWidget-name' )
+		.eq( rowNumber - 1 );
+}
+
+export function getCiteReuseDialogRefResultCitation( rowNumber ) {
+	return cy.get( '.ve-ui-mwReferenceSearchWidget .ve-ui-mwReferenceResultWidget .ve-ui-mwReferenceResultWidget-footnote' )
+		.eq( rowNumber - 1 );
+}
+
+export function getCiteReuseDialogRefText( rowNumber ) {
+	return cy.get( '.ve-ui-mwReferenceSearchWidget .ve-ui-mwReferenceResultWidget' )
+		.eq( rowNumber - 1 )
+		.find( '.mw-parser-output p' );
+}
+
+export function getRefsFromArticleSection() {
+	return cy.get( 'sup.ve-ce-mwReferenceNode' );
+}
+
+export function getRefsFromReferencesSection() {
+	return cy.get( '.ve-ce-mwReferencesListNode li' );
+}
+
+export function getRefFromReferencesSection( rowNumber ) {
+	return getRefsFromReferencesSection().eq( rowNumber - 1 );
+}

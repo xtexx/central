@@ -1,0 +1,97 @@
+'use strict';
+
+/*!
+ * @copyright 2024 VisualEditor Team's Cite sub-team and others; see AUTHORS.txt
+ * @license MIT
+ */
+
+const MWGroupReferences = require( './ve.dm.MWGroupReferences.js' );
+
+/**
+ * A facade providing a simplified and safe interface to Cite `ref` and
+ * `references` tags in a document.
+ *
+ * @constructor
+ * @mixes OO.EventEmitter
+ * @param {ve.dm.Document} doc The document that reference tags will be embedded in.
+ */
+ve.dm.MWDocumentReferences = function VeDmMWDocumentReferences( doc ) {
+	// Mixin constructors
+	OO.EventEmitter.call( this );
+
+	// Properties
+	this.doc = doc;
+	/**
+	 * Holds the information calculated for each group.
+	 *
+	 * @member {Object.<string, ve.dm.MWGroupReferences>}
+	 */
+	this.cachedByGroup = {};
+
+	doc.getInternalList().connect( this, { update: 'updateGroups' } );
+	this.updateGroups( doc.getInternalList().getListGroupNames() );
+};
+
+/* Inheritance */
+
+OO.mixinClass( ve.dm.MWDocumentReferences, OO.EventEmitter );
+
+/* Methods */
+
+/**
+ * Singleton MWDocumentReferences for a document.
+ *
+ * @param {ve.dm.Document} doc Source document associated with the
+ * singleton. May be a fragment in which case we only look at refs included in
+ * the fragment.
+ *
+ * @return {ve.dm.MWDocumentReferences} Singleton docRefs
+ */
+ve.dm.MWDocumentReferences.static.refsForDoc = function ( doc ) {
+	let docRefs;
+	// Only use cache if we're working with the full document.
+	if ( !doc.getOriginalDocument() ) {
+		docRefs = doc.extCiteDocumentReferences;
+	}
+	if ( docRefs === undefined ) {
+		docRefs = new ve.dm.MWDocumentReferences( doc );
+	}
+	if ( !doc.getOriginalDocument() ) {
+		doc.extCiteDocumentReferences = docRefs;
+	}
+	return docRefs;
+};
+
+/**
+ * @private
+ * @param {string[]} groupsChanged A list of group names which have changed in
+ *  this transaction
+ */
+ve.dm.MWDocumentReferences.prototype.updateGroups = function ( groupsChanged ) {
+	groupsChanged.forEach( ( listGroup ) => {
+		const nodeGroup = this.doc.getInternalList().getNodeGroup( listGroup );
+		this.cachedByGroup[ listGroup ] = MWGroupReferences.static.makeGroupRefs( nodeGroup );
+	} );
+};
+
+/**
+ * @param {string} listGroup with or without prefix
+ * @return {ve.dm.MWGroupReferences}
+ */
+ve.dm.MWDocumentReferences.prototype.getGroupRefs = function ( listGroup ) {
+	const prefix = ve.dm.MWReferenceModel.static.makeListGroup();
+	if ( !listGroup.startsWith( prefix ) ) {
+		listGroup = prefix + listGroup;
+	}
+	return this.cachedByGroup[ listGroup ] || new MWGroupReferences();
+};
+
+/**
+ * @return {boolean}
+ */
+ve.dm.MWDocumentReferences.prototype.hasRefs = function () {
+	return Object.values( this.doc.getInternalList().getNodeGroups() )
+		.some( ( group ) => !group.isEmpty() );
+};
+
+module.exports = ve.dm.MWDocumentReferences;

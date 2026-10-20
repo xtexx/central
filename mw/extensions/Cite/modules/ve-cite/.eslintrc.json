@@ -1,0 +1,16 @@
+{
+	"globals": {
+		"ve": "readonly"
+	},
+	"rules": {
+		"max-len": [ "error", 120 ]
+	},
+	"overrides": [
+		{
+			"files": [ "i18n/*.json" ],
+			"rules": {
+				"max-len": "off"
+			}
+		}
+	]
+}

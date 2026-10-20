@@ -1,0 +1,29 @@
+{
+	"name": "Cite",
+	"private": true,
+	"scripts": {
+		"selenium-daily": "npm run selenium-test",
+		"selenium-test": "npm run cypress:parallel",
+		"cypress:setup": "CYPRESS_RUN_SETUP_ONLY=1 CYPRESS_CACHE_FOLDER=./tests/cypress/.cache cypress run --pass-with-no-tests --config-file tests/cypress/cypress.config.js --spec tests/cypress/setup/setup.cy.js",
+		"cypress": "npm run cypress:setup && npm run cypress:worker",
+		"cypress:worker": "CYPRESS_CACHE_FOLDER=./tests/cypress/.cache cypress run --pass-with-no-tests --config-file tests/cypress/cypress.config.js",
+		"cypress:open": "CYPRESS_CACHE_FOLDER=./tests/cypress/.cache cypress open --config-file tests/cypress/cypress.config.js",
+		"cypress:parallel": "npm run cypress:setup && CYPRESS_CACHE_FOLDER=./tests/cypress/.cache cypress-parallel -s cypress:worker -t 5 -d './tests/cypress/e2e/tests/' -r 'cypress-multi-reporters' -p './tests/cypress/reporter-config.json' -w './tests/cypress/parallel-weights.json' -m 'false'",
+		"doc": "jsdoc -c jsdoc.json",
+		"test": "grunt test",
+		"lint:fix": "grunt test --fix"
+	},
+	"devDependencies": {
+		"@cypress/skip-test": "^2.6.1",
+		"cypress": "^15.11.0",
+		"cypress-parallel": "0.15.0",
+		"eslint-config-wikimedia": "0.32.6",
+		"eslint-plugin-cypress": "^3.6.0",
+		"grunt": "1.6.3",
+		"grunt-banana-checker": "0.13.0",
+		"grunt-eslint": "24.3.0",
+		"grunt-stylelint": "0.21.0",
+		"jsdoc-wmf-theme": "1.3.1",
+		"stylelint-config-wikimedia": "0.19.4"
+	}
+}
