@@ -1,0 +1,334 @@
+<?php
+
+namespace MediaWiki\Extension\Math\Tests\WikiTexVC\Nodes;
+
+use InvalidArgumentException;
+use MediaWiki\Extension\Math\WikiTexVC\MMLnodes\MMLarray;
+use MediaWiki\Extension\Math\WikiTexVC\MMLnodes\MMLbase;
+use MediaWiki\Extension\Math\WikiTexVC\MMLnodes\MMLmo;
+use MediaWiki\Extension\Math\WikiTexVC\MMLnodes\MMLmrow;
+use MediaWiki\Extension\Math\WikiTexVC\MMLnodes\MMLmsup;
+use MediaWiki\Extension\Math\WikiTexVC\Nodes\DQ;
+use MediaWiki\Extension\Math\WikiTexVC\Nodes\FQ;
+use MediaWiki\Extension\Math\WikiTexVC\Nodes\Fun1nb;
+use MediaWiki\Extension\Math\WikiTexVC\Nodes\Literal;
+use MediaWiki\Extension\Math\WikiTexVC\Nodes\TexArray;
+use MediaWiki\Extension\Math\WikiTexVC\Nodes\TexNode;
+use MediaWiki\Extension\Math\WikiTexVC\Nodes\UQ;
+use MediaWiki\Extension\Math\WikiTexVC\TexVC;
+use MediaWikiIntegrationTestCase;
+use TypeError;
+
+/**
+ * @covers \MediaWiki\Extension\Math\WikiTexVC\Nodes\TexArray
+ */
+class TexArrayTest extends MediaWikiIntegrationTestCase {
+
+	public function testIsTexNode() {
+		$this->assertTrue( new TexArray() instanceof TexNode,
+			'Should create an instance of TexNode' );
+	}
+
+	public function testConcatOutput() {
+		$ta = new TexArray( new Literal( 'a' ), new Literal( 'b' ) );
+		$this->assertEquals( 'ab', $ta->render(), 'Should concatenate its input' );
+	}
+
+	public function testExtractCurlies() {
+		$n = new TexNode( new TexArray( new Literal( 'a' ) ) );
+		$this->assertEquals( '{a}', $n->inCurlies(),
+			'Should create exactly one pair of curlies' );
+	}
+
+	public function testExtractIdentifiers() {
+		$n = new TexArray( new Literal( 'd' ) );
+		$this->assertEquals( [ 'd' ], $n->extractIdentifiers(),
+			'Should extract identifiers' );
+	}
+
+	public function testExtractIdentifiersFromArg() {
+		$n = new TexArray();
+		$this->assertEquals( [ 'd' ],
+			$n->extractIdentifiers( [ new Literal( 'd' ) ] ),
+			'Should extract identifiers from the argument' );
+	}
+
+	public function testExtractSplitIdentifiers() {
+		$n = new TexArray( new Literal( 'a' ), new Literal( '\'' ) );
+		$this->assertEquals( [ 'a\'' ], $n->extractIdentifiers(),
+			'Should extract split identifiers' );
+	}
+
+	public function testNotConfuseIntegralsIdentifiers() {
+		$n = new TexArray( new Literal( 'd' ), new Literal( '\\int' ) );
+		$this->assertEquals( [ 'd' ], $n->extractIdentifiers(),
+			'Should not confuse integrals and identifiers' );
+	}
+
+	public function testNotConfuseIntegralD() {
+		$n = new TexArray( new Literal( '\\int' ), new Literal( 'd' ) );
+		$this->assertEquals( [], $n->extractIdentifiers(), 'Should not confuse integral d with d identifier' );
+	}
+
+	public function testNotConfuseUprightIntegralD() {
+		$n = new TexArray( new Literal( '\\int' ), new Literal( '\\mathrm{d}' ) );
+		$this->assertEquals( [], $n->extractIdentifiers(),
+			'Should not confuse upright integral d with d identifier' );
+	}
+
+	public function testExtractIdentifierMods() {
+		$n = new TexArray( new TexNode( '' ) );
+		$this->assertEquals( [], $n->getModIdent(), 'Should extract identifier modifications' );
+	}
+
+	public function testExtractSubscripts() {
+		$n = new TexArray( new TexNode( '' ) );
+		$this->assertEquals( [], $n->extractSubscripts(), 'Should extract subscripts' );
+	}
+
+	public function testAddNotAppendsOverlayToMMLmoWhenNotFlagIsSet() {
+		$state = [ 'not' => true ];
+		$mmlmo = new MMLmo( "", [], "∈" );
+
+		$ta = new TexArray();
+		$result = $ta->addNot( $state, $mmlmo );
+
+		$this->assertInstanceOf( MMLmo::class, $result );
+		$this->assertEquals(
+			"∈&#x338;",
+			$result->getText(),
+			'Should append "not" overlay (U+0338) to MMLmo text'
+		);
+	}
+
+	public function testAddNotDoesNothingWhenNotFlagIsNotSet() {
+		$state = [];
+		$mmlmo = new MMLmo( "", [], "∈" );
+
+		$ta = new TexArray();
+		$result = $ta->addNot( $state, $mmlmo );
+
+		$this->assertInstanceOf( MMLmo::class, $result );
+		$this->assertEquals(
+			"∈",
+			$result->getText(),
+			'Should not modify text for unset "not" flag'
+		);
+	}
+
+	public function testAddNotDoesNotProcessNonMMLmoObjects() {
+		$state = [ 'not' => true ];
+		$nonMMLmo = new MMLbase( 'dummy' );
+
+		$ta = new TexArray();
+		$result = $ta->addNot( $state, $nonMMLmo );
+
+		$this->assertEquals( $nonMMLmo, $result, 'Should not modify non-MMLmo objects' );
+	}
+
+	public function testAddNotRejectsStringInput() {
+		$this->expectException( TypeError::class );
+
+		$state = [ 'not' => true ];
+		$ta = new TexArray();
+		$ta->addNot( $state, '∈' );
+	}
+
+	public function testAddNotRejectsNullInput() {
+		$this->expectException( TypeError::class );
+
+		$state = [ 'not' => true ];
+		$ta = new TexArray();
+		$ta->addNot( $state, null );
+	}
+
+	public function testUnshift() {
+		$n = new TexArray( new TexNode( '' ) );
+		$n->unshift( 'test1', 'test2' );
+		$this->assertEquals( 3, $n->getLength(), 'Should unshift elements' );
+	}
+
+	public function testGenerator() {
+		$ta = new TexArray( new Literal( 'a' ), new Literal( 'b' ) );
+		foreach ( $ta as $item ) {
+			$this->assertInstanceOf(
+				'MediaWiki\Extension\Math\WikiTexVC\Nodes\Literal',
+				$item,
+				'Should iterate over the elements' );
+		}
+	}
+
+	public function testOffsetExists() {
+		$ta = new TexArray( new Literal( 'a' ), new Literal( 'b' ) );
+		$this->assertTrue( isset( $ta[0] ) );
+		$this->assertFalse( isset( $ta[2] ) );
+	}
+
+	public function testOffsetGet() {
+		$ta = new TexArray( new Literal( 'a' ), new Literal( 'b' ) );
+		$this->assertEquals( 'a', $ta[0]->render() );
+		$this->assertNull( $ta[100] );
+	}
+
+	public function testOffsetUnset() {
+		$ta = new TexArray( new Literal( 'a' ), new Literal( 'b' ) );
+		unset( $ta[0] );
+		$this->assertNull( $ta[0] );
+	}
+
+	public function testOffsetSet() {
+		$ta = new TexArray();
+		$ta[0] = new Literal( 'a' );
+		$this->assertEquals( 'a', $ta[0]->render() );
+	}
+
+	public function testOffsetSetInvalid() {
+		$this->expectException( InvalidArgumentException::class );
+		$ta = new TexArray();
+		$ta[0] = 'a';
+	}
+
+	public function testSquashLiterals() {
+		$ta = new TexArray( new Literal( 'a' ), new Literal( 'b' ) );
+		$state = [ 'squashLiterals' => true ];
+		$res  = $ta->toMMLTree( [], $state );
+		$this->assertEquals( '<mi>ab</mi>', $res );
+	}
+
+	public function testSquashLiteralsMacro() {
+		$ta = new TexArray( new Literal( 'a' ), new Literal( '\gamma' ) );
+		$state = [ 'squashLiterals' => true ];
+		$res  = $ta->toMMLTree( [], $state );
+		$this->assertEquals( '<mi>a</mi><mi>γ</mi>', $res );
+	}
+
+	public function testSumInLimits() {
+		$ta = new TexArray();
+		$sum = new Literal( '\sum' );
+		$res  = $ta->checkForLimits( $sum, new DQ( new Literal( '\limits' ), new Literal( 'n' ) ) );
+		$this->assertTrue( $res[1] );
+		$this->assertEquals( $sum, $res[0] );
+	}
+
+	public static function provideNamedFunction(): array {
+		return [
+			'delimiter stays a separate literal' => [ '\\sin(x)', '\\sin', '(' ],
+			'space is part of the literal' => [ '\\sin x', '\\sin ', 'x' ],
+		];
+	}
+
+	/**
+	 * @dataProvider provideNamedFunction
+	 */
+	public function testNamedFunctionIsOneLiteral( string $input, string $name, string $next ) {
+		$result = ( new TexVC() )->check( $input );
+		$parsed = $result['input'];
+		$this->assertEquals( new Literal( $name ), $parsed->first() );
+		$this->assertEquals( new Literal( $next ), $parsed->second() );
+		$this->assertEquals( [ true, true ], $parsed->checkForNamedFctArgs( $parsed->first(), $parsed->second() ) );
+		$this->assertSame( $input, $result['output'] );
+	}
+
+	public function testCustomOpInLimits() {
+		$ta = new TexArray();
+		$custom = new Fun1nb( '\operatorname', new TexArray( new Literal( 'S' ) ) );
+		$res  = $ta->checkForLimits( $custom, new DQ( new Literal( '\limits' ), new Literal( 'n' ) ) );
+		$this->assertTrue( $res[1] );
+		$this->assertEquals( $custom, $res[0] );
+	}
+
+	public function testLimitsAfterOrdinaryAtom() {
+		// TeX stops here: "Limit controls must follow a math operator".
+		// TeX's math_limit_switch: swh:1:cnt:62374028b2c5947fdcec6462027d6a37d1bd8444;lines=22026-22031
+		$result = ( new TexVC() )->check( 'X\\limits_a^b' );
+		$this->assertSame( '+', $result['status'] );
+		$this->assertStringContainsString( '<munderover>', (string)$result['input']->toMMLtree() );
+	}
+
+	public function testMathopInLimits() {
+		$ta = new TexArray();
+		$mathop = new Fun1nb( '\\mathop', new TexArray( new Literal( 'X' ) ) );
+		$res = $ta->checkForLimits( $mathop, new DQ( new Literal( '\\limits' ), new Literal( 'n' ) ) );
+		$this->assertEquals( [ $mathop, true ], $res );
+	}
+
+	public function testRenderAPrime() {
+		$n = new TexArray( new Literal( 'A' ) );
+		$state = [ 'prime' => 1 ];
+		$mml = $n->toMMLTree( [], $state );
+		$this->assertStringContainsString( '&#x2032;</mo>', $mml );
+	}
+
+	public function testRenderEmptyPlaceholderPrime() {
+		$n = new TexArray( new Literal( 'A' ) );
+		$state = [ 'prime' => 1 ];
+		$mml = $n->addPrimeContext( $state, new MMLarray() );
+		$this->assertInstanceOf( MMLmsup::class, $mml );
+		$this->assertSame( 'msup', $mml->getName() );
+		$this->assertCount( 2, $mml->getChildren() );
+		$this->assertInstanceOf( MMLmrow::class, $mml->getChildren()[0] );
+		$this->assertInstanceOf( MMLmo::class, $mml->getChildren()[1] );
+		$this->assertSame( '&#x2032;', $mml->getChildren()[1]->getText() );
+	}
+
+	public function testNormalizeExplicitPrimeSuperscript() {
+		$n = new TexArray( new UQ( new Literal( 'f' ), new Literal( '\\prime' ) ) );
+		$this->assertSame( '<msup><mi>f</mi><mo>&#x2032;</mo></msup>', (string)$n->toMMLTree() );
+	}
+
+	public function testNormalizeExplicitPrimeOnNamedFunction() {
+		$n = ( new TexVC() )->parse( '\\sin^\\prime x' );
+		$this->assertSame(
+			'<msup><mi>sin</mi><mo>&#x2032;</mo></msup><mo>&#x2061;</mo><mi>x</mi>',
+			(string)$n->toMMLTree()
+		);
+	}
+
+	public function testNormalizeExplicitPrimesWithSubscript() {
+		$primes = new TexArray( new Literal( '\\prime' ), new Literal( '\\prime' ) );
+		$n = new TexArray( new FQ( new Literal( 'f' ), new Literal( 'i' ), $primes ) );
+		$this->assertSame(
+			'<msup><msub><mi>f</mi><mrow data-mjx-texclass="ORD"><mi>i</mi></mrow></msub>' .
+				'<mo>&#x2033;</mo></msup>',
+			(string)$n->toMMLTree()
+		);
+	}
+
+	/**
+	 * @dataProvider provideNonPrimeSuperscripts
+	 */
+	public function testDoNotNormalizeNonPrimeSuperscript( TexNode $superscript ) {
+		$n = new TexArray( new UQ( new Literal( 'f' ), $superscript ) );
+		$this->assertStringContainsString( '<msup><mi>f</mi>', (string)$n->toMMLTree() );
+	}
+
+	public static function provideNonPrimeSuperscripts() {
+		return [
+			'literal' => [ new Literal( 'x' ) ],
+			'mixed' => [ new TexArray( new Literal( '\\prime' ), new Literal( 'x' ) ) ],
+			'empty' => [ new TexArray() ],
+			'non-array' => [ new TexNode() ],
+		];
+	}
+
+	public function testRenderFollowingApostrophes() {
+		$n = new TexArray( new Literal( 'f' ), new Literal( "'" ), new Literal( "'" ) );
+		$this->assertSame( '<msup><mi>f</mi><mo>&#x2033;</mo></msup>', (string)$n->toMMLTree() );
+	}
+
+	public function testRenderPrimeOnNamedFunction() {
+		$n = new TexArray();
+		$state = [ 'prime' => 1, 'foundNamedFct' => [ true, false ] ];
+		$mml = $n->addPrimeContext( $state, new MMLmo( '', [], 'f' ) );
+		$this->assertInstanceOf( MMLarray::class, $mml );
+		$this->assertStringContainsString( '&#x2061;</mo>', (string)$mml );
+	}
+
+	public function testRenderStringPrimeRejected() {
+		$this->expectException( TypeError::class );
+
+		$n = new TexArray( new Literal( 'A' ) );
+		$state = [ 'prime' => 1 ];
+		$n->addPrimeContext( $state, "k" );
+	}
+}

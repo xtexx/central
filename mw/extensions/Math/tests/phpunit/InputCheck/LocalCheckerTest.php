@@ -1,0 +1,241 @@
+<?php
+
+namespace MediaWiki\Extension\Math\InputCheck;
+
+use MediaWiki\Extension\Math\MathRenderer;
+use MediaWiki\Message\Message;
+use MediaWikiIntegrationTestCase;
+use Wikimedia\ObjectCache\HashBagOStuff;
+use Wikimedia\ObjectCache\WANObjectCache;
+
+/**
+ * @group Math
+ * @license GPL-2.0-or-later
+ * tbd move this to unittests
+ * @covers \MediaWiki\Extension\Math\InputCheck\LocalChecker
+ */
+class LocalCheckerTest extends MediaWikiIntegrationTestCase {
+
+	private const SAMPLE_KEY =
+		'global:MediaWiki\Extension\Math\InputCheck\LocalChecker:d5f40adbd26ff8b19b2c33289d7334b6';
+
+	public function testValid() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\sin x^2' );
+		$this->assertNull( $checker->getError() );
+		$this->assertTrue( $checker->isValid() );
+		$this->assertNull( $checker->getError() );
+		$this->assertSame( '\\sin x^{2}', $checker->getValidTex() );
+	}
+
+	public function testValidTypeTex() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\sin x^2', 'tex' );
+		$this->assertTrue( $checker->isValid() );
+	}
+
+	public function testValidTypeChem() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '{\\displaystyle {\\ce {\\cdot OHNO_{2}}}}', 'chem' );
+		$this->assertTrue( $checker->isValid() );
+	}
+
+	public function testChemConvertsCe() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\\ce{H2O}', 'chem' );
+		$this->assertTrue( $checker->isValid() );
+		$this->assertStringNotContainsString( '\\ce', $checker->getValidTex() );
+		$this->assertStringContainsString( '<mi mathvariant="normal">H</mi>',
+			$checker->getPresentationMathMLFragment() );
+	}
+
+	public function testChemConvertsNestedCe() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\\ce{\\overbrace{\\ce{H2O}}}', 'chem' );
+		$this->assertTrue( $checker->isValid() );
+		$this->assertStringNotContainsString( '\\ce', $checker->getValidTex() );
+		$this->assertStringNotContainsString( 'mathcolor="red"', $checker->getPresentationMathMLFragment() );
+	}
+
+	public function testChemKeepsUnbracedCe() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), 'K = [\\ce A]^\\alpha', 'chem' );
+		$this->assertTrue( $checker->isValid() );
+		$this->assertSame( 'K=[{\\mathrm {A} }]^{\\alpha }', $checker->getValidTex() );
+	}
+
+	public function testCeNeedsTypeChem() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\\ce{H2O}', 'tex' );
+		$this->assertFalse( $checker->isValid() );
+		$this->assertNull( $checker->getPresentationMathMLFragment() );
+	}
+
+	public function testValidTypeInline() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '{\\textstyle \\log2 }', 'inline-tex' );
+		$this->assertTrue( $checker->isValid() );
+	}
+
+	public function testInvalidType() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\sin x^2', 'INVALIDTYPE' );
+		$this->assertInstanceOf( LocalChecker::class, $checker );
+		$this->assertInstanceOf( Message::class, $checker->getError() );
+		$this->assertFalse( $checker->isValid() );
+		$this->assertNull( $checker->getPresentationMathMLFragment() );
+	}
+
+	public function testInvalid() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\sin\newcommand' );
+		$this->assertFalse( $checker->isValid() );
+
+		$this->assertStringContainsString(
+			Message::newFromKey( 'math_unknown_function', '\newcommand' )
+				->inContentLanguage()
+				->escaped(),
+			$checker->getError()
+				->inContentLanguage()
+				->escaped()
+		);
+
+		$this->assertNull( $checker->getValidTex() );
+	}
+
+	public function testErrorSyntax() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\left(' );
+		$this->assertFalse( $checker->isValid() );
+		$this->assertStringContainsString(
+			Message::newFromKey( 'math_syntax_error' )
+				->inContentLanguage()
+				->escaped(),
+			$checker->getError()
+				->inContentLanguage()
+				->escaped()
+		);
+	}
+
+	public function testSpecialError() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\tripledash' );
+		$this->assertFalse( $checker->isValid() );
+		$this->assertStringContainsString(
+			Message::newFromKey( 'math_other_error', 'mhchem package required.' )
+				->inContentLanguage()
+				->escaped(),
+			$checker->getError()
+				->inContentLanguage()
+				->escaped()
+		);
+	}
+
+	public function testGetMML() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), 'e^{i \pi} + 1 = 0' );
+		$mml = $checker->getPresentationMathMLFragment();
+		$this->assertStringContainsString( '<mn>0</mn>', $mml );
+	}
+
+	public function testGetMMLEmpty() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '' );
+		$mml = $checker->getPresentationMathMLFragment();
+		$this->assertSame( '', $mml );
+	}
+
+	/**
+	 * @covers \MediaWiki\Extension\Math\InputCheck\LocalChecker::getInputCacheKey
+	 */
+	public function testGetKey() {
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\sin x^2', 'tex' );
+		$this->assertSame( self::SAMPLE_KEY, $checker->getInputCacheKey() );
+	}
+
+	public function testCache() {
+		$fakeWAN = new WANObjectCache( [ 'cache' => new HashBagOStuff() ] );
+		$fakeContent = [ 'status' => '+', 'output' => 'out', 'mathml' => 'mml' ];
+		$fakeWAN->set( self::SAMPLE_KEY,
+			$fakeContent,
+			WANObjectCache::TTL_INDEFINITE,
+			[ 'version' => LocalChecker::VERSION ] );
+		$checker = new LocalChecker( $fakeWAN, '\sin x^2', 'tex' );
+		$this->assertSame( $fakeContent['output'], $checker->getValidTex() );
+		$this->assertSame( $fakeContent['mathml'], $checker->getPresentationMathMLFragment() );
+		$this->assertSame( true, $checker->isValid() );
+	}
+
+	public function testPurgeReplacesCachedResult() {
+		$fakeWAN = new WANObjectCache( [ 'cache' => new HashBagOStuff() ] );
+		$fakeWAN->set( self::SAMPLE_KEY,
+			[ 'status' => '+', 'output' => 'stale', 'mathml' => 'stale' ],
+			WANObjectCache::TTL_INDEFINITE,
+			[ 'version' => LocalChecker::VERSION ] );
+		$checker = new LocalChecker( $fakeWAN, '\\sin x^2', 'tex', true );
+		$this->assertSame( '\\sin x^{2}', $checker->getValidTex() );
+	}
+
+	public function testHookReceivesResult() {
+		$results = [];
+		$hookContainer = $this->createHookContainer( [
+			'MathRenderingResultRetrieved' => static function ( $renderer, $result ) use ( &$results ) {
+				$results[] = $result;
+			},
+		] );
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\\ce{H2O}', 'chem' );
+		$checker->setContext( $this->createMock( MathRenderer::class ) );
+		$checker->setHookContainer( $hookContainer );
+		$this->assertTrue( $checker->isValid() );
+		$this->assertCount( 1, $results );
+		$this->assertSame( '+', $results[0]->status );
+		$this->assertSame( $checker->getPresentationMathMLFragment(), $results[0]->mathml );
+	}
+
+	public function testHookNeedsContext() {
+		$called = false;
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\\sin x^2' );
+		$checker->setHookContainer( $this->createHookContainer( [
+			'MathRenderingResultRetrieved' => static function () use ( &$called ) {
+				$called = true;
+			},
+		] ) );
+		$this->assertTrue( $checker->isValid() );
+		$this->assertFalse( $called );
+	}
+
+	/**
+	 * @covers \MediaWiki\Extension\Math\InputCheck\LocalChecker::runCheck
+	 */
+	public function testRunChecks() {
+		$fakeContent = [
+			'status' => '+',
+			'mathml' => '<mi>sin</mi><mo>&#x2061;</mo><msup><mi>x</mi>'
+						. '<mrow data-mjx-texclass="ORD"><mn>2</mn></mrow></msup>',
+			'output' => '\\sin x^{2}'
+		];
+		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\sin x^2', 'tex' );
+		$actual = $checker->runCheck();
+		$this->assertArrayEquals( $fakeContent, $actual );
+	}
+
+	public function testBrokenResult() {
+		$fakeWAN = new WANObjectCache( [ 'cache' => new HashBagOStuff() ] );
+		$fakeContent = [
+			'status' => 'i',
+			'broken' => 'content',
+		];
+		$fakeWAN->set( self::SAMPLE_KEY,
+			$fakeContent,
+			WANObjectCache::TTL_INDEFINITE,
+			[ 'version' => LocalChecker::VERSION ] );
+		$checker = new LocalChecker( $fakeWAN, '\sin x^2', 'tex' );
+		$checker->run();
+		$this->assertNull( $checker->getPresentationMathMLFragment() );
+		$this->assertEquals( 'math_unknown_error', $checker->getError()->getKey() );
+	}
+
+	/**
+	 * A cached result missing the 'status' key entirely must not raise a PHP warning.
+	 * @see https://phabricator.wikimedia.org/T434819
+	 */
+	public function testResultWithoutStatusKey() {
+		$fakeWAN = new WANObjectCache( [ 'cache' => new HashBagOStuff() ] );
+		$fakeContent = [ 'broken' => 'content' ];
+		$fakeWAN->set( self::SAMPLE_KEY,
+			$fakeContent,
+			WANObjectCache::TTL_INDEFINITE,
+			[ 'version' => LocalChecker::VERSION ] );
+		$checker = new LocalChecker( $fakeWAN, '\sin x^2', 'tex' );
+		$checker->run();
+		$this->assertFalse( $checker->isValid() );
+		$this->assertNull( $checker->getPresentationMathMLFragment() );
+		$this->assertEquals( 'math_unknown_error', $checker->getError()->getKey() );
+	}
+}

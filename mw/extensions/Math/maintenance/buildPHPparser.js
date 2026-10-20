@@ -1,0 +1,83 @@
+#!/usr/bin/env node
+/**
+ * This script is used for generating Parser.php from parser.pegjs.
+ * This is used for creating new versions of the parser expression grammar
+ * in TexVC.
+ *
+ * Make sure to have the node dev dependencies from package.json installed.
+ * Run it with: "$node maintenance/buildPHPparser.js <optional params>"
+ *
+ * Parameters can be defined over CLI parameters or by changing the
+ * defaultPathXYZ constants in this file.
+ *
+ * @author Johannes Stegmüller
+ */
+
+'use strict';
+
+const { program } = require( 'commander' );
+const peggy = require( 'peggy' );
+const phpeggy = require( 'phpeggy' );
+const fs = require( 'fs' );
+const GENERATE_INTENT_PARSER = false;
+
+let defaultPathInput = './src/WikiTexVC/parser.pegjs';
+let defaultPathOutput = './src/WikiTexVC/Parser.php';
+if ( GENERATE_INTENT_PARSER ) {
+	defaultPathInput = './src/WikiTexVC/parserintent.pegjs';
+	defaultPathOutput = './src/WikiTexVC/ParserIntent.php';
+}
+
+program
+	.name( 'buildPHPparser' )
+	.option( '-i, --input <string>',
+		'path of input parser.pegjs file (*.pegjs)', defaultPathInput )
+	.option( '-o, --output <string>',
+		'path of generated output file (*.php)', defaultPathOutput )
+	.option( '-d, --debug',
+		'debug logging activated', false )
+	.description( 'Generates Parser.php as output from parser.pegjs as input. ' +
+		'This is used for for updating the parser expression grammar in WikiTexVC ' +
+		'which is located in src/WikiTexVC' )
+	.version( '0.1.0' );
+
+program.parse();
+
+const options = program.opts();
+console.log( 'Running buildPHPparser.js with this configuration: \n' +
+	'input path:\t' + options.input + '\n' +
+	'output path:\t' + options.output );
+
+// eslint-disable-next-line security/detect-non-literal-fs-filename
+const parserPeg = fs.readFileSync( options.input, 'utf-8' );
+let parser = peggy.generate( parserPeg, {
+	plugins: [ phpeggy ],
+	cache: true,
+	phpeggy: {
+		parserClassName: GENERATE_INTENT_PARSER ? 'ParserIntent' : 'Parser',
+		parserNamespace: GENERATE_INTENT_PARSER ? 'MediaWiki\\Extension\\Math\\WikiTexVC' :
+			'MediaWiki\\Extension\\Math\\WikiTexVC'
+	}
+} );
+
+/**
+ * Fixing phpeggy to denote regular expressions which
+ * are \x12 to \x{0012} so php can interpret them.
+ * can be removed when phpeggy is fixed, see:
+ * https://phabricator.wikimedia.org/T320964
+ */
+const regexp = /\\x(\d\d)/g;
+if ( options.debug ) {
+	const matches = parser.match( regexp );
+	for ( const match of matches ) {
+		console.log( `Found ${ match }.` );
+	}
+}
+parser = parser
+	.replace( regexp, '\\x{00$1}' )
+	// declare properties for the parser that were created dynamically before PHP 8.2
+	.replace( /class Parser \{/, 'class Parser {\n    private $tu;\n    private $options;' );
+
+// eslint-disable-next-line security/detect-non-literal-fs-filename
+fs.writeFileSync( options.output, parser );
+console.log( 'Generated output file at: ' + options.output );
