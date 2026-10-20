@@ -1,0 +1,20 @@
+{
+	"@metadata": {
+		"authors": [
+			"JeffreyKim",
+			"Ktchankt",
+			"Winston Sung"
+		]
+	},
+	"codemirror-toggle-label": "顏色標示源碼",
+	"codemirror-prefs-title": "顏色標示源碼設定",
+	"codemirror-prefs-section-lines": "行",
+	"codemirror-prefs-section-characters": "角色",
+	"codemirror-prefs-section-code-assistance": "程式碼協助",
+	"codemirror-prefs-section-other": "其他",
+	"codemirror-prefs-closebrackets": "啟用自動閂括號",
+	"codemirror-prefs-reset": "重設做預設",
+	"codemirror-keymap-preferences": "顏色標示源碼設定",
+	"prefs-accessibility": "無障礙",
+	"prefs-syntax-highlighting": "顏色標示源碼"
+}

@@ -1,0 +1,10 @@
+{
+	"@metadata": {
+		"authors": [
+			"Chaduvari"
+		]
+	},
+	"codemirror-toggle-label": "సింటాక్స్ హైలైటింగు",
+	"codemirror-prefs-summary": "[https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:CodeMirror సహాయం పేజీలో] దీని గురించి మరింత తెలుసుకోవచ్చు",
+	"codemirror-prefs-enable": "వికీటెక్స్ట్ సింటాక్స్ హైలైటింగును చేతనం చెయ్యి"
+}

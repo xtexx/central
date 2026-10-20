@@ -1,0 +1,966 @@
+const {
+	EditorState,
+	diagnosticCount,
+	forEachDiagnostic,
+	undo,
+	EditorView,
+	Prec
+} = require( 'ext.CodeMirror.lib' ); // eslint-disable-line n/no-missing-require
+const CodeMirror = require( '../../resources/codemirror.js' );
+const { javascript } = require( '../../resources/modes/codemirror.mode.exporter.js' );
+
+let textarea, cm, form;
+
+beforeEach( () => {
+	form = document.createElement( 'form' );
+	textarea = document.createElement( 'textarea' );
+	textarea.value = 'Metallica';
+	form.appendChild( textarea );
+	document.body.appendChild( form );
+	cm = new CodeMirror( textarea );
+	// Mock requestAnimationFrame to immediately call the callback, since JSDOM doesn't implement it
+	// and some tests rely on it to synchronously apply changes.
+	jest.spyOn( cm, 'requestAnimationFrame' ).mockImplementation( ( cb ) => cb() );
+	// Suppress console warning about re-initialization, etc.
+	jest.spyOn( console, 'warn' ).mockImplementation( () => {} );
+	mw.hook.mockHooks = {};
+} );
+
+afterEach( () => {
+	document.body.innerHTML = '';
+	jest.restoreAllMocks();
+	mw.hook.mockHooks = {};
+} );
+
+describe( 'initialize', () => {
+	it( 'should create the EditorState with the value of the textarea', () => {
+		cm.textarea.value = 'foobar';
+		cm.initialize();
+		expect( cm.view.state.doc.toString() ).toStrictEqual( 'foobar' );
+	} );
+
+	it( 'should set the height to the same as the textarea', () => {
+		textarea.style.height = '100px';
+		cm.initialize();
+		// 100 + 6 (padding/border) = 106
+		expect( $( cm.view.dom ).outerHeight() ).toStrictEqual( 106 );
+	} );
+
+	it( 'should instantiate an EditorView and add .cm-editor to the DOM', () => {
+		cm.initialize();
+		expect( cm.view ).toBeInstanceOf( EditorView );
+		expect( cm.isActive ).toBe( true );
+		expect( cm.view.dom ).toBeInstanceOf( HTMLDivElement );
+		expect( cm.textarea.nextSibling ).toStrictEqual( cm.view.dom );
+	} );
+
+	it( 'should hide the native textarea', () => {
+		cm.initialize();
+		// The textarea is hidden with CSS via .ext-codemirror-wrapper
+		expect( cm.container.className ).toStrictEqual( 'ext-codemirror-wrapper' );
+	} );
+
+	it( 'should retain the mw-editfont- class present on the textarea', () => {
+		cm.$textarea.addClass( 'mw-editfont-monospace' );
+		cm.initialize();
+		expect( cm.view.dom.querySelector( '.cm-content' ).classList ).toContain( 'mw-editfont-monospace' );
+	} );
+
+	it( 'should not retain mw-editfont- classes for programming languages', () => {
+		const cm2 = new CodeMirror( textarea, javascript() );
+		cm2.$textarea.addClass( 'mw-editfont-serif' );
+		cm2.initialize();
+		expect( cm2.view.dom.querySelector( '.cm-content' ).classList ).toContain( 'mw-editfont-monospace' );
+	} );
+
+	it( "should copy the 'dir' and 'lang' attributes of the textarea to .cm-editor", () => {
+		cm.$textarea.prop( 'dir', 'rtl' )
+			.prop( 'lang', 'ar' );
+		cm.initialize();
+		expect( cm.view.dom.getAttribute( 'dir' ) ).toStrictEqual( 'rtl' );
+		expect( cm.view.dom.getAttribute( 'lang' ) ).toStrictEqual( 'ar' );
+	} );
+
+	it( 'should not allow initialization more than once', () => {
+		const spy = jest.spyOn( mw.log, 'warn' );
+		cm.initialize();
+		expect( spy ).toHaveBeenCalledTimes( 0 );
+		cm.initialize();
+		expect( spy ).toHaveBeenCalledTimes( 1 );
+		expect( spy ).toHaveBeenCalledWith( '[CodeMirror] CodeMirror instance already initialized.' );
+	} );
+
+	it( 'should register the codeFolding and autocompletion extensions for non-wikitext', () => {
+		const cm2 = new CodeMirror( textarea, javascript() );
+		cm2.initialize();
+		expect( cm2.extensionRegistry.isEnabled( 'autocomplete', cm2.view ) ).toBeTruthy();
+		expect( cm2.extensionRegistry.isEnabled( 'codeFolding', cm2.view ) ).toBeTruthy();
+	} );
+
+	it( 'should document accessibility keyboard shortcuts for non-wikitext', () => {
+		const cm2 = new CodeMirror( textarea, javascript() );
+		cm2.initialize();
+		expect( Object.keys( cm2.keymap.keymapHelpRegistry.accessibility ) )
+			.toStrictEqual( [ 'tabEscape', 'tabMode' ] );
+	} );
+
+	it( 'should disable spellcheck for non-wikitext', () => {
+		cm.initialize();
+		expect( cm.view.contentDOM.getAttribute( 'spellcheck' ) ).toStrictEqual( 'true' );
+		const cm2 = new CodeMirror( textarea, javascript() );
+		cm2.initialize();
+		expect( cm2.view.contentDOM.getAttribute( 'spellcheck' ) ).toStrictEqual( 'false' );
+	} );
+} );
+
+describe( 'applyExtension', () => {
+	it( 'should apply the given Extension', () => {
+		cm.initialize();
+		expect( cm.view.contentDOM.getAttribute( 'spellcheck' ) ).toStrictEqual( 'true' );
+		cm.applyExtension( Prec.high( EditorView.contentAttributes.of( {
+			spellcheck: 'false'
+		} ) ) );
+		expect( cm.view.contentDOM.getAttribute( 'spellcheck' ) ).toStrictEqual( 'false' );
+	} );
+} );
+
+describe( 'applyLinter', () => {
+	it( 'should apply the given linter with a function argument', async () => {
+		cm.initialize();
+		cm.applyLinter( ( text, view ) => {
+			expect( text ).toStrictEqual( cm.view.state.doc.toString() );
+			expect( view ).toBe( cm.view );
+			return [ { from: 0, to: 0, severity: 'error', message: 'Test diagnostic' } ];
+		}, { delay: 0 } );
+		expect( diagnosticCount( cm.view.state ) ).toEqual( 0 );
+
+		// Enable the lint extension
+		cm.extensionRegistry.toggle( 'lint', cm.view, true );
+		await new Promise( ( resolve, reject ) => {
+			setTimeout( () => {
+				try {
+					expect( diagnosticCount( cm.view.state ) ).toEqual( 1 );
+					forEachDiagnostic( cm.view.state, ( diagnostic ) => {
+						expect( diagnostic.renderMessage ).toBeInstanceOf( Function );
+					} );
+					resolve();
+				} catch ( e ) {
+					reject( e );
+				}
+			}, 0 );
+		} );
+
+		// Disable the lint extension
+		cm.extensionRegistry.toggle( 'lint', cm.view, false );
+		await new Promise( ( resolve, reject ) => {
+			setTimeout( () => {
+				try {
+					expect( diagnosticCount( cm.view.state ) ).toEqual( 0 );
+					resolve();
+				} catch ( e ) {
+					reject( e );
+				}
+			}, 0 );
+		} );
+	} );
+
+	it( 'should withhold quick fixes when the editor becomes read-only', async () => {
+		cm.initialize();
+		cm.applyLinter( () => [ {
+			from: 0,
+			to: 1,
+			severity: 'error',
+			message: 'Test diagnostic',
+			actions: [ { name: 'Fix', apply: () => {} } ]
+		} ], { delay: 0 } );
+		cm.extensionRegistry.toggle( 'lint', cm.view, true );
+		const actionsAfterLint = async () => {
+			await new Promise( ( resolve ) => {
+				setTimeout( resolve, 0 );
+			} );
+			let actions;
+			forEachDiagnostic( cm.view.state, ( diagnostic ) => {
+				actions = diagnostic.actions;
+			} );
+			return actions;
+		};
+
+		expect( await actionsAfterLint() ).toHaveLength( 1 );
+		cm.readOnly = true;
+		expect( await actionsAfterLint() ).toBeUndefined();
+		cm.readOnly = false;
+		expect( await actionsAfterLint() ).toHaveLength( 1 );
+	} );
+
+	it( 'should apply the given linter with an object argument', async () => {
+		cm.initialize();
+		cm.view.dispatch( { changes: { from: 0, to: cm.view.state.doc.length, insert: 'foo' } } );
+		cm.applyLinter( {
+			pattern: /^./,
+			callback( { index } ) {
+				return { from: index, to: index + 1, severity: 'error', message: 'Test diagnostic' };
+			}
+		}, { delay: 0 } );
+		expect( diagnosticCount( cm.view.state ) ).toEqual( 0 );
+
+		// Enable the lint extension
+		cm.extensionRegistry.toggle( 'lint', cm.view, true );
+		await new Promise( ( resolve, reject ) => {
+			setTimeout( () => {
+				try {
+					expect( diagnosticCount( cm.view.state ) ).toEqual( 1 );
+					forEachDiagnostic( cm.view.state, ( diagnostic ) => {
+						expect( diagnostic.renderMessage ).toBeInstanceOf( Function );
+					} );
+					resolve();
+				} catch ( e ) {
+					reject( e );
+				}
+			}, 0 );
+		} );
+
+		// Disable the lint extension
+		cm.extensionRegistry.toggle( 'lint', cm.view, false );
+		await new Promise( ( resolve, reject ) => {
+			setTimeout( () => {
+				try {
+					expect( diagnosticCount( cm.view.state ) ).toEqual( 0 );
+					resolve();
+				} catch ( e ) {
+					reject( e );
+				}
+			}, 0 );
+		} );
+	} );
+} );
+
+describe( 'toggle', () => {
+	it( 'should persist the view', () => {
+		cm.initialize();
+		expect( cm.view ).not.toBeNull();
+		expect( cm.isActive ).toBe( true );
+		cm.toggle();
+		expect( cm.view ).not.toBeNull();
+		expect( cm.isActive ).toBe( false );
+		cm.toggle();
+		expect( cm.view ).not.toBeNull();
+		expect( cm.isActive ).toBe( true );
+	} );
+
+	it( 'should hide the editor but maintain the EditorView when toggling', () => {
+		cm.initialize();
+		const oldView = cm.view;
+		const oldState = cm.view.state;
+		cm.toggle();
+		expect( cm.isActive ).toBe( false );
+		expect( cm.container.classList ).toContain( 'ext-codemirror-wrapper--hidden' );
+		cm.toggle();
+		expect( cm.view ).toBe( oldView );
+		expect( cm.view.state ).not.toBe( oldState );
+		expect( cm.container.classList ).not.toContain( 'ext-codemirror-wrapper--hidden' );
+	} );
+
+	it( 'should call activate() or deactivate() accordingly', () => {
+		cm.initialize();
+		const activateSpy = jest.spyOn( cm, 'activate' );
+		const deactivateSpy = jest.spyOn( cm, 'deactivate' );
+		cm.toggle( true );
+		expect( activateSpy ).toHaveBeenCalledTimes( 1 );
+		expect( deactivateSpy ).toHaveBeenCalledTimes( 0 );
+		cm.toggle( false );
+		expect( activateSpy ).toHaveBeenCalledTimes( 1 );
+		expect( deactivateSpy ).toHaveBeenCalledTimes( 1 );
+		cm.toggle();
+		expect( activateSpy ).toHaveBeenCalledTimes( 2 );
+		expect( deactivateSpy ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	it( 'should not call initialize more than once', () => {
+		cm.initialize();
+		expect( mw.hook.mockHooks[ 'editRecovery.loadEnd' ] ).toHaveLength( 1 );
+		const initializeSpy = jest.spyOn( cm, 'initialize' );
+		cm.toggle();
+		expect( initializeSpy ).toHaveBeenCalledTimes( 0 );
+		expect( mw.hook.mockHooks[ 'editRecovery.loadEnd' ] ).toHaveLength( 1 );
+	} );
+
+	it( 'should fire the toggle hook only when the active state changed', () => {
+		mw.hook( 'ext.CodeMirror.toggle' ).add( () => {
+			expect( true ).toBe( true );
+		} );
+		cm.initialize();
+		expect.assertions( 1 );
+		cm.toggle( true );
+		expect.assertions( 1 );
+		cm.toggle();
+		expect.assertions( 2 );
+	} );
+
+	it( 'should put focus on the editor if the autofocus preference is set', () => {
+		// Autofocus is on by default.
+		cm.initialize();
+		expect( document.activeElement ).toBe( cm.view.contentDOM );
+		cm.toggle();
+		document.activeElement.blur();
+		cm.toggle();
+		expect( document.activeElement ).toBe( cm.view.contentDOM );
+		// Disable the preference and re-test.
+		cm.preferences.setPreference( 'autofocus', false );
+		cm.toggle();
+		document.activeElement.blur();
+		cm.toggle();
+		expect( document.activeElement ).not.toBe( cm.view.contentDOM );
+		cm.requestAnimationFrame.mockRestore();
+	} );
+
+	it( 'should put focus on the editor after using Live Preview', () => {
+		cm.initialize();
+		expect( document.activeElement ).toBe( cm.view.contentDOM );
+		document.activeElement.blur();
+		mw.hook( 'wikipage.editform' ).fire();
+		expect( document.activeElement ).toBe( cm.view.contentDOM );
+		document.activeElement.blur();
+		cm.preferences.setPreference( 'autofocus', false );
+		mw.hook( 'wikipage.editform' ).fire();
+		expect( document.activeElement ).not.toBe( cm.view.contentDOM );
+	} );
+} );
+
+describe( 'activate', () => {
+	it( 'should return early if already activated', () => {
+		const spy = jest.spyOn( mw.log, 'warn' );
+		// initialize() also calls activate()
+		cm.initialize();
+		cm.activate();
+		expect( spy ).toHaveBeenCalledTimes( 1 );
+		expect( spy ).toHaveBeenCalledWith( '[CodeMirror] CodeMirror instance already active.' );
+	} );
+
+	it( 'should sync contents from the original textarea', () => {
+		cm.initialize();
+		cm.deactivate();
+		cm.textarea.value = 'activate - sync contents';
+		cm.activate();
+		expect( cm.view.state.doc.toString() ).toStrictEqual( 'activate - sync contents' );
+	} );
+
+	it( 'should restore the scroll position and selection', () => {
+		textarea.value = 'Line\n'.repeat( 100 );
+		textarea.selectionStart = 50;
+		textarea.selectionEnd = 70;
+		textarea.scrollTop = 100;
+		cm = new CodeMirror( textarea );
+		jest.spyOn( cm, 'requestAnimationFrame' ).mockImplementation( ( cb ) => cb() );
+		cm.initialize();
+		const { anchor, head } = cm.view.state.selection.ranges[ 0 ];
+		expect( anchor ).toBe( 50 );
+		expect( head ).toBe( 70 );
+		expect( cm.view.scrollDOM.scrollTop ).toBe( 100 );
+	} );
+
+	it( 'should hand the textarea state to the editor through an overridable method', () => {
+		textarea.selectionStart = 3;
+		textarea.selectionEnd = 7;
+		textarea.scrollTop = 25;
+		cm = new CodeMirror( textarea );
+		const spy = jest.spyOn( cm, 'restoreSelectionAndScrollPosition' );
+		cm.initialize();
+		// The final argument is the focus state, which the autofocus preference forces on.
+		expect( spy ).toHaveBeenCalledWith( 3, 7, 25, true );
+		// IME is disabled on the hidden textarea, since CodeMirror handles input now.
+		expect( cm.textarea.classList.contains( 'noime' ) ).toBe( true );
+	} );
+} );
+
+describe( 'deactivate', () => {
+	it( 'should return early if not active', () => {
+		const spy = jest.spyOn( mw.log, 'warn' );
+		cm.deactivate();
+		expect( spy ).toHaveBeenCalledTimes( 1 );
+		expect( spy ).toHaveBeenCalledWith( '[CodeMirror] CodeMirror instance is not active.' );
+	} );
+
+	it( 'should re-show the native textarea', () => {
+		cm.initialize();
+		expect( cm.container.className ).toStrictEqual( 'ext-codemirror-wrapper' );
+		cm.deactivate();
+		// .ext-codemirror-wrapper--hidden hides the .cm-editor element, and shows the textarea.
+		expect( cm.container.className ).toStrictEqual(
+			'ext-codemirror-wrapper ext-codemirror-wrapper--hidden'
+		);
+	} );
+} );
+
+describe( 'destroy', () => {
+	it( 'should remove the form submit event listener', () => {
+		const events = {};
+		form.addEventListener = jest.fn( ( event, callback ) => {
+			events[ event ] = callback;
+		} );
+		form.removeEventListener = jest.fn( ( event ) => {
+			delete events[ event ];
+		} );
+
+		cm.initialize();
+		expect( typeof cm.formSubmitEventHandler ).toBe( 'function' );
+		expect( events.submit ).toBe( cm.formSubmitEventHandler );
+		cm.destroy();
+		expect( cm.formSubmitEventHandler ).toBeNull();
+		expect( events.submit ).toBeUndefined();
+	} );
+
+	it( 'should remove the hashchange event listener', () => {
+		const events = {};
+		window.addEventListener = jest.fn( ( event, callback ) => {
+			events[ event ] = callback;
+		} );
+		window.removeEventListener = jest.fn( ( event ) => {
+			delete events[ event ];
+		} );
+
+		cm.initialize();
+		expect( typeof cm.hashChangeEventHandler ).toBe( 'function' );
+		expect( events.hashchange ).toBe( cm.hashChangeEventHandler );
+		cm.destroy();
+		expect( cm.hashChangeEventHandler ).toBeNull();
+		expect( events.hashchange ).toBeUndefined();
+	} );
+
+	it( 'should detach the keymap from mw.hook', () => {
+		// Constructed here because the shared instance predates the hook registry reset.
+		const cm2 = new CodeMirror( textarea );
+		const handlers = Object.values( cm2.keymap.hookHandlers );
+		expect( handlers.length ).toBe( 2 );
+		// mw.hook holds every handler for the life of the page, so one that stays registered
+		// keeps its instance alive with it.
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.preferences.ready' ] )
+			.toContain( cm2.keymap.hookHandlers[ 'ext.CodeMirror.preferences.ready' ] );
+
+		cm2.initialize();
+		cm2.destroy();
+
+		for ( const hook in mw.hook.mockHooks ) {
+			for ( const handler of handlers ) {
+				expect( mw.hook.mockHooks[ hook ] ).not.toContain( handler );
+			}
+		}
+		expect( cm2.keymap.hookHandlers ).toStrictEqual( {} );
+	} );
+
+	it( 'should remove the edit recovery handler', () => {
+		cm.initialize();
+		const handler = cm.editRecoveryLoadEndHandler;
+		expect( typeof handler ).toBe( 'function' );
+		expect( mw.hook.mockHooks[ 'editRecovery.loadEnd' ] ).toContain( handler );
+		cm.destroy();
+		expect( cm.editRecoveryLoadEndHandler ).toBeNull();
+		expect( mw.hook.mockHooks[ 'editRecovery.loadEnd' ] ).not.toContain( handler );
+	} );
+
+	it( 'should not restore the selection after being destroyed', () => {
+		let frameCallback;
+		cm.requestAnimationFrame.mockImplementation( ( cb ) => {
+			// The first call to requestAnimationFrame is from restoreSelectionAndScrollPosition.
+			frameCallback = frameCallback || cb;
+		} );
+		textarea.value = 'Metallica';
+		textarea.selectionStart = 4;
+		textarea.selectionEnd = 9;
+		cm.initialize();
+		cm.destroy();
+		expect( () => frameCallback() ).not.toThrow();
+	} );
+
+	it( 'should clamp a stale selection to the current contents', () => {
+		let frameCallback;
+		cm.requestAnimationFrame.mockImplementation( ( cb ) => {
+			// The first call to requestAnimationFrame is from restoreSelectionAndScrollPosition.
+			frameCallback = frameCallback || cb;
+		} );
+		textarea.value = 'Metallica';
+		textarea.selectionStart = 4;
+		textarea.selectionEnd = 9;
+		cm.initialize();
+		// The contents shrank between requesting the frame and it running.
+		cm.view.dispatch( { changes: { from: 0, to: 9, insert: 'A' } } );
+		expect( () => frameCallback() ).not.toThrow();
+		expect( cm.view.state.selection.main.to ).toBe( 1 );
+	} );
+
+	it( 'should stop watching for dark mode changes', () => {
+		cm.initialize();
+		const observer = cm.themes.darkModeObserver;
+		const disconnect = jest.spyOn( observer, 'disconnect' );
+		const removeListener = jest.spyOn( cm.themes.matchMediaQuery, 'removeEventListener' );
+		cm.destroy();
+		expect( disconnect ).toHaveBeenCalled();
+		expect( removeListener ).toHaveBeenCalled();
+		expect( cm.themes.darkModeObserver ).toBeNull();
+		expect( cm.themes.matchMediaListener ).toBeNull();
+	} );
+} );
+
+describe( 'form submission', () => {
+	it( 'should sync contents back to the textarea on submission', () => {
+		// From fixture in beforeEach
+		expect( cm.textarea.value ).toStrictEqual( 'Metallica' );
+		expect( cm.view ).toBeNull();
+		cm.initialize();
+		expect( cm.view ).toBeInstanceOf( EditorView );
+		cm.textSelection.setContents( 'This is a test' );
+		form.dispatchEvent( new Event( 'submit' ) );
+		expect( cm.textarea.value ).toStrictEqual( 'This is a test' );
+		expect( cm.view.state.doc.toString() ).toStrictEqual( 'This is a test' );
+	} );
+
+	it( 'should not intercept form submission when CodeMirror is deactivated', () => {
+		cm.initialize();
+		expect( textarea.value ).toStrictEqual( 'Metallica' );
+		expect( cm.view.state.doc.toString() ).toStrictEqual( 'Metallica' );
+		cm.deactivate();
+		textarea.value = 'Pantera';
+		form.dispatchEvent( new Event( 'submit' ) );
+		expect( cm.view.state.doc.toString() ).toStrictEqual( 'Metallica' );
+		expect( textarea.value ).toStrictEqual( 'Pantera' );
+	} );
+} );
+
+describe( 'multiple instances', () => {
+	describe( 'jQuery valHooks', () => {
+		it( 'should route to the correct CodeMirror instance', () => {
+			// cm already defined in beforeEach, let's add a second instance
+			const textarea2 = document.createElement( 'textarea' );
+			textarea2.value = 'Pantera';
+			form.appendChild( textarea2 );
+			const cm2 = new CodeMirror( textarea2 );
+
+			// Initialize both instances
+			cm.initialize();
+			cm2.initialize();
+
+			// Set values for using .val()
+			cm.$textarea.val( 'Soundgarden' );
+			cm2.$textarea.val( 'Alice in Chains' );
+
+			// Test the values
+			expect( cm.view.state.doc.toString() ).toStrictEqual( 'Soundgarden' );
+			expect( cm2.view.state.doc.toString() ).toStrictEqual( 'Alice in Chains' );
+		} );
+
+		it( 'should remain working even if other instances are destroyed', () => {
+			const textarea2 = document.createElement( 'textarea' );
+			textarea2.value = 'Pantera';
+			form.appendChild( textarea2 );
+			const cm2 = new CodeMirror( textarea2 );
+
+			// Initialize both instances
+			cm.initialize();
+			cm2.initialize();
+
+			expect( cm2.view.state.doc.toString() ).toStrictEqual( 'Pantera' );
+
+			// Destroy the first instance
+			cm.destroy();
+
+			// .val() on the second instance should still work.
+			cm2.$textarea.val( 'Alice in Chains' );
+			expect( cm2.view.state.doc.toString() ).toStrictEqual( 'Alice in Chains' );
+
+			// And the first instance should work as it did prior to initialization.
+			cm.$textarea.val( 'Soundgarden' );
+			expect( cm.textarea.value ).toStrictEqual( 'Soundgarden' );
+		} );
+	} );
+} );
+
+describe( 'addMwHook', () => {
+	it( 'should not add the same handler to a hook twice', () => {
+		const fn = () => {};
+		cm.addMwHook( 'ext.CodeMirror.ready', fn );
+		cm.addMwHook( 'ext.CodeMirror.ready', fn );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.ready' ].length ).toBe( 1 );
+	} );
+
+	it( 'should remove handlers when deactivating', () => {
+		cm.initialize();
+		const fn1 = () => {};
+		const fn2 = () => {};
+		cm.addMwHook( 'ext.CodeMirror.ready', fn1 );
+		cm.addMwHook( 'ext.CodeMirror.preferences.ready', fn2 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.ready' ] ).toContain( fn1 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.preferences.ready' ] ).toContain( fn2 );
+		cm.deactivate();
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.ready' ] ).not.toContain( fn1 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.preferences.ready' ] ).not.toContain( fn2 );
+	} );
+} );
+
+describe( 'removeMwHooks', () => {
+	it( 'should remove all hooks handlers when called with no argument', () => {
+		cm.addMwHook( 'ext.CodeMirror.ready', () => {} );
+		cm.addMwHook( 'ext.CodeMirror.ready', () => {} );
+		cm.addMwHook( 'ext.CodeMirror.preferences.apply', () => {} );
+		expect( Object.keys( cm.hooks ).length ).toBe( 2 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.ready' ].length ).toBe( 2 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.preferences.apply' ].length ).toBe( 1 );
+		cm.removeMwHooks();
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.ready' ].length ).toBe( 0 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.preferences.apply' ].length ).toBe( 0 );
+		expect( Object.keys( cm.hooks ).length ).toBe( 0 );
+	} );
+
+	it( 'should remove handlers for a specific hook', () => {
+		cm.addMwHook( 'ext.CodeMirror.ready', () => {} );
+		cm.addMwHook( 'ext.CodeMirror.ready', () => {} );
+		cm.addMwHook( 'ext.CodeMirror.preferences.apply', () => {} );
+		expect( Object.keys( cm.hooks ).length ).toBe( 2 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.ready' ].length ).toBe( 2 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.preferences.apply' ].length ).toBe( 1 );
+		cm.removeMwHooks( 'ext.CodeMirror.ready' );
+		expect( cm.hooks[ 'ext.CodeMirror.ready' ] ).toBeUndefined();
+		expect( cm.hooks[ 'ext.CodeMirror.preferences.apply' ].size ).toBe( 1 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.ready' ].length ).toBe( 0 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.preferences.apply' ].length ).toBe( 1 );
+	} );
+
+	it( 'should remove a specific handler for a specific hook', () => {
+		const fn1 = () => {};
+		const fn2 = () => {};
+		cm.addMwHook( 'ext.CodeMirror.ready', fn1 );
+		cm.addMwHook( 'ext.CodeMirror.preferences.apply', fn1 );
+		cm.addMwHook( 'ext.CodeMirror.preferences.apply', fn2 );
+		expect( Array.from( cm.hooks[ 'ext.CodeMirror.ready' ].values() ) )
+			.toStrictEqual( [ fn1 ] );
+		expect( Array.from( cm.hooks[ 'ext.CodeMirror.preferences.apply' ].values() ) )
+			.toStrictEqual( [ fn1, fn2 ] );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.ready' ] ).toContain( fn1 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.preferences.apply' ] ).toContain( fn1 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.preferences.apply' ] ).toContain( fn2 );
+		cm.removeMwHooks( 'ext.CodeMirror.preferences.apply', fn1 );
+		expect( Array.from( cm.hooks[ 'ext.CodeMirror.ready' ].values() ) )
+			.toStrictEqual( [ fn1 ] );
+		expect( Array.from( cm.hooks[ 'ext.CodeMirror.preferences.apply' ].values() ) )
+			.toStrictEqual( [ fn2 ] );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.ready' ] ).toContain( fn1 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.preferences.apply' ] ).not.toContain( fn1 );
+		expect( mw.hook.mockHooks[ 'ext.CodeMirror.preferences.apply' ] ).toContain( fn2 );
+	} );
+} );
+
+describe( 'setCodeMirrorPreference', () => {
+	it( 'should save using the API with the correct value', () => {
+		mw.user.isNamed = jest.fn().mockReturnValue( true );
+		mockUserOptionsGet( { usecodemirror: '0' } );
+		cm.initialize();
+		cm.setCodeMirrorPreference( true );
+		expect( mw.Api.prototype.saveOption ).toHaveBeenCalledWith( 'usecodemirror', 1, { global: 'update' } );
+		expect( mw.user.options.set ).toHaveBeenCalledWith( 'usecodemirror', 1 );
+	} );
+
+	it( 'should not save if the user is not named', () => {
+		mw.user.isNamed = jest.fn().mockReturnValue( false );
+		mockUserOptionsGet( { usecodemirror: '0' } );
+		cm.initialize();
+		cm.setCodeMirrorPreference( true );
+		expect( mw.Api.prototype.saveOption ).toHaveBeenCalledTimes( 0 );
+		expect( mw.user.options.set ).toHaveBeenCalledTimes( 0 );
+	} );
+
+	it( 'should not save if the preference hasn\'t changed', () => {
+		mw.user.isNamed = jest.fn().mockReturnValue( true );
+		mockUserOptionsGet( { usecodemirror: '0' } );
+		cm.initialize();
+		cm.setCodeMirrorPreference( true );
+		expect( mw.Api.prototype.saveOption ).toHaveBeenCalledWith( 'usecodemirror', 1, { global: 'update' } );
+		expect( mw.user.options.set ).toHaveBeenCalledWith( 'usecodemirror', 1 );
+		mockUserOptionsGet( { usecodemirror: '1' } );
+		cm.setCodeMirrorPreference( true );
+		expect( mw.Api.prototype.saveOption ).toHaveBeenCalledTimes( 1 );
+		expect( mw.user.options.set ).toHaveBeenCalledTimes( 1 );
+	} );
+} );
+
+describe( 'readonly', () => {
+	beforeEach( () => {
+		textarea.readOnly = true;
+		// These test require a fresh instantiation.
+		cm = new CodeMirror( textarea );
+		cm.initialize();
+	} );
+
+	it( 'should be readonly when the textarea is also readonly', () => {
+		expect( cm.readOnly ).toEqual( true );
+		expect( cm.view.state.readOnly ).toEqual( true );
+	} );
+
+	it( 'should let the integration that owns the view change the document', () => {
+		// The library only blocks changes the user makes. Programmatic dispatches are
+		// how an integration loads or syncs contents, so they must still go through.
+		cm.view.dispatch( { changes: { from: 0, to: 0, insert: 'foo' } } );
+		expect( cm.view.state.doc.toString() ).toEqual( 'fooMetallica' );
+	} );
+
+	it( 'should refuse document changes made through textSelection', () => {
+		cm.textSelection.setContents( 'Pantera' );
+		expect( cm.view.state.doc.toString() ).toEqual( 'Metallica' );
+		cm.textSelection.setSelection( { start: 0, end: 9 } );
+		cm.textSelection.replaceSelection( 'Pantera' );
+		expect( cm.view.state.doc.toString() ).toEqual( 'Metallica' );
+		cm.textSelection.encapsulateSelection( { pre: "'''", post: "'''" } );
+		expect( cm.view.state.doc.toString() ).toEqual( 'Metallica' );
+	} );
+
+	it( 'should still allow selection changes', () => {
+		cm.textSelection.setSelection( { start: 0, end: 5 } );
+		expect( cm.textSelection.getSelection() ).toEqual( 'Metal' );
+	} );
+
+	it( 'should follow the state when toggled', () => {
+		cm.readOnly = false;
+		expect( cm.readOnly ).toEqual( false );
+		expect( cm.view.state.readOnly ).toEqual( false );
+		cm.textSelection.setContents( 'Pantera' );
+		expect( cm.view.state.doc.toString() ).toEqual( 'Pantera' );
+
+		cm.readOnly = true;
+		expect( cm.readOnly ).toEqual( true );
+		expect( cm.view.state.readOnly ).toEqual( true );
+		cm.textSelection.setContents( 'Metallica' );
+		expect( cm.view.state.doc.toString() ).toEqual( 'Pantera' );
+
+		// Setting the same value again does nothing.
+		cm.readOnly = true;
+		expect( cm.view.state.readOnly ).toEqual( true );
+	} );
+
+	it( 'should keep the state a boolean', () => {
+		cm.readOnly = 0;
+		expect( cm.readOnly ).toEqual( false );
+		cm.readOnly = 'yes';
+		expect( cm.readOnly ).toEqual( true );
+	} );
+
+	it( 'should keep the undo history across a toggle', () => {
+		cm.readOnly = false;
+		cm.textSelection.setContents( 'Pantera' );
+		cm.readOnly = true;
+		cm.readOnly = false;
+		undo( cm.view );
+		expect( cm.view.state.doc.toString() ).toEqual( 'Metallica' );
+	} );
+
+	it( 'should warn and do nothing when set before initialization', () => {
+		const uninitialized = new CodeMirror( textarea );
+		uninitialized.readOnly = false;
+		expect( mw.log.warn ).toHaveBeenCalledWith(
+			'[CodeMirror] Cannot set readOnly before initialization.'
+		);
+		expect( uninitialized.readOnly ).toEqual( true );
+	} );
+
+	it( 'should fall back to the textarea once destroyed', () => {
+		cm.readOnly = false;
+		cm.destroy();
+		expect( cm.readOnly ).toEqual( true );
+	} );
+} );
+
+describe( 'domEventHandlersExtension', () => {
+	const testCases = [
+		{ eventName: 'blur', eventConstructor: FocusEvent },
+		{ eventName: 'focus', eventConstructor: FocusEvent, assertions: 2 },
+		{ eventName: 'keyup', eventConstructor: KeyboardEvent },
+		{ eventName: 'keydown', eventConstructor: KeyboardEvent },
+		{ eventName: 'scroll', eventConstructor: Event, target: 'scrollDOM' }
+	];
+
+	it.each( testCases )( 'should bubble $eventName events to the original textarea',
+		( { eventName, eventConstructor, target = 'contentDOM', assertions = 1 } ) => {
+			textarea.addEventListener( eventName, () => {
+				expect( true ).toBe( true );
+			} );
+			cm.initialize();
+			// eslint-disable-next-line new-cap
+			const dispatchedEvent = new eventConstructor( eventName );
+			cm.view[ target ].dispatchEvent( dispatchedEvent );
+			expect.assertions( assertions );
+		}
+	);
+} );
+
+describe( 'extensionRegistryDefaults', () => {
+	it( 'should seed the registry with the preference-backed extensions', () => {
+		expect( Object.keys( cm.extensionRegistryDefaults ) ).toStrictEqual( [
+			'activeLine',
+			'autofocus',
+			'bracketMatching',
+			'closeBrackets',
+			'compactPanels',
+			'lineNumbering',
+			'lineWrapping',
+			'specialChars',
+			'trailingWhitespace',
+			'whitespace'
+		] );
+		expect( cm.extensionRegistry.names ).toStrictEqual(
+			Object.keys( cm.extensionRegistryDefaults )
+		);
+	} );
+} );
+
+describe( 'compactPanelsExtension', () => {
+	it( 'should add the class alongside the mode class, and toggle with the preference', () => {
+		cm.initialize();
+		expect( cm.view.dom.classList ).toContain( 'cm-mw-mode-mediawiki' );
+		expect( cm.view.dom.classList ).not.toContain( 'cm-mw-compact-panels' );
+		cm.preferences.lockPreference( 'compactPanels', cm.view, true );
+		expect( cm.view.dom.classList ).toContain( 'cm-mw-mode-mediawiki' );
+		expect( cm.view.dom.classList ).toContain( 'cm-mw-compact-panels' );
+	} );
+} );
+
+describe( 'supportedExtensions', () => {
+	it( 'should place no restriction on what the registry accepts', () => {
+		expect( cm.supportedExtensions ).toBeNull();
+		cm.initialize();
+		cm.extensionRegistry.register( 'gadgetThing', EditorView.theme(), cm.view, true );
+		expect( cm.extensionRegistry.isRegistered( 'gadgetThing', cm.view ) ).toBe( true );
+	} );
+} );
+
+describe( 'state', () => {
+	it( 'should be undefined until there is a view', () => {
+		expect( cm.state ).toBeUndefined();
+		cm.initialize();
+		expect( cm.state ).toBe( cm.view.state );
+	} );
+} );
+
+describe( 'getSourceContents', () => {
+	it( 'should read the value of the textarea', () => {
+		expect( cm.getSourceContents() ).toStrictEqual( 'Metallica' );
+		textarea.value = 'Soundgarden';
+		expect( cm.getSourceContents() ).toStrictEqual( 'Soundgarden' );
+	} );
+} );
+
+describe( 'getNewEditorState', () => {
+	it( 'should build a state from the source contents and given extensions', () => {
+		textarea.value = 'foo\nbar';
+		const state = cm.getNewEditorState( EditorView.editable.of( false ) );
+		expect( state.doc.toString() ).toStrictEqual( 'foo\nbar' );
+		expect( state.doc.lines ).toBe( 2 );
+	} );
+} );
+
+describe( 'addToDOM', () => {
+	it( 'should wrap the textarea and add the view to the container', () => {
+		cm.addToDOM( cm.defaultExtensions );
+		expect( cm.container.className ).toStrictEqual( 'ext-codemirror-wrapper' );
+		expect( textarea.parentElement ).toBe( cm.container );
+		expect( cm.view.dom.parentElement ).toBe( cm.container );
+	} );
+} );
+
+describe( 'hasFocus', () => {
+	it( 'should report the focus state of the view', () => {
+		cm.initialize();
+		expect( cm.hasFocus ).toStrictEqual( cm.view.hasFocus );
+	} );
+} );
+
+describe( 'syncEditorContentsToSource', () => {
+	it( 'should write the document back to the textarea', () => {
+		cm.initialize();
+		cm.view.dispatch( {
+			changes: { from: 0, to: cm.view.state.doc.length, insert: 'Soundgarden' }
+		} );
+		textarea.value = 'stale';
+		cm.syncEditorContentsToSource();
+		expect( textarea.value ).toStrictEqual( 'Soundgarden' );
+	} );
+} );
+
+describe( 'syncSelectionAndScrollPosition', () => {
+	it( 'should copy the selection and scroll position to the textarea', () => {
+		cm.initialize();
+		cm.syncSelectionAndScrollPosition( 5, 2, 40 );
+		expect( textarea.selectionStart ).toBe( 2 );
+		expect( textarea.selectionEnd ).toBe( 5 );
+		expect( textarea.scrollTop ).toBe( 40 );
+	} );
+} );
+
+describe( 'dispatch', () => {
+	it( 'should apply a transaction to the view', () => {
+		cm.initialize();
+		cm.dispatch( { changes: { from: 0, to: cm.state.doc.length, insert: 'Soundgarden' } } );
+		expect( cm.state.doc.toString() ).toStrictEqual( 'Soundgarden' );
+	} );
+
+	it( 'should let the instance stand in for an EditorView', () => {
+		cm.initialize();
+		// state and dispatch() are all the registry needs, so passing cm works
+		// wherever cm.view does.
+		cm.extensionRegistry.register( 'tabSize', EditorState.tabSize.of( 7 ), cm, true );
+		expect( cm.extensionRegistry.isEnabled( 'tabSize', cm ) ).toBe( true );
+		expect( cm.state.tabSize ).toBe( 7 );
+		cm.extensionRegistry.toggle( 'tabSize', cm, false );
+		expect( cm.extensionRegistry.isEnabled( 'tabSize', cm ) ).toBe( false );
+		expect( cm.state.tabSize ).toBe( 4 );
+	} );
+
+	it( 'should let preferences register extensions against the instance', () => {
+		cm.initialize();
+		const extension = EditorState.tabSize.of( 3 );
+		cm.preferences.setPreference( 'fooExtension', true );
+		cm.preferences.registerExtension( 'fooExtension', extension, cm );
+		expect( cm.extensionRegistry.isEnabled( 'fooExtension', cm ) ).toBe( true );
+		expect( cm.state.tabSize ).toBe( 3 );
+	} );
+
+	describe( 'getLineNumberingExtension', () => {
+		/**
+		 * Read the text of the line number gutter.
+		 *
+		 * @return {string[]}
+		 */
+		const gutterNumbers = () => Array.from(
+			cm.view.dom.querySelectorAll( '.cm-lineNumbers .cm-gutterElement' )
+		// The first element is the spacer CodeMirror uses to size the gutter.
+		).slice( 1 ).map( ( el ) => el.textContent );
+
+		it( 'should start at 1 by default', () => {
+			cm.initialize( [ cm.lineNumberingExtension ] );
+			cm.view.dispatch( {
+				changes: { from: 0, to: cm.view.state.doc.length, insert: 'a\nb\nc' }
+			} );
+			expect( gutterNumbers() ).toEqual( [ '1', '2', '3' ] );
+		} );
+
+		it( 'should start at the given line number', () => {
+			cm.initialize( [ cm.getLineNumberingExtension( 10 ) ] );
+			cm.view.dispatch( {
+				changes: { from: 0, to: cm.view.state.doc.length, insert: 'a\nb\nc' }
+			} );
+			expect( gutterNumbers() ).toEqual( [ '10', '11', '12' ] );
+		} );
+
+		it( 'should transform the digits of an offset number', () => {
+			const origTable = mw.language.getDigitTransformTable,
+				origGet = mw.config.get;
+			mw.language.getDigitTransformTable = jest.fn().mockReturnValue( { 1: '١', 2: '٢' } );
+			mw.config.get = jest.fn().mockImplementation( ( key ) => key === 'wgTranslateNumerals' );
+			try {
+				cm.initialize( [ cm.getLineNumberingExtension( 12 ) ] );
+				cm.view.dispatch( {
+					changes: { from: 0, to: cm.view.state.doc.length, insert: 'a' }
+				} );
+				expect( gutterNumbers() ).toEqual( [ '١٢' ] );
+			} finally {
+				mw.language.getDigitTransformTable = origTable;
+				mw.config.get = origGet;
+			}
+		} );
+	} );
+} );

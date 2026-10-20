@@ -1,0 +1,14 @@
+{
+	"@metadata": {
+		"authors": [
+			"Andreyyshore",
+			"NGC 54",
+			"Paloi Sciurala",
+			"Strainu"
+		]
+	},
+	"codemirror-desc": "Oferă evidențierea sintaxei în editorul wikitext",
+	"codemirror-toggle-label": "Evidențierea sintaxei",
+	"codemirror-toggle-label-short": "Sintaxă",
+	"prefs-accessibility": "Accesibilitate"
+}

@@ -1,0 +1,550 @@
+/**
+ * Provides methods to create CSS-only Codex components.
+ */
+class CodeMirrorCodex {
+	constructor() {
+		/** @type {HTMLDivElement|null} */
+		this.dialog = null;
+
+		/** @type {HTMLElement|null} */
+		this.focusedElement = null;
+	}
+
+	/**
+	 * Get a CSS-only Codex TextInput.
+	 *
+	 * @param {string} name
+	 * @param {string} [value='']
+	 * @param {string} placeholder
+	 * @return {Array<HTMLElement>} [HTMLDivElement, HTMLInputElement]
+	 * @internal
+	 */
+	getTextInput( name, value = '', placeholder = '' ) {
+		const wrapper = document.createElement( 'div' );
+		wrapper.className = 'cdx-text-input cm-mw-panel__text-input';
+		const input = document.createElement( 'input' );
+		input.className = 'cdx-text-input__input';
+		input.type = 'text';
+		input.name = name;
+		// The following messages may be used here:
+		// * codemirror-find
+		// * codemirror-replace-placeholder
+		input.placeholder = placeholder ? mw.msg( placeholder ) : '';
+		input.value = value;
+		wrapper.appendChild( input );
+		return [ wrapper, input ];
+	}
+
+	/**
+	 * Get a CSS-only Codex Button.
+	 *
+	 * @param {string} label
+	 * @param {Object} [opts]
+	 * @param {string|null} [opts.icon=null]
+	 * @param {boolean} [opts.iconOnly=false]
+	 * @param {string} [opts.action='default']
+	 * @param {string} [opts.weight='normal']
+	 * @return {HTMLButtonElement}
+	 * @internal
+	 */
+	getButton( label, opts = {} ) {
+		opts = Object.assign(
+			{ icon: null, iconOnly: false, action: 'default', weight: 'normal' },
+			opts
+		);
+		const button = document.createElement( 'button' );
+		button.className = 'cdx-button cm-mw-panel__button';
+		// The following CSS classes may be used here:
+		// * cdx-button--action-default
+		// * cdx-button--action-progressive
+		// * cdx-button--action-destructive
+		button.classList.add( `cdx-button--action-${ opts.action }` );
+		// The following CSS classes may be used here:
+		// * cdx-button--size-normal
+		// * cdx-button--size-primary
+		// * cdx-button--size-quiet
+		button.classList.add( `cdx-button--weight-${ opts.weight }` );
+		button.type = 'button';
+
+		if ( opts.icon ) {
+			const iconSpan = document.createElement( 'span' );
+			// The following CSS classes may be used here:
+			// * cm-mw-icon--previous
+			// * cm-mw-icon--next
+			// * cm-mw-icon--all
+			// * cm-mw-icon--replace
+			// * cm-mw-icon--replace-all
+			// * cm-mw-icon--done
+			// * cm-mw-icon--goto-line-go
+			iconSpan.className = 'cdx-button__icon cm-mw-icon--' + opts.icon;
+
+			if ( !opts.iconOnly ) {
+				iconSpan.setAttribute( 'aria-hidden', 'true' );
+			}
+
+			button.appendChild( iconSpan );
+		}
+
+		// The following messages may be used here:
+		// * codemirror-next
+		// * codemirror-previous
+		// * codemirror-all
+		// * codemirror-replace
+		// * codemirror-replace-all
+		const message = mw.msg( label );
+		if ( opts.iconOnly ) {
+			button.classList.add( 'cdx-button--icon-only' );
+			button.title = message;
+			button.setAttribute( 'aria-label', message );
+		} else {
+			button.append( message );
+		}
+
+		return button;
+	}
+
+	/**
+	 * Get a CSS-only Codex Checkbox.
+	 *
+	 * @param {string} name
+	 * @param {string} label
+	 * @param {boolean} [checked=false]
+	 * @return {Array<HTMLElement>} [HTMLSpanElement, HTMLInputElement]
+	 * @internal
+	 */
+	getCheckbox( name, label, checked = false ) {
+		const wrapper = document.createElement( 'span' );
+		wrapper.className = 'cdx-checkbox cdx-checkbox--inline cm-mw-panel__checkbox';
+		const input = document.createElement( 'input' );
+		input.className = 'cdx-checkbox__input';
+		input.id = `cm-mw__${ this.getRandomId() }`;
+		input.type = 'checkbox';
+		input.name = name;
+		input.checked = checked;
+		wrapper.appendChild( input );
+		const emptyIcon = document.createElement( 'span' );
+		emptyIcon.className = 'cdx-checkbox__icon';
+		wrapper.appendChild( emptyIcon );
+		const labelWrapper = document.createElement( 'div' );
+		labelWrapper.className = 'cdx-checkbox__label cdx-label';
+		const labelElement = document.createElement( 'label' );
+		labelElement.className = 'cdx-label__label';
+		labelElement.htmlFor = input.id;
+		const innerSpan = document.createElement( 'span' );
+		innerSpan.className = 'cdx-label__label__text';
+		// The following messages may be used here:
+		// * codemirror-match-case
+		// * codemirror-regexp
+		// * codemirror-by-word
+		innerSpan.textContent = mw.msg( label );
+		labelElement.appendChild( innerSpan );
+		labelWrapper.appendChild( labelElement );
+		wrapper.appendChild( labelWrapper );
+		return [ wrapper, input ];
+	}
+
+	/**
+	 * Get a CSS-only Codex Select. This only supports a flat list of options, not optgroups.
+	 *
+	 * @param {string} name
+	 * @param {string} label
+	 * @param {Array} options Array of [label, value] pairs.
+	 * @param {string} [selected]
+	 * @return {Array<HTMLElement>} [HTMLDivElement, HTMLSelectElement]
+	 */
+	getSelect( name, label, options, selected ) {
+		const id = `cm-mw__${ this.getRandomId() }`;
+		const wrapper = document.createElement( 'div' );
+		wrapper.className = `cdx-field cm-mw-panel__select cm-mw-panel__select--${ name }`;
+		const labelWrapper = document.createElement( 'div' );
+		labelWrapper.className = 'cdx-label';
+		const labelElement = document.createElement( 'label' );
+		labelElement.className = 'cdx-label__label';
+		labelElement.htmlFor = id;
+		const innerSpan = document.createElement( 'span' );
+		innerSpan.className = 'cdx-label__label__text';
+
+		innerSpan.textContent = mw.msg( label );
+		labelElement.appendChild( innerSpan );
+		labelWrapper.appendChild( labelElement );
+		wrapper.appendChild( labelWrapper );
+		const fieldControl = document.createElement( 'div' );
+		fieldControl.className = 'cdx-field__control';
+		wrapper.appendChild( fieldControl );
+		const select = document.createElement( 'select' );
+		select.className = 'cdx-select';
+		select.name = name;
+		select.id = id;
+		for ( const [ optionLabel, value ] of options ) {
+			const option = document.createElement( 'option' );
+			option.value = value;
+
+			option.textContent = mw.msg( optionLabel );
+			if ( value === selected ) {
+				option.selected = true;
+			}
+			select.appendChild( option );
+		}
+		fieldControl.appendChild( select );
+		return [ wrapper, select ];
+	}
+
+	/**
+	 * @typedef {Object} CodeMirrorCodex~FormSpecifier
+	 * @description Specifier for form elements, in particular for {@link CodeMirrorPreferences},
+	 *   when the feature calls for a form element other than a simple checkbox.
+	 * @property {string} [type='checkbox'] Currently supported include:
+	 * - 'checkbox' (default)
+	 * - 'text'
+	 * - 'select'
+	 * @property {string} [label] Key for an i18n message that labels the form element.
+	 *   Required for the 'checkbox' and 'select' types, ignored for 'text' type.
+	 * @property {string} [placeholder] Key for an i18n message that serves as the placeholder text,
+	 *   for use by the 'text' type.
+	 * @property {Array} [options] Array of [label, value] pairs, for use by the 'select' type.
+	 *   The label should be a message key.
+	 * @property {Mixed} [default] The initial value of the field.
+	 */
+
+	/**
+	 * Generate a form field from a {@link FormSpecifier}.
+	 *
+	 * @param {string} name
+	 * @param {FormSpecifier} specifier
+	 * @return {Array<HTMLElement>} Array of [wrapper, input] elements, where `wrapper` is an HTML
+	 *   element that wraps the input and its label, and `input` is the actual form control element
+	 *   (e.g. `<input>`, `<select>`, etc.) that can be listened to for changes.
+	 * @internal
+	 */
+	getFormField( name, specifier ) {
+		specifier = Object.assign( { type: 'checkbox' }, specifier );
+		switch ( specifier.type ) {
+			case 'checkbox':
+				return this.getCheckbox( name, specifier.label, Boolean( specifier.default ) );
+			case 'text':
+				return this.getTextInput( name, specifier.default, specifier.placeholder );
+			case 'select':
+				return this.getSelect(
+					name, specifier.label, specifier.options, specifier.default
+				);
+			default:
+				throw new Error( `[CodeMirror] Unsupported form field type: ${ specifier.type }` );
+		}
+	}
+
+	/**
+	 * Get a random ID string.
+	 *
+	 * @return {string}
+	 * @private
+	 */
+	getRandomId() {
+		// Based on https://stackoverflow.com/a/6860916/604142 (CC BY-SA 3.0)
+		// We don't need cryptographic quality randomness here, just something to
+		// avoid collisions in the DOM.
+		// eslint-disable-next-line no-bitwise
+		return ( ( ( 1 + Math.random() ) * 0x10000 ) | 0 )
+			.toString( 16 )
+			.slice( 1 );
+	}
+
+	/**
+	 * Get a CSS-only Codex ToggleButton.
+	 *
+	 * @param {string} name
+	 * @param {string} label
+	 * @param {string} icon
+	 * @param {boolean} [checked=false]
+	 * @return {HTMLButtonElement}
+	 * @internal
+	 */
+	getToggleButton( name, label, icon, checked = false ) {
+		const btn = document.createElement( 'button' );
+		// The following CSS classes may be used here:
+		// * cdx-toggle-button--toggled-on
+		// * cdx-toggle-button--toggled-off
+		btn.className = 'cdx-toggle-button cdx-toggle-button--framed ' +
+			`cdx-toggle-button--toggled-${ checked ? 'on' : 'off' } cm-mw-panel__toggle-button`;
+		btn.type = 'button';
+		btn.dataset.checked = String( checked );
+		btn.setAttribute( 'aria-pressed', checked );
+		// The following messages may be used here:
+		// * codemirror-match-case
+		// * codemirror-regexp
+		// * codemirror-by-word
+		const message = mw.msg( label );
+		btn.title = message;
+		btn.setAttribute( 'aria-label', message );
+
+		// Add the icon.
+		const iconWrapper = document.createElement( 'span' );
+		// The following CSS classes may be used here:
+		// * cm-mw-icon--match-case
+		// * cm-mw-icon--regexp
+		// * cm-mw-icon--quotes
+		iconWrapper.className = 'cdx-icon cdx-icon--medium cm-mw-icon--' + icon;
+		btn.appendChild( iconWrapper );
+
+		// Add the click handler.
+		btn.addEventListener( 'click', ( e ) => {
+			e.preventDefault();
+			const toggled = btn.dataset.checked === 'true';
+			btn.dataset.checked = String( !toggled );
+			btn.setAttribute( 'aria-pressed', String( !toggled ) );
+			btn.classList.toggle( 'cdx-toggle-button--toggled-on', !toggled );
+			btn.classList.toggle( 'cdx-toggle-button--toggled-off', toggled );
+		} );
+
+		return btn;
+	}
+
+	/**
+	 * Get a CSS-only Codex fieldset with a legend.
+	 *
+	 * @param {string|HTMLElement} legendText
+	 * @param {...HTMLElement[]} fields
+	 * @return {HTMLFieldSetElement}
+	 * @internal
+	 */
+	getFieldset( legendText, ...fields ) {
+		const fieldset = document.createElement( 'fieldset' );
+		fieldset.className = 'cm-mw-panel__fieldset cdx-field';
+
+		const legend = document.createElement( 'legend' );
+		legend.className = 'cdx-label';
+		const innerSpan = document.createElement( 'span' );
+		innerSpan.className = 'cdx-label__label__text';
+		if ( legendText instanceof HTMLElement ) {
+			innerSpan.appendChild( legendText );
+		} else {
+			innerSpan.textContent = legendText;
+		}
+		legend.appendChild( innerSpan );
+
+		fieldset.appendChild( legend );
+		fieldset.append( ...fields );
+		return fieldset;
+	}
+
+	/**
+	 * Show a Codex Dialog.
+	 *
+	 * This implements a vanilla JS port of the Codex Dialog component. See https://w.wiki/CcWY
+	 *
+	 * @param {string} title
+	 * @param {string} name Constructed into the CSS class `cm-mw-${name}-dialog`
+	 * @param {HTMLElement|HTMLElement[]} contents
+	 * @param {HTMLElement|HTMLElement[]} [actions] Buttons or other actions to show in the footer.
+	 * @return {HTMLDivElement}
+	 * @internal
+	 */
+	showDialog( title, name, contents, actions = [] ) {
+		if ( this.dialog ) {
+			this.animateDialog( true );
+			return this.dialog;
+		}
+
+		contents = Array.isArray( contents ) ? contents : [ contents ];
+		actions = Array.isArray( actions ) ? actions : [ actions ];
+		const backdrop = document.createElement( 'div' );
+		backdrop.classList.add(
+			'cdx-dialog-backdrop',
+			// These classes are used by the fade animation.
+			// We always want them enabled, since dialog content is not interactable
+			// and thus we don't need to worry about conflicting styles.
+			'cdx-dialog-fade-enter-active',
+			'cm-mw-dialog-backdrop',
+			'cm-mw-dialog--hidden'
+		);
+		const tabindex = document.createElement( 'div' );
+		tabindex.tabIndex = 0;
+		backdrop.appendChild( tabindex );
+
+		const dialog = document.createElement( 'div' );
+		// The following CSS classes may be used here:
+		// * cm-mw-preferences-dialog
+		// * cm-mw-keymap-dialog
+		dialog.classList.add( 'cdx-dialog', 'cm-mw-dialog', `cm-mw-${ name }-dialog` );
+		backdrop.appendChild( dialog );
+		backdrop.addEventListener( 'click', ( e ) => {
+			if ( e.target === backdrop ) {
+				this.animateDialog( false );
+			}
+		} );
+
+		const header = document.createElement( 'header' );
+		header.classList.add( 'cdx-dialog__header', 'cdx-dialog__header--default' );
+		const headerTitleGroup = document.createElement( 'div' );
+		headerTitleGroup.classList.add( 'cdx-dialog__header__title-group' );
+		const h2 = document.createElement( 'h2' );
+		h2.className = 'cdx-dialog__header__title';
+		// The following messages may be used here:
+		// * codemirror-keymap-help-title
+		// * codemirror-prefs-title
+		h2.textContent = mw.msg( title );
+		headerTitleGroup.appendChild( h2 );
+		header.appendChild( headerTitleGroup );
+
+		const closeBtn = document.createElement( 'button' );
+		closeBtn.type = 'button';
+		closeBtn.classList.add(
+			'cdx-button',
+			'cdx-button',
+			'cdx-button--action-default',
+			'cdx-button--weight-quiet',
+			'cdx-button--size-medium',
+			'cdx-button--icon-only',
+			'cdx-dialog__header__close-button',
+			'cdx-dialog__header__close'
+		);
+		closeBtn.setAttribute( 'aria-label', mw.msg( 'codemirror-close' ) );
+		const cdxIcon = document.createElement( 'span' );
+		cdxIcon.classList.add( 'cdx-button__icon', 'cm-mw-icon--close' );
+		closeBtn.appendChild( cdxIcon );
+		closeBtn.addEventListener( 'click', this.animateDialog.bind( this, false ) );
+		header.appendChild( closeBtn );
+		dialog.appendChild( header );
+
+		const focusTrap = document.createElement( 'div' );
+		focusTrap.tabIndex = -1;
+		dialog.appendChild( focusTrap );
+
+		const body = document.createElement( 'div' );
+		body.classList.add( 'cdx-dialog__body' );
+		body.append( ...contents );
+		dialog.appendChild( body );
+
+		if ( actions.length ) {
+			dialog.classList.add( 'cdx-dialog--horizontal-actions' );
+			const footer = document.createElement( 'footer' );
+			footer.className = 'cdx-dialog__footer cdx-dialog__footer--default';
+			const footerActions = document.createElement( 'div' );
+			footerActions.classList.add( 'cdx-dialog__footer__actions' );
+			footerActions.append( ...actions );
+			footer.appendChild( footerActions );
+			dialog.appendChild( footer );
+		}
+
+		backdrop.appendChild( tabindex.cloneNode() );
+
+		this.dialog = backdrop;
+
+		document.body.appendChild( backdrop );
+		this.animateDialog( true );
+
+		return this.dialog;
+	}
+
+	/**
+	 * Fade the dialog in or out, adjusting for scrollbar widths to prevent shifting of content.
+	 * This almost fully mimics the way the Codex handles its Dialog component, with the exception
+	 * that we don't force a focus trap, nor do we set aria-hidden on other elements in the DOM.
+	 * This is to keep our implementation simple until something like T382532 is realized.
+	 *
+	 * @param {boolean} open
+	 * @protected
+	 */
+	animateDialog( open = false ) {
+		if ( open ) {
+			this.focusedElement = document.activeElement;
+		}
+		document.activeElement.blur();
+		// Must be unhidden in order to animate.
+		this.dialog.classList.remove( 'cm-mw-dialog--hidden' );
+		// Hide or show the dialog after the fade. This must run even if the fade does not: it
+		// restores the hidden class and the page scroll lock, and an invisible backdrop that
+		// stays above the page absorbs all clicks.
+		this.waitForTransition( this.dialog, () => {
+			this.dialog.classList.toggle( 'cm-mw-dialog--hidden', !open );
+			if ( open ) {
+				this.dialog.querySelector( '[tabindex="0"]' ).focus();
+				// Determine the width of the scrollbar and compensate for it if necessary
+				const scrollWidth = window.innerWidth - document.documentElement.clientWidth;
+				document.documentElement.style.setProperty( 'margin-right', `${ scrollWidth }px` );
+				// Toggle a class on <body> to prevent scrolling
+				document.body.classList.add( 'cdx-dialog-open' );
+			} else {
+				// A dialog stacked below this one needs the page to stay locked.
+				if ( !this.getOpenDialogs().length ) {
+					document.documentElement.style.removeProperty( 'margin-right' );
+					document.body.classList.remove( 'cdx-dialog-open' );
+				}
+				// Put focus back to wherever it was before opening the dialog.
+				if ( this.focusedElement ) {
+					this.focusedElement.focus();
+					this.focusedElement = null;
+				}
+			}
+		} );
+		// Animates the dialog in or out.
+		// Use setTimeout() with slight delay to allow rendering threads to catch up.
+		setTimeout( () => {
+			this.dialog.classList.toggle( 'cm-mw-dialog-animate-show', open );
+		}, 50 );
+
+		// Add or remove the keydown listener.
+		if ( open && !this.keydownListener ) {
+			this.keydownListener = ( e ) => {
+				const openDialogs = this.getOpenDialogs();
+				// Only the top-most dialog closes, so Escape doesn't dismiss a whole stack.
+				if ( e.key === 'Escape' && openDialogs[ openDialogs.length - 1 ] === this.dialog ) {
+					this.animateDialog( false );
+				}
+			};
+			document.body.addEventListener( 'keydown', this.keydownListener );
+		} else if ( !open && this.keydownListener ) {
+			document.body.removeEventListener( 'keydown', this.keydownListener );
+			this.keydownListener = null;
+		}
+	}
+
+	/**
+	 * All open dialogs, in stacking order. They share a z-index,
+	 * so the last one in the DOM is the one on top.
+	 *
+	 * @return {NodeList}
+	 * @protected
+	 */
+	getOpenDialogs() {
+		return document.querySelectorAll( '.cm-mw-dialog-backdrop:not( .cm-mw-dialog--hidden )' );
+	}
+
+	/**
+	 * Wait for a transitionend on an element
+	 *
+	 * Some style overrides can make `transitionend` not fire, so wait a short time.
+	 *
+	 * @param {HTMLElement} element
+	 * @param {Function} callback
+	 * @param {number} [timeout=500] Milliseconds to wait before the callback runs anyway
+	 * @protected
+	 */
+	waitForTransition( element, callback, timeout = 500 ) {
+		if ( window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
+			// Core sets `transition-duration: 0ms`, which fires no transitionend.
+			callback();
+			return;
+		}
+		let settled = false;
+		const listener = ( event ) => {
+			// transitionend bubbles, so ignore the transitions of descendants.
+			if ( settled || event.target !== element ) {
+				return;
+			}
+			settled = true;
+			element.removeEventListener( 'transitionend', listener );
+			callback();
+		};
+		element.addEventListener( 'transitionend', listener );
+		setTimeout( () => {
+			if ( settled ) {
+				return;
+			}
+			settled = true;
+			element.removeEventListener( 'transitionend', listener );
+			callback();
+		}, timeout );
+	}
+}
+
+module.exports = CodeMirrorCodex;

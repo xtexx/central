@@ -1,0 +1,33 @@
+{
+	"@metadata": {
+		"authors": [
+			"Adriendelucca",
+			"Ar choler",
+			"Huñvreüs"
+		]
+	},
+	"codemirror-desc": "Pourchas a ra livañ ereadurezh en aozer wikitestenn",
+	"codemirror-toggle-label": "Ereadurezh livet",
+	"codemirror-toggle-label-short": "Ereadurezh",
+	"codemirror-prefs-enable": "Gweredekaat livañ ereadurezh evit wikitestenn",
+	"codemirror-prefs-title": "Dibaboù livañ ereadurezh",
+	"codemirror-prefs-help": "skoazell",
+	"codemirror-prefs-codefolding": "Gweredekaat plegañ ar c'hod",
+	"codemirror-close": "Serriñ",
+	"codemirror-find": "Klask",
+	"codemirror-all": "An holl",
+	"codemirror-all-tooltip": "Diuzañ an holl glotadurioù",
+	"codemirror-match-case": "Diforc'hañ Pennlizherennoù/Lizherennoù bihan",
+	"codemirror-regexp": "Jedad reoliek",
+	"codemirror-regexp-invalid": "Jedad reoliek direizh",
+	"codemirror-by-word": "Ger a-bezh",
+	"codemirror-replace": "Erlec'hiañ",
+	"codemirror-replace-placeholder": "Erlec'hiañ",
+	"codemirror-replace-all": "Erlec'hiañ pep tra",
+	"codemirror-done": "Echu",
+	"codemirror-find-results": "$1 diwar $2",
+	"codemirror-goto-line": "Mont d'al linenn",
+	"codemirror-goto-line-go": "Mont",
+	"prefs-accessibility": "Diraezañ",
+	"prefs-syntax-highlighting": "Ereadurezh livet"
+}

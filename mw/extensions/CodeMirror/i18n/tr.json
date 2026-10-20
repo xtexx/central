@@ -1,0 +1,42 @@
+{
+	"@metadata": {
+		"authors": [
+			"BaRaN6161 TURK",
+			"Diyapazon",
+			"HakanIST",
+			"LisafBia",
+			"Rapsar",
+			"SaldırganSincap",
+			"ToprakM",
+			"Vito Genovese"
+		]
+	},
+	"codemirror-desc": "Vikimetin düzenleyicide sözdizim vurgulaması sağlar",
+	"codemirror-toggle-label": "Sözdizim vurgulama",
+	"codemirror-prefs-summary": "Bu özellik hakkında daha fazla bilgi edinmek için [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:CodeMirror yardım sayfasını] okuyabilirsiniz.",
+	"codemirror-prefs-enable": "Vikimetin için sözdizimi vurgulamasını etkinleştir",
+	"codemirror-prefs-enable-help": "İçerik sayfalarını ve şablonları değiştirirken geçerlidir.",
+	"codemirror-prefs-enable-code": "Kod için sözdizimi vurgulamasını etkinleştir",
+	"codemirror-prefs-enable-code-help": "JavaScript, CSS ya da Lua modülleri gibi kodları değiştirilirken geçerlidir.",
+	"codemirror-prefs-section-other": "Diğer",
+	"codemirror-close": "Kapat",
+	"codemirror-find": "Bul",
+	"codemirror-next": "Sonrakini bul",
+	"codemirror-previous": "Öncekini bul",
+	"codemirror-all": "Tümü",
+	"codemirror-all-tooltip": "Tüm eşleşmeleri bul",
+	"codemirror-match-case": "Büyük/küçük harf duyarlı",
+	"codemirror-regexp": "Düzenli ifade",
+	"codemirror-by-word": "Tüm kelime",
+	"codemirror-replace": "Değiştir",
+	"codemirror-replace-placeholder": "Değiştir",
+	"codemirror-replace-all": "Hepsini değiştir",
+	"codemirror-done": "Bitti",
+	"codemirror-keymap-history": "Geçmiş",
+	"codemirror-keymap-undo": "Geri al",
+	"codemirror-keymap-redo": "Yinele",
+	"codemirror-keymap-other": "Diğer",
+	"prefs-accessibility": "Erişilebilirlik",
+	"prefs-syntax-highlighting": "Sözdizimi vurgulama",
+	"codemirror-wikilint-decode": "deşifre"
+}

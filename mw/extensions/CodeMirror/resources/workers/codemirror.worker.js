@@ -1,0 +1,207 @@
+const { EditorView, Text } = require( 'ext.CodeMirror.lib' );
+
+const workers = new Map();
+
+/** Web worker for CodeMirror */
+class CodeMirrorWorker {
+	/**
+	 * @constructor
+	 * @param {string} mode
+	 */
+	constructor( mode ) {
+		/**
+		 * The mode for which the worker is created.
+		 *
+		 * @type {string}
+		 */
+		this.mode = mode;
+		/**
+		 * Queue of callbacks to be called when the worker is loaded.
+		 *
+		 * @internal
+		 */
+		this.queue = [];
+	}
+
+	/**
+	 * The web worker for the mode.
+	 *
+	 * @type {Worker}
+	 */
+	get worker() {
+		if ( !workers.has( this.mode ) ) {
+			const worker = new Worker( `${
+				mw.config.get( 'wgExtensionAssetsPath' )
+			}/CodeMirror/resources/workers/${ this.mode }/worker.min.js` );
+			workers.set( this.mode, worker );
+			for ( const callback of this.queue ) {
+				callback( this );
+			}
+
+			if ( mw.config.get( 'cmDebug' ) ) {
+				window[ `${ this.mode }Worker` ] = worker;
+			}
+		}
+
+		return workers.get( this.mode );
+	}
+
+	/**
+	 * Get the response from the worker for a given command.
+	 *
+	 * @param {string} command
+	 * @param {Text|undefined} [doc]
+	 * @return {Promise}
+	 * @private
+	 */
+	getFeedback( command, doc ) {
+		return new Promise( ( resolve ) => {
+			const raw = doc && doc.toString();
+			const listener = ( { data: [ cmd, diagnostics, resRaw ] } ) => {
+				if ( command === cmd && raw === resRaw ) {
+					this.worker.removeEventListener( 'message', listener );
+					resolve( diagnostics );
+				}
+			};
+			this.worker.addEventListener( 'message', listener );
+			this.worker.postMessage( [ command, raw ] );
+		} );
+	}
+
+	/**
+	 * Get lint diagnostics for the given document.
+	 *
+	 * @param {EditorView} view
+	 * @return {Promise}
+	 */
+	lint( view ) {
+		return this.getFeedback( 'lint', view.state.doc );
+	}
+
+	/**
+	 * Set the configuration for the worker.
+	 * This can be used to customize the rules for
+	 * {@link https://eslint.org/docs/v8.x/use/configure/language-options#specifying-environments ESLint}
+	 * and
+	 * {@link https://stylelint.io/user-guide/configure#rules Stylelint}.
+	 *
+	 * @example
+	 * mw.hook( 'ext.CodeMirror.ready' ).add( ( cm ) => {
+	 *   const { worker } = cm.langExtension;
+	 *   if ( cm.mode === 'javascript' ) {
+	 *     // ESLint configuration
+	 *     worker.onload( () => {
+	 *       worker.setConfig( {
+	 *         rules: {
+	 *           semi: 2
+	 *         }
+	 *       } );
+	 *     } );
+	 *   } else if ( cm.mode === 'css' ) {
+	 *     // Stylelint configuration
+	 *     worker.onload( () => {
+	 *       worker.setConfig( {
+	 *         rules: {
+	 *           'length-zero-no-unit': true
+	 *         }
+	 *       } );
+	 *    } );
+	 *   }
+	 * } );
+	 *
+	 * @param {Object} config
+	 */
+	setConfig( config ) {
+		this.worker.postMessage( [ 'setConfig', config ] );
+	}
+
+	/**
+	 * Get the configuration for the worker.
+	 *
+	 * @return {Promise}
+	 */
+	getConfig() {
+		return this.getFeedback( 'getConfig' );
+	}
+
+	/**
+	 * Set the localized messages for the worker.
+	 *
+	 * @param {Object} i18n
+	 */
+	setI18N( i18n ) {
+		this.worker.postMessage( [ 'setI18N', i18n ] );
+	}
+
+	/**
+	 * Get the localized messages for the worker.
+	 *
+	 * @return {Promise}
+	 */
+	getI18N() {
+		return this.getFeedback( 'getI18N' );
+	}
+
+	/**
+	 * Set the linting configuration for the worker.
+	 * This can be used to customize the rules for
+	 * {@link https://www.mediawiki.org/wiki/Help:Extension:CodeMirror/Wikitext_linting WikiLint}.
+	 *
+	 * @example
+	 * mw.hook( 'ext.CodeMirror.ready' ).add( ( cm ) => {
+	 *   const { worker } = cm.langExtension;
+	 *   if ( cm.mode === 'mediawiki' ) {
+	 *     // WikiLint configuration
+	 *     worker.onload( () => {
+	 *       worker.setLintConfig( {
+	 *         rules: {
+	 *           'insecure-style': 2
+	 *         }
+	 *       } );
+	 *     } );
+	 *   }
+	 * } );
+	 *
+	 * @param {Object} config
+	 */
+	setLintConfig( config ) {
+		this.worker.postMessage( [ 'setLintConfig', config ] );
+	}
+
+	/**
+	 * Get the linting configuration for the worker.
+	 *
+	 * @return {Promise}
+	 */
+	getLintConfig() {
+		return this.getFeedback( 'getLintConfig' );
+	}
+
+	/**
+	 * Add a callback to be called when the worker is loaded.
+	 *
+	 * @param {Function} callback
+	 */
+	onload( callback ) {
+		if ( workers.has( this.mode ) ) {
+			callback( this );
+		} else {
+			this.queue.push( callback );
+		}
+	}
+
+	/**
+	 * Calculate the position in the document for a given line and column.
+	 *
+	 * @param {EditorView} view
+	 * @param {number} line
+	 * @param {number} column
+	 * @return {number}
+	 */
+	static pos( view, line, column ) {
+		const cmLine = view.state.doc.line( line );
+		return Math.min( cmLine.from + column - 1, cmLine.to );
+	}
+}
+
+module.exports = CodeMirrorWorker;
