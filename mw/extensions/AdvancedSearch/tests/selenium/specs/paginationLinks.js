@@ -1,0 +1,20 @@
+import SearchPage from '../pageobjects/search.page.js';
+
+describe( 'Advanced Search', () => {
+
+	// FIXME fix or abandon test T413900
+	it.skip( 'adds search parameters to pagination links', async () => {
+		await SearchPage.addExamplePages( 2 );
+		await SearchPage.open( {
+			limit: 1,
+			search: 'The',
+			ns0: 1,
+			'advancedSearch-current': JSON.stringify( { fields: { plain: [ 'dog' ] } } )
+		} );
+		await ( await $( '.searchresults' ) ).waitForExist();
+
+		for ( const link of await SearchPage.getSearchPaginationLinks() ) {
+			await expect( await link.getAttribute( 'href' ) ).toContain( 'advancedSearch-current' );
+		}
+	} );
+} );
