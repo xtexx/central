@@ -1,0 +1,20 @@
+{
+	"@metadata": {
+		"authors": [
+			"Ex13",
+			"MaGa",
+			"Ponor"
+		]
+	},
+	"pdf-desc": "Program za gledanje PDF datoteka u slikovnom modu",
+	"pdf-file-page-warning": "PDF je složen format koji u određenim slučajevima može prikazati Vaše osobne podatke. Podesite preglednik kako ne bi došlo do odavanja informacija.",
+	"pdf-file-page-warning-header": "Napomene u svezi s privatnosti",
+	"pdf-file-page-warning-footer": "Problem nije usko povezan s ovom datotekom već je općenit problem tog formata datoteka.",
+	"pdf-file-page-warning-info": "Saznajte više o ovom problemu.",
+	"pdf_no_metadata": "Nije moguće dobiti metapodatke iz PDF",
+	"pdf_page_error": "Broj stranice nije u opsegu",
+	"exif-pdf-producer": "Program za pretvorbu",
+	"exif-pdf-version": "Inačica PDF formata",
+	"exif-pdf-encrypted": "Šifrirano",
+	"exif-pdf-pagesize": "Veličina stranice"
+}
