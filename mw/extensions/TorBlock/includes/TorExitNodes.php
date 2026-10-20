@@ -1,0 +1,254 @@
+<?php
+
+/**
+ * Prevents Tor exit nodes from editing a wiki.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ * http://www.gnu.org/copyleft/gpl.html
+ *
+ * @file
+ * @ingroup Extensions
+ * @link https://www.mediawiki.org/wiki/Extension:TorBlock Documentation
+ *
+ * @author Andrew Garrett <andrew@epstone.net>
+ * @license GPL-2.0-or-later
+ */
+
+namespace MediaWiki\Extension\TorBlock;
+
+use MediaWiki\Context\RequestContext;
+use MediaWiki\Json\FormatJson;
+use MediaWiki\Logger\LoggerFactory;
+use MediaWiki\MediaWikiServices;
+use Psr\Log\LoggerInterface;
+use Wikimedia\IPUtils;
+use Wikimedia\LightweightObjectStore\ExpirationAwareness;
+use Wikimedia\ObjectCache\CachedBagOStuff;
+
+/**
+ * Collection of functions maintaining the list of Tor exit nodes.
+ */
+class TorExitNodes {
+	private const CACHE_KEY = 'tor-exit-nodes';
+	private const CACHE_TTL = ExpirationAwareness::TTL_DAY;
+
+	private static function getLogger(): LoggerInterface {
+		return LoggerFactory::getInstance( 'torblock' );
+	}
+
+	/**
+	 * Determine if a given IP is a Tor exit node
+	 *
+	 * @param string|null $ip The IP address to check, or null to use the request IP
+	 * @return bool True if an exit node, false otherwise
+	 */
+	public static function isExitNode( $ip = null ) {
+		if ( $ip == null ) {
+			$ip = RequestContext::getMain()->getRequest()->getIP();
+		}
+
+		return in_array( IPUtils::sanitizeIP( $ip ), self::getExitNodes() );
+	}
+
+	/**
+	 * Get the array of Tor exit nodes using caching
+	 *
+	 * @return string[] List of Tor exit node addresses
+	 */
+	public static function getExitNodes() {
+		static $srvCache;
+		if ( $srvCache === null ) {
+			$srvCache = new CachedBagOStuff(
+				MediaWikiServices::getInstance()->getLocalServerObjectCache()
+			);
+		}
+
+		return $srvCache->getWithSetCallback(
+			$srvCache->makeGlobalKey( self::CACHE_KEY ),
+			$srvCache::TTL_HOUR,
+			function () {
+				$wanCache = MediaWikiServices::getInstance()->getMainWANObjectCache();
+
+				return $wanCache->getWithSetCallback(
+					$wanCache->makeGlobalKey( self::CACHE_KEY ),
+					self::CACHE_TTL,
+					function () {
+						return self::fetchExitNodes();
+					},
+					[
+						// Avoid stampedes on TOR list servers due to cache expiration
+						'lockTSE' => self::CACHE_TTL,
+						// Avoid stampedes on TOR list servers due to cache eviction
+						'busyValue' => []
+					]
+				);
+			}
+		);
+	}
+
+	/**
+	 * Load the list of Tor exit nodes from the source and cache it for future use
+	 *
+	 * Do not call this method during HTTP GET/HEAD requests
+	 *
+	 * @return string[] List of Tor exit node addresses
+	 */
+	public static function loadExitNodes() {
+		$nodes = self::fetchExitNodes();
+
+		$wanCache = MediaWikiServices::getInstance()->getMainWANObjectCache();
+		$wanCache->set( $wanCache->makeGlobalKey( self::CACHE_KEY ), $nodes, self::CACHE_TTL );
+
+		return $nodes;
+	}
+
+	/**
+	 * Get the list of Tor exit nodes from the configured source
+	 *
+	 * @return string[] List of Tor exit node addresses
+	 */
+	private static function fetchExitNodes() {
+		self::getLogger()->debug( 'Loading Tor exit node list cold.' );
+
+		if ( defined( 'MW_PHPUNIT_TEST' ) || defined( 'MW_QUIBBLE_CI' ) ) {
+			// Avoid HTTP requests, see T265628 & T390865
+			// TEST-NET-1, RFC 5737
+			return [ '192.0.2.111', '192.0.2.222' ];
+		}
+
+		return self::fetchExitNodesFromOnionooServer() ?: self::fetchExitNodesFromTorProject();
+	}
+
+	/**
+	 * Get the list of Tor exit nodes from the Tor Project's website.
+	 *
+	 * @return string[] List of Tor exit node addresses
+	 */
+	private static function fetchExitNodesFromTorProject() {
+		global $wgTorIPs, $wgTorProjectCA, $wgTorBlockProxy;
+
+		$options = [
+			'caInfo' => is_readable( $wgTorProjectCA ) ? $wgTorProjectCA : null
+		];
+		if ( $wgTorBlockProxy ) {
+			$options['proxy'] = $wgTorBlockProxy;
+		}
+
+		$httpRequestFactory = MediaWikiServices::getInstance()->getHttpRequestFactory();
+		$nodes = [];
+		foreach ( $wgTorIPs as $ip ) {
+			$url = 'https://check.torproject.org/torbulkexitlist?ip=' . $ip;
+			$data = $httpRequestFactory->get( $url, $options, __METHOD__ );
+
+			if ( $data === null ) {
+				self::getLogger()->debug(
+					'Got no reply or an invalid reply from {url}',
+					[
+						'url' => $url,
+					]
+				);
+				continue;
+			}
+
+			$lines = explode( "\n", $data );
+
+			foreach ( $lines as $line ) {
+				if ( strpos( $line, '#' ) === false ) {
+					$nodes[trim( $line )] = true;
+				}
+			}
+		}
+
+		return array_keys( $nodes );
+	}
+
+	/**
+	 * Get the list of Tor exit nodes using the Onionoo protocol with the
+	 * server specified in the configuration.
+	 *
+	 * @return string[] List of Tor exit node addresses
+	 */
+	private static function fetchExitNodesFromOnionooServer() {
+		global $wgTorOnionooServer, $wgTorOnionooCA, $wgTorBlockProxy;
+
+		$services = MediaWikiServices::getInstance();
+
+		$url = $services->getUrlUtils()->expand(
+			"$wgTorOnionooServer/details?type=relay&running=true&flag=Exit&fields=or_addresses,exit_addresses",
+			PROTO_HTTPS
+		);
+
+		$options = [
+			'caInfo' => is_readable( $wgTorOnionooCA ) ? $wgTorOnionooCA : null
+		];
+		if ( $wgTorBlockProxy ) {
+			$options['proxy'] = $wgTorBlockProxy;
+		}
+		$raw = $services->getHttpRequestFactory()->get( (string)$url, $options, __METHOD__ );
+
+		if ( $raw === null ) {
+			self::getLogger()->debug(
+				'Got no reply or an invalid reply from {url}',
+				[
+					'url' => $url,
+				]
+			);
+			return [];
+		}
+
+		$data = FormatJson::decode( $raw, true );
+
+		if ( !isset( $data['relays'] ) ) {
+			self::getLogger()->debug( 'Got no reply or an invalid reply from Onionoo.' );
+			return [];
+		}
+
+		$nodes = [];
+		foreach ( $data['relays'] as $relay ) {
+			$addresses = $relay['or_addresses'];
+			if ( isset( $relay['exit_addresses'] ) ) {
+				$addresses = array_merge( $addresses, $relay['exit_addresses'] );
+			}
+
+			foreach ( $addresses as $ip ) {
+				// Trim the port if it has one.
+				$portPosition = strrpos( $ip, ':' );
+				if ( $portPosition !== false ) {
+					$ip = substr( $ip, 0, $portPosition );
+				}
+
+				// Trim surrounding brackets for IPv6 addresses.
+				$hasBrackets = $ip[0] == '[';
+				if ( $hasBrackets ) {
+					$ip = substr( $ip, 1, -1 );
+				}
+
+				if ( !IPUtils::isValid( $ip ) ) {
+					self::getLogger()->debug(
+						'Invalid IP address in Onionoo response: {ip}',
+						[
+							'ip' => $ip,
+						]
+					);
+					continue;
+				}
+
+				$nodes[IPUtils::sanitizeIP( $ip )] = true;
+			}
+		}
+
+		return array_keys( $nodes );
+	}
+}
