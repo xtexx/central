@@ -1,0 +1,422 @@
+/**
+ * Named, documented class for the individual items in the `nodes` property of the
+ * {@link ve.dm.InternalList} class.
+ *
+ * Practically, this represents a list of {@link ve.dm.MWReferenceNode} nodes that belong to the
+ * same group.
+ *
+ * @class
+ *
+ * @constructor
+ */
+ve.dm.InternalListNodeGroup = function VeDmInternalListNodeGroup() {
+	/**
+	 * @private Please access via {@link #getAllReuses} etc. if possible
+	 * @property {Object.<string,ve.dm.Node[]>} keyedNodes Indexed by the internal listKey.
+	 *
+	 * Practically, one of these arrays can contain multiple elements when a reference (with the
+	 * same group and same name) is reused. The arrays can never be empty.
+	 */
+	this.keyedNodes = {};
+
+	/**
+	 * @private Please access via {@link #getFirstNodeByListIndex} etc. if possible
+	 * @property {Array.<ve.dm.Node|undefined>} firstNodes When {@link #keyedNodes} contains more
+	 * than one node per listKey then firstNodes can be used to identify the node that appears first
+	 * in the document. If there is only one node it's just that node. Array keys correspond to the
+	 * values in the {@link #indexOrder} array. Order is meaningless but dictated by indexOrder
+	 * instead.
+	 *
+	 * Practically, this is the first occurrence of a reused reference (with the same group and name)
+	 * in a document. That document position dictates the reference's footnote number and the order
+	 * in which references are rendered in their reference list.
+	 *
+	 * Note this is possibly a sparse array with elements missing in case initialization happened
+	 * out of order. Skip these and use {@link #indexOrder} as your primary source of truth.
+	 */
+	this.firstNodes = [];
+
+	/**
+	 * @private Please access via {@link #getFirstNodesInIndexOrder} etc. if possible
+	 * @property {number[]} indexOrder Sorted to reflect the order of first appearance in the
+	 * document. Values are indexes for the {@link #firstNodes} array.
+	 *
+	 * Practically, this usually starts as a simple [ 0, 1, 2, … ] array but changes when references
+	 * are added, reused, moved, and removed.
+	 */
+	this.indexOrder = [];
+};
+
+/* Inheritance */
+
+OO.initClass( ve.dm.InternalListNodeGroup );
+
+/* Types */
+
+/**
+ * @typedef {Object} ve.dm.InternalListNodeGroup.RefInfo
+ * @property {number} internalListIndex list index of the ve.dm.InternalItemNode
+ *   in a ve.dm.InternalList.
+ * @property {string} label Rendered footnote number including any sub-reference
+ *   number.
+ * @property {number} [mainListIndex] List index of a sub-reference's parent, or
+ *   omitted for a main reference.
+ * @property {number} topLevelNumber Main footnote number.  For a sub-reference,
+ *   this is the number of the parent.
+ * @property {number} [subrefNumber] Sub-reference footnote number, or omitted
+ *   for a main reference.
+ * @property {ve.dm.InternalListNodeGroup.RefInfo[]} [subrefs] Only
+ *   included in the "buildReflistStructure" output flavor. This is a list of
+ *   sub-references on a main ref, in document order.
+ */
+
+/* Methods */
+
+/**
+ * @return {boolean}
+ */
+ve.dm.InternalListNodeGroup.prototype.isEmpty = function () {
+	// TODO: Using this.indexOrder.length would be cheaper, but at this point we cannot be sure the
+	// internal data structures are intact.
+	return Object.keys( this.keyedNodes ).length === 0;
+};
+
+/**
+ * @param {string} listKey
+ * @return {ve.dm.Node[]|undefined} All reference nodes (1 or more, never 0) that (re)use the same
+ *  key. Undefined when the key is unknown.
+ */
+ve.dm.InternalListNodeGroup.prototype.getAllReuses = function ( listKey ) {
+	return this.keyedNodes[ listKey ];
+};
+
+/**
+ * @param {number} listIndex
+ * @return {ve.dm.Node[]|undefined} All reference nodes (1 or more, never 0) that (re)use the same
+ *  listIndex. Undefined when the listIndex is unknown.
+ */
+ve.dm.InternalListNodeGroup.prototype.getAllReusesByListIndex = function ( listIndex ) {
+	return this.getAllReuses( this.getListKeyForListIndex( listIndex ) );
+};
+
+/**
+ * @return {string[]}
+ */
+ve.dm.InternalListNodeGroup.prototype.getKeysInIndexOrder = function () {
+	const remainingKeys = Object.keys( this.keyedNodes );
+	return this.getFirstNodesInIndexOrder().map(
+		// FIXME: This should be a fast lookup, but we currently don't have a map for that
+		( firstNode ) => remainingKeys.find( ( listKey, i ) => {
+			// Note: This works with the guarantee that the "first node" is actually the first
+			if ( firstNode === this.keyedNodes[ listKey ][ 0 ] ) {
+				// Performance optimization: Don't search again for the key we just found
+				remainingKeys.splice( i, 1 );
+				return true;
+			}
+			return false;
+		} )
+	);
+};
+
+/**
+ * @return {ve.dm.Node[]}
+ */
+ve.dm.InternalListNodeGroup.prototype.getFirstNodesInIndexOrder = function () {
+	const nodes = this.indexOrder.length > 1 ?
+		this.indexOrder.map( ( i ) => this.firstNodes[ i ] ) :
+		// Fallback in case there is nothing to sort or indexOrder got messed up
+		this.firstNodes;
+	// We need to filter non-existing values from non-sequential arrays, see tests
+	return nodes.filter( ( n ) => n );
+};
+
+/**
+ * @param {string} listKey
+ * @return {ve.dm.Node|undefined} Undefined in case there are no known nodes with this key
+ */
+ve.dm.InternalListNodeGroup.prototype.getFirstNode = function ( listKey ) {
+	const nodes = this.getAllReuses( listKey );
+	// Note: This works with the guarantee that the "first node" is actually the first
+	return nodes && nodes[ 0 ];
+};
+
+/**
+ * @param {number} listIndex
+ * @return {ve.dm.Node|undefined} Undefined in case there are no known nodes with this listIndex
+ */
+ve.dm.InternalListNodeGroup.prototype.getFirstNodeByListIndex = function ( listIndex ) {
+	return this.firstNodes[ listIndex ];
+};
+
+/**
+ * @private
+ * @param {string} listKey
+ * @return {number|undefined} Corresponding listIndex for the given listKey
+ */
+ve.dm.InternalListNodeGroup.prototype.getListIndex = function ( listKey ) {
+	const nodes = this.getAllReuses( listKey );
+	// Note: This works with the guarantee that the "first node" is actually the first
+	const listIndex = nodes && this.firstNodes.indexOf( nodes[ 0 ] );
+	return listIndex === -1 ? undefined : listIndex;
+};
+
+/**
+ * @private
+ * @param {number} listIndex
+ * @return {string|undefined} Corresponding listKey for the given listIndex
+ */
+ve.dm.InternalListNodeGroup.prototype.getListKeyForListIndex = function ( listIndex ) {
+	const firstNode = this.getFirstNodeByListIndex( listIndex );
+	if ( firstNode ) {
+		for ( const listKey in this.keyedNodes ) {
+			if ( this.getFirstNode( listKey ) === firstNode ) {
+				return listKey;
+			}
+		}
+	}
+};
+
+/**
+ * Sort the indexOrder array within a group object.
+ *
+ * Items are sorted by the start offset of their firstNode, unless that node
+ * has the 'placeholder' attribute, in which case it moved to the end of the
+ * list, where it should be ignored.
+ */
+ve.dm.InternalListNodeGroup.prototype.sortGroupIndexes = function () {
+	this.indexOrder.sort( ( index1, index2 ) => {
+		const node1 = this.firstNodes[ index1 ];
+		const node2 = this.firstNodes[ index2 ];
+		// Sometimes there is no node at the time of sorting (T350902) so move these to the end to be ignored
+		if ( !node1 ) {
+			return !node2 ? 0 : 1;
+		} else if ( !node2 ) {
+			return -1;
+		}
+		// Sort placeholder nodes to the end, so they don't interfere with numbering
+		if ( node1.getAttribute( 'placeholder' ) ) {
+			return node2.getAttribute( 'placeholder' ) ? 0 : 1;
+		} else if ( node2.getAttribute( 'placeholder' ) ) {
+			return -1;
+		}
+		return node1.getOffset() - node2.getOffset();
+	} );
+};
+
+/**
+ * @private
+ * @param {string} listKey
+ * @param {ve.dm.Node} newNode New node to append to the end of the list of nodes with the same key
+ */
+ve.dm.InternalListNodeGroup.prototype.appendNode = function ( listKey, newNode ) {
+	this.appendNodeWithKnownIndex( listKey, newNode, this.firstNodes.length );
+};
+
+/**
+ * @param {string} listKey
+ * @param {ve.dm.Node} newNode Reference node to add
+ * @param {number} listIndex Existing listIndex; ignored when this is not the first node for this key
+ */
+ve.dm.InternalListNodeGroup.prototype.appendNodeWithKnownIndex = function ( listKey, newNode, listIndex ) {
+	if ( !( listKey in this.keyedNodes ) ) {
+		this.keyedNodes[ listKey ] = [];
+		// This is literally the first node, so record it as such
+		this.firstNodes[ listIndex ] = newNode;
+		this.indexOrder.push( listIndex );
+	}
+	this.keyedNodes[ listKey ].push( newNode );
+};
+
+/**
+ * @param {string} listKey
+ * @param {ve.dm.Node} newNode Reference node to insert at document position
+ * @param {number} [listIndex] Existing listIndex; ignored when this is not the first node for this key
+ */
+ve.dm.InternalListNodeGroup.prototype.insertNodeInDocumentOrder = function ( listKey, newNode, listIndex ) {
+	const nodes = this.getAllReuses( listKey );
+	// Fall back to the cheaper method if possible
+	if ( !nodes ) {
+		if ( listIndex === undefined ) {
+			this.appendNode( listKey, newNode );
+		} else {
+			this.appendNodeWithKnownIndex( listKey, newNode, listIndex );
+		}
+		return;
+	}
+
+	const newOffset = newNode.getOffset();
+	let i = nodes.length;
+	// Search from the end, for optimal performance when nodes are added in order
+	while ( i && nodes[ i - 1 ].getOffset() > newOffset ) {
+		i--;
+	}
+
+	// Nodes are apparently added in order, just append to the end and be done
+	if ( !nodes[ i ] ) {
+		nodes.push( newNode );
+		return;
+	}
+
+	// Check if the old node we are going to move was a first node
+	const firstNodeIndex = this.firstNodes.indexOf( nodes[ i ] );
+	if ( firstNodeIndex !== -1 ) {
+		this.firstNodes[ firstNodeIndex ] = newNode;
+	}
+
+	// Finally insert the new node and push all following nodes one down
+	nodes.splice( i, 0, newNode );
+};
+
+/**
+ * @param {string} listKey
+ * @param {ve.dm.Node} node Reference node to remove
+ */
+ve.dm.InternalListNodeGroup.prototype.unsetNode = function ( listKey, node ) {
+	const nodes = this.getAllReuses( listKey );
+	if ( !nodes ) {
+		return;
+	}
+
+	// Drop node from the primary data structure, and possibly drop the key when nothing is left
+	const reuse = nodes.indexOf( node );
+	if ( reuse !== -1 ) {
+		nodes.splice( reuse, 1 );
+		if ( !nodes.length ) {
+			delete this.keyedNodes[ listKey ];
+		}
+	}
+
+	// This is extra defensive for the moment because we have no control over all callers
+	const listIndex = this.firstNodes.indexOf( node );
+	if ( listIndex !== -1 ) {
+		this.firstNodes[ listIndex ] = nodes[ 0 ];
+		if ( !nodes.length ) {
+			// This intentionally leaves a gap in the array behind. Needed so that the numbers of
+			// the other elements don't change.
+			delete this.firstNodes[ listIndex ];
+			const i = this.indexOrder.indexOf( listIndex );
+			if ( i !== -1 ) {
+				this.indexOrder.splice( i, 1 );
+			}
+		}
+	}
+};
+
+/**
+ * Generate a unique, human-readable list key that can be used instead of an item's internal list
+ * key. Calls with the same oldListKey will return the same value again.
+ *
+ * Practically, this is used to auto-generate unique names for previously unnamed references,
+ * e.g. `name=":0"` and so on.
+ *
+ * @param {string} oldListKey Current list key (typically something like "auto/0") to associate the
+ *  generated list key with
+ * @param {string} [prefix="literal/:"] Prefix for the generated key. Must match the prefix used in
+ *  {@link #keyedNodes} (typically "literal/") for the duplicate detection to work.
+ * @return {string} Generated unique list key, or existing unique key associated with oldListKey
+ */
+ve.dm.InternalListNodeGroup.prototype.getUniqueListKey = function ( oldListKey, prefix = 'literal/:' ) {
+	// Initialize properties dynamically; nobody needs to see this before it's used
+	if ( !this.uniqueListKeys ) {
+		this.uniqueListKeys = {};
+		this.uniqueNameSequence = {};
+	}
+
+	if ( !( prefix in this.uniqueListKeys ) ) {
+		this.uniqueListKeys[ prefix ] = {};
+		this.uniqueNameSequence[ prefix ] = 1;
+	} else if ( oldListKey in this.uniqueListKeys[ prefix ] ) {
+		return this.uniqueListKeys[ prefix ][ oldListKey ];
+	}
+
+	let result;
+	do {
+		result = prefix + this.uniqueNameSequence[ prefix ]++;
+		// Skip values that already appear in the document, e.g. from previous edits
+	} while ( this.isKnownMainListKey( result ) );
+
+	this.uniqueListKeys[ prefix ][ oldListKey ] = result;
+	return result;
+};
+
+/**
+ * @private
+ * @param {string} newListKey
+ * @return {boolean}
+ */
+ve.dm.InternalListNodeGroup.prototype.isKnownMainListKey = function ( newListKey ) {
+	// The cheapest possible way to check existing listKeys of normal main references
+	return newListKey in this.keyedNodes ||
+		// Sub-references are tracked as "auto/0" etc., their main ref's listKey is somewhere else
+		this.firstNodes.some(
+			( node ) => node.getAttribute( 'mainListKey' ) === newListKey
+		);
+};
+
+/**
+ * @return {ve.dm.InternalListNodeGroup.RefInfo[]}
+ */
+ve.dm.InternalListNodeGroup.prototype.getSortedReflistNumbering = function () {
+	return this.buildReflistNumbering()
+		.sort( ( a, b ) => ( a.topLevelNumber - b.topLevelNumber ) ||
+			( a.subrefNumber || 0 ) - ( b.subrefNumber || 0 )
+		);
+};
+
+/**
+ * Calculate the numbering that will be assigned to each reference in the internal list group.
+ *
+ * @return {ve.dm.InternalListNodeGroup.RefInfo[]}
+ */
+ve.dm.InternalListNodeGroup.prototype.buildReflistNumbering = function () {
+	const footnoteNumberLookup = {};
+	const subRefsByMain = {};
+	let topLevelCounter = 1;
+
+	const getOrAllocateTopLevelNumber = function ( listIndex ) {
+		if ( !( listIndex in footnoteNumberLookup ) ) {
+			const topLevelNumber = topLevelCounter++;
+			footnoteNumberLookup[ listIndex ] = {
+				internalListIndex: listIndex,
+				label: ve.init.platform.formatNumberWithoutSeparators( topLevelNumber ),
+				topLevelNumber
+			};
+		}
+		return footnoteNumberLookup[ listIndex ].topLevelNumber;
+	};
+
+	const addSubref = function ( mainListIndex, subRefIndex, subRefNode ) {
+		if ( !( mainListIndex in subRefsByMain ) ) {
+			subRefsByMain[ mainListIndex ] = [];
+		}
+		subRefsByMain[ mainListIndex ].push( subRefNode );
+		const subrefNumber = subRefsByMain[ mainListIndex ].length;
+
+		const topLevelNumber = getOrAllocateTopLevelNumber( mainListIndex );
+		footnoteNumberLookup[ subRefIndex ] = {
+			internalListIndex: subRefIndex,
+			label: ve.init.platform.formatNumberWithoutSeparators( topLevelNumber ) +
+				// FIXME: RTL, and customization of the separator like with mw:referencedBy
+				'.' + ve.init.platform.formatNumberWithoutSeparators( subrefNumber ),
+			mainListIndex,
+			topLevelNumber,
+			subrefNumber
+		};
+
+		return footnoteNumberLookup[ subRefIndex ];
+	};
+
+	this.getFirstNodesInIndexOrder()
+		.filter( ( node ) => !node.getAttribute( 'placeholder' ) )
+		.forEach( ( node ) => {
+			const listIndex = node.getAttribute( 'listIndex' );
+			const mainListIndex = node.getAttribute( 'mainListIndex' );
+			if ( mainListIndex !== undefined ) {
+				addSubref( mainListIndex, listIndex, node );
+			} else {
+				getOrAllocateTopLevelNumber( listIndex );
+			}
+		} );
+
+	return Object.values( footnoteNumberLookup );
+};

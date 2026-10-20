@@ -1,0 +1,81 @@
+{
+	"prefix": "oo-ui-icon",
+	"intro": "@import '../../../../src/styles/common.less';",
+	"images": {
+		"alert": {
+			"file": "../wikimediaui/images/icons/alert.svg"
+		},
+		"bell": {
+			"file": "../wikimediaui/images/icons/bell.svg"
+		},
+		"bellOutline": {
+			"file": "../wikimediaui/images/icons/bellOutline.svg"
+		},
+		"error": {
+			"file": "../wikimediaui/images/icons/error.svg"
+		},
+		"levelNone": {
+			"file": {
+				"ltr": "../wikimediaui/images/icons/levelNone-ltr.svg",
+				"rtl": "../wikimediaui/images/icons/levelNone-rtl.svg"
+			}
+		},
+		"levelOne": {
+			"file": {
+				"ltr": "../wikimediaui/images/icons/levelOne-ltr.svg",
+				"rtl": "../wikimediaui/images/icons/levelOne-rtl.svg"
+			}
+		},
+		"levelTwo": {
+			"file": {
+				"ltr": "../wikimediaui/images/icons/levelTwo-ltr.svg",
+				"rtl": "../wikimediaui/images/icons/levelTwo-rtl.svg"
+			}
+		},
+		"levelThree": {
+			"file": {
+				"ltr": "../wikimediaui/images/icons/levelThree-ltr.svg",
+				"rtl": "../wikimediaui/images/icons/levelThree-rtl.svg"
+			}
+		},
+		"live": {
+			"file": "../wikimediaui/images/icons/live.svg"
+		},
+		"message": {
+			"file": "../wikimediaui/images/icons/message.svg"
+		},
+		"notice": {
+			"file": "../wikimediaui/images/icons/notice.svg"
+		},
+		"speechBubble": {
+			"file": {
+				"ltr": "../wikimediaui/images/icons/speechBubble-ltr.svg",
+				"rtl": "../wikimediaui/images/icons/speechBubble-rtl.svg"
+			}
+		},
+		"speechBubbleAlert": {
+			"file": {
+				"ltr": "../wikimediaui/images/icons/speechBubbleAlert-ltr.svg",
+				"rtl": "../wikimediaui/images/icons/speechBubbleAlert-rtl.svg"
+			}
+		},
+		"speechBubbleAdd": {
+			"file": {
+				"ltr": "../wikimediaui/images/icons/speechBubbleAdd-ltr.svg",
+				"rtl": "../wikimediaui/images/icons/speechBubbleAdd-rtl.svg"
+			}
+		},
+		"speechBubbles": {
+			"file": {
+				"ltr": "../wikimediaui/images/icons/speechBubbles-ltr.svg",
+				"rtl": "../wikimediaui/images/icons/speechBubbles-rtl.svg"
+			}
+		},
+		"success": {
+			"file": "../wikimediaui/images/icons/success.svg"
+		},
+		"tray": {
+			"file": "../wikimediaui/images/icons/tray.svg"
+		}
+	}
+}

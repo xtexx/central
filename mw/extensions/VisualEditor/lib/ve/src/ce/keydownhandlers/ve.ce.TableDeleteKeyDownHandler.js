@@ -1,0 +1,76 @@
+/*!
+ * VisualEditor ContentEditable table delete key down handler
+ *
+ * @copyright See AUTHORS.txt
+ */
+
+/* istanbul ignore next */
+/**
+ * Delete key down handler for table selections.
+ *
+ * @class
+ * @extends ve.ce.KeyDownHandler
+ *
+ * @constructor
+ */
+ve.ce.TableDeleteKeyDownHandler = function VeCeTableDeleteKeyDownHandler() {
+	// Parent constructor - never called because class is fully static
+	// ve.ui.TableDeleteKeyDownHandler.super.apply( this, arguments );
+};
+
+/* Inheritance */
+
+OO.inheritClass( ve.ce.TableDeleteKeyDownHandler, ve.ce.KeyDownHandler );
+
+/* Static properties */
+
+ve.ce.TableDeleteKeyDownHandler.static.name = 'tableDelete';
+
+ve.ce.TableDeleteKeyDownHandler.static.keys = [ OO.ui.Keys.BACKSPACE, OO.ui.Keys.DELETE ];
+
+ve.ce.TableDeleteKeyDownHandler.static.supportedSelections = [ 'table' ];
+
+/* Static methods */
+
+/**
+ * Handle delete and backspace key down events with a table selection.
+ *
+ * Performs a strip-delete removing all the cell contents but not altering the structure.
+ *
+ * @inheritdoc
+ */
+ve.ce.TableDeleteKeyDownHandler.static.execute = function ( surface, e ) {
+	const surfaceModel = surface.getModel(),
+		documentModel = surfaceModel.getDocument(),
+		fragments = [],
+		cells = surfaceModel.getSelection().getMatrixCells( documentModel );
+
+	if ( e ) {
+		e.preventDefault();
+	}
+
+	if ( surface.isReadOnly() ) {
+		return true;
+	}
+
+	cells.forEach( ( cell ) => {
+		if ( cell.node.isCellEditable() ) {
+			// Create auto-updating fragments from ranges
+			fragments.push( surfaceModel.getLinearFragment( cell.node.getRange(), true ) );
+		}
+	} );
+
+	fragments.forEach( ( fragment ) => {
+		// Replace contents with empty wrapper paragraphs
+		fragment.insertContent( [
+			{ type: 'paragraph', internal: { generated: 'wrapper' } },
+			{ type: '/paragraph' }
+		] );
+	} );
+
+	return true;
+};
+
+/* Registration */
+
+ve.ce.keyDownHandlerFactory.register( ve.ce.TableDeleteKeyDownHandler );

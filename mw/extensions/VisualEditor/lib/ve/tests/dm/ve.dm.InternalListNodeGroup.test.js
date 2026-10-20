@@ -1,0 +1,227 @@
+QUnit.module( 've.dm.InternalListNodeGroup' );
+
+QUnit.test( 'empty', ( assert ) => {
+	const nodeGroup = new ve.dm.InternalListNodeGroup();
+	assert.deepEqual( nodeGroup.keyedNodes, {} );
+	assert.deepEqual( nodeGroup.firstNodes, [] );
+	assert.deepEqual( nodeGroup.indexOrder, [] );
+	assert.strictEqual( nodeGroup.getAllReuses( 'dummy' ), undefined );
+	assert.strictEqual( nodeGroup.getAllReusesByListIndex( 0 ), undefined );
+	assert.strictEqual( nodeGroup.getFirstNode( 'dummy' ), undefined );
+	assert.strictEqual( nodeGroup.getFirstNodeByListIndex( 0 ), undefined );
+	assert.deepEqual( nodeGroup.getFirstNodesInIndexOrder(), [] );
+	assert.deepEqual( nodeGroup.getKeysInIndexOrder(), [] );
+
+	assert.strictEqual( nodeGroup.getListIndex( 'key' ), undefined );
+	assert.strictEqual( nodeGroup.getListKeyForListIndex( 0 ), undefined );
+} );
+
+QUnit.test( 'appendNode', ( assert ) => {
+	const nodeGroup = new ve.dm.InternalListNodeGroup();
+
+	const node1 = new ve.dm.TextNode( 1 );
+	nodeGroup.appendNode( 'key', node1 );
+	assert.deepEqual( nodeGroup.firstNodes, [ node1 ] );
+	assert.deepEqual( nodeGroup.indexOrder, [ 0 ] );
+	assert.deepEqual( nodeGroup.getAllReuses( 'key' ), [ node1 ] );
+	assert.deepEqual( nodeGroup.getAllReusesByListIndex( 0 ), [ node1 ] );
+	assert.deepEqual( nodeGroup.getFirstNode( 'key' ), node1 );
+	assert.deepEqual( nodeGroup.getFirstNodeByListIndex( 0 ), node1 );
+	assert.deepEqual( nodeGroup.getFirstNodesInIndexOrder(), [ node1 ] );
+	assert.deepEqual( nodeGroup.getKeysInIndexOrder(), [ 'key' ] );
+
+	const node2 = new ve.dm.TextNode( 1 );
+	nodeGroup.appendNode( 'key', node2 );
+	assert.deepEqual( nodeGroup.firstNodes, [ node1 ] );
+	assert.deepEqual( nodeGroup.indexOrder, [ 0 ] );
+	assert.deepEqual( nodeGroup.getAllReuses( 'key' ), [ node1, node2 ] );
+	assert.deepEqual( nodeGroup.getAllReusesByListIndex( 0 ), [ node1, node2 ] );
+	assert.deepEqual( nodeGroup.getFirstNode( 'key' ), node1 );
+	assert.deepEqual( nodeGroup.getFirstNodeByListIndex( 0 ), node1 );
+	assert.deepEqual( nodeGroup.getFirstNodesInIndexOrder(), [ node1 ] );
+	assert.deepEqual( nodeGroup.getKeysInIndexOrder(), [ 'key' ] );
+
+	assert.strictEqual( nodeGroup.getListIndex( 'key' ), 0 );
+	assert.strictEqual( nodeGroup.getListKeyForListIndex( 0 ), 'key' );
+} );
+
+// When adding the first node for a key with a known index, insertNodeInDocumentOrder
+// falls back to appendNodeWithKnownIndex, so both must behave identically. addNode
+// uses appendNodeWithKnownIndex during the initial tree build (when offsets aren't
+// valid yet) and insertNodeInDocumentOrder afterwards (T429355), so keep both covered.
+[ 'appendNodeWithKnownIndex', 'insertNodeInDocumentOrder' ].forEach( ( method ) => {
+	QUnit.test( method + ' (with known index) & unsetNode', ( assert ) => {
+		const nodeGroup = new ve.dm.InternalListNodeGroup();
+
+		const node1 = new ve.dm.TextNode( 1 );
+		nodeGroup[ method ]( 'key1', node1, 2 );
+		// Note: We need this incomplete array structure to record the index, but shouldn't expose it
+		assert.deepEqual( nodeGroup.firstNodes, [ undefined, undefined, node1 ] );
+		assert.deepEqual( nodeGroup.indexOrder, [ 2 ] );
+		assert.deepEqual( nodeGroup.getAllReuses( 'key1' ), [ node1 ] );
+		assert.deepEqual( nodeGroup.getFirstNode( 'key1' ), node1 );
+		assert.deepEqual( nodeGroup.getFirstNodesInIndexOrder(), [ node1 ] );
+		assert.deepEqual( nodeGroup.getKeysInIndexOrder(), [ 'key1' ] );
+
+		const node2 = new ve.dm.TextNode( 2 );
+		nodeGroup[ method ]( 'key2', node2, 1 );
+		assert.deepEqual( nodeGroup.firstNodes, [ undefined, node2, node1 ] );
+		assert.deepEqual( nodeGroup.indexOrder, [ 2, 1 ] );
+		assert.deepEqual( nodeGroup.getAllReuses( 'key2' ), [ node2 ] );
+		assert.deepEqual( nodeGroup.getFirstNode( 'key2' ), node2 );
+		assert.deepEqual( nodeGroup.getFirstNodesInIndexOrder(), [ node1, node2 ] );
+		assert.deepEqual( nodeGroup.getKeysInIndexOrder(), [ 'key1', 'key2' ] );
+
+		nodeGroup.unsetNode( 'key1', node1 );
+		assert.deepEqual( nodeGroup.firstNodes, [ undefined, node2, undefined ] );
+		assert.deepEqual( nodeGroup.indexOrder, [ 1 ] );
+		assert.strictEqual( nodeGroup.getAllReuses( 'key1' ), undefined );
+		assert.strictEqual( nodeGroup.getFirstNode( 'key1' ), undefined );
+		assert.deepEqual( nodeGroup.getFirstNodesInIndexOrder(), [ node2 ] );
+		assert.deepEqual( nodeGroup.getKeysInIndexOrder(), [ 'key2' ] );
+	} );
+} );
+
+QUnit.test( 'insertNodeInDocumentOrder in reverse document order', ( assert ) => {
+	const nodeGroup = new ve.dm.InternalListNodeGroup();
+
+	const node2 = new ve.dm.TextNode( 2 );
+	// Node 2 is later in the document but added first
+	node2.getOffset = () => 100;
+	nodeGroup.insertNodeInDocumentOrder( 'key', node2 );
+
+	const node1 = new ve.dm.TextNode( 1 );
+	nodeGroup.insertNodeInDocumentOrder( 'key', node1 );
+
+	// Even if added in reverse order, document order was respected
+	assert.deepEqual( nodeGroup.getAllReuses( 'key' ), [ node1, node2 ] );
+	assert.deepEqual( nodeGroup.getFirstNode( 'key' ), node1 );
+} );
+
+QUnit.test( 'insertNodeInDocumentOrder with known index', ( assert ) => {
+	const nodeGroup = new ve.dm.InternalListNodeGroup();
+	const node1 = new ve.dm.TextNode( 1 );
+	const node2 = new ve.dm.TextNode( 2 );
+
+	nodeGroup.insertNodeInDocumentOrder( 'key2', node2, 2 );
+	nodeGroup.insertNodeInDocumentOrder( 'key1', node1, 1 );
+
+	assert.deepEqual( nodeGroup.firstNodes, [ undefined, node1, node2 ] );
+	assert.deepEqual( nodeGroup.indexOrder, [ 2, 1 ] );
+
+	// This will always be the same, no matter what the known indexes above are
+	assert.deepEqual( nodeGroup.getKeysInIndexOrder(), [ 'key2', 'key1' ] );
+
+	assert.strictEqual( nodeGroup.getListIndex( 'key1' ), 1 );
+	assert.strictEqual( nodeGroup.getListIndex( 'key2' ), 2 );
+	assert.strictEqual( nodeGroup.getListKeyForListIndex( 0 ), undefined );
+	assert.strictEqual( nodeGroup.getListKeyForListIndex( 1 ), 'key1' );
+	assert.strictEqual( nodeGroup.getListKeyForListIndex( 2 ), 'key2' );
+} );
+
+QUnit.test( 'getUniqueListKey', ( assert ) => {
+	const doc = ve.dm.example.createExampleDocument( 'references' );
+	const internalList = doc.getInternalList();
+	const nodeGroup = internalList.getNodeGroup( 'g1' );
+
+	let generatedName;
+	generatedName = nodeGroup.getUniqueListKey( 'auto/0' );
+	assert.strictEqual( generatedName, 'literal/:1', '1st autoname maps to 1' );
+	generatedName = nodeGroup.getUniqueListKey( 'auto/1' );
+	assert.strictEqual( generatedName, 'literal/:2', '2nd autoname maps to 2' );
+	generatedName = nodeGroup.getUniqueListKey( 'auto/2' );
+	assert.strictEqual( generatedName, 'literal/:4', '3rd autoname maps to 4 (because :3 is already present)' );
+	generatedName = nodeGroup.getUniqueListKey( 'auto/3' );
+	assert.strictEqual( generatedName, 'literal/:5', '4th autoname maps to 5' );
+	generatedName = nodeGroup.getUniqueListKey( 'auto/4' );
+	assert.strictEqual( generatedName, 'literal/:6', '5th autoname maps to 6' );
+
+	generatedName = nodeGroup.getUniqueListKey( 'auto/0' );
+	assert.strictEqual( generatedName, 'literal/:1', 'Reusing a key reuses the name' );
+
+	generatedName = internalList.getNodeGroup( 'g2' ).getUniqueListKey( 'auto/4' );
+	assert.strictEqual( generatedName, 'literal/:1', 'Different groups are treated separately' );
+} );
+
+QUnit.test( 'getUniqueListKey with main + details', ( assert ) => {
+	const doc = ve.dm.example.createExampleDocument( 'single sub-reference and reused main' );
+	const internalList = doc.getInternalList();
+	const nodeGroup = internalList.getNodeGroup( '' );
+
+	const generatedName = nodeGroup.getUniqueListKey( 'auto/1' );
+	assert.strictEqual( generatedName, 'literal/:1', 'Correct auto-name when main ref is not a node' );
+} );
+
+QUnit.test( 'getUniqueListKey with different prefixes', ( assert ) => {
+	const doc = ve.dm.example.createExampleDocument( 'references' );
+	const internalList = doc.getInternalList();
+	const nodeGroup = internalList.getNodeGroup( 'g1' );
+
+	let generatedName;
+	generatedName = nodeGroup.getUniqueListKey( 'auto/0', 'literal/:' );
+	assert.strictEqual( generatedName, 'literal/:1', 'initially uses 1 on prefix' );
+
+	generatedName = nodeGroup.getUniqueListKey( 'auto/1', 'literal/Foo' );
+	assert.strictEqual( generatedName, 'literal/Foo1', 'uses 1 on prefix not used before' );
+
+	generatedName = nodeGroup.getUniqueListKey( 'auto/2', 'literal/:' );
+	assert.strictEqual( generatedName, 'literal/:2', 'counts up on prefix used before' );
+
+	generatedName = nodeGroup.getUniqueListKey( 'auto/1', 'literal/Bar' );
+	assert.strictEqual( generatedName, 'literal/Bar1', 'use a new name for the same key if the prefix changed' );
+} );
+
+QUnit.test( 'buildReflistNumbering', ( assert ) => {
+	const doc = ve.dm.example.createExampleDocument( 'references' );
+	const internalList = doc.getInternalList();
+	const nodeGroup = internalList.getNodeGroup( 'g1' );
+
+	const result = nodeGroup.buildReflistNumbering();
+
+	assert.deepEqual( result,
+		[
+			{
+				internalListIndex: 0,
+				label: '1',
+				topLevelNumber: 1
+			}
+		]
+	);
+} );
+
+QUnit.test( 'buildReflistNumbering with sub-references', ( assert ) => {
+	const doc = ve.dm.example.createExampleDocument( 'sub-references' );
+	const internalList = doc.getInternalList();
+	const nodeGroup = internalList.getNodeGroup( '' );
+
+	const result = nodeGroup.buildReflistNumbering();
+
+	assert.deepEqual( result,
+		[
+			{
+				internalListIndex: 0,
+				label: '1.1',
+				mainListIndex: 1,
+				subrefNumber: 1,
+				topLevelNumber: 1
+			},
+			{
+				internalListIndex: 1,
+				label: '1',
+				topLevelNumber: 1
+			},
+			{
+				internalListIndex: 2,
+				label: '2.1',
+				mainListIndex: 3,
+				subrefNumber: 1,
+				topLevelNumber: 2
+			},
+			{
+				internalListIndex: 3,
+				label: '2',
+				topLevelNumber: 2
+			}
+		]
+	);
+} );

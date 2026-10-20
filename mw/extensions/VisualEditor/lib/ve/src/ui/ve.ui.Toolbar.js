@@ -1,0 +1,361 @@
+/*!
+ * VisualEditor UserInterface Toolbar class.
+ *
+ * @copyright See AUTHORS.txt
+ */
+
+/**
+ * UserInterface surface toolbar.
+ *
+ * @class
+ * @extends OO.ui.Toolbar
+ *
+ * @constructor
+ * @param {Object} [config] Configuration options
+ */
+ve.ui.Toolbar = function VeUiToolbar( config = {} ) {
+	// Parent constructor
+	ve.ui.Toolbar.super.call( this, ve.ui.toolFactory, ve.ui.toolGroupFactory, config );
+
+	this.updateToolStateDebounced = ve.debounce( this.updateToolState.bind( this ) );
+
+	this.groups = null;
+
+	this.$element.addClass( 've-ui-toolbar' );
+};
+
+/* Inheritance */
+
+OO.inheritClass( ve.ui.Toolbar, OO.ui.Toolbar );
+
+/* Static Properties */
+
+/**
+ * Storage key that holds the expanded state of every named tool group.
+ *
+ * @static
+ * @property {string}
+ */
+ve.ui.Toolbar.static.expandedStorageKey = 've-toolbar-expanded';
+
+/* Static Methods */
+
+/**
+ * Get the stored expanded state of a tool group.
+ *
+ * @static
+ * @param {string} name Symbolic name of the group
+ * @return {boolean|null} Stored state, or null if the group has none
+ */
+ve.ui.Toolbar.static.getStoredExpanded = function ( name ) {
+	// getObject gives false if storage is not available, null if the key is unset
+	const states = ve.init.platform.localStorage.getObject( this.expandedStorageKey );
+	if ( !states || typeof states[ name ] !== 'boolean' ) {
+		return null;
+	}
+	return states[ name ];
+};
+
+/**
+ * Store the expanded state of a tool group.
+ *
+ * @static
+ * @param {string} name Symbolic name of the group
+ * @param {boolean} expanded The collapsible tools are shown
+ */
+ve.ui.Toolbar.static.setStoredExpanded = function ( name, expanded ) {
+	const states = ve.init.platform.localStorage.getObject( this.expandedStorageKey ) || {};
+	states[ name ] = expanded;
+	ve.init.platform.localStorage.setObject( this.expandedStorageKey, states );
+};
+
+/* Events */
+
+/**
+ * @event ve.ui.Toolbar#updateState
+ * @param {ve.dm.SurfaceFragment|null} fragment Surface fragment. Null if no surface is active.
+ * @param {string[]} activeDialogs List of names of currently open dialogs.
+ */
+
+/**
+ * @event ve.ui.Toolbar#surfaceChange
+ * @param {ve.ui.Surface|null} oldSurface Old surface being controlled
+ * @param {ve.ui.Surface|null} newSurface New surface being controlled
+ */
+
+/**
+ * @event ve.ui.Toolbar#resize
+ */
+
+/* Methods */
+
+/**
+ * Setup toolbar
+ *
+ * @param {Object} groups List of tool group configurations
+ * @param {ve.ui.Surface} [surface] Surface to attach to
+ * @fires ve.ui.Toolbar#surfaceChange
+ * @fires ve.ui.Toolbar#resize
+ */
+ve.ui.Toolbar.prototype.setup = function ( groups, surface ) {
+	let oldSurface,
+		surfaceChange = false;
+
+	this.detach();
+
+	if ( surface !== this.surface ) {
+		// this.surface should be changed before we fire the event
+		oldSurface = this.surface;
+		this.surface = surface;
+		surfaceChange = true;
+	}
+
+	// The parent method just rebuilds the tool groups so only
+	// do this if they have changed
+	if ( groups !== this.groups ) {
+		// Parent method
+		groups = groups.map( ( group ) => {
+			if ( group.name ) {
+				group.classes = group.classes || [];
+				group.classes.push( 've-ui-toolbar-group-' + group.name );
+			} else {
+				OO.ui.warnDeprecation( 'No name: ' + JSON.stringify( group ) );
+			}
+			return group;
+		} );
+		ve.ui.Toolbar.super.prototype.setup.call( this, groups );
+		this.setupToolGroupExpansion();
+	}
+
+	this.groups = groups;
+
+	if ( groups.length ) {
+		this.$element.removeClass( 've-ui-toolbar-empty' );
+	} else {
+		this.$element.addClass( 've-ui-toolbar-empty' );
+	}
+
+	if ( surfaceChange ) {
+		// Emit surface change event after tools have been setup
+		this.emit( 'surfaceChange', oldSurface, surface );
+		// Emit another resize event to let the surface know about the toolbar size
+		this.emit( 'resize' );
+	}
+
+	// Events
+	this.getSurface().getModel().connect( this, { contextChange: 'onContextChange' } );
+	this.getSurface().getDialogs().connect( this, {
+		opening: 'onInspectorOrDialogOpeningOrClosing',
+		closing: 'onInspectorOrDialogOpeningOrClosing'
+	} );
+	ve.ui.ToolbarDialogWindowManager.static.positions.forEach( ( position ) => {
+		this.getSurface().getToolbarDialogs( position ).connect( this, {
+			opening: 'onInspectorOrDialogOpeningOrClosing',
+			closing: 'onInspectorOrDialogOpeningOrClosing'
+		} );
+	} );
+	this.getSurface().getContext().getInspectors().connect( this, {
+		opening: 'onInspectorOrDialogOpeningOrClosing',
+		closing: 'onInspectorOrDialogOpeningOrClosing'
+	} );
+
+	// instrumentation
+	this.items.forEach( ( item ) => {
+		if ( item instanceof OO.ui.ToolGroup ) {
+			const name = ( Object.entries( this.groupsByName ).find( ( entry ) => entry[ 1 ] === item ) || [] )[ 0 ];
+			if ( name ) {
+				item.on( 'active', ( isActive ) => {
+					if ( isActive ) {
+						ve.track( 'activity.' + name, { action: 'toolbar-group-active' } );
+					}
+				} );
+			}
+		}
+	} );
+};
+
+/**
+ * Restore the expanded state of each collapsible tool group, and keep it stored.
+ *
+ * Each group stores the state against its symbolic name. Thus the groups stay
+ * independent of each other, and of the toolbar that holds them.
+ */
+ve.ui.Toolbar.prototype.setupToolGroupExpansion = function () {
+	for ( const name in this.groupsByName ) {
+		const toolGroup = this.groupsByName[ name ];
+		if ( !( toolGroup instanceof OO.ui.ListToolGroup ) ) {
+			continue;
+		}
+		const expanded = this.constructor.static.getStoredExpanded( name );
+		if ( expanded !== null ) {
+			toolGroup.setExpanded( expanded );
+		}
+		// Connect after the restore, to only store what the user changes
+		toolGroup.connect( this, { expand: [ 'onToolGroupExpand', name ] } );
+	}
+};
+
+/**
+ * Handle expand events from a tool group.
+ *
+ * @param {string} name Symbolic name of the group
+ * @param {boolean} expanded The collapsible tools are shown
+ */
+ve.ui.Toolbar.prototype.onToolGroupExpand = function ( name, expanded ) {
+	this.constructor.static.setStoredExpanded( name, expanded );
+};
+
+/**
+ * @inheritdoc
+ */
+ve.ui.Toolbar.prototype.isToolAvailable = function ( name ) {
+	if ( !ve.ui.Toolbar.super.prototype.isToolAvailable.apply( this, arguments ) ) {
+		return false;
+	}
+	// Does the tool exist?
+	const tool = this.getToolFactory().lookup( name );
+	if ( !tool ) {
+		return false;
+	}
+	// Is the tool excluded from the current mode?
+	const surface = this.getSurface();
+	if ( surface && tool.static.excludeFromModes && tool.static.excludeFromModes.includes( surface.getMode() ) ) {
+		return false;
+	}
+	// Is the tool's command is available on the surface
+	// FIXME should use .static.getCommandName(), but we have tools that aren't ve.ui.Tool subclasses :(
+	const commandName = tool.static.commandName;
+	return !commandName || this.getCommands().includes( commandName );
+};
+
+/**
+ * Handle windows opening or closing in the dialogs' or inspectors' window manager.
+ *
+ * @param {OO.ui.Window} win
+ * @param {jQuery.Promise} openingOrClosing
+ * @param {Object} data
+ */
+ve.ui.Toolbar.prototype.onInspectorOrDialogOpeningOrClosing = function ( win, openingOrClosing ) {
+	openingOrClosing.then( () => {
+		this.updateToolStateDebounced();
+	} );
+};
+
+/**
+ * Handle context changes on the surface.
+ *
+ * @fires ve.ui.Toolbar#updateState
+ */
+ve.ui.Toolbar.prototype.onContextChange = function () {
+	this.updateToolStateDebounced();
+};
+
+/**
+ * Update the state of the tools
+ *
+ * @fires ve.ui.Toolbar#updateState
+ */
+ve.ui.Toolbar.prototype.updateToolState = function () {
+	if ( !this.getSurface() ) {
+		this.emit( 'updateState', null, [] );
+		return;
+	}
+
+	const fragment = this.getSurface().getModel().getFragment();
+
+	const activeDialogs = [
+		this.surface.getDialogs(),
+		this.surface.getContext().getInspectors(),
+		...ve.ui.ToolbarDialogWindowManager.static.positions.map(
+			( position ) => this.surface.getToolbarDialogs( position )
+		)
+	].map( ( windowManager ) => {
+		if ( windowManager.getCurrentWindow() ) {
+			return windowManager.getCurrentWindow().constructor.static.name;
+		}
+		return null;
+	} ).filter( ( name ) => name !== null );
+
+	this.emit( 'updateState', fragment, activeDialogs );
+};
+
+/**
+ * Get triggers for a specified name.
+ *
+ * @param {string} name Trigger name
+ * @return {ve.ui.Trigger[]|undefined} Triggers
+ */
+ve.ui.Toolbar.prototype.getTriggers = function ( name ) {
+	return this.getSurface().triggerListener.getTriggers( name );
+};
+
+/**
+ * Get a list of commands available to this toolbar's surface
+ *
+ * @return {string[]} Command names
+ */
+ve.ui.Toolbar.prototype.getCommands = function () {
+	return this.getSurface().getCommands();
+};
+
+/**
+ * @inheritdoc
+ */
+ve.ui.Toolbar.prototype.getToolAccelerator = function ( name ) {
+	const messages = ve.ui.triggerRegistry.getMessages( name );
+
+	return messages ? messages.join( ', ' ) : undefined;
+};
+
+/**
+ * @inheritdoc
+ */
+ve.ui.Toolbar.prototype.setNarrow = function ( narrow ) {
+	if ( OO.ui.isMobile() ) {
+		// Always use narrow mode on mobile.
+		// TODO: Be responsive like desktop, but that would require supporting
+		// things like label + indicator tools.
+		narrow = true;
+	}
+	return ve.ui.Toolbar.super.prototype.setNarrow.call( this, narrow );
+};
+
+/**
+ * Gets the surface which the toolbar controls.
+ *
+ * Returns null if the toolbar hasn't been set up yet.
+ *
+ * @return {ve.ui.Surface|null} Surface being controlled
+ */
+ve.ui.Toolbar.prototype.getSurface = function () {
+	return this.surface;
+};
+
+/**
+ * Detach toolbar from surface and all event listeners
+ */
+ve.ui.Toolbar.prototype.detach = function () {
+	// Events
+	if ( this.getSurface() ) {
+		this.getSurface().getModel().disconnect( this );
+		this.surface = null;
+	}
+	// Reset narrow state/cache as when we setup again it
+	// may be with a different tool list.
+	// TODO: Create upstream detach/teardown
+	this.setNarrow( false );
+	this.narrowThreshold = null;
+};
+
+/**
+ * Destroys toolbar, removing event handlers and DOM elements.
+ *
+ * Call this whenever you are done using a toolbar.
+ */
+ve.ui.Toolbar.prototype.destroy = function () {
+	// Parent method
+	ve.ui.Toolbar.super.prototype.destroy.call( this );
+
+	// Detach surface last, because tool destructors need getSurface()
+	this.detach();
+};

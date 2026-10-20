@@ -1,0 +1,25 @@
+/*!
+ * VisualEditor ContentEditable ContentBranchNode styles.
+ *
+ * @copyright See AUTHORS.txt
+ */
+
+.ve-ce-contentBranchNode {
+	/*
+	 * So that we don't need to use &nbsp; when rendering text with multiple consecutive spaces, and
+	 * that the browser doesn't insert &nbsp; when typing regular spaces, and that we can let the user
+	 * input actual non-breaking spaces in the text without having to guess if they're really needed.
+	 */
+	white-space: pre-wrap;
+
+	&:empty::before {
+		content: '\00a0';
+	}
+}
+
+/*
+ * Undo this hack on focusable nodes
+ */
+.ve-ce-focusableNode:not( pre ) {
+	white-space: normal;
+}
