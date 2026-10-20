@@ -1,0 +1,194 @@
+{
+	"mwapi": "1.1.0",
+	"moduleId": "checkuser/v0",
+	"info": {
+		"version": "0.1.0",
+		"title": "CheckUser API",
+		"x-i18n-title": "rest-module-checkuser.v0-title",
+		"x-i18n-description": "rest-module-checkuser.v0-desc"
+	},
+	"externalDocs": {
+		"url": "https://www.mediawiki.org/wiki/Help:Extension:CheckUser#APIs",
+		"description": "CheckUser extension documentation"
+	},
+	"paths": {
+		"/suggestedinvestigations/case/{caseId}/update": {
+			"post": {
+				"x-i18n-summary": "checkuser-rest-endpoint-summary-update-case",
+				"x-i18n-description": "checkuser-rest-endpoint-desc-update-case",
+				"handler": {
+					"class": "MediaWiki\\Extension\\CheckUser\\Api\\Rest\\Handler\\SuggestedInvestigations\\UpdateCaseHandler",
+					"services": [
+						"MainConfig",
+						"ContentLanguage",
+						"CheckUserSuggestedInvestigationsCaseManager",
+						"CheckUserStatusReasonFormatter"
+					]
+				}
+			}
+		},
+		"/userinfo": {
+			"post": {
+				"x-i18n-summary": "checkuser-rest-endpoint-summary-userinfo",
+				"x-i18n-description": "checkuser-rest-endpoint-desc-userinfo",
+				"handler": {
+					"class": "MediaWiki\\Extension\\CheckUser\\Api\\Rest\\Handler\\UserInfoHandler",
+					"services": [
+						"CheckUserUserInfoCardService",
+						"UserFactory",
+						"CheckUserUserInfoCardInstrumentation"
+					]
+				}
+			}
+		},
+		"/userinfo/blocked/{name}": {
+			"get": {
+				"x-i18n-summary": "checkuser-rest-endpoint-summary-userinfo-blocked",
+				"x-i18n-description": "checkuser-rest-endpoint-desc-userinfo-blocked",
+				"handler": {
+					"class": "MediaWiki\\Extension\\CheckUser\\Api\\Rest\\Handler\\UserInfoBlockedHandler",
+					"services": [
+						"UserFactory",
+						"CheckUserUserInfoCardBlockStatusCache"
+					]
+				}
+			}
+		},
+		"/userinfo/icons": {
+			"post": {
+				"x-i18n-summary": "checkuser-rest-endpoint-summary-userinfo-icon",
+				"x-i18n-description": "checkuser-rest-endpoint-desc-userinfo-icon",
+				"handler": {
+					"class": "MediaWiki\\Extension\\CheckUser\\Api\\Rest\\Handler\\UserInfoIconsHandler",
+					"services": [
+						"CheckUserUserInfoCardButtonRenderer",
+						"UserNameUtils"
+					]
+				}
+			}
+		},
+		"/temporaryaccount/{name}": {
+			"post": {
+				"x-i18n-summary": "checkuser-rest-endpoint-summary-temp-account",
+				"x-i18n-description": "checkuser-rest-endpoint-desc-temp-account",
+				"handler": {
+					"class": "MediaWiki\\Extension\\CheckUser\\Api\\Rest\\Handler\\TemporaryAccountHandler",
+					"services": [
+						"MainConfig",
+						"JobQueueGroup",
+						"PermissionManager",
+						"UserNameUtils",
+						"ConnectionProvider",
+						"ActorStore",
+						"BlockManager",
+						"CheckUserPermissionManager",
+						"CheckUserTemporaryAccountAutoRevealLookup",
+						"CheckUserTemporaryAccountLoggerFactory",
+						"ReadOnlyMode"
+					]
+				}
+			}
+		},
+		"/temporaryaccount/ip/{ip}": {
+			"post": {
+				"x-i18n-summary": "checkuser-rest-endpoint-summary-temp-account-ip",
+				"x-i18n-description": "checkuser-rest-endpoint-desc-temp-account-ip",
+				"handler": {
+					"class": "MediaWiki\\Extension\\CheckUser\\Api\\Rest\\Handler\\TemporaryAccountIPHandler",
+					"services": [
+						"MainConfig",
+						"JobQueueGroup",
+						"PermissionManager",
+						"UserNameUtils",
+						"ConnectionProvider",
+						"ActorStore",
+						"BlockManager",
+						"TempUserConfig",
+						"CheckUserTemporaryAccountsByIPLookup",
+						"CheckUserPermissionManager",
+						"ReadOnlyMode"
+					]
+				}
+			}
+		},
+		"/batch-temporaryaccount": {
+			"post": {
+				"x-i18n-summary": "checkuser-rest-endpoint-summary-batch-temp-account",
+				"x-i18n-description": "checkuser-rest-endpoint-desc-batch-temp-account",
+				"handler": {
+					"class": "MediaWiki\\Extension\\CheckUser\\Api\\Rest\\Handler\\BatchTemporaryAccountHandler",
+					"services": [
+						"MainConfig",
+						"JobQueueGroup",
+						"PermissionManager",
+						"UserNameUtils",
+						"ConnectionProvider",
+						"ActorStore",
+						"BlockManager",
+						"RevisionStore",
+						"CheckUserPermissionManager",
+						"CheckUserTemporaryAccountAutoRevealLookup",
+						"CheckUserTemporaryAccountLoggerFactory",
+						"ReadOnlyMode",
+						"ExtensionRegistry",
+						"CheckUserExpiredIdsLookupService"
+					]
+				}
+			}
+		},
+		"/connectedtemporaryaccounts/{name}": {
+			"post": {
+				"x-i18n-summary": "checkuser-rest-endpoint-summary-connected-temp-accounts",
+				"x-i18n-description": "checkuser-rest-endpoint-desc-connected-temp-accounts",
+				"handler": {
+					"class": "MediaWiki\\Extension\\CheckUser\\Api\\Rest\\Handler\\ConnectedTemporaryAccountsHandler",
+					"services": [
+						"MainConfig",
+						"JobQueueGroup",
+						"PermissionManager",
+						"UserNameUtils",
+						"ConnectionProvider",
+						"ActorStore",
+						"BlockManager",
+						"CheckUserPermissionManager",
+						"CheckUserTemporaryAccountAutoRevealLookup",
+						"CheckUserTemporaryAccountLoggerFactory",
+						"ReadOnlyMode",
+						"CheckUserTemporaryAccountsByIPLookup"
+					]
+				}
+			}
+		},
+		"/useragent-clienthints/{type}/{id}": {
+			"post": {
+				"x-i18n-summary": "checkuser-rest-endpoint-summary-clienthints",
+				"x-i18n-description": "checkuser-rest-endpoint-desc-clienthints",
+				"handler": {
+					"class": "MediaWiki\\Extension\\CheckUser\\Api\\Rest\\Handler\\UserAgentClientHintsHandler",
+					"services": [
+						"MainConfig",
+						"RevisionStore",
+						"UserAgentClientHintsManager",
+						"ConnectionProvider",
+						"ActorStore",
+						"SuggestedInvestigationsTrigger"
+					]
+				}
+			}
+		},
+		"/suggestedinvestigationsusersummary/{name}": {
+			"post": {
+				"x-i18n-summary": "checkuser-rest-endpoint-summary-suggestedinvestigationsusersummary",
+				"x-i18n-description": "checkuser-rest-endpoint-desc-suggestedinvestigationsusersummary",
+				"handler": {
+					"class": "MediaWiki\\Extension\\CheckUser\\Api\\Rest\\Handler\\SuggestedInvestigations\\UserSummaryHandler",
+					"services": [
+						"MainConfig",
+						"ActorStore",
+						"CheckUserSuggestedInvestigationsCaseLookup"
+					]
+				}
+			}
+		}
+	}
+}

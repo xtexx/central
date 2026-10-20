@@ -1,0 +1,270 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\CheckUser\Tests\Integration\HookHandler;
+
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\Extension\CheckUser\HookHandler\Preferences;
+use MediaWiki\Extension\CheckUser\Services\UserInfoCardBlockStatusCache;
+use MediaWiki\Extension\CheckUser\Services\UserInfoCardSuggestedInvestigationsCache;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Tests\Unit\HtmlAssertionHelperTrait;
+use MediaWiki\Tests\User\TempUser\TempUserTestTrait;
+use MediaWiki\User\UserIdentityValue;
+use MediaWikiIntegrationTestCase;
+
+/**
+ * @group Database
+ * @covers \MediaWiki\Extension\CheckUser\HookHandler\UserLinkRendererUserLinkPostRenderHandler
+ */
+class UserLinkRendererUserLinkPostRenderHandlerTest extends MediaWikiIntegrationTestCase {
+
+	use HtmlAssertionHelperTrait;
+	use TempUserTestTrait;
+
+	public function testRenderWithoutFeatureEnabled() {
+		$user = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption(
+			$user,
+			Preferences::ENABLE_USER_INFO_CARD,
+			false
+		);
+		$userOptionsManager->saveOptions( $user );
+		$output = $this->createMock( OutputPage::class );
+		$context = $this->createMock( IContextSource::class );
+		$context->method( 'getUser' )->willReturn( $user );
+		$context->method( 'getOutput' )->willReturn( $output );
+		$this->assertStringStartsWith( '<a href=', $this->getServiceContainer()->getUserLinkRenderer()->userLink(
+			$user,
+			$context
+		) );
+	}
+
+	public function testRenderWithFeatureEnabled() {
+		$user = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption(
+			$user,
+			Preferences::ENABLE_USER_INFO_CARD,
+			true
+		);
+		$userOptionsManager->saveOptions( $user );
+		$context = RequestContext::getMain();
+		$context->setUser( $user );
+		$html = $this->getServiceContainer()->getUserLinkRenderer()->userLink(
+			$user,
+			$context
+		);
+		$this->assertStringContainsString(
+			'<span class="ext-checkuser-userinfocard-button-wrapper"',
+			$html,
+			'The UIC button is not wrapped'
+		);
+		$this->assertStringContainsString(
+			'<span class="cdx-button__icon',
+			$html,
+			'Output does not contain Codex button'
+		);
+		$this->assertStringContainsString(
+			'class="ext-checkuser-userinfocard-button',
+			$html,
+			'Output does not contain expected CSS classes'
+		);
+
+		// T426830: pin the trigger element to <button> so gadgets like
+		// Twinkle that do $('#mw-diff-ntitle2 a').first() don't match it.
+		$this->assertStringContainsString(
+			'<button type="button"',
+			$html,
+			'Trigger must be a <button>, not <a> (T426830)'
+		);
+		$this->assertStringNotContainsString(
+			'cdx-button--fake-button',
+			$html,
+			'fake-button modifiers are for <a>; must not appear on a native <button>'
+		);
+	}
+
+	public function testDontRenderForAnonUser() {
+		$this->disableAutoCreateTempUser();
+		$user = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption(
+			$user,
+			Preferences::ENABLE_USER_INFO_CARD,
+			true
+		);
+		$userOptionsManager->saveOptions( $user );
+		$context = RequestContext::getMain();
+		$context->setUser( $user );
+		$expected = "<span class=\"cdx-button__icon";
+		$html = $this->getServiceContainer()->getUserLinkRenderer()->userLink(
+			new UserIdentityValue( 0, 'Anonymous' ),
+			$context
+		);
+		$this->assertStringNotContainsString( $expected, $html, 'Output does not contain Codex button' );
+		$expected = "class=\"ext-checkuser-userinfocard-button";
+		$this->assertStringNotContainsString( $expected, $html, 'Output does not contain expected CSS classes' );
+	}
+
+	public function testRenderBlockedUserShowsBlockedIcon() {
+		$targetUser = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption(
+			$targetUser,
+			Preferences::ENABLE_USER_INFO_CARD,
+			true
+		);
+		$userOptionsManager->saveOptions( $targetUser );
+
+		$mockCache = $this->createMock( UserInfoCardBlockStatusCache::class );
+		$mockCache->method( 'getIndefinitelyBlockedOrLockedUsers' )
+			->willReturnCallback( static fn ( $targets ) => $targets );
+		$this->setService( 'CheckUserUserInfoCardBlockStatusCache', $mockCache );
+
+		$context = RequestContext::getMain();
+		$context->setUser( $targetUser );
+		$html = $this->getServiceContainer()->getUserLinkRenderer()->userLink(
+			$targetUser,
+			$context
+		);
+		$this->assertSelectorMatchesOneElement(
+			$html,
+			'.ext-checkuser-userinfocard-button__icon--userBlocked',
+		);
+	}
+
+	public function testRenderUnblockedUserShowsAvatarIcon() {
+		$targetUser = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption(
+			$targetUser,
+			Preferences::ENABLE_USER_INFO_CARD,
+			true
+		);
+		$userOptionsManager->saveOptions( $targetUser );
+
+		$mockCache = $this->createMock( UserInfoCardBlockStatusCache::class );
+		$mockCache->method( 'isIndefinitelyBlockedOrLocked' )->willReturn( false );
+		$this->setService( 'CheckUserUserInfoCardBlockStatusCache', $mockCache );
+
+		$context = RequestContext::getMain();
+		$context->setUser( $targetUser );
+		$html = $this->getServiceContainer()->getUserLinkRenderer()->userLink(
+			$targetUser,
+			$context
+		);
+		$this->assertSelectorMatchesOneElement(
+			$html,
+			'.ext-checkuser-userinfocard-button__icon--userAvatar',
+		);
+	}
+
+	public function testRenderTempUserShowsTempIcon() {
+		$this->enableAutoCreateTempUser();
+		$targetUser = new UserIdentityValue( 100, '~2025-1' );
+		$viewer = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption(
+			$viewer,
+			Preferences::ENABLE_USER_INFO_CARD,
+			true
+		);
+		$userOptionsManager->saveOptions( $viewer );
+
+		$mockCache = $this->createMock( UserInfoCardBlockStatusCache::class );
+		$mockCache->method( 'isIndefinitelyBlockedOrLocked' )->willReturn( false );
+		$this->setService( 'CheckUserUserInfoCardBlockStatusCache', $mockCache );
+
+		$context = RequestContext::getMain();
+		$context->setUser( $viewer );
+		$html = $this->getServiceContainer()->getLinkRenderer()->makeUserLink(
+			$targetUser,
+			$context
+		);
+		$this->assertSelectorMatchesOneElement(
+			$html,
+			'.ext-checkuser-userinfocard-button__icon--userTemporary',
+		);
+	}
+
+	public static function provideUsesSIIcon(): array {
+		return [
+			'Viewer can see SI' => [
+				'canSee' => true,
+				'expectedIcon' => 'suggestedInvestigations',
+			],
+			'Viewer cannot see SI' => [
+				'canSee' => false,
+				'expectedIcon' => 'userAvatar',
+			],
+		];
+	}
+
+	/** @dataProvider provideUsesSIIcon */
+	public function testUsesSIIcon( bool $canSee, string $expectedIcon ) {
+		$this->overrideConfigValue( 'CheckUserSuggestedInvestigationsEnabled', true );
+		$this->setGroupPermissions(
+			'user',
+			'checkuser-suggested-investigations',
+			$canSee
+		);
+
+		$targetUser = $this->getTestUser()->getUser();
+
+		$mockCache = $this->createMock( UserInfoCardSuggestedInvestigationsCache::class );
+		$mockCache->method( 'getUsersWithOpenCases' )
+			->willReturn( [ $targetUser->getName() ] );
+		$this->setService( 'CheckUserUserInfoCardSuggestedInvestigationsCache', $mockCache );
+
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption(
+			$targetUser,
+			Preferences::ENABLE_USER_INFO_CARD,
+			true
+		);
+		$userOptionsManager->saveOptions( $targetUser );
+
+		$context = RequestContext::getMain();
+		$context->setUser( $targetUser );
+		$html = $this->getServiceContainer()->getUserLinkRenderer()->userLink(
+			$targetUser,
+			$context
+		);
+		$this->assertSelectorMatchesOneElement(
+			$html,
+			".ext-checkuser-userinfocard-button__icon--$expectedIcon"
+		);
+	}
+
+	public function testRepeatedUserLinkRendersConsistently() {
+		$targetUser = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption(
+			$targetUser,
+			Preferences::ENABLE_USER_INFO_CARD,
+			true
+		);
+		$userOptionsManager->saveOptions( $targetUser );
+
+		$mockCache = $this->createMock( UserInfoCardBlockStatusCache::class );
+		$mockCache->method( 'getIndefinitelyBlockedOrLockedUsers' )
+			->willReturnCallback( static fn ( $targets ) => $targets );
+		$this->setService( 'CheckUserUserInfoCardBlockStatusCache', $mockCache );
+
+		$context = RequestContext::getMain();
+		$context->setUser( $targetUser );
+		$userLinkRenderer = $this->getServiceContainer()->getUserLinkRenderer();
+		$html1 = $userLinkRenderer->userLink( $targetUser, $context );
+		$html2 = $userLinkRenderer->userLink( $targetUser, $context );
+		$this->assertStringContainsString(
+			'ext-checkuser-userinfocard-button__icon--userBlocked',
+			$html1,
+			'First call renders blocked icon'
+		);
+		$this->assertSame( $html1, $html2, 'Repeated calls produce identical output' );
+	}
+}

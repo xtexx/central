@@ -1,0 +1,1987 @@
+<?php
+
+declare( strict_types=1 );
+
+/*
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ * http://www.gnu.org/copyleft/gpl.html
+ *
+ * @file
+ */
+
+namespace MediaWiki\Extension\CheckUser\Tests\Integration\SuggestedInvestigations\Pagers;
+
+use InvalidArgumentException;
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\Extension\CentralAuth\CentralAuthEditCounter;
+use MediaWiki\Extension\CentralAuth\User\CentralAuthUser;
+use MediaWiki\Extension\CheckUser\Investigate\SpecialInvestigate;
+use MediaWiki\Extension\CheckUser\Services\CheckUserMultiLockUrlLookup;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Model\CaseStatus;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Model\SuggestedInvestigationsCaseMetadata;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Model\SuggestedInvestigationsSharedPagesSummary;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Pagers\SuggestedInvestigationsCasesPager;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsCaseManagerService;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Signals\SuggestedInvestigationsSignalMatchResult;
+use MediaWiki\Extension\CheckUser\Tests\Integration\SuggestedInvestigations\SuggestedInvestigationsTestTrait;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Pager\IndexPager;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Tests\Unit\HtmlAssertionHelperTrait;
+use MediaWiki\Tests\Unit\Permissions\MockAuthorityTrait;
+use MediaWiki\Title\Title;
+use MediaWiki\User\User;
+use MediaWiki\User\UserIdentity;
+use MediaWikiIntegrationTestCase;
+use Wikimedia\Message\MessageValue;
+use Wikimedia\Parsoid\Core\DOMCompat;
+use Wikimedia\Parsoid\Ext\DOMUtils;
+use Wikimedia\TestingAccessWrapper;
+use Wikimedia\Timestamp\ConvertibleTimestamp;
+use Wikimedia\Timestamp\TimestampFormat;
+
+/**
+ * @covers \MediaWiki\Extension\CheckUser\SuggestedInvestigations\Pagers\SuggestedInvestigationsCasesPager
+ * @group Database
+ */
+class SuggestedInvestigationsCasesPagerTest extends MediaWikiIntegrationTestCase {
+	use SuggestedInvestigationsTestTrait;
+	use MockAuthorityTrait;
+	use HtmlAssertionHelperTrait;
+
+	private static User $testUser1;
+	private static User $testUser2;
+	private const SIGNAL = 'signalname';
+
+	public function setUp(): void {
+		parent::setUp();
+		$this->enableSuggestedInvestigations();
+	}
+
+	public function testQuery(): void {
+		$caseId = $this->addCaseWithTwoUsers();
+		$pager = $this->getPager( RequestContext::getMain() );
+
+		$results = $pager->reallyDoQuery( '', 10, IndexPager::QUERY_ASCENDING );
+
+		$this->assertSame( 1, $results->numRows() );
+
+		$row = $results->fetchObject();
+		$this->assertSame( $caseId, (int)$row->sic_id );
+		$this->assertSame( '0', $row->sic_status );
+		$this->assertSame( '', $row->sic_status_reason );
+		$this->assertArrayEquals(
+			[ self::$testUser2->getName(), self::$testUser1->getName() ],
+			array_map( static fn ( $user ) => $user->getName(), $row->users ),
+			true,
+			false,
+			'Users row did not have the expected items in the expected order',
+		);
+		$this->assertArrayEquals(
+			[ self::SIGNAL ],
+			$row->signals,
+		);
+	}
+
+	/** @dataProvider provideFormatStatusReasonCellPerformerLink */
+	public function testFormatStatusReasonCellPerformerLink(
+		CaseStatus $status,
+		bool $hasPerformer,
+		bool $expectPerformerLink
+	): void {
+		$this->overrideConfigValues( [
+			'CheckUserSuggestedInvestigationsUseGlobalContributionsLink' => false,
+		] );
+
+		$user = $this->getMutableTestUser()->getUser();
+		$this->setUserEditCount( $user, 1 );
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult( self::SIGNAL, 'Test value', false );
+		$caseManager = $this->getCaseManager();
+		$caseId = $caseManager->createCase( [ $user ], [ $signal ] );
+
+		$performerUser = $hasPerformer ? $this->getMutableTestUser()->getUser() : null;
+		$caseManager->setCaseStatus(
+			$caseId,
+			$status,
+			'test reason',
+			$performerUser?->getId() ?? 0
+		);
+
+		$context = RequestContext::getMain();
+		$context->setTitle( Title::makeTitle( NS_SPECIAL, 'SuggestedInvestigations' ) );
+		$context->setAuthority( $this->mockRegisteredUltimateAuthority() );
+		$pager = $this->getPager( $context );
+
+		$html = $pager->getBody();
+
+		if ( $expectPerformerLink ) {
+			$this->assertStringContainsString( '<br', $html );
+			$this->assertStringContainsString( 'User_talk:', $html );
+			$this->assertStringContainsString( $performerUser->getName(), $html );
+		} else {
+			$this->assertStringNotContainsString( 'User_talk:', $html );
+		}
+	}
+
+	public static function provideFormatStatusReasonCellPerformerLink(): array {
+		return [
+			'Resolved with performer shows link' => [
+				'status' => CaseStatus::Resolved,
+				'hasPerformer' => true,
+				'expectPerformerLink' => true,
+			],
+			'Invalid with performer shows link' => [
+				'status' => CaseStatus::Invalid,
+				'hasPerformer' => true,
+				'expectPerformerLink' => true,
+			],
+			'Open with no performer does not show link' => [
+				'status' => CaseStatus::Open,
+				'hasPerformer' => false,
+				'expectPerformerLink' => false,
+			],
+			'Open with performer does not show link' => [
+				'status' => CaseStatus::Open,
+				'hasPerformer' => true,
+				'expectPerformerLink' => false,
+			],
+			'Resolved with no performer does not show link' => [
+				'status' => CaseStatus::Resolved,
+				'hasPerformer' => false,
+				'expectPerformerLink' => false,
+			],
+			'Invalid with no performer does not show link' => [
+				'status' => CaseStatus::Invalid,
+				'hasPerformer' => false,
+				'expectPerformerLink' => false,
+			],
+		];
+	}
+
+	public function testOutput(): void {
+		$this->overrideConfigValues( [
+			'CheckUserSuggestedInvestigationsUseGlobalContributionsLink' => false,
+			MainConfigNames::LanguageCode => 'qqx',
+		] );
+		ConvertibleTimestamp::setFakeTime( '20250403020100' );
+
+		$caseId = $this->addCaseWithTwoUsers();
+		$context = $this->makeQqxContext();
+		$context->setAuthority( $this->mockRegisteredUltimateAuthority() );
+
+		$pager = $this->getPager( $context );
+
+		$parserOutput = $pager->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+		$htmlDoc = DOMUtils::parseHTML( $html );
+
+		// 1 data row + 1 header row
+		$this->assertSame( 2, substr_count( $html, '<tr' ) );
+
+		$this->assertStringContainsString( '(checkuser-suggestedinvestigations-user:', $html );
+		$this->assertStringContainsString( '(checkuser-suggestedinvestigations-signal-' . self::SIGNAL . ')', $html );
+		$this->assertStringContainsString( '(checkuser-suggestedinvestigations-status-open)', $html );
+
+		// The details of the user line rendering are covered by SuggestedInvestigationsUserLinkRendererTest;
+		// this only checks that the pager passes the case ID and detail view link on to the renderer.
+		$this->assertStringContainsString(
+			'?title=Special:CheckUser/' . str_replace( ' ', '_', self::$testUser1->getName() ) .
+				'&amp;reason=%28checkuser-suggestedinvestigations-user-check-reason-prefill',
+			$html,
+			'Should contain link to Special:CheckUser with a prefilled reason'
+		);
+
+		$name1 = urlencode( self::$testUser1->getName() );
+		$name2 = urlencode( self::$testUser2->getName() );
+		$this->assertStringContainsString(
+			'?title=Special:Investigate&amp;targets=' . $name2 . '%0A' . $name1 .
+				'&amp;reason=%28checkuser-suggestedinvestigations-user-investigate-reason-prefill',
+			$html,
+			'Should contain link to Special:Investigate in the case row'
+		);
+		$this->assertStringContainsString( 'title="(checkuser-suggestedinvestigations-action-investigate)"', $html );
+
+		$changeStatusButton = $this->assertSelectorMatchesOneElementInNode(
+			$htmlDoc,
+			'.mw-checkuser-suggestedinvestigations-change-status-button'
+		);
+		$this->assertEquals( $caseId, $changeStatusButton->getAttribute( 'data-case-id' ) );
+		$this->assertEquals( 'open', $changeStatusButton->getAttribute( 'data-case-status' ) );
+		$this->assertSame( '', $changeStatusButton->getAttribute( 'data-case-status-reason' ) );
+		$this->assertEquals( self::SIGNAL, $changeStatusButton->getAttribute( 'data-case-signals' ) );
+
+		// Validate the "View case details" link is shown in the signals cell and points to the detail view
+		$urlIdentifier = $this->getCaseURLIdentifier( $caseId );
+		$viewCaseDetailsCell = $this->assertSelectorMatchesOneElementInNode(
+			$htmlDoc,
+			'.mw-checkuser-suggestedinvestigations-view-case-details',
+			true
+		);
+		$this->assertStringContainsString(
+			'Special:SuggestedInvestigations/detail/' . $urlIdentifier,
+			$viewCaseDetailsCell,
+			'The detail view link for the case is missing from the signals cell'
+		);
+		$this->assertStringContainsString(
+			'(checkuser-suggestedinvestigations-view-case-details)',
+			$viewCaseDetailsCell,
+			'The "View case details" link label is missing'
+		);
+
+		$context = RequestContext::getMain();
+		$this->assertStringContainsString(
+			$context->getLanguage()->userTimeAndDate( '20250403020100', $context->getUser() ),
+			$html,
+			'The case update timestamp is not present in the table row for the case'
+		);
+
+		// Validate that both the status reason and status cells have the associated suggested investigations case
+		// ID as data attributes.
+		$statusReasonCell = $this->assertSelectorMatchesOneElementInNode(
+			$htmlDoc,
+			'.mw-checkuser-suggestedinvestigations-status-reason'
+		);
+		$this->assertEquals( $caseId, $statusReasonCell->getAttribute( 'data-case-id' ) );
+
+		$statusCell = $this->assertSelectorMatchesOneElementInNode(
+			$htmlDoc,
+			'.mw-checkuser-suggestedinvestigations-status'
+		);
+		$this->assertEquals( $caseId, $statusCell->getAttribute( 'data-case-id' ) );
+
+		$this->assertStringContainsString(
+			'(checkuser-suggestedinvestigations-filter-button)',
+			$html,
+			'Filter button is not present in the page or has an unexpected label'
+		);
+		$this->assertActiveFiltersJsConfigVar( [], $parserOutput );
+	}
+
+	public function testMetadataShownWhenAccountsShareEditedPages(): void {
+		// We only want to check that metadata is shown when it should be
+		// Mocking a situation when no metadata should be there would be quite brittle, especially when we add more
+		// data points there
+		$this->overrideConfigValues( [
+			MainConfigNames::LanguageCode => 'qqx',
+		] );
+
+		$this->addCaseWithTwoUsers();
+
+		// Both accounts edit the same page, making it a "shared" page for the case.
+		$this->editPage( 'SharedMetadataPage', 'first', '', NS_MAIN, self::$testUser1 );
+		$this->editPage( 'SharedMetadataPage', 'second', '', NS_MAIN, self::$testUser2 );
+
+		$context = $this->makeQqxContext();
+		$context->setAuthority( $this->mockRegisteredUltimateAuthority() );
+
+		$html = $this->getPager( $context )->getBody();
+
+		// The shared-pages metadata line is rendered in the signals cell, reporting
+		// the two edits on the one shared page.
+		$metadataElem = $this->assertSelectorMatchesOneElement(
+			$html,
+			'.mw-checkuser-suggestedinvestigations-metadata'
+		);
+		$this->assertStringContainsString(
+			'(checkuser-suggestedinvestigations-shared-pages-summary: 2, 1)',
+			$metadataElem,
+			'The shared-pages metadata message should report 2 edits on 1 shared page'
+		);
+	}
+
+	public function testDetailViewMetadataOnlyPopulatedInDetailView(): void {
+		$caseId = $this->addCaseWithTwoUsers();
+
+		// Both accounts edit the same page, making it a "shared" page for the case.
+		$this->editPage( 'SharedDetailPage', 'first', '', NS_MAIN, self::$testUser1 );
+		$this->editPage( 'SharedDetailPage', 'second', '', NS_MAIN, self::$testUser2 );
+
+		$context = $this->makeQqxContext();
+		$context->setAuthority( $this->mockRegisteredUltimateAuthority() );
+
+		// In the main (non detail) view, no detail-view metadata is exposed.
+		$mainPager = $this->getPager( $context );
+		$mainPager->getBody();
+		$this->assertSame( [], $mainPager->getDetailViewMetadata() );
+
+		// In the detail view, the shared-pages summary for the case is exposed.
+		$detailPager = $this->getPager( $context, [], $caseId );
+		$detailPager->getBody();
+
+		$summary = null;
+		foreach ( $detailPager->getDetailViewMetadata() as $metadata ) {
+			if ( $metadata instanceof SuggestedInvestigationsSharedPagesSummary ) {
+				$summary = $metadata;
+				break;
+			}
+		}
+		$this->assertInstanceOf( SuggestedInvestigationsSharedPagesSummary::class, $summary );
+		$this->assertCount( 2, $summary->getRevisionIds() );
+		$this->assertCount( 2, $summary->getRevisionIds() );
+	}
+
+	public function testMetadataHookCanModifyMessage(): void {
+		$this->overrideConfigValues( [
+			MainConfigNames::LanguageCode => 'qqx',
+		] );
+
+		$caseId = $this->addCaseWithTwoUsers();
+
+		// Create a real shared page so a metadata message would render and we can change it
+		$this->editPage( 'HookModifyPage', 'first', '', NS_MAIN, self::$testUser1 );
+		$this->editPage( 'HookModifyPage', 'second', '', NS_MAIN, self::$testUser2 );
+
+		$receivedCaseId = null;
+		$receivedMetadata = null;
+		$this->setTemporaryHook(
+			'CheckUserSuggestedInvestigationsCaseMetadataBeforeDisplay',
+			static function ( int $hookCaseId, array &$metadata )
+				use ( &$receivedCaseId, &$receivedMetadata ) {
+				$receivedCaseId = $hookCaseId;
+				$receivedMetadata = $metadata;
+				foreach ( $metadata as $item ) {
+					$item->overrideMessage( new MessageValue( 'injected-by-hook' ) );
+				}
+			}
+		);
+
+		$context = $this->makeQqxContext();
+		$context->setAuthority( $this->mockRegisteredUltimateAuthority() );
+
+		$metadataElem = $this->assertSelectorMatchesOneElement(
+			$this->getPager( $context )->getBody(),
+			'.mw-checkuser-suggestedinvestigations-metadata'
+		);
+
+		$this->assertSame( $caseId, $receivedCaseId, 'Hook should receive the case id' );
+		$this->assertContainsOnlyInstancesOf(
+			SuggestedInvestigationsCaseMetadata::class,
+			$receivedMetadata,
+			'Hook should receive the metadata objects for the case'
+		);
+		$this->assertStringContainsString(
+			'(injected-by-hook)',
+			$metadataElem,
+			'The metadata line should include the string injected by the hook'
+		);
+	}
+
+	public function testMetadataHookCanSuppressMessage(): void {
+		$this->overrideConfigValues( [
+			MainConfigNames::LanguageCode => 'qqx',
+		] );
+
+		$this->addCaseWithTwoUsers();
+
+		// Create a real shared page so a metadata message would normally render.
+		$this->editPage( 'HookSuppressPage', 'first', '', NS_MAIN, self::$testUser1 );
+		$this->editPage( 'HookSuppressPage', 'second', '', NS_MAIN, self::$testUser2 );
+
+		$this->setTemporaryHook(
+			'CheckUserSuggestedInvestigationsCaseMetadataBeforeDisplay',
+			static function ( int $caseId, array &$metadata ) {
+				foreach ( $metadata as $item ) {
+					$item->overrideMessage( null );
+				}
+			}
+		);
+
+		$context = $this->makeQqxContext();
+		$context->setAuthority( $this->mockRegisteredUltimateAuthority() );
+
+		$html = $this->getPager( $context )->getBody();
+
+		// With every parsed message set to null, the metadata line is filtered out entirely.
+		$document = DOMUtils::parseHTML( $html );
+		$this->assertCount(
+			0,
+			DOMCompat::querySelectorAll( $document, '.mw-checkuser-suggestedinvestigations-metadata' ),
+			'The metadata line should not be rendered when the hook suppresses all items'
+		);
+	}
+
+	public function testRelatedCasesMetadataRenderedWhenCasesAreRelated(): void {
+		$this->overrideConfigValue( MainConfigNames::LanguageCode, 'qqx' );
+
+		// Two cases with the identical user set and a shared signal (name+value) are related.
+		$user1 = $this->getMutableTestUser()->getUser();
+		$user2 = $this->getMutableTestUser()->getUser();
+		foreach ( [ $user1, $user2 ] as $user ) {
+			$this->setUserEditCount( $user, 1 );
+		}
+
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult( self::SIGNAL, 'Test value', false );
+		$caseManager = $this->getCaseManager();
+		$caseManager->createCase( [ $user1, $user2 ], [ $signal ] );
+		$caseManager->createCase( [ $user1, $user2 ], [ $signal ] );
+
+		$context = $this->makeQqxContext();
+		$context->setAuthority( $this->mockRegisteredUltimateAuthority() );
+
+		$html = $this->getPager( $context )->getBody();
+
+		// The related-cases summary renders in the metadata cell, reporting one related case
+		// for each of the two cases.
+		$this->assertStringContainsString(
+			'(checkuser-suggestedinvestigations-related-cases-summary: 1)',
+			$html,
+			'The related-cases metadata message should report one related case'
+		);
+		$this->assertStringContainsString(
+			'mw-checkuser-suggestedinvestigations-metadata',
+			$html,
+			'The metadata container should be present when a case has a related case'
+		);
+	}
+
+	public function testOutputShowsCaseUpdateTimestamp(): void {
+		$this->overrideConfigValues( [
+			'CheckUserSuggestedInvestigationsUseGlobalContributionsLink' => false,
+			MainConfigNames::LanguageCode => 'qqx',
+		] );
+		ConvertibleTimestamp::setFakeTime( '20250403020100' );
+
+		$updateTimestamp = '20250607080910';
+		$caseId = $this->addCaseWithTwoUsers();
+
+		$context = $this->makeQqxContext();
+		$context->setAuthority( $this->mockRegisteredUltimateAuthority() );
+
+		// Expect that the global edit count is never fetched, as we are using the local one.
+		// If CentralAuth is loaded, use a no-op mock. Otherwise, a use of the service should
+		// mean trying to access methods on `null` (which will fail)
+		if ( $this->getServiceContainer()->getExtensionRegistry()->isLoaded( 'CentralAuth' ) ) {
+			$this->setService(
+				'CentralAuth.CentralAuthEditCounter',
+				$this->createNoOpMock( CentralAuthEditCounter::class )
+			);
+		}
+
+		// Make a change in the case, so that a new value is set for the
+		// sic_updated_timestamp column.
+		ConvertibleTimestamp::setFakeTime( $updateTimestamp );
+
+		$additionalUser = $this->getMutableTestUser()->getUser();
+
+		$caseManager = $this->getCaseManager();
+		$caseManager->updateCase( $caseId, [ $additionalUser ], [] );
+
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+		$htmlDoc = DOMUtils::parseHTML( $html );
+
+		// 1 data row + 1 header row
+		$this->assertSame( 2, substr_count( $html, '<tr' ) );
+
+		$changeStatusButton = $this->assertSelectorMatchesOneElementInNode(
+			$htmlDoc,
+			'.mw-checkuser-suggestedinvestigations-change-status-button'
+		);
+		$this->assertEquals( $caseId, $changeStatusButton->getAttribute( 'data-case-id' ) );
+
+		// Validate the "View case details" link is shown in the signals cell and points to the detail view
+		$urlIdentifier = $this->getCaseURLIdentifier( $caseId );
+		$viewCaseDetailsCell = $this->assertSelectorMatchesOneElementInNode(
+			$htmlDoc,
+			'.mw-checkuser-suggestedinvestigations-view-case-details',
+			true
+		);
+		$this->assertStringContainsString(
+			'Special:SuggestedInvestigations/detail/' . $urlIdentifier,
+			$viewCaseDetailsCell,
+			'The detail view link for the case is missing from the signals cell'
+		);
+		$this->assertStringContainsString(
+			'(checkuser-suggestedinvestigations-view-case-details)',
+			$viewCaseDetailsCell,
+			'The "View case details" link label is missing'
+		);
+
+		$context = RequestContext::getMain();
+		$this->assertStringContainsString(
+			$context->getLanguage()->userTimeAndDate( $updateTimestamp, $context->getUser() ),
+			$html,
+			'The case update timestamp is not present in the table row for the case'
+		);
+
+		$data = $this->getCaseDataFromDB(
+			$caseId,
+			[ 'sic_created_timestamp', 'sic_updated_timestamp' ]
+		);
+		$this->assertNotEquals(
+			$data->sic_created_timestamp,
+			$data->sic_updated_timestamp,
+		);
+	}
+
+	/** @dataProvider provideSignalNameForVaryingSignalsArray */
+	public function testSignalNameForVaryingSignalsArray( array $signals, string $expectedSignalName ): void {
+		$this->overrideConfigValue( MainConfigNames::LanguageCode, 'qqx' );
+		ConvertibleTimestamp::setFakeTime( '20250403020100' );
+
+		$this->addCaseWithTwoUsers();
+		$context = $this->makeQqxContext();
+		$context->setAuthority( $this->mockRegisteredUltimateAuthority() );
+
+		$pager = $this->getPager( $context, $signals );
+		$html = $pager->getBody();
+
+		$this->assertStringContainsString(
+			$expectedSignalName,
+			$html,
+			'Signal was not present in the page as expected'
+		);
+	}
+
+	public static function provideSignalNameForVaryingSignalsArray(): array {
+		return [
+			'Signals array does not have self::SIGNAL defined' => [
+				'signals' => [],
+				'expectedSignalName' => '(checkuser-suggestedinvestigations-signal-' . self::SIGNAL . ')',
+			],
+			'Signals array has self::SIGNAL defined just as a string' => [
+				[ self::SIGNAL ],
+				'expectedSignalName' => '(checkuser-suggestedinvestigations-signal-' . self::SIGNAL . ')',
+			],
+			'Signals array has self::SIGNAL defined using array format' => [
+				[ [ 'name' => self::SIGNAL ] ],
+				'expectedSignalName' => '(checkuser-suggestedinvestigations-signal-' . self::SIGNAL . ')',
+			],
+			'Signals array has self::SIGNAL defined using array format with custom display name' => [
+				[ [ 'name' => self::SIGNAL, 'displayName' => 'Test signal display name' ] ],
+				'expectedSignalName' => 'Test signal display name',
+			],
+		];
+	}
+
+	public function testOutputWhenCaseIdFilterSet(): void {
+		ConvertibleTimestamp::setFakeTime( '20250403020100' );
+
+		$firstCaseId = $this->addCaseWithTwoUsers();
+		$secondCaseId = $this->addCaseWithTwoUsers();
+
+		// Update the cases to have a specific reason, so that we can assert that the first case and not the
+		// second case is shown in the page
+		$this->getCaseManager()->setCaseStatus( $firstCaseId, CaseStatus::Open, 'first case reason' );
+		$this->getCaseManager()->setCaseStatus( $secondCaseId, CaseStatus::Invalid, 'second case reason' );
+
+		$context = $this->makeQqxContext();
+
+		// Test that only the case ID filter is applied when using the case ID filter (T421312)
+		$context->getRequest()->setVal( 'status', 'invalid' );
+		$context->getRequest()->setVal( 'editAndBlockFilter', 'blocks-only' );
+
+		$pager = $this->getPager( $context, [], $firstCaseId );
+
+		$html = $pager->getFullOutput()->getContentHolder()->getAsHtmlString();
+
+		// Test that only the first case is shown.
+		// Two <tr> elements will be present when this happens (1 data row + 1 header row)
+		$this->assertSame( 2, substr_count( $html, '<tr' ) );
+		$this->assertStringContainsString( 'first case reason', $html );
+		$this->assertStringNotContainsString( 'second case reason', $html );
+
+		// When filtering by case ID, no columns should be sortable
+		$this->assertStringNotContainsString( 'cdx-table__table__cell--has-sort', $html );
+
+		// No link to the detail view should be present when on that detail view page, but the
+		// case creation timestamp should still be shown
+		$this->assertStringNotContainsString( 'Special:SuggestedInvestigations/detail/', $html );
+
+		$context = RequestContext::getMain();
+		$this->assertStringContainsString(
+			$context->getLanguage()->userTimeAndDate( '20250403020100', $context->getUser() ),
+			$html,
+			'The case creation timestamp is not present in the table row for the case'
+		);
+
+		$this->assertStringNotContainsString(
+			'cdx-table__header',
+			$html,
+			'Detailed view should not have the table header element'
+		);
+		$this->assertStringNotContainsString(
+			'mw-checkuser-suggestedinvestigations-filter-button',
+			$html,
+			'Detailed view should not have the filter button'
+		);
+	}
+
+	public function testOutputWhenUsersHidden(): void {
+		$this->overrideConfigValues( [
+			'CheckUserSuggestedInvestigationsUseGlobalContributionsLink' => false,
+			MainConfigNames::LanguageCode => 'qqx',
+		] );
+		ConvertibleTimestamp::setFakeTime( '20250403020100' );
+
+		// Get a case with one of the users blocked with a 'hideuser' block
+		$this->addCaseWithTwoUsers();
+		$this->placeHideUserBlock( self::$testUser1 );
+
+		// Load the special page with a user who cannot see hidden users
+		$context = $this->makeQqxContext();
+		$context->setAuthority( $this->mockRegisteredAuthorityWithoutPermissions( [ 'hideuser' ] ) );
+
+		$pager = $this->getPager( $context );
+
+		$html = $pager->getFullOutput()->getContentHolder()->getAsHtmlString();
+
+		$this->assertStringContainsString(
+			'(rev-deleted-user)',
+			$html,
+			'First test username should be replaced with the rev-deleted-user message'
+		);
+
+		$this->assertStringNotContainsString(
+			'?title=Special:CheckUser/' . str_replace( ' ', '_', self::$testUser1->getName() ) .
+			'&amp;reason=%28checkuser-suggestedinvestigations-user-check-reason-prefill',
+			$html,
+			'Should not contain link to Special:CheckUser for the first user'
+		);
+		$this->assertStringContainsString(
+			'?title=Special:CheckUser/' . str_replace( ' ', '_', self::$testUser2->getName() ) .
+			'&amp;reason=%28checkuser-suggestedinvestigations-user-check-reason-prefill',
+			$html,
+			'Should contain link to Special:CheckUser for the second user'
+		);
+
+		$name2 = urlencode( self::$testUser2->getName() );
+		$this->assertStringContainsString(
+			'?title=Special:Investigate&amp;targets=' . $name2 .
+			'&amp;reason=%28checkuser-suggestedinvestigations-user-investigate-reason-prefill',
+			$html,
+			'Should contain link to Special:Investigate in the case row with only the second user'
+		);
+
+		$this->assertStringNotContainsString(
+			self::$testUser1->getName(),
+			$html,
+			'As the first test user is not visible by the viewing authority, ' .
+				'their name should be not visible anywhere on the page'
+		);
+	}
+
+	public function testInvestigateDisabledWhenAllUsersSuppressed(): void {
+		$this->overrideConfigValue( MainConfigNames::LanguageCode, 'qqx' );
+
+		// Get a case with all users blocked with a 'hideuser' block
+		$this->addCaseWithTwoUsers();
+		$this->placeHideUserBlock( self::$testUser1 );
+		$this->placeHideUserBlock( self::$testUser2 );
+
+		// Load the special page with a user who cannot see hidden users
+		$context = $this->makeQqxContext();
+		$context->setAuthority( $this->mockRegisteredAuthorityWithoutPermissions( [ 'hideuser' ] ) );
+
+		$pager = $this->getPager( $context );
+
+		$html = $pager->getBody();
+
+		$this->assertStringContainsString(
+			'(rev-deleted-user)',
+			$html,
+			'All usernames should be replaced with the rev-deleted-user message'
+		);
+
+		$investigateButton = $this->assertSelectorMatchesOneElementInNode(
+			DOMUtils::parseHTML( $html ),
+			'.mw-checkuser-suggestedinvestigations-investigate-action'
+		);
+		$this->assertEquals(
+			'(checkuser-suggestedinvestigations-action-investigate)',
+			$investigateButton->getAttribute( 'title' )
+		);
+		$this->assertStringContainsString(
+			'cdx-button--fake-button--disabled',
+			$investigateButton->className
+		);
+
+		$this->assertStringNotContainsString(
+			self::$testUser1->getName(),
+			$html,
+			'As the first test user is not visible by the viewing authority, ' .
+			'their name should be not visible anywhere on the page'
+		);
+		$this->assertStringNotContainsString(
+			self::$testUser2->getName(),
+			$html,
+			'As the second test user is not visible by the viewing authority, ' .
+			'their name should be not visible anywhere on the page'
+		);
+	}
+
+	public function testInvestigateDisabledWhenTooManyUsers(): void {
+		$caseId = $this->addCaseWithManyUsers();
+
+		$context = $this->makeQqxContext();
+
+		$pager = $this->getPager( $context );
+
+		$html = $pager->getBody();
+		$htmlDoc = DOMUtils::parseHTML( $html );
+
+		// 1 data row + 1 header row
+		$this->assertSame( 2, substr_count( $html, '<tr' ) );
+
+		$this->assertStringNotContainsString( '?title=Special:Investigate', $html );
+
+		$usersLimit = SpecialInvestigate::MAX_TARGETS;
+		$investigateButton = $this->assertSelectorMatchesOneElementInNode(
+			$htmlDoc,
+			'.mw-checkuser-suggestedinvestigations-investigate-action'
+		);
+		$this->assertEquals(
+			"(checkuser-suggestedinvestigations-action-investigate-disabled: $usersLimit)",
+			$investigateButton->getAttribute( 'title' )
+		);
+
+		$changeStatusButton = $this->assertSelectorMatchesOneElementInNode(
+			$htmlDoc,
+			'.mw-checkuser-suggestedinvestigations-change-status-button'
+		);
+		$this->assertEquals( $caseId, $changeStatusButton->getAttribute( 'data-case-id' ) );
+	}
+
+	public function testMultiLockActionNotShownWhenUserCannotUseMultiLock(): void {
+		$this->mockMultiLockUrlLookup( null );
+		$this->addCaseWithTwoUsers();
+
+		$html = $this->getPager( $this->makeQqxContext() )->getBody();
+
+		$this->assertNull(
+			DOMCompat::querySelector(
+				DOMUtils::parseHTML( $html ),
+				'.mw-checkuser-suggestedinvestigations-multilock-action'
+			),
+			'The MultiLock action should not be shown when the user cannot use Special:MultiLock'
+		);
+	}
+
+	public function testMultiLockActionShownForCaseUsers(): void {
+		$this->mockMultiLockUrlLookup( 'https://example.com/wiki/Special:MultiLock' );
+		$this->addCaseWithTwoUsers();
+
+		$html = $this->getPager( $this->makeQqxContext() )->getBody();
+
+		$buttons = DOMCompat::querySelectorAll(
+			DOMUtils::parseHTML( $html ),
+			'.mw-checkuser-suggestedinvestigations-multilock-action'
+		);
+		$this->assertCount( 1, $buttons, 'There should be one MultiLock action for the case' );
+		$button = array_pop( $buttons );
+		$this->assertSame(
+			'(checkuser-suggestedinvestigations-action-multilock)',
+			$button->getAttribute( 'title' ),
+			'The MultiLock action has an unexpected title'
+		);
+		$this->assertSame(
+			wfAppendQuery(
+				'https://example.com/wiki/Special:MultiLock',
+				[ 'wpTarget' => self::$testUser2->getName() . "\n" . self::$testUser1->getName() ]
+			),
+			$button->getAttribute( 'href' ),
+			'The MultiLock action should link to the URL from CheckUserMultiLockUrlLookup'
+		);
+	}
+
+	private function mockMultiLockUrlLookup( ?string $multiLockUrl ): void {
+		$multiLockUrlLookup = $this->createMock( CheckUserMultiLockUrlLookup::class );
+		$multiLockUrlLookup->method( 'getMultiLockUrl' )->willReturn( $multiLockUrl );
+		$this->setService( 'CheckUserMultiLockUrlLookup', $multiLockUrlLookup );
+	}
+
+	/** @dataProvider provideStatusReasonDisplayedInPager */
+	public function testStatusReasonDisplayedInPager(
+		CaseStatus $caseStatus,
+		string $reasonInDatabase,
+		string $reasonDisplayedInPager
+	) {
+		$caseId = $this->addCaseWithTwoUsers();
+
+		$this->getCaseManager()->setCaseStatus( $caseId, $caseStatus, $reasonInDatabase );
+
+		$context = $this->makeQqxContext();
+
+		$pager = $this->getPager( $context );
+
+		$html = $pager->getBody();
+
+		// Validate that the status reason contains the default for the invalid status
+		$statusReasonCell = $this->assertSelectorMatchesOneElement(
+			$html,
+			'.mw-checkuser-suggestedinvestigations-status-reason'
+		);
+		$this->assertStringContainsString( $reasonDisplayedInPager, $statusReasonCell );
+	}
+
+	public static function provideStatusReasonDisplayedInPager(): array {
+		return [
+			'Empty reason in database for invalid case' => [
+				CaseStatus::Invalid, '', '(checkuser-suggestedinvestigations-status-reason-default-invalid)',
+			],
+			'Non-empty reason in database for invalid case' => [ CaseStatus::Invalid, 'testingabc', 'testingabc' ],
+			'Empty reason in database for resolved case' => [ CaseStatus::Resolved, '', '' ],
+			'Non-empty reason in database for open case' => [ CaseStatus::Open, 'testingabc', 'testingabc' ],
+		];
+	}
+
+	public function testStatusReasonHasWikitext(): void {
+		$wikitextReason = '[[Test]]';
+		$this->testStatusReasonDisplayedInPager(
+			CaseStatus::Open,
+			$wikitextReason,
+			$this->getServiceContainer()->getCommentFormatter()->format( $wikitextReason )
+		);
+	}
+
+	public function testInvalidEnabledQueueViewsConfigThrowsException(): void {
+		$this->expectException( InvalidArgumentException::class );
+
+		$this->overrideConfigValues( [
+			'CheckUserSuggestedInvestigationsEnabledQueueViews' => [ 'foo' ],
+			'CheckUserSuggestedInvestigationsDefaultQueueView' => 'all',
+		] );
+		$context = $this->makeQqxContext();
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+	}
+
+	/** @dataProvider provideTestQueueViewSetsDefaultFilters */
+	public function testQueueViewSetsDefaultFilters( array $filterChanges ): void {
+		$queueViewFilters = array_merge( [
+			'editAndBlockFilter' => 'edits-only',
+			'lastUpdated' => null,
+			'showCasesWithEditsOnSharedPages' => false,
+			'signal' => [],
+			'status' => [],
+		], $filterChanges );
+		$this->overrideConfigValues( [
+			'CheckUserSuggestedInvestigationsEnabledQueueViews' => [ 'all' ],
+			'CheckUserSuggestedInvestigationsDefaultQueueView' => 'all',
+			'CheckUserSuggestedInvestigationsQueueViews' => [
+				'all' => [
+					'filters' => $queueViewFilters,
+					'msgKeys' => [
+						'defaultName' => 'defaultName',
+						'editedName' => 'editedName',
+						'filterDialogTitle' => 'filterDialogTitle',
+					],
+				],
+			],
+		] );
+
+		$context = $this->makeQqxContext();
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+
+		// Assert the filter is applied
+		$this->assertActiveFiltersJsConfigVar(
+			$filterChanges,
+			$parserOutput
+		);
+	}
+
+	public static function provideTestQueueViewSetsDefaultFilters(): array {
+		return [
+			'update editAndBlockFilter' => [ [ 'editAndBlockFilter' => 'none' ] ],
+			'update lastUpdated' => [ [ 'lastUpdated' => 7 ] ],
+			'update showCasesWithEditsOnSharedPages' => [ [ 'showCasesWithEditsOnSharedPages' => true ] ],
+			'update signal' => [ [ 'signal' => [ 'dev-signal-1' ] ] ],
+			'update status' => [ [ 'status' => [ 'resolved' ] ] ],
+		];
+	}
+
+	/** @dataProvider provideTestQueueViewButtonState */
+	public function testQueueViewButtonState( array $activeFilters, array $expectedButtonState ): void {
+		// Set 2 default queues to test active/edited states against
+		$queueViews = [
+			'foo' => [
+				'filters' => [
+					'editAndBlockFilter' => 'edits-only',
+					'lastUpdated' => null,
+					'showCasesWithEditsOnSharedPages' => false,
+					'signal' => [],
+					'status' => [],
+				],
+				'msgKeys' => [
+					'defaultName' => 'foo-defaultName',
+					'editedName' => 'foo-editedName',
+					'filterDialogTitle' => 'foo-filterDialogTitle',
+				],
+			],
+			'bar' => [
+				'filters' => [
+					'editAndBlockFilter' => 'edits-only',
+					'lastUpdated' => null,
+					'showCasesWithEditsOnSharedPages' => false,
+					'signal' => [],
+					'status' => [],
+				],
+				'msgKeys' => [
+					'defaultName' => 'bar-defaultName',
+					'editedName' => 'bar-editedName',
+					'filterDialogTitle' => 'bar-filterDialogTitle',
+				],
+			],
+		];
+		$this->overrideConfigValues( [
+			'CheckUserSuggestedInvestigationsEnabledQueueViews' => [ 'foo', 'bar' ],
+			'CheckUserSuggestedInvestigationsDefaultQueueView' => 'foo',
+			'CheckUserSuggestedInvestigationsQueueViews' => $queueViews,
+		] );
+
+		$context = $this->makeQqxContext();
+		foreach ( $activeFilters as $filterName => $filterValue ) {
+			$context->getRequest()->setVal( $filterName, $filterValue );
+		}
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+		$htmlDoc = DOMUtils::parseHTML( $html );
+
+		foreach ( [ 'foo', 'bar' ] as $queueView ) {
+			$isEdited = $expectedButtonState[ 'edited' ] === $queueView;
+			$editedMsgKey = $isEdited ? 'editedName' : 'defaultName';
+			$this->assertStringContainsString(
+				$queueViews[ $queueView ][ 'msgKeys' ][ $editedMsgKey ],
+				$html,
+				'Queue view button reflects whether or not filters have been edited'
+			);
+
+			$buttonTitle = $isEdited ? "$queueView-editedName" : "$queueView-defaultName";
+			$classSelector = $expectedButtonState[ 'active' ] === $queueView ?
+				'.mw-checkuser-suggestedinvestigations-queue-view-button.cdx-button--action-progressive' :
+				'.mw-checkuser-suggestedinvestigations-queue-view-button:not(\'.cdx-button--action-progressive\')';
+			$queueViewButtonUnderTest = $this->assertSelectorMatchesOneElementInNode(
+				$htmlDoc,
+				$classSelector,
+				false
+			);
+			$this->assertEquals( $queueView, DomCompat::getAttribute( $queueViewButtonUnderTest, 'data-queue-view' ) );
+			$this->assertEquals( "($buttonTitle)", DomCompat::getAttribute( $queueViewButtonUnderTest, 'title' ) );
+		}
+	}
+
+	public static function provideTestQueueViewButtonState(): array {
+		return [
+			'default (foo), no changes to filter' => [
+				'activeFilters' => [],
+				'expectedButtonState' => [
+					'active' => 'foo',
+					'edited' => null,
+				],
+			],
+			'default (foo), changes to filter' => [
+				'activeFilters' => [ 'editAndBlockFilter' => 'none' ],
+				'expectedButtonState' => [
+					'active' => 'foo',
+					'edited' => 'foo',
+				],
+			],
+			'manually set same as default, no changes to filter' => [
+				'activeFilters' => [ 'queueView' => 'foo' ],
+				'expectedButtonState' => [
+					'active' => 'foo',
+					'edited' => null,
+				],
+			],
+			'manually set same as default, changes to filter' => [
+				'activeFilters' => [ 'editAndBlockFilter' => 'none', 'queueView' => 'foo' ],
+				'expectedButtonState' => [
+					'active' => 'foo',
+					'edited' => 'foo',
+				],
+			],
+			'set to non-default, no changes to filter' => [
+				'activeFilters' => [ 'queueView' => 'bar' ],
+				'expectedButtonState' => [
+					'active' => 'bar',
+					'edited' => null,
+				],
+			],
+			'set to non-default, changes to filter' => [
+				'activeFilters' => [ 'editAndBlockFilter' => 'none', 'queueView' => 'bar' ],
+				'expectedButtonState' => [
+					'active' => 'bar',
+					'edited' => 'bar',
+				],
+			],
+		];
+	}
+
+	public function testDefaultQueueViewFiltersApplied(): void {
+		// Set a default queue view which shows only open cases
+		$this->overrideConfigValues( [
+			'CheckUserSuggestedInvestigationsEnabledQueueViews' => [ 'open' ],
+			'CheckUserSuggestedInvestigationsDefaultQueueView' => 'open',
+			'CheckUserSuggestedInvestigationsQueueViews' => [
+				'open' => [
+					'filters' => [
+						'editAndBlockFilter' => 'none',
+						'lastUpdated' => null,
+						'showCasesWithEditsOnSharedPages' => false,
+						'signal' => [],
+						'status' => [ 'open' ],
+					],
+					'msgKeys' => [
+						'defaultName' => 'defaultName',
+						'editedName' => 'editedName',
+						'filterDialogTitle' => 'filterDialogTitle',
+					],
+				],
+			],
+		] );
+
+		// Create two cases, where one is then closed
+		$caseManager = $this->getCaseManager();
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$firstCaseId = $caseManager->createCase( [ $this->getTestUser()->getUserIdentity() ], [ $signal ] );
+		$secondCaseId = $caseManager->createCase( [ $this->getTestUser()->getUserIdentity() ], [ $signal ] );
+
+		// First case is closed
+		$caseManager->setCaseStatus( $firstCaseId, CaseStatus::Resolved );
+
+		$context = $this->makeQqxContext();
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+
+		// Expect that the table pager only shows the open case by checking
+		// only the second case ID is present as a data attribute
+		$this->assertStringNotContainsString( 'data-case-id="' . $firstCaseId . '"', $html );
+		$this->assertStringContainsString( 'data-case-id="' . $secondCaseId . '"', $html );
+
+		$this->assertStringContainsString(
+			'(checkuser-suggestedinvestigations-filter-button)',
+			$html,
+			'Filter button is not present in the page or has an unexpected label'
+		);
+		$this->assertStringContainsString(
+			'mw-checkuser-suggestedinvestigations-filter-button-filters-applied-chip',
+			$html,
+			'The info chip indicating how many filters were applied was not present'
+		);
+		$this->assertActiveFiltersJsConfigVar(
+			[ 'editAndBlockFilter' => 'none', 'queueView' => 'open', 'status' => [ 'open' ] ],
+			$parserOutput
+		);
+	}
+
+	public function testWhenStatusFilterIsSet(): void {
+		$caseManager = $this->getCaseManager();
+
+		$this->setUserEditCount( $this->getTestUser()->getUserIdentity(), 1 );
+
+		// Create two cases, where one is then closed
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$firstCaseId = $caseManager->createCase( [ $this->getTestUser()->getUserIdentity() ], [ $signal ] );
+		$secondCaseId = $caseManager->createCase( [ $this->getTestUser()->getUserIdentity() ], [ $signal ] );
+
+		$caseManager->setCaseStatus( $firstCaseId, CaseStatus::Resolved );
+
+		// Load the pager with the 'status' query parameter set to 'open'
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'status', 'open' );
+
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+
+		// Expect that the table pager only shows the open case by checking
+		// only the first case ID is present as a data attribute
+		$this->assertStringNotContainsString( 'data-case-id="' . $firstCaseId . '"', $html );
+		$this->assertStringContainsString( 'data-case-id="' . $secondCaseId . '"', $html );
+
+		$this->assertStringContainsString(
+			'(checkuser-suggestedinvestigations-filter-button)',
+			$html,
+			'Filter button is not present in the page or has an unexpected label'
+		);
+		$this->assertStringContainsString(
+			'mw-checkuser-suggestedinvestigations-filter-button-filters-applied-chip',
+			$html,
+			'The info chip indicating how many filters were applied was not present'
+		);
+		$this->assertActiveFiltersJsConfigVar( [ 'status' => [ 'open' ] ], $parserOutput );
+	}
+
+	public function testWhenUsernameFilterIsSet(): void {
+		// Create two cases each with a different user
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$firstUser = $this->getMutableTestUser()->getUserIdentity();
+		$secondUser = $this->getMutableTestUser()->getUserIdentity();
+
+		foreach ( [ $firstUser, $secondUser ] as $user ) {
+			$this->setUserEditCount( $user, 1 );
+		}
+
+		$caseManager = $this->getCaseManager();
+		$firstCaseId = $caseManager->createCase( [ $firstUser ], [ $signal ] );
+		$secondCaseId = $caseManager->createCase( [ $secondUser ], [ $signal ] );
+
+		// Load the pager with the 'username' query set to the first user's username
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'username', $firstUser->getName() );
+
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+		$jsConfigVars = $parserOutput->getJsConfigVars();
+
+		// Expect that the table pager only shows the first case by checking
+		// only the first case ID is present as a data attribute
+		$this->assertStringContainsString( 'data-case-id="' . $firstCaseId . '"', $html );
+		$this->assertStringNotContainsString( 'data-case-id="' . $secondCaseId . '"', $html );
+		$this->assertActiveFiltersJsConfigVar( [ 'username' => [ $firstUser->getName() ] ], $parserOutput );
+	}
+
+	public function testWhenUsernameFilterUsesUnknownUsername(): void {
+		// Create a case for an existing user
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$this->getCaseManager()->createCase( [ $this->getTestUser()->getUserIdentity() ], [ $signal ] );
+
+		// Load the pager with the 'username' query set to a string that isn't an existing username
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'username', __METHOD__ . wfRandomString() );
+
+		$html = $this->getPager( $context )->getBody();
+
+		// Expect that the table pager has no results by looking for the table_pager_empty
+		// message key and checking that no data-case-id attributes exist in the page
+		$this->assertStringContainsString( '(table_pager_empty)', $html );
+		$this->assertStringNotContainsString( 'data-case-id', $html );
+	}
+
+	/** @dataProvider provideWhenUsernameFilterUsesHiddenUsername */
+	public function testWhenUsernameFilterUsesHiddenUsername(
+		array $performerPermissions,
+		bool $expectVisible
+	): void {
+		$this->overrideConfigValue( MainConfigNames::LanguageCode, 'qqx' );
+
+		// Create a case with one user, then hide that user
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$user = $this->getMutableTestUser()->getUser();
+
+		$this->setUserEditCount( $user, 1 );
+
+		$caseId = $this->getCaseManager()->createCase( [ $user ], [ $signal ] );
+
+		$this->placeHideUserBlock( $user );
+
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'username', $user->getName() );
+		$context->setAuthority( $this->mockRegisteredAuthorityWithoutPermissions( $performerPermissions ) );
+
+		$html = $this->getPager( $context )->getBody();
+
+		if ( $expectVisible ) {
+			$this->assertStringContainsString( 'data-case-id="' . $caseId . '"', $html );
+			$this->assertStringContainsString( $user->getName(), $html );
+		} else {
+			$this->assertStringContainsString( '(table_pager_empty)', $html );
+			$this->assertStringNotContainsString( 'data-case-id', $html );
+		}
+	}
+
+	public static function provideWhenUsernameFilterUsesHiddenUsername(): array {
+		return [
+			'without hideuser permission' => [ [ 'hideuser' ], false ],
+			'with hideuser permission' => [ [], true ],
+		];
+	}
+
+	public function testWhenUsernameFilterIncludesHiddenAndVisibleUsername(): void {
+		$this->overrideConfigValue( MainConfigNames::LanguageCode, 'qqx' );
+
+		// Create two cases each with a different user
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$firstUser = $this->getMutableTestUser()->getUser();
+		$secondUser = $this->getMutableTestUser()->getUser();
+
+		foreach ( [ $firstUser, $secondUser ] as $user ) {
+			$this->setUserEditCount( $user, 1 );
+		}
+
+		$caseManager = $this->getCaseManager();
+		$firstCaseId = $caseManager->createCase( [ $firstUser ], [ $signal ] );
+		$secondCaseId = $caseManager->createCase( [ $secondUser ], [ $signal ] );
+
+		// Hide the first user
+		$this->placeHideUserBlock( $firstUser );
+
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'username', [ $firstUser->getName(), $secondUser->getName() ] );
+		$context->setAuthority( $this->mockRegisteredAuthorityWithoutPermissions( [ 'hideuser' ] ) );
+
+		$html = $this->getPager( $context )->getBody();
+
+		$this->assertStringNotContainsString( 'data-case-id="' . $firstCaseId . '"', $html );
+		$this->assertStringContainsString( 'data-case-id="' . $secondCaseId . '"', $html );
+	}
+
+	/** @dataProvider provideLimitValues */
+	public function testWhenEditAndBlockFilterIsSetForLocalEditsOnly( int $limit ) {
+		$this->overrideConfigValue( 'CheckUserSuggestedInvestigationsUseGlobalContributionsLink', false );
+
+		// Create two cases each with a different user
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$firstUser = $this->getMutableTestUser()->getUserIdentity();
+		$secondUser = $this->getMutableTestUser()->getUserIdentity();
+
+		// Mock that the first test user has 2 edits
+		$this->setUserEditCount( $firstUser, 2 );
+
+		$caseManager = $this->getCaseManager();
+		$firstCaseId = $caseManager->createCase( [ $firstUser ], [ $signal ] );
+		$secondCaseId = $caseManager->createCase( [ $secondUser ], [ $signal ] );
+
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'editAndBlockFilter', 'edits-only' );
+		$context->getRequest()->setVal( 'limit', $limit );
+
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+		$jsConfigVars = $parserOutput->getJsConfigVars();
+
+		// Expect that the table pager only shows the first case, as only the first case
+		// has users with edits in it.
+		$this->assertStringContainsString( 'data-case-id="' . $firstCaseId . '"', $html );
+		$this->assertStringNotContainsString( 'data-case-id="' . $secondCaseId . '"', $html );
+		$this->assertActiveFiltersJsConfigVar( [ 'editAndBlockFilter' => 'edits-only' ], $parserOutput );
+		$this->assertFalse(
+			$jsConfigVars['wgCheckUserSuggestedInvestigationsGlobalEditCountsUsed'],
+			'Value of JS config var wgCheckUserSuggestedInvestigationsGlobalEditCountsUsed ' .
+				' is not as expected'
+		);
+	}
+
+	public function testWhenNoFiltersSetEditAndBlockFilterDefaultsToEditsOnly(): void {
+		$this->overrideConfigValue( 'CheckUserSuggestedInvestigationsUseGlobalContributionsLink', false );
+
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$firstUser = $this->getMutableTestUser()->getUserIdentity();
+		$secondUser = $this->getMutableTestUser()->getUserIdentity();
+
+		$this->setUserEditCount( $firstUser, 2 );
+
+		$caseManager = $this->getCaseManager();
+		$firstCaseId = $caseManager->createCase( [ $firstUser ], [ $signal ] );
+		$secondCaseId = $caseManager->createCase( [ $secondUser ], [ $signal ] );
+
+		// Load the pager with no query params set
+		$context = $this->makeQqxContext();
+
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+
+		// Expect that the table pager only shows the first case, as only the first case
+		// has users with edits in it (editAndBlockFilter defaults to 'edits-only').
+		$this->assertStringContainsString( 'data-case-id="' . $firstCaseId . '"', $html );
+		$this->assertStringNotContainsString( 'data-case-id="' . $secondCaseId . '"', $html );
+		$this->assertStringNotContainsString(
+			'mw-checkuser-suggestedinvestigations-filter-button-filters-applied-chip',
+			$html,
+			'The info chip indicating filters were applied should not be present for default filters'
+		);
+		$this->assertActiveFiltersJsConfigVar( [], $parserOutput );
+	}
+
+	public static function provideLimitValues(): array {
+		return [
+			'Limit of 1' => [ 1 ],
+			'Limit of 2' => [ 2 ],
+			'Limit of 10' => [ 10 ],
+		];
+	}
+
+	/** @dataProvider provideLimitValues */
+	public function testWhenEditAndBlockFilterIsSetForGlobalEditsOnly( int $limit ) {
+		$this->markTestSkippedIfExtensionNotLoaded( 'CentralAuth' );
+
+		$isGlobalContributionsEnabled = $this->getServiceContainer()->getSpecialPageFactory()
+			->exists( 'GlobalContributions' );
+		if ( !$isGlobalContributionsEnabled ) {
+			$this->markTestSkipped( 'Test requires GlobalContributions dependencies to be met' );
+		}
+
+		$this->overrideConfigValues( [
+			'CheckUserSuggestedInvestigationsUseGlobalContributionsLink' => true,
+			MainConfigNames::LanguageCode => 'qqx',
+		] );
+
+		// Create two cases each with a different user
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$firstUser = $this->getMutableTestUser()->getUserIdentity();
+		$secondUser = $this->getMutableTestUser()->getUserIdentity();
+
+		$firstCaseId = $this->getCaseManager()->createCase( [ $firstUser ], [ $signal ] );
+		$secondCaseId = $this->getCaseManager()->createCase( [ $secondUser ], [ $signal ] );
+
+		// Mock that the second test user has an edit and all others do not
+		$mockCentralAuthEditCounter = $this->createMock( CentralAuthEditCounter::class );
+		$mockCentralAuthEditCounter->method( 'getCount' )
+			->willReturnCallback(
+				static fn ( CentralAuthUser $centralUser ) =>
+					$secondUser->getName() === $centralUser->getName() ? 1 : 0
+			);
+		$this->setService( 'CentralAuth.CentralAuthEditCounter', $mockCentralAuthEditCounter );
+
+		// Load the pager with the 'editAndBlockFilter' query param set to 'edits-only'
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'editAndBlockFilter', 'edits-only' );
+		$context->getRequest()->setVal( 'limit', $limit );
+
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+		$jsConfigVars = $parserOutput->getJsConfigVars();
+
+		// Expect that the table pager only shows the second case, as only the second case
+		// has users with edits in it.
+		$this->assertStringNotContainsString( 'data-case-id="' . $firstCaseId . '"', $html );
+		$this->assertStringContainsString( 'data-case-id="' . $secondCaseId . '"', $html );
+		$this->assertActiveFiltersJsConfigVar( [ 'editAndBlockFilter' => 'edits-only' ], $parserOutput );
+		$this->assertTrue(
+			$jsConfigVars['wgCheckUserSuggestedInvestigationsGlobalEditCountsUsed'],
+			'Value of JS config var wgCheckUserSuggestedInvestigationsGlobalEditCountsUsed ' .
+			' is not as expected'
+		);
+	}
+
+	public static function provideEditAndBlockFilterValues(): array {
+		return [
+			[
+				'filterValue' => 'edits-only',
+				'expectedFilteredCases' => [ 2, 4 ],
+			], [
+				'filterValue' => 'blocks-only',
+				'expectedFilteredCases' => [ 3, 4 ],
+			], [
+				'filterValue' => 'edits-or-blocks',
+				'expectedFilteredCases' => [ 2, 3, 4 ],
+			], [
+				'filterValue' => 'edits-and-blocks',
+				'expectedFilteredCases' => [ 4 ],
+			], [
+				'filterValue' => 'none',
+				'expectedFilteredCases' => [ 1, 2, 3, 4 ],
+			],
+		];
+	}
+
+	/** @dataProvider provideEditAndBlockFilterValues */
+	public function testWhenEditAndBlockFilterValues( string $filterValue, array $expectedCases ): void {
+		$this->overrideConfigValue( 'CheckUserSuggestedInvestigationsUseGlobalContributionsLink', false );
+
+		$caseManager = $this->getCaseManager();
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+
+		// Create the following cases:
+		// 1. A user with no edits or blocks
+		// 2. A user with edits but no blocks
+		// 3. A blocked user with no edits
+		// 4. A blocked user with edits
+		$firstUser = $this->getMutableTestUser()->getUserIdentity();
+		$secondUser = $this->getMutableTestUser()->getUserIdentity();
+		$this->setUserEditCount( $secondUser, 2 );
+		$thirdUser = $this->getMutableTestUser()->getUserIdentity();
+		$this->getServiceContainer()->getBlockUserFactory()
+			->newBlockUser(
+				$thirdUser,
+				$this->mockRegisteredUltimateAuthority(),
+				'indefinite'
+			)
+			->placeBlock();
+		$fourthUser = $this->getMutableTestUser()->getUserIdentity();
+		$this->setUserEditCount( $fourthUser, 2 );
+		$this->getServiceContainer()->getBlockUserFactory()
+			->newBlockUser(
+				$fourthUser,
+				$this->mockRegisteredUltimateAuthority(),
+				'indefinite'
+			)
+			->placeBlock();
+
+		$firstCaseId = $caseManager->createCase( [ $firstUser ], [ $signal ] );
+		$secondCaseId = $caseManager->createCase( [ $secondUser ], [ $signal ] );
+		$thirdCaseId = $caseManager->createCase( [ $thirdUser ], [ $signal ] );
+		$fourthCaseId = $caseManager->createCase( [ $fourthUser ], [ $signal ] );
+
+		// Load the pager with the 'editAndBlockFilter' query param
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'editAndBlockFilter', $filterValue );
+
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+
+		// Expect that the table pager shows the filtered cases
+		$cases = [ $firstCaseId, $secondCaseId, $thirdCaseId, $fourthCaseId ];
+		foreach ( $cases as $caseIndex => $caseId ) {
+			// For legibility in data provider, expected index is index-1
+			if ( in_array( $caseIndex + 1, $expectedCases ) ) {
+				$this->assertStringContainsString( 'data-case-id="' . $caseId . '"', $html );
+			} else {
+				$this->assertStringNotContainsString( 'data-case-id="' . $caseId . '"', $html );
+			}
+		}
+		$this->assertActiveFiltersJsConfigVar( [ 'editAndBlockFilter' => $filterValue ], $parserOutput );
+	}
+
+	public function testWhenEditAndBlockFilterIsSetForMultipleMainQueries(): void {
+		$this->overrideConfigValue( 'CheckUserSuggestedInvestigationsUseGlobalContributionsLink', false );
+
+		// Create two cases each with a different user
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$firstUser = $this->getMutableTestUser()->getUserIdentity();
+		$secondUser = $this->getMutableTestUser()->getUserIdentity();
+
+		// Mock that the first test user has 2 edits
+		$this->setUserEditCount( $firstUser, 2 );
+
+		$caseManager = $this->getCaseManager();
+		$firstCaseId = $caseManager->createCase( [ $firstUser ], [ $signal ] );
+		$secondCaseId = $caseManager->createCase( [ $secondUser ], [ $signal ] );
+		$thirdCaseId = $caseManager->createCase( [ $secondUser ], [ $signal ] );
+		$fourthCaseId = $caseManager->createCase( [ $firstUser ], [ $signal ] );
+
+		// Load the pager with the 'editAndBlockFilter' query param set to 'edits-only'
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'editAndBlockFilter', 'edits-only' );
+		$context->getRequest()->setVal( 'limit', 2 );
+
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+
+		// Expect that the table pager shows the first and fourth case
+		$this->assertStringContainsString( 'data-case-id="' . $firstCaseId . '"', $html );
+		$this->assertStringNotContainsString( 'data-case-id="' . $secondCaseId . '"', $html );
+		$this->assertStringNotContainsString( 'data-case-id="' . $thirdCaseId . '"', $html );
+		$this->assertStringContainsString( 'data-case-id="' . $fourthCaseId . '"', $html );
+
+		// Check that the rows are ordered correctly by ensuring that the first case ID is present
+		// after the third using regex
+		$this->assertMatchesRegularExpression(
+			'/' . preg_quote( 'data-case-id="' . $fourthCaseId . '"', '/' ) . '[\s\S]*'
+				. preg_quote( 'data-case-id="' . $firstCaseId . '"', '/' ) . '/',
+			$html,
+			'Case with ID of 1 should be before the case with ID of 3'
+		);
+
+		$this->assertActiveFiltersJsConfigVar( [ 'editAndBlockFilter' => 'edits-only' ], $parserOutput );
+	}
+
+	public function testWhenShowCasesWithEditsOnSharedPagesFilterIsSet(): void {
+		// Create a case where both accounts edit the same page, making it a "shared" page for the case
+		$sharedPagesEditCaseId = $this->addCaseWithTwoUsers();
+		$this->editPage( 'SharedMetadataPage', 'first', '', NS_MAIN, self::$testUser1 );
+		$this->editPage( 'SharedMetadataPage', 'second', '', NS_MAIN, self::$testUser2 );
+
+		// Create another case with edits but without any shared page edits
+		// so that it is expected to appear on the default view
+		$anotherUser = $this->getTestUser()->getUserIdentity();
+		$this->setUserEditCount( $anotherUser, 1 );
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$caseManager = $this->getCaseManager();
+		$anotherCaseId = $caseManager->createCase( [ $anotherUser ], [ $signal ] );
+
+		// Set the filter and the context
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'showCasesWithEditsOnSharedPages', 1 );
+		$context->setAuthority( $this->mockRegisteredUltimateAuthority() );
+
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+
+		$this->assertStringContainsString( 'data-case-id="' . $sharedPagesEditCaseId . '"', $html );
+		$this->assertStringNotContainsString( 'data-case-id="' . $anotherCaseId . '"', $html );
+
+		$this->assertActiveFiltersJsConfigVar( [ 'showCasesWithEditsOnSharedPages' => true ], $parserOutput );
+	}
+
+	public function testWhenPHPFiltersLimitReached(): void {
+		$context = $this->makeQqxContext();
+
+		$pager = $this->getPager( $context );
+
+		// Actually hitting the limit would be expensive for tests, as we would need to create around
+		// 1,000 testing rows. Therefore, we should just fake that this has been reached.
+		$pager = TestingAccessWrapper::newFromObject( $pager );
+		$pager->phpFiltersLimitReached = true;
+
+		// Added via IContextSource::getOutput::addHTML to make sure it appears above the Codex table, however,
+		// we need to call ::getFullOutput first so that IContextSource::getOutput::addHTML is actually called
+		$pager->getFullOutput();
+		$html = $context->getOutput()->getHTML();
+
+		$this->assertStringContainsString(
+			'(checkuser-suggestedinvestigations-filter-too-many-results-filtered-in-php)',
+			$html,
+			'PHP filter limit hit message should be present in the outputted HTML'
+		);
+		$this->assertStringContainsString(
+			'ext-checkuser-suggestedinvestigations-warning-dismiss',
+			$html,
+			'The warning should be dismissable'
+		);
+	}
+
+	/** @dataProvider provideWhenSignalFilterIsSet */
+	public function testWhenSignalFilterIsSet( $urlName, $signals ): void {
+		$this->setUserEditCount( $this->getTestUser()->getUserIdentity(), 1 );
+
+		// Create two cases, with different signals
+		$firstSignal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$secondSignal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			'dev-signal-2',
+			'Test value',
+			false
+		);
+		$caseManager = $this->getCaseManager();
+		$firstCaseId = $caseManager->createCase( [ $this->getTestUser()->getUserIdentity() ], [ $firstSignal ] );
+		$secondCaseId = $caseManager->createCase( [ $this->getTestUser()->getUserIdentity() ], [ $secondSignal ] );
+
+		// Load the pager with the 'signal' query parameter set to 'dev-signal-2'
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'signal', $urlName );
+
+		$parserOutput = $this->getPager( $context, $signals )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+
+		// Expect that the table pager only shows the case with the dev-signal-2 signal
+		$this->assertStringNotContainsString( 'data-case-id="' . $firstCaseId . '"', $html );
+		$this->assertStringContainsString( 'data-case-id="' . $secondCaseId . '"', $html );
+
+		$this->assertActiveFiltersJsConfigVar( [ 'signal' => [ 'dev-signal-2' ] ], $parserOutput );
+	}
+
+	public static function provideWhenSignalFilterIsSet(): array {
+		return [
+			'URL name is the database name of the signal' => [ 'dev-signal-2', [] ],
+			'URL name is the database name of the signal with signals array defined' => [
+				'dev-signal-2',
+				[ [ 'name' => 'dev-signal-2', 'urlName' => 'signal-e3' ] ],
+			],
+			'Using the URL name of the signal with signals array defined' => [
+				'signal-e3',
+				[ [ 'name' => 'dev-signal-2', 'urlName' => 'signal-e3' ] ],
+			],
+		];
+	}
+
+	public function testWhenSignalFilterIsSetWithMultipleSignalsPerCase(): void {
+		$this->setUserEditCount( $this->getTestUser()->getUserIdentity(), 1 );
+
+		// Create two cases, with different signals
+		$firstSignal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$secondSignal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			'dev-signal-2',
+			'Test value',
+			true
+		);
+		$thirdSignal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			'dev-signal-2',
+			'Test value2',
+			true
+		);
+
+		$caseManager = $this->getCaseManager();
+		$firstCaseId = $caseManager->createCase( [ $this->getTestUser()->getUserIdentity() ], [ $firstSignal ] );
+		$secondCaseId = $caseManager->createCase( [ $this->getTestUser()->getUserIdentity() ], [ $secondSignal ] );
+		$caseManager->updateCase( $secondCaseId, [], [ $thirdSignal ] );
+
+		// Load the pager with the 'signal' query parameter set to 'dev-signal-2'
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'signal', 'dev-signal-2' );
+
+		$parserOutput = $this->getPager(
+			$context,
+			[ [ 'name' => 'dev-signal-2', 'urlName' => 'signal-e3' ] ]
+		)->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+
+		// Expect that the table pager only shows one case which should be the dev-signal-2 case
+		$this->assertStringNotContainsString( 'data-case-id="' . $firstCaseId . '"', $html );
+		$this->assertStringContainsString( 'data-case-id="' . $secondCaseId . '"', $html );
+		$this->assertSame( 2, substr_count( $html, '<tr' ) );
+
+		$this->assertActiveFiltersJsConfigVar( [ 'signal' => [ 'dev-signal-2' ] ], $parserOutput );
+	}
+
+	public function testFilterIsRelayedInLimitForm(): void {
+		/** @var SuggestedInvestigationsCaseManagerService $caseManager */
+		$caseManager = $this->getServiceContainer()->getService( 'CheckUserSuggestedInvestigationsCaseManager' );
+
+		$this->setUserEditCount( $this->getTestUser()->getUserIdentity(), 1 );
+
+		// Create two cases, where one is then closed
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$firstCaseId = $caseManager->createCase( [ $this->getTestUser()->getUserIdentity() ], [ $signal ] );
+		$caseManager->createCase( [ $this->getTestUser()->getUserIdentity() ], [ $signal ] );
+
+		$caseManager->setCaseStatus( $firstCaseId, CaseStatus::Resolved );
+
+		// Load the pager with the 'status' query parameter set to [ 'open', 'resolved' ] and an unknown parameter
+		$context = $this->makeQqxContext();
+		// So that we have the limit form shown in the output
+		$context->getRequest()->setVal( 'limit', 1 );
+		$context->getRequest()->setVal( 'status', [ 'open', 'resolved', 'unknown' => 'loremIpsum' ] );
+		$context->getRequest()->setVal( 'unknownArrayField', [ 'test' ] );
+
+		$parserOutput = $this->getPager( $context )->getFullOutput();
+		$html = $parserOutput->getContentHolder()->getAsHtmlString();
+
+		$parsedDom = DOMUtils::parseHTML( $html );
+		$pager = DOMCompat::querySelector( $parsedDom, '.cdx-table-pager__start' );
+		$this->assertNotNull( $pager );
+
+		$this->assertNotNull( DOMCompat::querySelector( $pager, 'input[name="status[0]"][value="open"]' ) );
+		$this->assertNotNull( DOMCompat::querySelector( $pager, 'input[name="status[1]"][value="resolved"]' ) );
+		$this->assertNull( DOMCompat::querySelector( $pager, 'input[name="status[unknown]"]' ) );
+		$this->assertNull( DOMCompat::querySelector( $pager, 'input[name="unknownArrayField[0]"]' ) );
+	}
+
+	/** @dataProvider provideLastUpdatedFilter */
+	public function testLastUpdatedFilter( ?string $filterParam, bool $expectRecentCase, bool $expectOldCase ): void {
+		ConvertibleTimestamp::setFakeTime( 1000000000 );
+		$recentTimestamp = ConvertibleTimestamp::convert( TimestampFormat::MW, 1000000000 - 3600 );
+		$oldTimestamp = ConvertibleTimestamp::convert( TimestampFormat::MW, 1000000000 - 100 * 86400 );
+
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult(
+			self::SIGNAL,
+			'Test value',
+			false
+		);
+		$user = $this->getMutableTestUser()->getUserIdentity();
+		$this->setUserEditCount( $user, 1 );
+
+		$caseManager = $this->getCaseManager();
+		$oldCaseId = $caseManager->createCase( [ $user ], [ $signal ] );
+		$recentCaseId = $caseManager->createCase( [ $user ], [ $signal ] );
+
+		$this->setCaseUpdatedTimestamp( $oldCaseId, $oldTimestamp );
+		$this->setCaseUpdatedTimestamp( $recentCaseId, $recentTimestamp );
+
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'editAndBlockFilter', 'none' );
+		if ( $filterParam !== null ) {
+			$context->getRequest()->setVal( 'lastUpdated', $filterParam );
+		}
+
+		$html = $this->getPager( $context )->getBody();
+
+		if ( $expectRecentCase ) {
+			$this->assertStringContainsString(
+				'data-case-id="' . $recentCaseId,
+				$html,
+				'Recent case should be visible'
+			);
+		} else {
+			$this->assertStringNotContainsString(
+				'data-case-id="' . $recentCaseId,
+				$html,
+				'Recent case should not be visible'
+			);
+		}
+
+		if ( $expectOldCase ) {
+			$this->assertStringContainsString(
+				'data-case-id="' . $oldCaseId,
+				$html,
+				'Old case should be visible'
+			);
+		} else {
+			$this->assertStringNotContainsString(
+				'data-case-id="' . $oldCaseId,
+				$html,
+				'Old case should not be visible'
+			);
+		}
+	}
+
+	public static function provideLastUpdatedFilter(): array {
+		return [
+			'No filter — all cases returned' => [
+				'filterParam' => null,
+				'expectRecentCase' => true,
+				'expectOldCase' => true,
+			],
+			'1 — only recent case within 1 day' => [
+				'filterParam' => '1',
+				'expectRecentCase' => true,
+				'expectOldCase' => false,
+			],
+			'3 — only recent case within 3 days' => [
+				'filterParam' => '3',
+				'expectRecentCase' => true,
+				'expectOldCase' => false,
+			],
+			'7 — only recent case within 7 days' => [
+				'filterParam' => '7',
+				'expectRecentCase' => true,
+				'expectOldCase' => false,
+			],
+			'90 — only recent case within 90 days' => [
+				'filterParam' => '90',
+				'expectRecentCase' => true,
+				'expectOldCase' => false,
+			],
+			'Invalid value treated as all time — all cases returned' => [
+				'filterParam' => '5',
+				'expectRecentCase' => true,
+				'expectOldCase' => true,
+			],
+			'Zero treated as all time — all cases returned' => [
+				'filterParam' => '0',
+				'expectRecentCase' => true,
+				'expectOldCase' => true,
+			],
+			'Negative value treated as all time — all cases returned' => [
+				'filterParam' => '-7',
+				'expectRecentCase' => true,
+				'expectOldCase' => true,
+			],
+		];
+	}
+
+	public function testLastUpdatedFilterCountsTowardNumberOfFiltersApplied(): void {
+		$this->addCaseWithTwoUsers();
+
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'lastUpdated', '7' );
+		$context->getRequest()->setVal( 'editAndBlockFilter', 'none' );
+
+		$pager = $this->getPager( $context );
+		$parserOutput = $pager->getFullOutput();
+		$html = $parserOutput->getContentHolderText();
+
+		$this->assertStringContainsString(
+			'mw-checkuser-suggestedinvestigations-filter-button-filters-applied-chip',
+			$html,
+			'The info chip indicating filters were applied should be present'
+		);
+
+		$this->assertActiveFiltersJsConfigVar(
+			[ 'lastUpdated' => 7, 'editAndBlockFilter' => 'none' ],
+			$parserOutput
+		);
+	}
+
+	public function testInvalidLastUpdatedFilterIsIgnored(): void {
+		$this->addCaseWithTwoUsers();
+
+		$context = $this->makeQqxContext();
+		$context->getRequest()->setVal( 'lastUpdated', '5' );
+
+		$pager = $this->getPager( $context );
+		$parserOutput = $pager->getFullOutput();
+		$html = $parserOutput->getContentHolderText();
+
+		$this->assertStringNotContainsString(
+			'mw-checkuser-suggestedinvestigations-filter-button-filters-applied-chip',
+			$html,
+			'The info chip indicating filters were applied should not be present for an invalid filter'
+		);
+		$this->assertActiveFiltersJsConfigVar(
+			[ 'lastUpdated' => null ],
+			$parserOutput
+		);
+	}
+
+	/**
+	 * Asserts that the {@link ParserOutput} has the wgCheckUserSuggestedInvestigationsActiveFilters JS
+	 * config var and that is matches the expected value
+	 *
+	 * @param array $expected An array of properties that override the default value for these properties
+	 *   in the expected array
+	 */
+	private function assertActiveFiltersJsConfigVar( array $expected, ParserOutput $parserOutput ): void {
+		$this->assertArrayEquals(
+			array_merge( [
+				'status' => [],
+				'username' => [],
+				'editAndBlockFilter' => 'edits-only',
+				'showCasesWithEditsOnSharedPages' => false,
+				'signal' => [],
+				'lastUpdated' => null,
+				'queueView' => 'all',
+			], $expected ),
+			$parserOutput->getJsConfigVars()['wgCheckUserSuggestedInvestigationsActiveFilters'],
+			false,
+			true,
+			'Active filters on the page is not as expected'
+		);
+	}
+
+	private function addCaseWithTwoUsers(): int {
+		self::$testUser1 = $user1 = $this->getMutableTestUser()->getUser();
+		self::$testUser2 = $user2 = $this->getMutableTestUser()->getUser();
+
+		foreach ( [ $user1, $user2 ] as $user ) {
+			$this->setUserEditCount( $user, 1 );
+		}
+
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult( self::SIGNAL, 'Test value', false );
+
+		return $this->getCaseManager()->createCase( [ $user1, $user2 ], [ $signal ] );
+	}
+
+	private function addCaseWithManyUsers(): int {
+		$users = [];
+		for ( $i = 0; $i < SpecialInvestigate::MAX_TARGETS + 1; $i++ ) {
+			$users[] = $this->getMutableTestUser()->getUser();
+		}
+
+		foreach ( $users as $user ) {
+			$this->setUserEditCount( $user, 1 );
+		}
+
+		$signal = SuggestedInvestigationsSignalMatchResult::newPositiveResult( self::SIGNAL, 'Test value', false );
+
+		return $this->getCaseManager()->createCase( $users, [ $signal ] );
+	}
+
+	private function getCaseURLIdentifier( int $caseId ): string {
+		$urlIdentifier = $this->newSelectQueryBuilder()
+			->select( 'sic_url_identifier' )
+			->from( 'cusi_case' )
+			->where( [ 'sic_id' => $caseId ] )
+			->caller( __METHOD__ )
+			->fetchField();
+
+		return dechex( (int)$urlIdentifier );
+	}
+
+	private function getCaseDataFromDB(
+		int $caseId,
+		array $columns
+	): object {
+		return $this->newSelectQueryBuilder()
+			->select( $columns )
+			->from( 'cusi_case' )
+			->where( [ 'sic_id' => $caseId ] )
+			->caller( __METHOD__ )
+			->fetchRow();
+	}
+
+	private function getPager(
+		IContextSource $context,
+		array $signals = [],
+		?int $caseIdFilter = null
+	): SuggestedInvestigationsCasesPager {
+		return $this->getServiceContainer()->get( 'CheckUserSuggestedInvestigationsPagerFactory' )
+			->createCasesPager( $context, $signals, $caseIdFilter );
+	}
+
+	private function makeQqxContext(): RequestContext {
+		$context = RequestContext::getMain();
+		$context->setTitle( Title::makeTitle( NS_SPECIAL, 'SuggestedInvestigations' ) );
+		$context->setLanguage( 'qqx' );
+
+		return $context;
+	}
+
+	private function placeHideUserBlock( UserIdentity $user ): void {
+		$this->getServiceContainer()->getBlockUserFactory()
+			->newBlockUser(
+				$user,
+				$this->mockRegisteredUltimateAuthority(),
+				'indefinite',
+				'Test reason',
+				[ 'isHideUser' => true ]
+			)
+			->placeBlock();
+	}
+
+	private function getCaseManager(): SuggestedInvestigationsCaseManagerService {
+		return $this->getServiceContainer()->getService(
+			'CheckUserSuggestedInvestigationsCaseManager'
+		);
+	}
+
+	private function setCaseUpdatedTimestamp( int $caseId, string $timestamp ): void {
+		$db = $this->getDb();
+		$db->newUpdateQueryBuilder()
+			->update( 'cusi_case' )
+			->set( [ 'sic_updated_timestamp' => $db->timestamp( $timestamp ) ] )
+			->where( [ 'sic_id' => $caseId ] )
+			->caller( __METHOD__ )
+			->execute();
+	}
+
+	private function setUserEditCount( UserIdentity $user, int $count ): void {
+		$this->getDb()->newUpdateQueryBuilder()
+			->update( 'user' )
+			->set( [ 'user_editcount' => $count ] )
+			->where( [ 'user_id' => $user->getId() ] )
+			->caller( __METHOD__ )
+			->execute();
+	}
+}

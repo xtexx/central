@@ -1,0 +1,52 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\CheckUser\HookHandler;
+
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Extension\CheckUser\Services\UserInfoCardButtonRenderer;
+use MediaWiki\Html\Html;
+use MediaWiki\Linker\Hook\UserLinkRendererUserLinkPostRenderHook;
+use MediaWiki\User\UserIdentity;
+
+class UserLinkRendererUserLinkPostRenderHandler implements UserLinkRendererUserLinkPostRenderHook {
+
+	public function __construct(
+		private readonly UserInfoCardButtonRenderer $buttonRenderer,
+	) {
+	}
+
+	public function onUserLinkRendererUserLinkPostRender(
+		UserIdentity $targetUser,
+		IContextSource $context,
+		string &$html,
+		string &$prefix,
+		string &$postfix
+	) {
+		if ( !$targetUser->isRegistered() ) {
+			return;
+		}
+		if ( $this->buttonRenderer->isUicEnabledForUser( $context->getUser() ) ) {
+			$output = $context->getOutput();
+			$this->buttonRenderer->addModules( $output );
+
+			$iconName = $this->buttonRenderer->getIconName(
+				$targetUser->getName(),
+				[ 'viewer' => $context->getAuthority(), 'pageTitle' => $output->getTitle() ]
+			);
+			$buttonHtml = $this->buttonRenderer->render(
+				$targetUser->getName(),
+				$iconName,
+				$context
+			);
+
+			// This will prevent the button + userlink from wrapping next to the screen edges
+			$html = Html::rawElement(
+				'span',
+				[ 'class' => 'ext-checkuser-userinfocard-button-wrapper' ],
+				$buttonHtml . $html
+			);
+		}
+	}
+}

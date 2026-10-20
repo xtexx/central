@@ -1,0 +1,215 @@
+'use strict';
+
+/**
+ * Process edit count data to include only the last 60 days and fill in missing dates with 0
+ *
+ * @param {Object} editCountByDay Raw edit count data from API { "YYYY-MM-DD": count, ... }
+ * @return {Object} Object with processed edit count data and total edit count
+ *   { processedData: [{ date: Date, count: number }], totalEdits: number }
+ */
+function processEditCountByDay( editCountByDay ) {
+	const rawData = editCountByDay || {};
+
+	// Calculate 60 days ago using native Date
+	const sixtyDaysAgo = new Date();
+	sixtyDaysAgo.setDate( sixtyDaysAgo.getDate() - 60 );
+
+	const processedData = [];
+	let totalEdits = 0;
+
+	for ( let i = 0; i <= 60; i++ ) {
+		// Create a new date for each day
+		const date = new Date( sixtyDaysAgo );
+		date.setDate( sixtyDaysAgo.getDate() + i );
+
+		// Format date as YYYY-MM-DD using native methods
+		const year = date.getFullYear();
+		const month = String( date.getMonth() + 1 ).padStart( 2, '0' );
+		const day = String( date.getDate() ).padStart( 2, '0' );
+		const dateStr = `${ year }-${ month }-${ day }`;
+
+		if ( rawData[ dateStr ] ) {
+			processedData.push( { date: date, count: rawData[ dateStr ] } );
+			totalEdits += rawData[ dateStr ];
+		} else {
+			processedData.push( { date: date, count: 0 } );
+		}
+	}
+
+	return { processedData, totalEdits };
+}
+
+/**
+ * Parse MediaWiki timestamp format (YYYYMMDDHHmmss) to JavaScript Date
+ *
+ * @param {string} timestamp MediaWiki timestamp in format YYYYMMDDHHmmss
+ * @return {Date|null} JavaScript Date object or null if invalid
+ */
+function parseMediaWikiTimestamp( timestamp ) {
+	if ( !timestamp || timestamp.length !== 14 ) {
+		return null;
+	}
+
+	const year = parseInt( timestamp.slice( 0, 4 ), 10 );
+	const month = parseInt( timestamp.slice( 4, 6 ), 10 ) - 1; // Month is 0-indexed
+	const day = parseInt( timestamp.slice( 6, 8 ), 10 );
+	const hour = parseInt( timestamp.slice( 8, 10 ), 10 );
+	const minute = parseInt( timestamp.slice( 10, 12 ), 10 );
+	const second = parseInt( timestamp.slice( 12, 14 ), 10 );
+
+	// This creates a Date object with UTC value as if it was in the local timezone
+	const dateUtc = new Date( year, month, day, hour, minute, second );
+	const offsetMins = dateUtc.getTimezoneOffset();
+	dateUtc.setHours( dateUtc.getHours(), dateUtc.getMinutes() - offsetMins );
+	return dateUtc;
+}
+
+/**
+ * Provides a hash string for a given username suitable to be used for
+ * component IDs. This is required because usernames may contain whitespaces,
+ * but HTML component IDs cannot.
+ *
+ * This function is an adaptation of generateHashId() from Codex.
+ *
+ * @param {?string} username Username to hash
+ * @return {string} The hash as a string
+ */
+function hashUsername( username ) {
+	if ( username === null || username === '' ) {
+		return '';
+	}
+
+	const mask = 4294967295;
+
+	/* eslint-disable no-bitwise */
+	let numericHash = Array.from( username ).reduce(
+		( acc, char ) => acc * 31 + char.charCodeAt( 0 ) & mask,
+		0
+	);
+
+	numericHash = numericHash >>> 0;
+	/* eslint-enable no-bitwise */
+
+	return numericHash.toString( 36 );
+}
+
+/**
+ * Determine the context in which the UserInfoCard is being opened,
+ * based on the current page type and the position of the trigger element.
+ *
+ * Page types are evaluated in priority order; the first matching rule wins.
+ *
+ * @param {Element} triggerElement The DOM element that triggered the card open
+ * @return {{page: string}} Context in which the card is opened
+ */
+function getOpenContext( triggerElement ) {
+	const specialPageName = mw.config.get( 'wgCanonicalSpecialPageName' );
+	const action = mw.config.get( 'wgAction' );
+	let page = 'other';
+
+	try {
+		if ( triggerElement.closest( '.ext-checkuser-userinfocard-navigation-item' ) ) {
+			page = 'user-page-toolbar';
+		} else if ( specialPageName === 'Log' ||
+			triggerElement.closest( '.mw-logevent-loglines' ) ) {
+			page = 'log';
+		} else if ( specialPageName === 'CheckUser' ||
+			specialPageName === 'Investigate' ) {
+			page = 'checkuser';
+		} else if ( specialPageName === 'SuggestedInvestigations' ) {
+			page = 'suggested-investigations';
+		} else if ( specialPageName === 'BlockList' ) {
+			page = 'blocklist';
+		} else if ( specialPageName === 'Recentchanges' ) {
+			page = 'rc';
+		} else if ( specialPageName ) {
+			page = 'special';
+		} else if ( action === 'history' || action === 'info' ) {
+			page = 'history';
+		} else if ( triggerElement.closest( '#mw-revision-info' ) ||
+			triggerElement.closest( '.diff-title' ) ) {
+			page = 'diff';
+		} else if ( triggerElement.closest( '.mw-parser-output' ) ) {
+			page = 'page';
+		}
+	} catch ( e ) {
+		mw.log.warn( 'Error determining open context for UserInfoCard: ' + e.message );
+	}
+
+	return { page };
+}
+
+/**
+ * Check whether the viewer wants the user info card.
+ *
+ * The module is normally only loaded for viewers that want it, but code outside CheckUser can
+ * load it at any time, so anything that shows a card has to ask.
+ *
+ * This is the client-side counterpart of PageDisplay::hasEnabledUserInfoCard().
+ *
+ * @return {boolean}
+ */
+function isUserInfoCardEnabled() {
+	return mw.user.isNamed() &&
+		!!mw.user.options.get( 'checkuser-userinfocard-enable' );
+}
+
+/**
+ * Get the custom icon variant to use for a user, without asking the server.
+ * If there's no custom icon set in wgCheckUserUserInfoCardCustomIcons, returns null.
+ * In such case, the caller should assume the button keeps its current icon (or set the
+ * icon to the one returned by getDefaultIconVariant).
+ *
+ * @param {string} username
+ * @return {string|null}
+ */
+function getCustomIconVariant( username ) {
+	// Some users might need a custom icon in their UIC button (i.e., other than
+	// userAvatar/userTemporary). Because status designated by such icon can be temporary,
+	// it cannot be recorded in the parser cache, and the server sends it separately.
+	const customIcons = mw.config.get( 'wgCheckUserUserInfoCardCustomIcons' ) || {};
+
+	if ( username in customIcons ) {
+		return customIcons[ username ];
+	} else {
+		return null;
+	}
+}
+
+/**
+ * Records the icon variant for the specified user in wgCheckUserUserInfoCardCustomIcons,
+ * so that any button created in future can reuse it, without the need to ask the server again.
+ *
+ * @param {string} username
+ * @param {string} customIcon
+ */
+function setCustomIconVariant( username, customIcon ) {
+	const customIcons = mw.config.get( 'wgCheckUserUserInfoCardCustomIcons' ) || {};
+	customIcons[ username ] = customIcon;
+	mw.config.set( 'wgCheckUserUserInfoCardCustomIcons', customIcons );
+}
+
+/**
+ * Returns the default icon to be shown in the UIC button, in case there's no specific information
+ * recorded in wgCheckUserUserInfoCardCustomIcons.
+ *
+ * @param {string} username
+ * @return {string}
+ */
+function getDefaultIconVariant( username ) {
+	if ( mw.util.isTemporaryUser( username ) ) {
+		return 'userTemporary';
+	}
+	return 'userAvatar';
+}
+
+module.exports = {
+	processEditCountByDay,
+	parseMediaWikiTimestamp,
+	hashUsername,
+	getOpenContext,
+	isUserInfoCardEnabled,
+	getCustomIconVariant,
+	setCustomIconVariant,
+	getDefaultIconVariant
+};

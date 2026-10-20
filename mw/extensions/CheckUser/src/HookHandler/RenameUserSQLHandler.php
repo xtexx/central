@@ -1,0 +1,15 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\CheckUser\HookHandler;
+
+use MediaWiki\RenameUser\Hook\RenameUserSQLHook;
+use MediaWiki\RenameUser\RenameuserSQL;
+
+class RenameUserSQLHandler implements RenameUserSQLHook {
+	/** @inheritDoc */
+	public function onRenameUserSQL( RenameuserSQL $renameUserSql ): void {
+		$renameUserSql->tables['cu_log'] = [ 'cul_target_text', 'cul_target_id' ];
+	}
+}

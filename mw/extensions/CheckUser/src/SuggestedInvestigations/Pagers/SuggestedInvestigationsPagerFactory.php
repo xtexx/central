@@ -1,0 +1,140 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\CheckUser\SuggestedInvestigations\Pagers;
+
+use InvalidArgumentException;
+use MediaWiki\CommentFormatter\CommentFormatter;
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Extension\CheckUser\Hook\HookRunner;
+use MediaWiki\Extension\CheckUser\Services\CheckUserMultiLockUrlLookup;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Formatters\StatusReasonFormatter;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\CompositeBlockChecker;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsMessageRenderer;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsRelatedCasesLookup;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsSharedPagesLookup;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsUserLinkRenderer;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsUserRevisionLookup;
+use MediaWiki\HookContainer\HookContainer;
+use MediaWiki\Linker\LinkRenderer;
+use MediaWiki\Page\LinkBatchFactory;
+use MediaWiki\Revision\RevisionStore;
+use MediaWiki\Title\NamespaceInfo;
+use MediaWiki\User\UserFactory;
+use MediaWiki\User\UserIdentity;
+use MediaWiki\User\UserIdentityLookup;
+use Psr\Log\LoggerInterface;
+use Wikimedia\Rdbms\IConnectionProvider;
+
+/**
+ * Allows code to stably construct pagers to display arbitrary revision or log IDs. Currently only support
+ * for revision IDs (and deleted revision IDs) exists.
+ *
+ * NOTE: Private code uses the methods in this class, so changing the signatures of the methods may break code
+ * not visible in codesearch.
+ */
+class SuggestedInvestigationsPagerFactory {
+
+	public function __construct(
+		private readonly LinkRenderer $linkRenderer,
+		private readonly LinkBatchFactory $linkBatchFactory,
+		private readonly HookContainer $hookContainer,
+		private readonly RevisionStore $revisionStore,
+		private readonly NamespaceInfo $namespaceInfo,
+		private readonly StatusReasonFormatter $statusReasonFormatter,
+		private readonly CommentFormatter $commentFormatter,
+		private readonly UserFactory $userFactory,
+		private readonly IConnectionProvider $dbProvider,
+		private readonly UserIdentityLookup $userIdentityLookup,
+		private readonly CompositeBlockChecker $compositeBlockChecker,
+		private readonly LoggerInterface $logger,
+		private readonly SuggestedInvestigationsMessageRenderer $messageRenderer,
+		private readonly SuggestedInvestigationsSharedPagesLookup $sharedPagesLookup,
+		private readonly SuggestedInvestigationsRelatedCasesLookup $relatedCasesLookup,
+		private readonly SuggestedInvestigationsUserRevisionLookup $userRevisionLookup,
+		private readonly HookRunner $hookRunner,
+		private readonly SuggestedInvestigationsUserLinkRenderer $siUserLinkRenderer,
+		private readonly CheckUserMultiLockUrlLookup $multiLockUrlLookup,
+	) {
+	}
+
+	/**
+	 * Returns a pager that is used by Suggested Investigations to display an arbitrary list of revisions in a
+	 * Special:Contributions style format.
+	 *
+	 * This pager can show archived contributions if `$options['isArchive'] = true;`. However, the returned
+	 * pager will either show deleted or non-deleted revisions. The caller is expected to determine if the
+	 * user should be seeing deleted revisions.
+	 *
+	 * @throws InvalidArgumentException if the $revisionIds argument is an empty array
+	 * @since 1.46
+	 * @stable to call
+	 */
+	public function createRevisionPager(
+		IContextSource $context,
+		array $options,
+		array $revisionIds,
+		?UserIdentity $target = null
+	): SuggestedInvestigationsRevisionsPager {
+		if ( count( $revisionIds ) === 0 ) {
+			throw new InvalidArgumentException( 'Revision IDs array must contain at least one ID' );
+		}
+
+		return new SuggestedInvestigationsRevisionsPager(
+			$this->linkRenderer,
+			$this->linkBatchFactory,
+			$this->hookContainer,
+			$this->revisionStore,
+			$this->namespaceInfo,
+			$this->commentFormatter,
+			$this->userFactory,
+			$context,
+			$revisionIds,
+			$options,
+			$target
+		);
+	}
+
+	/**
+	 * Returns a pager that is used by Suggested Investigations to show suggested investigation cases.
+	 *
+	 * @internal Only for use by {@link SpecialSuggestedInvestigations}
+	 */
+	public function createCasesPager(
+		IContextSource $context,
+		array $signals,
+		int|null $caseIdFilter
+	): SuggestedInvestigationsCasesPager {
+		return new SuggestedInvestigationsCasesPager(
+			$this->dbProvider,
+			$this->userIdentityLookup,
+			$this->statusReasonFormatter,
+			$this->linkBatchFactory,
+			$this->userFactory,
+			$this->compositeBlockChecker,
+			$this->logger,
+			$this->messageRenderer,
+			$this->sharedPagesLookup,
+			$this->relatedCasesLookup,
+			$this->userRevisionLookup,
+			$this->hookRunner,
+			$this->siUserLinkRenderer,
+			$this->multiLockUrlLookup,
+			$this->linkRenderer,
+			$context,
+			$signals,
+			$caseIdFilter
+		);
+	}
+}
+
+// @codeCoverageIgnoreStart
+/**
+ * @deprecated since 1.46
+ */
+class_alias(
+	SuggestedInvestigationsPagerFactory::class,
+	'MediaWiki\\CheckUser\\SuggestedInvestigations\\Pagers\\SuggestedInvestigationsPagerFactory'
+);
+// @codeCoverageIgnoreEnd

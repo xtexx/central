@@ -1,0 +1,1472 @@
+<?php
+
+declare( strict_types=1 );
+
+/**
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ * http://www.gnu.org/copyleft/gpl.html
+ *
+ * @file
+ */
+
+namespace MediaWiki\Extension\CheckUser\SuggestedInvestigations\Pagers;
+
+use InvalidArgumentException;
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Extension\CheckUser\CheckUserQueryInterface;
+use MediaWiki\Extension\CheckUser\Hook\HookRunner;
+use MediaWiki\Extension\CheckUser\Investigate\SpecialInvestigate;
+use MediaWiki\Extension\CheckUser\Services\CheckUserMultiLockUrlLookup;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Formatters\StatusReasonFormatter;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Model\CaseStatus;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Model\SuggestedInvestigationsCaseMetadata;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Navigation\SuggestedInvestigationsPagerNavigationBuilder;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\CompositeBlockChecker;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsCasePropertyManagerService;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsMessageRenderer;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsRelatedCasesLookup;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsSharedPagesLookup;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsUserLinkRenderer;
+use MediaWiki\Extension\CheckUser\SuggestedInvestigations\Services\SuggestedInvestigationsUserRevisionLookup;
+use MediaWiki\Html\Html;
+use MediaWiki\Linker\LinkRenderer;
+use MediaWiki\Navigation\CodexPagerNavigationBuilder;
+use MediaWiki\Page\LinkBatchFactory;
+use MediaWiki\Pager\CodexTablePager;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\SpecialPage\SpecialPage;
+use MediaWiki\Title\Title;
+use MediaWiki\User\UserFactory;
+use MediaWiki\User\UserIdentity;
+use MediaWiki\User\UserIdentityLookup;
+use MediaWiki\User\UserIdentityValue;
+use Psr\Log\LoggerInterface;
+use stdClass;
+use Wikimedia\Codex\Localization\MediaWikiLocalization;
+use Wikimedia\Codex\Utility\Codex;
+use Wikimedia\Rdbms\FakeResultWrapper;
+use Wikimedia\Rdbms\IConnectionProvider;
+use Wikimedia\Rdbms\IReadableDatabase;
+use Wikimedia\Rdbms\SelectQueryBuilder;
+use Wikimedia\Timestamp\ConvertibleTimestamp;
+
+class SuggestedInvestigationsCasesPager extends CodexTablePager {
+
+	/**
+	 * @var array An array describing what filters are currently applied, passed to the
+	 *   client using a JS config var and used for instrumentation.
+	 * @internal Only public for use by {@link SpecialSuggestedInvestigations}
+	 */
+	public array $appliedFilters;
+
+	/**
+	 * @var CaseStatus[] The list of case statuses to be shown in the table. Empty array means all statuses.
+	 */
+	private array $statusFilter = [];
+
+	/**
+	 * @var string[] If not an empty array, then only show cases with these users in
+	 */
+	private array $userNamesFilter = [];
+
+	private ?string $queueView = null;
+
+	private ?string $editAndBlockFilter = null;
+
+	private bool $showCasesWithEditsOnSharedPages = false;
+
+	/**
+	 * @var string[] If not an empty array, then filter for these signal database names
+	 */
+	private array $signalsFilter = [];
+
+	/** @var int|null Number of days to filter by case updated timestamp; null = all time */
+	private ?int $lastUpdatedDaysFilter = null;
+
+	/**
+	 * @var int The number of filters applied (counting all filters present in the filters dialog)
+	 */
+	private int $numberOfFiltersApplied = 0;
+
+	/**
+	 * @var array An array of database signal names to the display name for that signal
+	 */
+	private array $signalsToDisplayNames = [];
+
+	/**
+	 * @var bool Whether the filters implemented using PHP have scanned too many rows and have
+	 *   returned only partial results
+	 */
+	private bool $phpFiltersLimitReached = false;
+
+	/**
+	 * All the data needed for the front-end to render the queue view feature. It requires:
+	 * - filters: the following filters are supported
+	 *   + editAndBlockFilter
+	 *   + lastUpdated
+	 *   + showCasesWithEditsOnSharedPages
+	 *   + signal
+	 *   + status
+	 * - msgKeys: the key is the where the message is intended to be used and the value is the key itself
+	 *   and the following message types are used
+	 *   + defaultName
+	 *   + editedName
+	 *
+	 * @var array<string,array{filters:array<string,array{editAndBlockFilter?:string,lastUpdated?:int,showCasesWithEditsOnSharedPages?:bool,signal?:array<string>,status?:array<string>}>,msgKeys:array{defaultName:string,editedName:string}}>
+	 */
+	private array $queueViewData = [];
+
+	/**
+	 * Allowed values for the lastUpdated URL param, in days.
+	 * Must match the numeric values in lastUpdatedOptions in Constants.js.
+	 * The empty-string "all time" option in Constants.js is intentionally not listed here.
+	 */
+	private const ALLOWED_LAST_UPDATED_DAYS = [ 1, 3, 7, 90 ];
+
+	/**
+	 * The unique sort fields for the sort options for unique paginate
+	 */
+	private const INDEX_FIELDS = [
+		'sic_updated_timestamp' => [ 'sic_updated_timestamp', 'sic_id' ],
+		'sic_status' => [ 'sic_status', 'sic_updated_timestamp', 'sic_id' ],
+	];
+
+	/** Database with the users and cu_log table */
+	private readonly IReadableDatabase $localDb;
+
+	/**
+	 * The metadata of the case shown in the detail view, or `null` when not in detail view.
+	 * @var SuggestedInvestigationsCaseMetadata[]|null
+	 */
+	private ?array $detailViewMetadata = null;
+
+	/** Cached result of {@link CheckUserMultiLockUrlLookup::getMultiLockUrl}, or false if not yet fetched */
+	private string|false|null $multiLockUrl = false;
+
+	public function __construct(
+		private readonly IConnectionProvider $connectionProvider,
+		private readonly UserIdentityLookup $userIdentityLookup,
+		private readonly StatusReasonFormatter $statusReasonFormatter,
+		private readonly LinkBatchFactory $linkBatchFactory,
+		private readonly UserFactory $userFactory,
+		private readonly CompositeBlockChecker $compositeBlockChecker,
+		private readonly LoggerInterface $logger,
+		private readonly SuggestedInvestigationsMessageRenderer $messageRenderer,
+		private readonly SuggestedInvestigationsSharedPagesLookup $sharedPagesLookup,
+		private readonly SuggestedInvestigationsRelatedCasesLookup $relatedCasesLookup,
+		private readonly SuggestedInvestigationsUserRevisionLookup $userRevisionLookup,
+		private readonly HookRunner $hookRunner,
+		private readonly SuggestedInvestigationsUserLinkRenderer $siUserLinkRenderer,
+		private readonly CheckUserMultiLockUrlLookup $multiLockUrlLookup,
+		LinkRenderer $linkRenderer,
+		IContextSource $context,
+		array $signals,
+		private readonly ?int $caseIdFilter,
+	) {
+		// If we didn't set mDb here, the parent constructor would set it to the database replica
+		// for the default database domain
+		$this->mDb = $this->connectionProvider->getReplicaDatabase( CheckUserQueryInterface::VIRTUAL_DB_DOMAIN );
+
+		parent::__construct(
+			$this->msg( 'checkuser-suggestedinvestigations-table-caption' )->text(),
+			$context,
+			$linkRenderer
+		);
+		// $this->mDefaultLimit does *not* set the actual default limit in the superclass, it's used to constructURLs
+		$this->mDefaultLimit = 10;
+		$this->mLimit = $this->mRequest->getInt( 'limit', $this->mDefaultLimit );
+		if ( $this->mLimit <= 0 ) {
+			$this->mLimit = $this->mDefaultLimit;
+		}
+		if ( $this->mLimit > 100 ) {
+			$this->mLimit = 100;
+		}
+		$this->mLimitsShown = [ 10, 20, 50 ];
+
+		$this->localDb = $this->connectionProvider->getReplicaDatabase();
+
+		$this->setUpQueueViewConfigs();
+
+		$urlNamesToSignals = [];
+		foreach ( $signals as $signal ) {
+			if ( is_array( $signal ) ) {
+				if ( array_key_exists( 'urlName', $signal ) ) {
+					$urlNamesToSignals[$signal['urlName']] = $signal['name'];
+				}
+
+				if ( array_key_exists( 'displayName', $signal ) ) {
+					$this->signalsToDisplayNames[$signal['name']] = $signal['displayName'];
+					continue;
+				}
+
+				$signal = $signal['name'];
+			}
+
+			// For grepping, the currently known signal messages are:
+			// * checkuser-suggestedinvestigations-signal-dev-signal-1
+			// * checkuser-suggestedinvestigations-signal-dev-signal-2
+			$this->signalsToDisplayNames[$signal] = $this->msg(
+				'checkuser-suggestedinvestigations-signal-' . $signal
+			)->parse();
+		}
+
+		$this->parseFilters( $urlNamesToSignals );
+	}
+
+	/**
+	 * Pull and transform queue view schemas from config values
+	 */
+	private function setUpQueueViewConfigs(): void {
+		$config = $this->getConfig();
+		$enabledQueueViews = $config->get( 'CheckUserSuggestedInvestigationsEnabledQueueViews' );
+		$queueViewData = $config->get( 'CheckUserSuggestedInvestigationsQueueViews' );
+
+		foreach ( $enabledQueueViews as $queueView ) {
+			if (
+				isset( $queueViewData[ $queueView ][ 'filters' ] ) &&
+				isset( $queueViewData[ $queueView ][ 'msgKeys' ] )
+			) {
+				$this->queueViewData[ $queueView ] = $queueViewData[ $queueView ];
+			}
+		}
+	}
+
+	/**
+	 * Parses the filters set in the request and applies them to the pager.
+	 * Intended for calling during execution of {@link self::__construct}
+	 */
+	private function parseFilters( array $urlNamesToSignals ): void {
+		if ( $this->caseIdFilter === null ) {
+			$this->parseFiltersForMainView( $urlNamesToSignals );
+		}
+
+		$this->appliedFilters = [
+			'status' => array_map(
+				static fn ( CaseStatus $status ) => strtolower( $status->name ),
+				$this->statusFilter
+			),
+			'username' => $this->userNamesFilter,
+			'queueView' => $this->queueView,
+			'showCasesWithEditsOnSharedPages' => $this->showCasesWithEditsOnSharedPages,
+			'editAndBlockFilter' => $this->editAndBlockFilter,
+			'signal' => $this->signalsFilter,
+			'lastUpdated' => $this->lastUpdatedDaysFilter,
+		];
+	}
+
+	/**
+	 * Return the default value of a filter for a queue type with fallbacks if the queue doesn't define it
+	 */
+	private function getDefaultFilterValueForQueueType( string $queueName, string $filterName ): mixed {
+		switch ( $filterName ) {
+			case 'status':
+				return $this->queueViewData[ $queueName ][ 'filters' ][ 'status' ] ?? [];
+			case 'editAndBlockFilter':
+				return $this->queueViewData[ $queueName ][ 'filters' ][ 'editAndBlockFilter' ] ?? 'edits-only';
+			case 'showCasesWithEditsOnSharedPages':
+				return $this->queueViewData[ $queueName ][ 'filters' ][ 'showCasesWithEditsOnSharedPages' ] ?? false;
+			case 'signal':
+				return $this->queueViewData[ $queueName ][ 'filters' ][ 'signal' ] ?? [];
+			case 'lastUpdated':
+				return $this->queueViewData[ $queueName ][ 'filters' ][ 'lastUpdated' ] ?? null;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Parses the filters in the request when the request is for the main
+	 * table view of the special page (i.e. not the detail view).
+	 */
+	private function parseFiltersForMainView( array $urlNamesToSignals ): void {
+		// Prefer the parameter value and default to the config value if not passed
+		// and ensure that the queue to be used is actually enabled
+		$config = $this->getConfig();
+		$queueView = $this->mRequest->getVal( 'queueView' );
+		$enabledQueueViews = $config->get( 'CheckUserSuggestedInvestigationsEnabledQueueViews' );
+		if ( !in_array( $queueView, $enabledQueueViews ) ) {
+			$queueView = $config->get( 'CheckUserSuggestedInvestigationsDefaultQueueView' );
+		}
+		if ( !in_array( $queueView, $enabledQueueViews ) ) {
+			throw new InvalidArgumentException( "No enabled queue matches requested queue, $queueView" );
+		}
+		$this->queueView = $queueView;
+
+		$defaultStatusFilter = $this->getDefaultFilterValueForQueueType( $this->queueView, 'status' );
+		$statusFilter = $this->mRequest->getArray( 'status', $defaultStatusFilter );
+		// If a 0 was passed, set it to an empty filter set. This distinguishes
+		// it from an empty array that should be overriden by a queue default.
+		if ( $statusFilter === [ '0' ] || !is_array( $statusFilter ) ) {
+			$statusFilter = [];
+		}
+		$this->statusFilter = array_filter( array_map(
+			CaseStatus::newFromStringName( ... ),
+			$statusFilter
+		) );
+		if ( count( $this->statusFilter ) !== 0 ) {
+			$this->numberOfFiltersApplied += count( $this->statusFilter );
+		}
+
+		$this->userNamesFilter = array_filter( $this->mRequest->getArray( 'username', [] ) );
+		if ( $this->userNamesFilter ) {
+			$this->numberOfFiltersApplied += count( $this->userNamesFilter );
+		}
+
+		$defaultEditAndBlockFilter = $this
+			->getDefaultFilterValueForQueueType( $this->queueView, 'editAndBlockFilter' );
+		$this->editAndBlockFilter = $this->mRequest->getVal(
+			'editAndBlockFilter',
+			$defaultEditAndBlockFilter
+		);
+		if (
+			$this->editAndBlockFilter !==
+			$this->getDefaultFilterValueForQueueType(
+				$config->get( 'CheckUserSuggestedInvestigationsDefaultQueueView' ),
+				'editAndBlockFilter'
+			)
+		) {
+			$this->numberOfFiltersApplied++;
+		}
+
+		$showCasesWithEditsOnSharedPages = $this->mRequest->getIntOrNull( 'showCasesWithEditsOnSharedPages' );
+		if ( $showCasesWithEditsOnSharedPages === null ) {
+			$showCasesWithEditsOnSharedPages = $this
+				->getDefaultFilterValueForQueueType( $this->queueView, 'showCasesWithEditsOnSharedPages' );
+		} else {
+			$showCasesWithEditsOnSharedPages = (bool)$showCasesWithEditsOnSharedPages;
+		}
+
+		$this->showCasesWithEditsOnSharedPages = $showCasesWithEditsOnSharedPages;
+		if ( $this->showCasesWithEditsOnSharedPages ) {
+			$this->numberOfFiltersApplied++;
+		}
+
+		$defaultFilteredSignals = $this->getDefaultFilterValueForQueueType( $this->queueView, 'signal' );
+		$filteredSignals = $this->mRequest->getArray( 'signal', $defaultFilteredSignals );
+		// If a 0 was passed, set it to an empty filter set. This distinguishes
+		// it from an empty array that should be overriden by a queue default.
+		if ( $filteredSignals === [ '0' ] ) {
+			$filteredSignals = [];
+		}
+		foreach ( $filteredSignals as $signal ) {
+			// Decode the URL name into the database name for the signal,
+			// treating it as the signal database name if no matching
+			// URL signal found
+			if ( array_key_exists( $signal, $urlNamesToSignals ) ) {
+				$signal = $urlNamesToSignals[$signal];
+			}
+
+			$this->signalsFilter[] = $signal;
+		}
+		if ( $this->signalsFilter ) {
+			$this->numberOfFiltersApplied += count( $this->signalsFilter );
+		}
+
+		$lastUpdatedDays = $this->mRequest->getIntOrNull( 'lastUpdated' );
+		if ( $lastUpdatedDays === null ) {
+			$lastUpdatedDays = $this->getDefaultFilterValueForQueueType( $this->queueView, 'lastUpdated' );
+		} elseif ( $lastUpdatedDays === 0 ) {
+			// If 0 was passed, it's used to prevent queue view overrides and should be treated like a null value.
+			$lastUpdatedDays = null;
+		}
+		$this->lastUpdatedDaysFilter = in_array( $lastUpdatedDays, self::ALLOWED_LAST_UPDATED_DAYS, true )
+			? $lastUpdatedDays : null;
+		if ( $this->lastUpdatedDaysFilter !== null ) {
+			$this->numberOfFiltersApplied++;
+		}
+	}
+
+	/**
+	 * @inheritDoc
+	 * @param string $name
+	 * @param null|string|array $value
+	 * @return string
+	 */
+	public function formatValue( $name, $value ) {
+		return match ( $name ) {
+			'users' => $this->formatUsersCell( $value ),
+			'signals' => $this->formatSignalsCell( $value ),
+			'sic_updated_timestamp' => $this->formatTimestampCell( $value ),
+			'sic_status' => $this->formatStatusCell( CaseStatus::from( (int)$value ), (int)$this->mCurrentRow->sic_id ),
+			'sic_status_reason' => $this->formatStatusReasonCell(
+				$value,
+				CaseStatus::from( (int)$this->mCurrentRow->sic_status ),
+				(int)$this->mCurrentRow->sic_id,
+				$this->mCurrentRow->sic_status_changed_by_user_name ?? null
+			),
+			'actions' => $this->formatActionsCell(
+				(int)$this->mCurrentRow->sic_id,
+				CaseStatus::from( (int)$this->mCurrentRow->sic_status ),
+				$this->mCurrentRow->sic_status_reason
+			),
+			default => throw new InvalidArgumentException( 'Unknown field name: ' . $name ),
+		};
+	}
+
+	/**
+	 * @param UserIdentity[] $users
+	 * @return string
+	 */
+	private function formatUsersCell( array $users ): string {
+		$formattedUsers = Html::openElement( 'ul', [ 'class' => 'mw-checkuser-suggestedinvestigations-users' ] );
+
+		// Hide users after the third by default, but only if we'd be hiding at least two users
+		$userHideThreshold = 3;
+		if ( count( $users ) <= $userHideThreshold + 1 ) {
+			$userHideThreshold++;
+		}
+
+		$detailViewLink = $this->getDetailViewTitle( (int)$this->mCurrentRow->sic_url_identifier )->getFullText();
+
+		foreach ( $users as $i => $user ) {
+			$userLinks = $this->siUserLinkRenderer->makeUserLinkLine(
+				$user,
+				$this->getAuthority(),
+				$this->getContext(),
+				[
+					'caseId' => (int)$this->mCurrentRow->sic_id,
+					'caseDetailsLink' => $detailViewLink,
+				]
+			);
+
+			$userVisible = $this->siUserLinkRenderer->isUserVisible( $user, $this->getAuthority() );
+			$formattedUsers .= Html::rawElement(
+				'li',
+				[
+					'class' => $i >= $userHideThreshold ?
+						'mw-checkuser-suggestedinvestigations-user-defaulthide'
+						: '',
+					'data-username' => $userVisible ? $user->getName() : '',
+				],
+				$userLinks
+			);
+		}
+		$formattedUsers .= Html::closeElement( 'ul' );
+		return $formattedUsers;
+	}
+
+	private function formatSignalsCell( array $signals ): string {
+		$signalLabels = array_map( $this->getSignalDisplayNameForSignal( ... ), $signals );
+
+		$signalsHtml = Html::rawElement( 'strong', [], $this->getLanguage()->commaList( $signalLabels ) );
+
+		$metadataLine = '';
+		/** @var SuggestedInvestigationsCaseMetadata[] $metadata */
+		$metadata = $this->mCurrentRow->metadata;
+
+		$this->hookRunner->onCheckUserSuggestedInvestigationsCaseMetadataBeforeDisplay(
+			(int)$this->mCurrentRow->sic_id,
+			$metadata
+		);
+
+		$metadataMessages = [];
+		foreach ( $metadata as $item ) {
+			$message = $item->isMessageOverridden()
+				? $item->getMessageOverride()
+				: $item->getMessage();
+			if ( $message ) {
+				$metadataMessages[] = $this->msg( $message )->parse();
+			}
+		}
+
+		if ( $metadataMessages ) {
+			$pipedMetadata = $this->getLanguage()->pipeList( $metadataMessages );
+
+			$metadataLine = Html::rawElement(
+				'div',
+				[ 'class' => 'mw-checkuser-suggestedinvestigations-metadata' ],
+				$this->msg( 'parentheses' )->rawParams( $pipedMetadata )->parse()
+			);
+		}
+
+		// In the detail view (when the case ID filter is set),
+		// don't show the link as it would point to the current page.
+		if ( $this->caseIdFilter ) {
+			return $signalsHtml . $metadataLine;
+		}
+
+		$detailViewLink = Html::rawElement(
+			'div',
+			[ 'class' => 'mw-checkuser-suggestedinvestigations-view-case-details' ],
+			$this->getLinkRenderer()->makeKnownLink(
+				$this->getDetailViewTitle( (int)$this->mCurrentRow->sic_url_identifier ),
+				$this->msg( 'checkuser-suggestedinvestigations-view-case-details' )->text()
+			)
+		);
+
+		return $signalsHtml . $metadataLine . $detailViewLink;
+	}
+
+	private function getSignalDisplayNameForSignal( string $signal ): string {
+		if ( !array_key_exists( $signal, $this->signalsToDisplayNames ) ) {
+			// This can happen when a signal was once defined, but is no longer
+			// defined. This can also happen for the local dev signals when creating fake cases.
+			// In both cases, fallback to trying the i18n message constructed from the signal name.
+			return $this->msg( 'checkuser-suggestedinvestigations-signal-' . $signal )->parse();
+		}
+		return $this->signalsToDisplayNames[$signal];
+	}
+
+	private function formatTimestampCell( string $timestamp ): string {
+		$lang = $this->getLanguage();
+		$user = $this->getContext()->getUser();
+
+		return htmlspecialchars( $lang->userTimeAndDate( $timestamp, $user ) );
+	}
+
+	private function formatStatusCell( CaseStatus $status, int $caseId ): string {
+		$statusKey = match ( $status ) {
+			CaseStatus::Open => 'checkuser-suggestedinvestigations-status-open',
+			CaseStatus::Resolved => 'checkuser-suggestedinvestigations-status-resolved',
+			CaseStatus::Invalid => 'checkuser-suggestedinvestigations-status-invalid',
+		};
+		$statusText = $this->msg( $statusKey )->text();
+
+		$chipType = match ( $status ) {
+			CaseStatus::Resolved => 'success',
+			CaseStatus::Invalid => 'warning',
+			default => 'notice',
+		};
+
+		$codex = new Codex( new MediaWikiLocalization( $this->getContext() ) );
+		$statusChip = $codex->infoChip()
+			->setText( $statusText )
+			->setStatus( $chipType )
+			->setIcon( 'cdx-info-chip__icon' )
+			->build()
+			->getHtml();
+
+		return Html::rawElement(
+			'div',
+			[ 'data-case-id' => $caseId, 'class' => 'mw-checkuser-suggestedinvestigations-status' ],
+			$statusChip
+		);
+	}
+
+	private function formatStatusReasonCell(
+		string $reason,
+		CaseStatus $status,
+		int $caseId,
+		string|null $closedByUserName
+	): string {
+		$html = $this->statusReasonFormatter->format(
+			$reason,
+			$status,
+			$closedByUserName,
+			$this->getContext()
+		);
+
+		return Html::rawElement(
+			'span',
+			[ 'data-case-id' => $caseId, 'class' => 'mw-checkuser-suggestedinvestigations-status-reason' ],
+			$html
+		);
+	}
+
+	private function formatActionsCell( int $caseId, CaseStatus $status, string $reason ): string {
+		$actionsHtml = Html::openElement( 'div', [
+			'class' => 'mw-checkuser-suggestedinvestigations-actions',
+		] );
+
+		/** @var UserIdentity[] $users */
+		$users = array_filter(
+			$this->mCurrentRow->users,
+			fn ( UserIdentity $user ) => $this->getAuthority()->isAllowed( 'hideuser' ) ||
+				!$this->userFactory->newFromUserIdentity( $user )->isHidden()
+		);
+
+		$investigateEnabled = false;
+		$investigateUrl = null;
+
+		// Enable the "Investigate" button only if there are not too many targets and at least one
+		// not suppressed username target
+		if ( count( $users ) <= SpecialInvestigate::MAX_TARGETS && count( $users ) !== 0 ) {
+			$investigateEnabled = true;
+
+			$prefilledReason = $this->msg( 'checkuser-suggestedinvestigations-user-investigate-reason-prefill' )
+				->params( $this->getDetailViewTitle( (int)$this->mCurrentRow->sic_url_identifier )->getFullText() )
+				->numParams( $this->mCurrentRow->sic_id )
+				->inContentLanguage()
+				->text();
+
+			$investigateUrl = SpecialPage::getTitleFor( 'Investigate' )->getFullURL( [
+				// Special:Investigate expects a list of usernames separated by newlines
+				'targets' => implode( "\n", array_map( static fn ( $u ) => $u->getName(), $users ) ),
+				'reason' => $prefilledReason,
+			] );
+		}
+
+		// Render the "Investigate" button as a link, because it will make it more natural: it supports by default
+		// opening in a new tab, the user won't need to wait for the JS to load, and it works even if JS is disabled.
+		// HTML structure as defined on
+		// https://doc.wikimedia.org/codex/main/components/demos/button.html#link-buttons-and-other-elements
+		$investigateButtonClasses = [
+			'cdx-button',
+			'cdx-button--fake-button',
+			$investigateEnabled ? 'cdx-button--fake-button--enabled' : 'cdx-button--fake-button--disabled',
+			'cdx-button--weight-quiet',
+			'cdx-button--icon-only',
+			'mw-checkuser-suggestedinvestigations-investigate-action',
+		];
+
+		$investigateButtonTitle = $this->msg( 'checkuser-suggestedinvestigations-action-investigate' )->text();
+		if ( !$investigateEnabled && count( $users ) !== 0 ) {
+			$investigateButtonTitle = $this->msg( 'checkuser-suggestedinvestigations-action-investigate-disabled' )
+				->numParams( SpecialInvestigate::MAX_TARGETS )->text();
+		}
+
+		$actionsHtml .= Html::openElement(
+			'a',
+			[
+				'role' => 'button',
+				'class' => $investigateButtonClasses,
+				'title' => $investigateButtonTitle,
+				'href' => $investigateUrl,
+			]
+		);
+		$actionsHtml .= Html::element( 'span', [
+			'class' => 'cdx-button__icon mw-checkuser-suggestedinvestigations-icon--investigate',
+		] );
+		$actionsHtml .= Html::closeElement( 'a' );
+
+		$multiLockUrl = $this->getMultiLockUrl();
+		if ( $multiLockUrl !== null ) {
+			$actionsHtml .= $this->getMultiLockActionHtml( $multiLockUrl, $users );
+		}
+
+		$codex = new Codex( new MediaWikiLocalization( $this->getContext() ) );
+		$actionsHtml .= $codex->button()
+			->setIconOnly( true )
+			->setIconClass( 'mw-checkuser-suggestedinvestigations-icon--edit' )
+			->setAttributes( [
+				'title' => $this->msg( 'checkuser-suggestedinvestigations-action-change-status' )->text(),
+				'data-case-id' => (string)$caseId,
+				'data-case-status' => strtolower( $status->name ),
+				'data-case-status-reason' => $reason,
+				'data-case-signals' => implode( ' ', $this->mCurrentRow->signals ),
+				'class' => 'mw-checkuser-suggestedinvestigations-change-status-button',
+			] )
+			->setWeight( 'quiet' )
+			->build()
+			->getHtml();
+
+		$actionsHtml .= Html::closeElement( 'div' );
+		return $actionsHtml;
+	}
+
+	/**
+	 * Returns the Special:MultiLock URL if the user can use it.
+	 */
+	private function getMultiLockUrl(): ?string {
+		if ( $this->multiLockUrl === false ) {
+			$this->multiLockUrl = $this->multiLockUrlLookup->getMultiLockUrl( $this->getUser() );
+		}
+		return $this->multiLockUrl;
+	}
+
+	/**
+	 * @param string $multiLockUrl
+	 * @param UserIdentity[] $users
+	 * @return string
+	 */
+	private function getMultiLockActionHtml( string $multiLockUrl, array $users ): string {
+		$urls = [];
+		$targets = [];
+		$baseUrlLength = strlen( wfAppendQuery( $multiLockUrl, [ 'wpTarget' => '' ] ) );
+		$urlLength = $baseUrlLength;
+		$separatorLength = strlen( urlencode( "\n" ) );
+		foreach ( $users as $user ) {
+			$name = $user->getName();
+			$nameLength = strlen( urlencode( $name ) );
+			$nextUrlLength = $urlLength + $nameLength + ( $targets !== [] ? $separatorLength : 0 );
+			// Match CU's batching limit, but always accept at least one account per batch.
+			if ( $nextUrlLength >= 2000 && $targets !== [] ) {
+				$urls[] = wfAppendQuery( $multiLockUrl, [ 'wpTarget' => implode( "\n", $targets ) ] );
+				$targets = [];
+				$nextUrlLength = $baseUrlLength + $nameLength;
+			}
+			$targets[] = $name;
+			$urlLength = $nextUrlLength;
+		}
+		if ( $targets !== [] ) {
+			$urls[] = wfAppendQuery( $multiLockUrl, [ 'wpTarget' => implode( "\n", $targets ) ] );
+		}
+		if ( $urls === [] ) {
+			$urls[] = null;
+		}
+
+		$html = '';
+		foreach ( $urls as $index => $url ) {
+			$label = count( $urls ) > 1 ?
+				$this->msg( 'checkuser-centralauth-multilock-list-item', $index + 1 )->text() :
+				$this->msg( 'checkuser-suggestedinvestigations-action-multilock' )->text();
+			$html .= Html::rawElement( 'a', [
+				'role' => 'button',
+				'href' => $url,
+				'title' => $label,
+				'aria-label' => $label,
+				'class' => [
+					'cdx-button',
+					'cdx-button--fake-button',
+					$url !== null ? 'cdx-button--fake-button--enabled' : 'cdx-button--fake-button--disabled',
+					'cdx-button--weight-quiet',
+					'cdx-button--icon-only',
+					'mw-checkuser-suggestedinvestigations-multilock-action',
+				],
+			], Html::element( 'span', [
+				'class' => 'cdx-button__icon mw-checkuser-suggestedinvestigations-icon--multilock',
+			] ) );
+		}
+		return $html;
+	}
+
+	/** @inheritDoc */
+	public function reallyDoQuery( $offset, $limit, $order ) {
+		$cases = [];
+		$batchOffset = $offset;
+		$queryLimit = $limit;
+		$loopsPerformed = 0;
+		do {
+			// Each time we perform a new loop, double the number of rows fetched per query up to 512 rows (2^9).
+			// This is done to balance the number of queries needed to fetch results against selecting
+			// rows which are then discarded without use.
+			// This also avoids an indefinite loop that can be triggered by the IndexPager::isFirst call
+			// of this method (where the same single row is selected in a loop).
+			if ( $loopsPerformed !== 0 && $queryLimit < 512 ) {
+				$queryLimit *= 2;
+			}
+
+			$batchOfCases = iterator_to_array( parent::reallyDoQuery( $batchOffset, $queryLimit, $order ) );
+
+			if ( count( $batchOfCases ) ) {
+				$batchOffset = implode( '|', array_map(
+					static fn ( $indexColumn ) => $batchOfCases[array_key_last( $batchOfCases )]->$indexColumn,
+					(array)$this->mIndexField
+				) );
+			}
+
+			$caseIdsBatch = [];
+			foreach ( $batchOfCases as $case ) {
+				$caseIdsBatch[] = $case->sic_id;
+			}
+
+			// Query the users for each case row and add them to the case rows. Case rows are filtered
+			// out if no users are found for the case (as this indicates that the row has been
+			// filtered out by a filter on the users in the case)
+			$caseUsers = $this->queryUsersForCases( $caseIdsBatch );
+			foreach ( $batchOfCases as $i => $caseRow ) {
+				if ( array_key_exists( $caseRow->sic_id, $caseUsers ) ) {
+					$caseRow->users = $caseUsers[$caseRow->sic_id];
+				} else {
+					unset( $batchOfCases[$i] );
+				}
+			}
+
+			$cases = array_merge( $cases, $batchOfCases );
+
+			// We have a safeguard against too many queries that stops looking for rows after 10 loops
+			// to avoid this being a DDoS vector. This condition is reached once at least 1,023 cases
+			// and at most 6,300 cases are checked using PHP filters (cases are those returned by
+			// parent::reallyDoQuery, so does not include those excluded using SQL filters).
+			$loopsPerformed++;
+		} while ( count( $cases ) < $limit && count( $caseIdsBatch ) === $queryLimit && $loopsPerformed < 10 );
+
+		if ( !$this->phpFiltersLimitReached ) {
+			$this->phpFiltersLimitReached = $loopsPerformed >= 10;
+		}
+
+		$cases = array_slice( $cases, 0, $limit );
+
+		$caseIds = [];
+		foreach ( $cases as $case ) {
+			$caseIds[] = $case->sic_id;
+		}
+
+		$signals = $this->querySignalsForCases( $caseIds );
+		foreach ( $cases as $caseRow ) {
+			$caseRow->signals = $signals[$caseRow->sic_id] ?? [];
+		}
+
+		$this->addMetadataToCases( $cases );
+
+		$performerIds = [];
+		foreach ( $cases as $case ) {
+			if ( $case->sic_status_changed_by !== null && (int)$case->sic_status_changed_by > 0 ) {
+				$performerIds[] = (int)$case->sic_status_changed_by;
+			}
+		}
+		$performerUserNames = $this->queryPerformerUserNames( array_unique( $performerIds ) );
+		foreach ( $cases as $caseRow ) {
+			$changedBy = $caseRow->sic_status_changed_by !== null ? (int)$caseRow->sic_status_changed_by : 0;
+			$caseRow->sic_status_changed_by_user_name = $performerUserNames[$changedBy] ?? null;
+		}
+
+		return new FakeResultWrapper( $cases );
+	}
+
+	/**
+	 * Iterates over the cases and adds metadata to them.
+	 *
+	 * Metadata is inserted as `->metadata` property on each row of cases, with the value being an array of
+	 * {@see SuggestedInvestigationsCaseMetadata}.
+	 *
+	 * @param stdClass[] $cases Array of rows, fetched from the database and augmented
+	 */
+	private function addMetadataToCases( array $cases ): void {
+		$caseIdToUsers = [];
+		foreach ( $cases as $caseRow ) {
+			$caseRow->metadata = [];
+			$caseIdToUsers[$caseRow->sic_id] = $caseRow->users;
+		}
+
+		$revisionRevertRateSummaries = $this->userRevisionLookup
+			->getRevertedRevisionCountsByUsersForCases( $caseIdToUsers );
+		$deletedRevisionsSummaries = $this->userRevisionLookup
+			->getDeletedRevisionCountsByUsersForCases( $caseIdToUsers );
+		$sharedPagesSummaries = $this->sharedPagesLookup->getSharedPagesForCases( $caseIdToUsers );
+		$relatedCases = $this->relatedCasesLookup->getCasesRelatedToCases( $caseIdToUsers );
+		foreach ( $cases as $caseRow ) {
+			$caseRow->metadata[] = $revisionRevertRateSummaries[$caseRow->sic_id];
+			$caseRow->metadata[] = $sharedPagesSummaries[$caseRow->sic_id];
+			$caseRow->metadata[] = $relatedCases[$caseRow->sic_id];
+			$caseRow->metadata[] = $deletedRevisionsSummaries[$caseRow->sic_id];
+
+			// In the detail view there is a single case row; keep its metadata so that
+			// SpecialSuggestedInvestigations can render additional sections for it.
+			if ( $this->caseIdFilter !== null ) {
+				$this->detailViewMetadata = $caseRow->metadata;
+			}
+		}
+	}
+
+	/**
+	 * Returns the metadata of the case being shown in the detail view, after the query has run.
+	 *
+	 * @return SuggestedInvestigationsCaseMetadata[] Empty when not in detail view (or before the
+	 *   query has run).
+	 */
+	public function getDetailViewMetadata(): array {
+		return $this->detailViewMetadata ?? [];
+	}
+
+	/** @inheritDoc */
+	protected function preprocessResults( $result ): void {
+		parent::preprocessResults( $result );
+
+		$allUsers = [];
+		foreach ( $result as $caseRow ) {
+			foreach ( $caseRow->users as $user ) {
+				$allUsers[$user->getId()] = $user;
+			}
+		}
+
+		$this->siUserLinkRenderer->preloadNonEditingData( array_values( $allUsers ), $this->getAuthority() );
+	}
+
+	/** @inheritDoc */
+	public function getQueryInfo(): array {
+		$queryInfo = [
+			'tables' => [
+				'cusi_case',
+			],
+			'fields' => [
+				'sic_id',
+				'sic_status',
+				'sic_updated_timestamp',
+				'sic_status_reason',
+				'sic_url_identifier',
+				'sic_status_changed_by',
+			],
+			'conds' => [],
+		];
+
+		if ( $this->caseIdFilter !== null ) {
+			$queryInfo['conds']['sic_id'] = $this->caseIdFilter;
+		}
+
+		if ( count( $this->statusFilter ) ) {
+			$queryInfo['conds']['sic_status'] = array_map(
+				static fn ( $status ) => $status->value,
+				$this->statusFilter
+			);
+		}
+
+		$queryInfo = $this->applyUsernameFilter( $queryInfo );
+		$queryInfo = $this->applySignalsFilter( $queryInfo );
+		$queryInfo = $this->applyLastUpdatedFilter( $queryInfo );
+		$queryInfo = $this->applyCasePropertyFilters( $queryInfo );
+
+		return $queryInfo;
+	}
+
+	private function applyCasePropertyFilters( array $queryInfo ): array {
+		if ( $this->showCasesWithEditsOnSharedPages ) {
+			// Only query for cases with PROPERTY_SHARED_PAGE_EDITS_COUNT > 0
+			$queryInfo['tables'][] = 'cusi_case_property';
+			$queryInfo['join_conds']['cusi_case_property'] = [ 'JOIN', 'sic_id = sicp_sic_id' ];
+			$queryInfo['conds']['sicp_property'] =
+				SuggestedInvestigationsCasePropertyManagerService::PROPERTY_SHARED_PAGE_EDITS_COUNT;
+			$queryInfo['conds'][] = $this->getDatabase()->expr( 'sicp_value', '>', 0 );
+		}
+
+		return $queryInfo;
+	}
+
+	private function applyUsernameFilter( array $queryInfo ): array {
+		if ( !$this->userNamesFilter ) {
+			return $queryInfo;
+		}
+
+		$userIdentitiesQueryBuilder = $this->userIdentityLookup->newSelectQueryBuilder()
+			->whereUserNames( $this->userNamesFilter )
+			->caller( __METHOD__ );
+
+		// Filter out local hidden usernames
+		if ( !$this->getAuthority()->isAllowed( 'hideuser' ) ) {
+			$userIdentitiesQueryBuilder->hidden( false );
+		}
+
+		$userIdentities = $userIdentitiesQueryBuilder->fetchUserIdentities();
+		$userIds = array_map(
+			static fn ( UserIdentity $user ) => $user->getId(),
+			iterator_to_array( $userIdentities )
+		);
+
+		// If there are user IDs, then join on the query.
+		// If none of the usernames equate to user IDs, then make the query return nothing
+		// to indicate these usernames are not in any case.
+		if ( $userIds ) {
+			$queryInfo['tables'][] = 'cusi_user';
+			$queryInfo['join_conds']['cusi_user'] = [ 'JOIN', 'sic_id = siu_sic_id' ];
+			$queryInfo['conds']['siu_user_id'] = $userIds;
+		} else {
+			$queryInfo['conds'][] = '1=0';
+		}
+
+		return $queryInfo;
+	}
+
+	private function applySignalsFilter( array $queryInfo ): array {
+		if ( !$this->signalsFilter ) {
+			return $queryInfo;
+		}
+		$signalsFilterSubquerySql = $this->getDatabase()->newSelectQueryBuilder()
+			->select( '1' )
+			->from( 'cusi_signal' )
+			->where( [ 'sis_name' => $this->signalsFilter, 'sic_id = sis_sic_id' ] )
+			->caller( __METHOD__ )
+			->getSQL();
+
+		$queryInfo['conds'][] = "EXISTS ($signalsFilterSubquerySql)";
+
+		return $queryInfo;
+	}
+
+	private function applyLastUpdatedFilter( array $queryInfo ): array {
+		if ( $this->lastUpdatedDaysFilter === null ) {
+			return $queryInfo;
+		}
+
+		$db = $this->getDatabase();
+		$cutoff = $db->timestamp(
+			ConvertibleTimestamp::time() - $this->lastUpdatedDaysFilter * 86400
+		);
+		$queryInfo['conds'][] = $db->expr(
+			'sic_updated_timestamp',
+			'>=',
+			$cutoff
+		);
+
+		return $queryInfo;
+	}
+
+	/** @inheritDoc */
+	protected function doBatchLookups(): void {
+		$users = [];
+		$lb = $this->linkBatchFactory->newLinkBatch()
+			->setCaller( __METHOD__ );
+
+		foreach ( $this->mResult as $row ) {
+			foreach ( $row->users as $user ) {
+				$users[] = $user;
+				$lb->addUser( $user );
+			}
+		}
+
+		$lb->execute();
+	}
+
+	/**
+	 * Returns an array that maps each case ID to an array of signals. Only the name of the signals are returned.
+	 * @return string[][]
+	 */
+	private function querySignalsForCases( array $caseIds ): array {
+		if ( count( $caseIds ) === 0 ) {
+			return [];
+		}
+
+		$dbr = $this->getDatabase();
+		$result = $dbr->newSelectQueryBuilder()
+			->select( [ 'sis_sic_id', 'sis_name' ] )
+			->distinct()
+			->from( 'cusi_signal' )
+			->where( [
+				'sis_sic_id' => $caseIds,
+			] )
+			->caller( __METHOD__ )
+			->fetchResultSet();
+
+		$signalsForCases = [];
+		foreach ( $result as $row ) {
+			$caseId = $row->sis_sic_id;
+			if ( !isset( $signalsForCases[$caseId] ) ) {
+				$signalsForCases[$caseId] = [];
+			}
+
+			$signalsForCases[$caseId][] = $row->sis_name;
+		}
+
+		return $signalsForCases;
+	}
+
+	/**
+	 * Returns an array mapping user IDs to user names for the given set of user IDs,
+	 * queried from the local wiki database.
+	 *
+	 * @param int[] $userIds
+	 * @return string[]
+	 */
+	private function queryPerformerUserNames( array $userIds ): array {
+		if ( !$userIds ) {
+			return [];
+		}
+
+		$userIdentities = $this->userIdentityLookup->newSelectQueryBuilder()
+			->whereUserIds( $userIds )
+			->caller( __METHOD__ )
+			->fetchUserIdentities();
+
+		$names = [];
+		foreach ( $userIdentities as $user ) {
+			$names[$user->getId()] = $user->getName();
+		}
+
+		return $names;
+	}
+
+	/**
+	 * Returns an array that maps each case ID to an array of user identities
+	 * associated with that case, ordered by account ID descending for each case.
+	 *
+	 * If no key exists for a case ID, then the case should be excluded as
+	 * the case was filtered out by the “Hide cases where no accounts have edits” or
+	 * "Hide cases where no accounts are blocked" filter.
+	 *
+	 * @return UserIdentity[][]
+	 */
+	private function queryUsersForCases( array $caseIds ): array {
+		if ( count( $caseIds ) === 0 ) {
+			return [];
+		}
+
+		$userIds = [];
+		$caseIdsToUserIds = [];
+
+		$dbr = $this->getDatabase();
+		$lastUserId = null;
+		$lastCaseId = null;
+		do {
+			$caseUsersQueryBuilder = $dbr->newSelectQueryBuilder()
+				->select( [ 'siu_sic_id', 'siu_user_id' ] )
+				->from( 'cusi_user' )
+				->where( [
+					'siu_sic_id' => $caseIds,
+				] );
+			if ( $lastCaseId !== null && $lastUserId !== null ) {
+				$caseUsersQueryBuilder->where(
+					$dbr->buildComparison( '<', [ 'siu_sic_id' => $lastCaseId, 'siu_user_id' => $lastUserId ] )
+				);
+			}
+
+			$batchOfCaseUsers = $caseUsersQueryBuilder
+				->orderBy( [ 'siu_sic_id', 'siu_user_id' ], SelectQueryBuilder::SORT_DESC )
+				->limit( 500 )
+				->caller( __METHOD__ )
+				->fetchResultSet();
+
+			foreach ( $batchOfCaseUsers as $row ) {
+				$caseId = (int)$row->siu_sic_id;
+				$userId = (int)$row->siu_user_id;
+
+				if ( !isset( $caseIdsToUserIds[$caseId] ) ) {
+					$caseIdsToUserIds[$caseId] = [];
+				}
+
+				$userIds[] = $userId;
+				$caseIdsToUserIds[$caseId][] = $userId;
+
+				$lastUserId = $userId;
+				$lastCaseId = $caseId;
+			}
+		} while ( $batchOfCaseUsers->numRows() > 0 );
+
+		$userIds = array_unique( $userIds );
+
+		$dbrUsers = $this->localDb;
+		$userIdToUserIdentity = [];
+		foreach ( array_chunk( $userIds, 100 ) as $userIdChunk ) {
+			$resultUsers = $dbrUsers->newSelectQueryBuilder()
+				->select( [ 'user_id', 'user_name' ] )
+				->from( 'user' )
+				->where( [
+					'user_id' => $userIdChunk,
+				] )
+				->caller( __METHOD__ )
+				->fetchResultSet();
+
+			foreach ( $resultUsers as $row ) {
+				$userIdToUserIdentity[$row->user_id] = UserIdentityValue::newRegistered(
+					(int)$row->user_id,
+					$row->user_name
+				);
+			}
+		}
+
+		// We defer to the link renderer service whether to use local or global contributions,
+		// therefore we preload and get the edit counts through it.
+		// Preload the counts here, to save on DB queries.
+		$this->siUserLinkRenderer->preloadEditCounts( $userIdToUserIdentity );
+
+		$blockedUserIds = [];
+		if ( in_array( $this->editAndBlockFilter, [ 'edits-and-blocks', 'edits-or-blocks', 'blocks-only' ] ) ) {
+			$blockedUserIds = $this->compositeBlockChecker->getUserIdsBlocked(
+				array_keys( $userIdToUserIdentity )
+			);
+		}
+
+		// Group the UserIdentity objects by case IDs and indicate if a case ends up with no accounts with edits
+		$usersForCases = [];
+		foreach ( $caseIdsToUserIds as $caseId => $userIds ) {
+			$caseHasNoEdits = true;
+
+			foreach ( $userIds as $userId ) {
+				$userIdentity = $userIdToUserIdentity[$userId];
+
+				if ( $caseHasNoEdits ) {
+					$editCount = $this->siUserLinkRenderer->getUserEditCount( $userIdentity );
+					$caseHasNoEdits = $editCount === 0;
+				}
+
+			}
+			$caseHasEdits = !$caseHasNoEdits;
+			$caseHasBlockedAccounts = (bool)count( array_intersect( $userIds, $blockedUserIds ) );
+
+			switch ( $this->editAndBlockFilter ) {
+				// Only cases where any account has an edit, don't check block status
+				case 'edits-only':
+					if ( !$caseHasEdits ) {
+						continue 2;
+					}
+					break;
+				case 'edits-or-blocks':
+					if ( !$caseHasEdits && !$caseHasBlockedAccounts ) {
+						continue 2;
+					}
+					break;
+				case 'edits-and-blocks':
+					if ( !$caseHasEdits || !$caseHasBlockedAccounts ) {
+						continue 2;
+					}
+					break;
+				// Only cases where any account is blocked, don't check edit status
+				case 'blocks-only':
+					if ( !$caseHasBlockedAccounts ) {
+						continue 2;
+					}
+					break;
+			}
+
+			foreach ( $userIds as $userId ) {
+				$usersForCases[$caseId][] = $userIdToUserIdentity[$userId];
+			}
+		}
+
+		return $usersForCases;
+	}
+
+	/**
+	 * Gets the Title for the detail view page for a case identified by it's URL identifier.
+	 */
+	private function getDetailViewTitle( int $urlIdentifier ): Title {
+		return SpecialPage::getTitleFor( 'SuggestedInvestigations', 'detail/' . dechex( $urlIdentifier ) );
+	}
+
+	/**
+	 * Renders the button used to open the filters dialog
+	 * along with the table caption
+	 *
+	 * @inheritDoc
+	 */
+	protected function getHeader(): string {
+		if ( !$this->mQueryDone ) {
+			$this->doQuery();
+		}
+
+		// If the query has processed and filtered out too many rows in PHP, then display
+		// a warning message about this to the user
+		if ( $this->phpFiltersLimitReached ) {
+			$this->getOutput()->addHTML( $this->messageRenderer->getUserDismissableWarning(
+				$this->msg(
+					'checkuser-suggestedinvestigations-filter-too-many-results-filtered-in-php'
+				)->escaped(),
+				'ext-checkuser-suggestedinvestigations-too-many-results-warning'
+			) );
+
+			$this->logger->warning(
+				'PHP filter limits reached, so SI did not show a full page of results',
+				[ 'applied_filters' => $this->appliedFilters, 'limit' => $this->mLimit ]
+			);
+		}
+
+		if ( !$this->shouldShowVisibleCaption() ) {
+			return '';
+		}
+
+		$tableCaption = Html::element(
+			'div',
+			[ 'class' => 'cdx-table__header__caption', 'aria-hidden' => 'true' ],
+			$this->mCaption
+		);
+
+		$queueViewsButtonGroup = Html::rawElement(
+			'div',
+			[ 'class' => 'mw-checkuser-suggestedinvestigations-queue-views-button-group' ],
+			$this->getQueueViewButtonsHtml()
+		);
+
+		return Html::rawElement(
+			'div',
+			[ 'class' => 'cdx-table__header' ],
+			$tableCaption . $queueViewsButtonGroup . $this->getNavigationBuilder()->getFilterButton()
+		);
+	}
+
+	/**
+	 * Only show the filter button and table caption when not
+	 * in detailed view, as detailed view does not need filters.
+	 *
+	 * @inheritDoc
+	 */
+	protected function shouldShowVisibleCaption(): bool {
+		return $this->caseIdFilter === null;
+	}
+
+	/** @inheritDoc */
+	protected function getTableClass(): string {
+		$tableClasses = [
+			'ext-checkuser-suggestedinvestigations-table',
+			'ext-checkuser-suggestedinvestigations-table-main',
+		];
+		if ( $this->isNavigationBarShown() ) {
+			$tableClasses[] = 'ext-checkuser-suggestedinvestigations-table-with-navigation-bar';
+		}
+		return parent::getTableClass() . ' ' . implode( ' ', $tableClasses );
+	}
+
+	/** @inheritDoc */
+	public function getFullOutput(): ParserOutput {
+		$pout = parent::getFullOutput();
+		$pout->addModules( [ 'ext.checkUser.suggestedInvestigations' ] );
+		$pout->setJsConfigVar(
+			'wgCheckUserSuggestedInvestigationsActiveFilters',
+			$this->appliedFilters
+		);
+		$pout->setJsConfigVar(
+			'wgCheckUserSuggestedInvestigationsGlobalEditCountsUsed',
+			$this->siUserLinkRenderer->useGlobalContribs
+		);
+		$pout->setJsConfigVar(
+			'wgCheckUserSuggestedInvestigationsDefaultQueueView',
+			$this->getConfig()->get( 'CheckUserSuggestedInvestigationsDefaultQueueView' )
+		);
+		$pout->setJsConfigVar(
+			'wgCheckUserSuggestedInvestigationsQueueView',
+			$this->queueView
+		);
+		$pout->setJsConfigVar(
+			'wgCheckUserSuggestedInvestigationsEnabledQueueViews',
+			$this->getConfig()->get( 'CheckUserSuggestedInvestigationsEnabledQueueViews' )
+		);
+		$pout->setJsConfigVar(
+			'wgCheckUserSuggestedInvestigationsQueueViewData',
+			$this->queueViewData
+		);
+		return $pout;
+	}
+
+	/** @inheritDoc */
+	protected function isFieldSortable( $field ) {
+		// When only one row could appear, there is no need
+		// to allow sorting that one row
+		if ( $this->caseIdFilter !== null ) {
+			return false;
+		}
+
+		return $field === 'sic_updated_timestamp'
+			|| $field === 'sic_status';
+	}
+
+	/** @inheritDoc */
+	public function getDefaultSort() {
+		return 'sic_updated_timestamp';
+	}
+
+	/** @inheritDoc */
+	protected function getDefaultDirections() {
+		return self::DIR_DESCENDING;
+	}
+
+	/** @inheritDoc */
+	public function getIndexField() {
+		return [ self::INDEX_FIELDS[$this->mSort] ];
+	}
+
+	/** @inheritDoc */
+	protected function getFieldNames() {
+		return [
+			'signals' => $this->msg( 'checkuser-suggestedinvestigations-header-signals' )->text(),
+			'users' => $this->msg( 'checkuser-suggestedinvestigations-header-users' )->text(),
+			'sic_updated_timestamp' => $this->msg( 'checkuser-suggestedinvestigations-header-updated' )->text(),
+			'sic_status' => $this->msg( 'checkuser-suggestedinvestigations-header-status' )->text(),
+			'sic_status_reason' => $this->msg( 'checkuser-suggestedinvestigations-header-notes' )->text(),
+			'actions' => $this->msg( 'checkuser-suggestedinvestigations-header-actions' )->text(),
+		];
+	}
+
+	/** @inheritDoc */
+	public function getModuleStyles(): array {
+		return array_merge( parent::getModuleStyles(), [
+			'ext.checkUser.suggestedInvestigations.styles',
+			'mediawiki.interface.helpers.styles',
+		] );
+	}
+
+	protected function createNavigationBuilder(): CodexPagerNavigationBuilder {
+		$builder = new SuggestedInvestigationsPagerNavigationBuilder(
+			$this->getContext(),
+			$this->prepareQueryValuesForNavigationBuilder( $this->getRequest()->getValues() ),
+			$this->numberOfFiltersApplied
+		);
+		$builder->setNavClass( $this->getNavClass() );
+		return $builder;
+	}
+
+	private function prepareQueryValuesForNavigationBuilder( array $queryValues ): array {
+		// Flatten all known arrays with integer keys; skip unknown arrays
+		$knownArrays = [ 'signal', 'status', 'username' ];
+		$outputQueryValues = [];
+		foreach ( $queryValues as $key => $value ) {
+			if ( !is_array( $value ) ) {
+				$outputQueryValues[$key] = $value;
+				continue;
+			}
+			if ( !in_array( $key, $knownArrays, true ) ) {
+				continue;
+			}
+
+			foreach ( $value as $subKey => $subValue ) {
+				if ( !is_int( $subKey ) ) {
+					continue;
+				}
+				$newKey = $key . '[' . $subKey . ']';
+				$outputQueryValues[$newKey] = $subValue;
+			}
+		}
+		return $outputQueryValues;
+	}
+
+	/**
+	 * @return SuggestedInvestigationsPagerNavigationBuilder
+	 */
+	public function getNavigationBuilder(): SuggestedInvestigationsPagerNavigationBuilder {
+		// @phan-suppress-next-line PhanTypeMismatchReturnSuperType
+		return parent::getNavigationBuilder();
+	}
+
+	private function getQueueViewButtonsHtml(): string {
+		$queueViewButtonsHtml = '';
+		$codex = new Codex( new MediaWikiLocalization( $this->getContext() ) );
+		foreach ( $this->queueViewData as $queueViewName => $queueView ) {
+			$isActive = $queueViewName === $this->queueView;
+			// If the filter view has been modified from the default,
+			// the button text representing the active view should reflect that
+			$isModified = false;
+			if ( $isActive ) {
+				$defaultFilters = $queueView[ 'filters' ];
+				$currentFilters = $this->appliedFilters;
+
+				foreach ( $queueView[ 'filters' ] as $filter => $defaultFilterValue ) {
+					if ( !array_key_exists( $filter, $this->appliedFilters ) ) {
+						$isModified = true;
+						break;
+					}
+					$currentFilterValue = $this->appliedFilters[ $filter ];
+
+					// Expected filters: signal, status
+					$arrayValueFilters = [ 'signal', 'status' ];
+					if ( in_array( $filter, $arrayValueFilters ) ) {
+						// Length mismatch is guaranteed to be a modified view
+						if ( count( $defaultFilterValue ) !== count( $currentFilterValue ) ) {
+							$isModified = true;
+							break;
+						}
+
+						// Re-retrieve the signal value from the request as the applied filter's
+						// signal value has already been converted into the signal name and otherwise
+						// check if string values match each other.
+						$arrayFilterValueToCompare = $currentFilterValue;
+						if ( $filter === 'signal' ) {
+							$defaultFilteredSignals = is_string( $this->queueView ) ?
+								$this->getDefaultFilterValueForQueueType( $this->queueView, 'signal' ) : [];
+							$arrayFilterValueToCompare =
+								$this->mRequest->getArray( 'signal', $defaultFilteredSignals ) ?? [];
+						}
+						if ( count( array_diff( $defaultFilterValue, $arrayFilterValueToCompare ) ) ) {
+							$isModified = true;
+							break;
+						}
+					} elseif ( $defaultFilterValue !== $currentFilterValue ) {
+						// Expected filters: editAndBlockFilter, lastUpdated, showCasesWithEditsOnSharedPages
+						$isModified = true;
+						break;
+					}
+				}
+			}
+
+			$msgKey = $isModified ? $queueView[ 'msgKeys' ][ 'editedName' ] : $queueView[ 'msgKeys' ][ 'defaultName' ];
+			$queueViewButtonsHtml .= $codex->button()
+				->setAttributes( [
+					'title' => $this->msg( $msgKey )->text(),
+					'class' => 'mw-checkuser-suggestedinvestigations-queue-view-button',
+					'data-queue-view' => $queueViewName,
+				] )
+				->setLabel( $this->msg( $msgKey )->text() )
+				->setAction( $isActive ? 'progressive' : 'default' )
+				->setWeight( 'primary' )
+				->getHtml();
+		}
+		return $queueViewButtonsHtml;
+	}
+}

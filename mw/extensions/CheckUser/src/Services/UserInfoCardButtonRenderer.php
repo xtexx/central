@@ -1,0 +1,228 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\CheckUser\Services;
+
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\Extension\CheckUser\HookHandler\Preferences;
+use MediaWiki\Html\Html;
+use MediaWiki\Language\MessageLocalizer;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Permissions\Authority;
+use MediaWiki\Title\Title;
+use MediaWiki\User\Options\UserOptionsLookup;
+use MediaWiki\User\UserIdentity;
+use MediaWiki\User\UserIdentityLookup;
+use MediaWiki\User\UserNameUtils;
+
+class UserInfoCardButtonRenderer {
+
+	private const LOOKUP_BATCH_SIZE = 500;
+
+	/** @internal For use in ServiceWiring */
+	public const CONSTRUCTOR_OPTIONS = [
+		'CheckUserSuggestedInvestigationsEnabled',
+	];
+
+	public function __construct(
+		private readonly UserNameUtils $userNameUtils,
+		private readonly UserInfoCardBlockStatusCache $blockStatusCache,
+		private readonly UserIdentityLookup $userIdentityLookup,
+		private readonly UserOptionsLookup $userOptionsLookup,
+		private readonly UserInfoCardSuggestedInvestigationsCache $suggestedInvestigationsCache,
+		private readonly ServiceOptions $config,
+	) {
+		$this->config->assertRequiredOptions( self::CONSTRUCTOR_OPTIONS );
+	}
+
+	/**
+	 * Returns whether the given user should have the UserInfoCard rendered.
+	 */
+	public function isUicEnabledForUser( UserIdentity $viewer ): bool {
+		if ( !$viewer->isRegistered() || $this->userNameUtils->isTemp( $viewer->getName() ) ) {
+			return false;
+		}
+
+		return $this->userOptionsLookup->getBoolOption(
+			$viewer,
+			Preferences::ENABLE_USER_INFO_CARD
+		);
+	}
+
+	/**
+	 * Adds the ResourceLoader modules which the UserInfoCard needs.
+	 *
+	 * Call this only for viewers who have the card enabled, see {@see isUicEnabledForUser}.
+	 */
+	public function addModules( OutputPage $out ): void {
+		$out->addModuleStyles( 'ext.checkUser.styles' );
+		$out->addModules( 'ext.checkUser.userInfoCard' );
+	}
+
+	/**
+	 * Renders a button to trigger the UserInfoCard.
+	 *
+	 * This function doesn't load any modules that can actually support UIC JS code or styles,
+	 * it's only responsible for rendering the button.
+	 * @param string $targetName Name of the user for whom to display the card
+	 * @param string $iconName Name of the icon to display in the button, e.g., 'userAvatar'
+	 * @param MessageLocalizer $messageLocalizer To use when creating an accessible label for the button
+	 * @param bool $hiddenByDefault If true, the button will have the 'hidden' attribute and be hidden
+	 *      unless some CSS shows it.
+	 * @return string
+	 */
+	public function render(
+		string $targetName,
+		string $iconName,
+		MessageLocalizer $messageLocalizer,
+		bool $hiddenByDefault = false,
+	): string {
+		// CSS-only Codex icon button
+		$icon = Html::rawElement(
+			'span',
+			[
+				'class' =>
+					'cdx-button__icon ext-checkuser-userinfocard-button__icon ' .
+					"ext-checkuser-userinfocard-button__icon--$iconName",
+			]
+		);
+		$ariaLabel = $messageLocalizer->msg(
+			'checkuser-userinfocard-toggle-button-aria-label',
+			$targetName
+		)->text();
+
+		// <button>, not <a>: avoids matching gadgets that do
+		// $('#mw-diff-ntitle2 a').first() to find the editor (T426830).
+		return Html::rawElement(
+			'button',
+			[
+				'type' => 'button',
+				'aria-label' => $ariaLabel,
+				'aria-haspopover' => 'dialog',
+				'class' => 'ext-checkuser-userinfocard-button cdx-button ' .
+					'cdx-button--action-default cdx-button--weight-quiet cdx-button--icon-only',
+				'data-username' => $targetName,
+				'hidden' => $hiddenByDefault,
+			],
+			$icon
+		);
+	}
+
+	/**
+	 * Returns the name of the Codex icon which represents the status of the target user.
+	 *
+	 * @param string $targetName Name of the user for whom to display the card
+	 * @param array $options See $options for {@see getIconNamesForUsers}
+	 * @return string One of 'userBlocked', 'userTemporary' or 'userAvatar'
+	 */
+	public function getIconName( string $targetName, array $options = [] ): string {
+		return $this->getIconNamesForUsers( [ $targetName ], $options )[ $targetName ];
+	}
+
+	/**
+	 * Maps usernames to names of Codex icons that should be displayed for the user on buttons for them.
+	 *
+	 * @param array $targetNames An array of the usernames
+	 * @param array $options Optional switches to change the logic of applying the icons:
+	 * * 'customIcons' (default: true) - if true, icons such as "is blocked" or similar, which denote the current
+	 *    account status, will be available. Set to false if you need to cache the result for a long term
+	 *    (e.g., in parser cache).
+	 * * 'viewer' (default: null) - if an icon should be displayed only to users with certain rights, this is the
+	 *     authority for whom to check the rights. If null, it will be assumed that the viewer has no rights.
+	 * * 'pageTitle' (default: null) - context of what page UIC is being loaded on may affect what icon is returned.
+	 *     This should be a Title.
+	 * @return array A map of usernames to their corresponding icons. Every username will be present in the result.
+	 */
+	public function getIconNamesForUsers( array $targetNames, array $options = [] ): array {
+		$options += [
+			'customIcons' => true,
+			'viewer' => null,
+			'pageTitle' => null,
+		];
+
+		if ( !( $options['viewer'] instanceof Authority ) ) {
+			$options['viewer'] = null;
+		}
+		if ( !( $options['pageTitle'] instanceof Title ) ) {
+			$options['pageTitle'] = null;
+		}
+
+		if ( $options['viewer']?->isAllowed( 'hideuser' ) ) {
+			$visibleTargetNames = $targetNames;
+		} else {
+			$visibleTargetNames = $this->filterOutHiddenUsers( $targetNames );
+		}
+
+		$result = [];
+		if ( $options['customIcons'] ) {
+			$result = $this->applyCustomIcons( $visibleTargetNames, $options );
+		}
+
+		// Fill out rest with the default icon, userAvatar/userTemporary
+		$targetsWithoutIcons = array_diff( $targetNames, array_keys( $result ) );
+		foreach ( $targetsWithoutIcons as $targetName ) {
+			$result[$targetName] = $this->userNameUtils->isTemp( $targetName ) ? 'userTemporary' : 'userAvatar';
+		}
+
+		return $result;
+	}
+
+	private function filterOutHiddenUsers( array $userNames ): array {
+		$result = [];
+		foreach ( array_chunk( $userNames, self::LOOKUP_BATCH_SIZE ) as $userNameChunk ) {
+			$resultChunk = $this->userIdentityLookup->newSelectQueryBuilder()
+				->whereUserNames( $userNameChunk )
+				->hidden( false )
+				->caller( __METHOD__ )
+				->fetchUserNames();
+			$result = array_merge( $result, $resultChunk );
+		}
+		return $result;
+	}
+
+	private function applyCustomIcons( array $targetNames, array $options ): array {
+		$viewer = $options['viewer'];
+		$pageTitle = $options['pageTitle'];
+
+		// The order in which the methods are listed here denotes the icon priority (top to bottom)
+		// Nulls are ignored
+		$customIconHandlers = [
+			$this->applyBlockedIcon( ... ),
+			$viewer?->isAllowed( 'checkuser-suggested-investigations' ) &&
+			!$pageTitle?->isSpecial( 'SuggestedInvestigations' ) ?
+				$this->applySuggestedInvestigationsIcon( ... ) : null,
+		];
+
+		$result = [];
+
+		foreach ( $customIconHandlers as $customIconHandler ) {
+			if ( $customIconHandler === null ) {
+				continue;
+			}
+
+			$userIcons = $customIconHandler( $targetNames );
+			$result += $userIcons;
+
+			$targetNames = array_diff( $targetNames, array_keys( $userIcons ) );
+			if ( $targetNames === [] ) {
+				return $result;
+			}
+		}
+		return $result;
+	}
+
+	private function applyBlockedIcon( array $targetNames ): array {
+		$blockedUsers = $this->blockStatusCache->getIndefinitelyBlockedOrLockedUsers( $targetNames );
+		return array_fill_keys( $blockedUsers, 'userBlocked' );
+	}
+
+	private function applySuggestedInvestigationsIcon( array $targetNames ): array {
+		if ( !$this->config->get( 'CheckUserSuggestedInvestigationsEnabled' ) ) {
+			return [];
+		}
+
+		$siUsers = $this->suggestedInvestigationsCache->getUsersWithOpenCases( $targetNames );
+		return array_fill_keys( $siUsers, 'suggestedInvestigations' );
+	}
+}

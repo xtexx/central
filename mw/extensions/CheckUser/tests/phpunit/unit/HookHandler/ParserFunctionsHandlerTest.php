@@ -1,0 +1,145 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\CheckUser\Tests\Unit\HookHandler;
+
+use MediaWiki\Extension\CheckUser\HookHandler\ParserFunctionsHandler;
+use MediaWiki\Extension\CheckUser\Services\UserInfoCardButtonRenderer;
+use MediaWiki\Parser\Parser;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Tests\Unit\FakeQqxMessageLocalizer;
+use MediaWiki\User\UserNameUtils;
+use MediaWiki\User\UserRigorOptions;
+use MediaWikiUnitTestCase;
+
+/**
+ * @group CheckUser
+ * @covers \MediaWiki\Extension\CheckUser\HookHandler\ParserFunctionsHandler
+ */
+class ParserFunctionsHandlerTest extends MediaWikiUnitTestCase {
+
+	private UserNameUtils $userNameUtils;
+	private UserInfoCardButtonRenderer $buttonRenderer;
+	private ParserOutput $parserOutput;
+	private Parser $parser;
+
+	protected function setUp(): void {
+		parent::setUp();
+
+		$this->userNameUtils = $this->createMock( UserNameUtils::class );
+		$this->buttonRenderer = $this->createMock( UserInfoCardButtonRenderer::class );
+		$this->buttonRenderer->method( 'getIconName' )
+			->willReturn( 'userAvatar' );
+		$this->parserOutput = new ParserOutput();
+
+		$localizer = new FakeQqxMessageLocalizer();
+
+		$this->parser = $this->createMock( Parser::class );
+		$this->parser->method( 'getOutput' )->willReturn( $this->parserOutput );
+		$this->parser->method( 'msg' )
+			->willReturnCallback( static fn ( string $msg, ...$params ) => $localizer->msg( $msg, ...$params ) );
+
+		ParserFunctionsHandler::clearRecordedUserInfoCardTargets();
+	}
+
+	private function getHandler(): ParserFunctionsHandler {
+		return new ParserFunctionsHandler( $this->userNameUtils, $this->buttonRenderer );
+	}
+
+	public function testOnParserFirstCallInitRegistersUicFunction(): void {
+		$parser = $this->createMock( Parser::class );
+		$parser->expects( $this->once() )
+			->method( 'setFunctionHook' )
+			->with( 'uic', $this->isType( 'callable' ) );
+
+		$this->getHandler()->onParserFirstCallInit( $parser );
+	}
+
+	public function testRenderReturnsRawHtmlForValidUsername(): void {
+		$this->userNameUtils->method( 'getCanonical' )
+			->with( 'Foo', UserRigorOptions::RIGOR_VALID )
+			->willReturn( 'Foo' );
+		$this->buttonRenderer->expects( $this->once() )
+			->method( 'render' )
+			->with(
+				'Foo',
+				// Never the blocked variant, and always hidden
+				'userAvatar',
+				$this->anything(),
+				true
+			)
+			->willReturn( '<button>button</button>' );
+
+		$result = $this->getHandler()->renderUserInfoCardButton( $this->parser, 'Foo' );
+
+		$this->assertSame( [ '<button>button</button>', 'isHTML' => true ], $result );
+		$this->assertContains(
+			'ext.checkUser.styles',
+			$this->parserOutput->getModuleStyles()
+		);
+		// Interface messages lose the parser output, so the target is recorded here as well
+		$this->assertSame( [ 'Foo' ], ParserFunctionsHandler::getRecordedUserInfoCardTargets() );
+	}
+
+	public function testRenderUsesTheCanonicalUsername(): void {
+		$this->userNameUtils->method( 'getCanonical' )
+			->with( 'user:foo_bar', UserRigorOptions::RIGOR_VALID )
+			->willReturn( 'Foo bar' );
+		$this->buttonRenderer->expects( $this->once() )
+			->method( 'render' )
+			->with(
+				'Foo bar',
+				'userAvatar',
+				$this->anything(),
+				true
+			)
+			->willReturn( '<button>button</button>' );
+
+		// Also covers the surrounding whitespace that template expansion tends to leave behind.
+		$this->getHandler()->renderUserInfoCardButton( $this->parser, "  user:foo_bar\n" );
+		$this->assertSame( [ 'Foo bar' ], ParserFunctionsHandler::getRecordedUserInfoCardTargets() );
+	}
+
+	/** @dataProvider provideInvalidUsernames */
+	public function testRenderReturnsNothingAndTracksInvalidUsernames( string $username, string $category ): void {
+		$this->userNameUtils->method( 'getCanonical' )->willReturn( false );
+
+		$this->buttonRenderer->expects( $this->never() )->method( 'render' );
+		$this->parser->expects( $this->once() )
+			->method( 'addTrackingCategory' )
+			->with( $category );
+
+		$this->assertSame(
+			'',
+			$this->getHandler()->renderUserInfoCardButton( $this->parser, $username )
+		);
+		$this->assertSame( [], $this->parserOutput->getModuleStyles() );
+		$this->assertSame( [], ParserFunctionsHandler::getRecordedUserInfoCardTargets() );
+	}
+
+	public static function provideInvalidUsernames(): array {
+		return [
+			'Invalid (non-IP) username' => [
+				'username' => '<3',
+				'category' => 'checkuser-uic-invalid-username-category',
+			],
+			'IPv4 address' => [
+				'username' => '1.2.3.4',
+				'category' => 'checkuser-uic-ip-target-category',
+			],
+			'IPv4 range' => [
+				'username' => '1.2.3.4/24',
+				'category' => 'checkuser-uic-ip-target-category',
+			],
+			'IPv6 address' => [
+				'username' => '2001:db8::1',
+				'category' => 'checkuser-uic-ip-target-category',
+			],
+			'IPv6 range' => [
+				'username' => '2001:db8::1/64',
+				'category' => 'checkuser-uic-ip-target-category',
+			],
+		];
+	}
+}

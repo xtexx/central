@@ -1,0 +1,43 @@
+// Hide the user avatar icon added in MinervaNeue, as that is duplicated by the user info card feature.
+/* stylelint-disable-next-line selector-class-pattern */
+.history-user,
+.mw-changeslist,
+.ext-checkuser-userinfocard-header-username,
+/* stylelint-disable-next-line selector-class-pattern */
+td.diff-ntitle {
+	.mw-userlink::before {
+		/* stylelint-disable-next-line declaration-no-important */
+		display: none !important;
+	}
+}
+
+// Without AMC, Minerva sets float:left on the button, which massively reduces vertical spacing on it
+.mw-mf-amc-disabled.mw-special-Watchlist .ext-checkuser-userinfocard-button {
+	float: none;
+}
+
+.ext-checkuser-userinfocard-button-wrapper {
+	float: none;
+	clear: both;
+
+	a.mw-userlink {
+		float: none;
+	}
+}
+
+// The card unfloats .mw-userlink but leaves .mw-usertoollinks floated, which pulls the
+// tool links before the username on log entries (T431345). Keep the log performer inline
+// so the links stay after the username; drop the base line-break pseudo that would push
+// the action text onto its own line.
+.mw-special-Watchlist,
+.mw-special-Recentchanges {
+	.mw-changeslist-log-entry {
+		.mw-usertoollinks {
+			float: none;
+		}
+
+		.mw-usertoollinks::after {
+			content: none;
+		}
+	}
+}

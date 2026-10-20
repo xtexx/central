@@ -1,0 +1,291 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\CheckUser\Tests\Integration\Api\Rest\Handler;
+
+use MediaWiki\Extension\CheckUser\Api\Rest\Handler\UserInfoHandler;
+use MediaWiki\Extension\CheckUser\Services\UserInfoCardInstrumentation;
+use MediaWiki\Permissions\Authority;
+use MediaWiki\Rest\HttpException;
+use MediaWiki\Rest\LocalizedHttpException;
+use MediaWiki\Rest\RequestData;
+use MediaWiki\Tests\Rest\Handler\HandlerTestTrait;
+use MediaWiki\Tests\Rest\Handler\SessionHelperTestTrait;
+use MediaWikiIntegrationTestCase;
+use Wikimedia\Message\MessageValue;
+
+/**
+ * @covers \MediaWiki\Extension\CheckUser\Api\Rest\Handler\UserInfoHandler
+ * @group Database
+ */
+class UserInfoHandlerTest extends MediaWikiIntegrationTestCase {
+
+	use HandlerTestTrait;
+	use SessionHelperTestTrait;
+
+	private static Authority $loggedInPerformer;
+	private static Authority $loggedOutPerformer;
+	private static array $postRequestParams = [
+		'method' => 'POST',
+		'headers' => [
+			'Content-Type' => 'application/json',
+		],
+	];
+
+	protected function setUp(): void {
+		parent::setUp();
+
+		// CheckUserUserInfoCardService has dependencies provided by the GrowthExperiments extension.
+		$this->markTestSkippedIfExtensionNotLoaded( 'GrowthExperiments' );
+		// The GlobalContributionsPager used in CheckuserUserInfoCardService requires CentralAuth
+		$this->markTestSkippedIfExtensionNotLoaded( 'CentralAuth' );
+	}
+
+	private function getObjectUnderTest(): UserInfoHandler {
+		$services = $this->getServiceContainer();
+		return new UserInfoHandler(
+			$services->get( 'CheckUserUserInfoCardService' ),
+			$services->getUserFactory(),
+			$services->get( 'CheckUserUserInfoCardInstrumentation' ),
+		);
+	}
+
+	public function testLoggedOutAccessIsDenied() {
+		$this->expectExceptionObject(
+			new LocalizedHttpException( new MessageValue( 'checkuser-rest-access-denied' ), 401 )
+		);
+		$this->executeHandler(
+			$this->getObjectUnderTest(),
+			new RequestData( self::$postRequestParams + [
+				'bodyContents' => json_encode( [
+					'username' => $this->getTestUser()->getUser()->getName(),
+				] ),
+			] )
+		);
+	}
+
+	public function testAccessInvalidUserId() {
+		$this->expectExceptionObject(
+			new LocalizedHttpException( new MessageValue( 'checkuser-rest-userinfo-user-not-found' ), 404 )
+		);
+		$this->executeHandler(
+			$this->getObjectUnderTest(),
+			new RequestData( self::$postRequestParams + [
+				'bodyContents' => json_encode( [
+					'username' => 'non-existing user',
+				] ),
+			] ),
+			[],
+			[],
+			[],
+			[],
+			$this->getTestUser()->getUser()
+		);
+	}
+
+	public function testGetDataForUser() {
+		$user = $this->getTestUser()->getUser();
+		$this->editPage( 'Test', 'Test', 'Test', NS_MAIN, $user );
+		$editCount = $user->getEditCount();
+		$response = $this->executeHandler(
+			$this->getObjectUnderTest(),
+			new RequestData( self::$postRequestParams + [
+				'bodyContents' => json_encode( [
+					'username' => $user->getName(),
+				] ),
+			] ),
+			[],
+			[],
+			[],
+			[],
+			$user
+		);
+
+		$payload = json_decode( $response->getBody()->getContents(), true );
+		$this->assertEquals( $editCount, $payload['totalEditCount'] );
+	}
+
+	public function testRateLimiting() {
+		$this->mergeMwGlobalArrayValue( 'wgRateLimits', [ 'checkuser-userinfo' => [
+			'user' => [ 1, 86400 ],
+		] ] );
+
+		$session = $this->getSession( true );
+		$user = $this->getTestUser()->getUser();
+		$requestParams = self::$postRequestParams + [
+			'bodyContents' => json_encode( [
+				'username' => $user->getName(),
+			] ),
+		];
+
+		$this->editPage( 'Test', 'Test', 'Test', NS_MAIN, $user );
+		$editCount = $user->getEditCount();
+		$response = $this->executeHandler(
+			$this->getObjectUnderTest(),
+			new RequestData( $requestParams ),
+			[],
+			[],
+			[],
+			[],
+			$user,
+			$session
+		);
+
+		$payload = json_decode( $response->getBody()->getContents(), true );
+		$this->assertEquals( $editCount, $payload[ 'totalEditCount' ] );
+
+		$this->expectExceptionObject(
+			new HttpException( 'Too many requests to user info data', 429 )
+		);
+		$this->executeHandler(
+			$this->getObjectUnderTest(),
+			new RequestData( $requestParams ),
+			[],
+			[],
+			[],
+			[],
+			$user,
+			$session
+		);
+	}
+
+	public function testApiCallEmitsEventLoggingEvent() {
+		$this->overrideConfigValue( 'CheckUserEnableUserInfoCardInstrumentation', true );
+
+		$user = $this->getTestUser()->getUser();
+		$this->editPage( 'Test', 'Test', 'Test', NS_MAIN, $user );
+
+		$instrumentation = $this->createMock( UserInfoCardInstrumentation::class );
+		$instrumentation->expects( $this->once() )
+			->method( 'onApiSuccess' );
+		$this->setService( 'CheckUserUserInfoCardInstrumentation', $instrumentation );
+
+		$this->executeHandler(
+			$this->getObjectUnderTest(),
+			new RequestData( self::$postRequestParams + [
+				'bodyContents' => json_encode( [ 'username' => $user->getName() ] ),
+			] ),
+			[],
+			[],
+			[],
+			[],
+			$user
+		);
+	}
+
+	/** @dataProvider provideSourcePageAndOpenedFrom */
+	public function testApiCallPassesSourceToInstrumentation( ?string $sourcePage, ?string $openedFrom ) {
+		$user = $this->getTestUser()->getUser();
+
+		$instrumentation = $this->createMock( UserInfoCardInstrumentation::class );
+		$instrumentation->expects( $this->once() )
+			->method( 'setSourcePage' )
+			->with( $sourcePage );
+		$instrumentation->expects( $this->once() )
+			->method( 'setOpenedFrom' )
+			->with( $openedFrom );
+		$this->setService( 'CheckUserUserInfoCardInstrumentation', $instrumentation );
+
+		$bodyContents = [ 'username' => $user->getName() ];
+		if ( $sourcePage !== null ) {
+			$bodyContents['sourcePage'] = $sourcePage;
+		}
+		if ( $openedFrom !== null ) {
+			$bodyContents['openedFrom'] = $openedFrom;
+		}
+
+		$this->executeHandler(
+			$this->getObjectUnderTest(),
+			new RequestData( self::$postRequestParams + [
+				'bodyContents' => json_encode( $bodyContents ),
+			] ),
+			[],
+			[],
+			[],
+			[],
+			$user
+		);
+	}
+
+	public static function provideSourcePageAndOpenedFrom(): iterable {
+		yield 'source provided' => [
+			'sourcePage' => 'Special:RecentChanges',
+			'openedFrom' => 'rc',
+		];
+		yield 'only source page provided' => [
+			'sourcePage' => 'Special:RecentChanges',
+			'openedFrom' => null,
+		];
+		yield 'no source provided' => [
+			'sourcePage' => null,
+			'openedFrom' => null,
+		];
+	}
+
+	public function testRateLimitEmitsEventLoggingEvent() {
+		$this->overrideConfigValue( 'CheckUserEnableUserInfoCardInstrumentation', true );
+		$this->mergeMwGlobalArrayValue( 'wgRateLimits', [ 'checkuser-userinfo' => [
+			'user' => [ 1, 86400 ],
+		] ] );
+
+		$session = $this->getSession( true );
+		$user = $this->getTestUser()->getUser();
+		$this->editPage( 'Test', 'Test', 'Test', NS_MAIN, $user );
+		$requestParams = self::$postRequestParams + [
+			'bodyContents' => json_encode( [ 'username' => $user->getName() ] ),
+		];
+
+		$instrumentation = $this->createMock( UserInfoCardInstrumentation::class );
+		$instrumentation->expects( $this->once() )
+			->method( 'onApiSuccess' );
+		$instrumentation->expects( $this->once() )
+			->method( 'onRateLimited' );
+		$this->setService( 'CheckUserUserInfoCardInstrumentation', $instrumentation );
+
+		// First request succeeds and emits api_request
+		$this->executeHandler(
+			$this->getObjectUnderTest(),
+			new RequestData( $requestParams ),
+			[],
+			[],
+			[],
+			[],
+			$user,
+			$session
+		);
+
+		// Second request hits rate limit and emits rate_limit_exceeded
+		$this->expectException(	HttpException::class );
+		$this->executeHandler(
+			$this->getObjectUnderTest(),
+			new RequestData( $requestParams ),
+			[],
+			[],
+			[],
+			[],
+			$user,
+			$session
+		);
+	}
+
+	public function testUserNotFoundIncrementsPrometheusCounter() {
+		$instrumentation = $this->createMock( UserInfoCardInstrumentation::class );
+		$instrumentation->expects( $this->once() )
+			->method( 'onUserNotFound' );
+		$this->setService( 'CheckUserUserInfoCardInstrumentation', $instrumentation );
+
+		$this->expectException( LocalizedHttpException::class );
+		$this->executeHandler(
+			$this->getObjectUnderTest(),
+			new RequestData( self::$postRequestParams + [
+				'bodyContents' => json_encode( [ 'username' => 'non-existing user' ] ),
+			] ),
+			[],
+			[],
+			[],
+			[],
+			$this->getTestUser()->getUser()
+		);
+	}
+}

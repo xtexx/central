@@ -1,0 +1,20 @@
+@import 'mediawiki.skin.variables.less';
+
+/* stylelint-disable selector-class-pattern */
+// The trigger can only be used with JavaScript, so hide it for clients which have none.
+.client-nojs .ext-checkuser-userinfocard-navigation-item {
+	display: none;
+}
+
+// Vector and MinervaNeue have icons named userAvatar and userTemporary, but not userBlocked
+// or suggestedInvestigations.
+.vector-icon.mw-ui-icon-wikimedia-userBlocked,
+.minerva-icon--userBlocked {
+	.cdx-mixin-css-icon( @cdx-icon-user-blocked );
+}
+
+.vector-icon.mw-ui-icon-wikimedia-suggestedInvestigations,
+.minerva-icon--suggestedInvestigations {
+	.cdx-mixin-css-icon( @cdx-icon-suggested-investigations );
+}
+/* stylelint-enable selector-class-pattern */
