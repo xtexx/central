@@ -1,0 +1,72 @@
+{
+	"name": "TemplateStylesExtender",
+	"version": "3.0.0",
+	"author": [
+		"[https://www.mediawiki.org/wiki/User:Octfx Octfx]",
+		"[https://www.mediawiki.org/wiki/User:Alistair3149 Alistair3149]"
+	],
+	"url": "https://github.com/octfx/mediawiki-extensions-TemplateStylesExtender",
+	"descriptionmsg": "ext-templatestylesextender-desc",
+	"license-name": "GPL-2.0-or-later",
+	"type": "parserhook",
+	"requires": {
+		"MediaWiki": ">= 1.43.9",
+		"extensions": {
+			"TemplateStyles": ">= 1.0"
+		}
+	},
+	"config": {
+		"TemplateStylesExtenderCustomPropertiesDeclaration": {
+			"description": "Allow CSS custom properties (--*) to be declared.",
+			"value": true
+		},
+		"TemplateStylesExtenderExtendCustomPropertiesValues": {
+			"description": "Allow var() in properties whose own grammar has no slot for it, such as width, transform, and the colour a relative colour starts from. Turning this off does not remove var() from the places css-sanitizer accepts it on its own, such as a whole colour or a colour channel.",
+			"value": true
+		},
+		"TemplateStylesExtenderEnableUnscopingSupport": {
+			"description": "Allow a templatestyles tag to scope its CSS to a class of its own, set with a wrapclass attribute, instead of .mw-parser-output. Takes effect only for a page whose last editor holds the right named by $wgTemplateStylesExtenderUnscopingPermission. Each such tag costs a lookup of that user.",
+			"value": false
+		},
+		"TemplateStylesExtenderRequireFontFamilyPrefix": {
+			"description": "Require @font-face family names to start with 'TemplateStyles', as TemplateStyles itself does. Off by default. @font-face is not scoped to .mw-parser-output, so a family declared on a TemplateStyles page applies to the whole rendered page, including skin chrome. Changing this does not invalidate already-rendered pages, which keep their previous CSS until purged.",
+			"value": false
+		},
+		"TemplateStylesExtenderUnscopingPermission": {
+			"description": "The right a user must hold to unscope CSS with a wrapclass attribute. Defaults to 'editinterface'.",
+			"value": "editinterface"
+		},
+		"TemplateStylesExtenderAllowExternalResourcesInCustomProperties": {
+			"description": "Allow url(), image-set() and the other external-resource functions inside custom property (--*) values. Off by default: a custom property is substituted into the fetching property at render time (e.g. mask-image: var(--x)), so its URL cannot be checked against $wgTemplateStylesAllowedUrls. Enable this only on a wiki whose enforced Content-Security-Policy restricts such fetches to trusted hosts, because with it on that CSP is the only guard. A URL written directly in a typed property stays allowlist-checked either way.",
+			"value": false
+		}
+	},
+	"ConfigRegistry": {
+		"TemplateStylesExtender": "MediaWiki\\Config\\GlobalVarConfig::newInstance"
+	},
+	"MessagesDirs": {
+		"TemplateStylesExtender": [
+			"i18n"
+		]
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\TemplateStylesExtender\\": "includes/"
+	},
+	"HookHandlers": {
+		"MainHooks": {
+			"class": "MediaWiki\\Extension\\TemplateStylesExtender\\Hooks\\MainHooks"
+		},
+		"PropertySanitizerHook": {
+			"class": "MediaWiki\\Extension\\TemplateStylesExtender\\Hooks\\PropertySanitizerHook"
+		},
+		"StylesheetSanitizerHook": {
+			"class": "MediaWiki\\Extension\\TemplateStylesExtender\\Hooks\\StylesheetSanitizerHook"
+		}
+	},
+	"Hooks": {
+		"TemplateStylesPropertySanitizer": "PropertySanitizerHook",
+		"TemplateStylesStylesheetSanitizer": "StylesheetSanitizerHook",
+		"ParserFirstCallInit": "MainHooks"
+	},
+	"manifest_version": 2
+}

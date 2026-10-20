@@ -1,0 +1,9 @@
+{
+	"@metadata": {
+		"authors": [
+			"Octfx"
+		]
+	},
+	"ext-templatestylesextender-desc": "{{desc|name=TemplateStylesExtender|url=https://www.mediawiki.org/wiki/Extension:TemplateStylesExtender}}",
+	"templatestylesextender-unscoping-no-permission": "Error message shown in place of a <code><nowiki><templatestyles></nowiki></code> tag when the last editor of the page lacks the permission required to unscope CSS via the <code>wrapclass</code> attribute. See <code>$wgTemplateStylesExtenderUnscopingPermission</code>."
+}

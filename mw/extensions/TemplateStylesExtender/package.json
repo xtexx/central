@@ -1,0 +1,11 @@
+{
+	"private": true,
+	"scripts": {
+		"lint": "npm -s run lint:i18n",
+		"lint:i18n": "banana-checker i18n/",
+		"preflight": "npm -s run lint"
+	},
+	"devDependencies": {
+		"grunt-banana-checker": "0.13.0"
+	}
+}
