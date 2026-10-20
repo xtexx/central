@@ -1,0 +1,43 @@
+{
+	"@metadata": {
+		"authors": [
+			"Amire80",
+			"Boukman",
+			"Jvm",
+			"Macofe"
+		]
+	},
+	"globalblocking-desc": "[[Special:GlobalBlock|Pemèt]] adrès IP yo [[Special:GlobalBlockList|bloke atravè plizyè wiki]]",
+	"globalblocking-block": "Bloke yon adrès IP globalman",
+	"globalblocking-block-intro": "Ou kapab itilize paj sa pou bloke yon adrès IP nan tout wiki yo.",
+	"globalblocking-block-reason": "Rezon :",
+	"globalblocking-block-expiry": "Ekspirasyon :",
+	"globalblocking-block-expiry-selector-other": "Lòt delè :",
+	"globalblocking-block-legend": "Bloke yon adrès IP globalman",
+	"globalblocking-block-expiryinvalid": "Expirasyon ou te antre a pa bon.",
+	"globalblocking-block-submit": "Bloke adrès IP sa globalman",
+	"globalblocking-block-success": "Adrès IP $1 byen bloke nan tout pwojè yo.",
+	"globalblocking-block-alreadyblocked": "Adrès IP $1 deja bloke globalman.\nOu ka wè blokaj ki deja ekziste a nan [[Special:GlobalBlockList|lis blokaj global yo]], oubyen voye fomilè sa ankò pou modifye paramèt blokaj la.",
+	"globalblocking-list": "Lis adrès IP ki bloke globalman yo",
+	"globalblocking-search-legend": "Chèche pou yon blokaj global",
+	"globalblocking-search-submit": "Chèche pou blokaj yo",
+	"globalblocking-list-anononly": "Anonim sèlman",
+	"globalblocking-list-unblock": "Debloke",
+	"globalblocking-list-locally-disabled": "te dezaktive lokalman pa $1 : $2",
+	"globalblocking-list-local-status": "estati lokal",
+	"globalblocking-unblock-legend": "Retire yon blokaj global",
+	"globalblocking-unblock-submit": "Retire blokaj global",
+	"globalblocking-unblock-reason": "Rezon :",
+	"globalblocking-unblock-unblocked": "Ou retire blokaj global sou adrès IP '''$1'''.",
+	"globalblocking-local-status-legend": "Chanje estati local",
+	"globalblocking-local-status-reason": "Rezon :",
+	"globalblocking-local-status-status-label": "Dezame blokaj global sa nan {{SITENAME}}",
+	"globalblocking-local-status-submit": "Chanje estati lokal",
+	"globalblocking-local-status-disabled-success": "Ou dezaktive blokaj global #$2 pou adrès IP '''$1''' nan {{SITENAME}}.",
+	"globalblocking-local-status-enabled-success": "Ou te reyisi remèt blokaj global #$2 sou adrès IP '''$1''' nan {{SITENAME}}.",
+	"globalblocking-logpage": "Jounal blokaj global",
+	"globalblocklist": "Lis Adrès IP bloke globalman yo",
+	"globalblock": "Bloke yon adrès IP globalman",
+	"right-globalblock": "Fè blokaj global",
+	"globalblocking-blockedtext-proxy": "Adrès proxy ki bloke a te $1."
+}
