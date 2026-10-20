@@ -1,0 +1,215 @@
+<?php
+
+namespace MediaWiki\Extension\AbuseFilter\EditBox;
+
+use MediaWiki\Extension\AbuseFilter\AbuseFilterPermissionManager;
+use MediaWiki\Extension\AbuseFilter\KeywordsManager;
+use MediaWiki\Html\Html;
+use MediaWiki\Language\MessageLocalizer;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Permissions\Authority;
+use OOUI\ButtonWidget;
+use OOUI\DropdownInputWidget;
+use OOUI\FieldLayout;
+use OOUI\FieldsetLayout;
+use OOUI\HtmlSnippet;
+use OOUI\Widget;
+use Wikimedia\Codex\Localization\MediaWikiLocalization;
+use Wikimedia\Codex\Utility\Codex;
+
+/**
+ * Base class for classes responsible for building filter edit boxes
+ */
+abstract class EditBoxBuilder {
+	/** @var AbuseFilterPermissionManager */
+	protected $afPermManager;
+
+	/** @var KeywordsManager */
+	protected $keywordsManager;
+
+	/** @var MessageLocalizer */
+	protected $localizer;
+
+	/** @var Authority */
+	protected $authority;
+
+	/** @var OutputPage */
+	protected $output;
+
+	/** @var array */
+	private $dropdownOptions;
+
+	/**
+	 * @param AbuseFilterPermissionManager $afPermManager
+	 * @param KeywordsManager $keywordsManager
+	 * @param MessageLocalizer $messageLocalizer
+	 * @param Authority $authority
+	 * @param OutputPage $output
+	 */
+	public function __construct(
+		AbuseFilterPermissionManager $afPermManager,
+		KeywordsManager $keywordsManager,
+		MessageLocalizer $messageLocalizer,
+		Authority $authority,
+		OutputPage $output
+	) {
+		$this->afPermManager = $afPermManager;
+		$this->keywordsManager = $keywordsManager;
+		$this->localizer = $messageLocalizer;
+		$this->authority = $authority;
+		$this->output = $output;
+	}
+
+	/**
+	 * @param string $rules
+	 * @param bool $addResultDiv
+	 * @param bool $externalForm
+	 * @param bool $needsModifyRights
+	 * @param-taint $rules none
+	 * @return string
+	 */
+	public function buildEditBox(
+		string $rules,
+		bool $addResultDiv = true,
+		bool $externalForm = false,
+		bool $needsModifyRights = true
+	): string {
+		$this->output->addModules( 'ext.abuseFilter.edit' );
+		$this->output->enableOOUI();
+
+		$isUserAllowed = $needsModifyRights ?
+			$this->afPermManager->canEdit( $this->authority ) :
+			$this->afPermManager->canUseTestTools( $this->authority );
+		if ( !$isUserAllowed ) {
+			$addResultDiv = false;
+		}
+
+		$output = $this->getEditBox( $rules, $isUserAllowed, $externalForm );
+
+		if ( $isUserAllowed ) {
+			// Load the styles up front so the placeholder input below never appears unstyled.
+			$this->output->addModuleStyles( 'ext.abuseFilter.conditionBuilder.styles' );
+			$this->output->addModules( 'ext.abuseFilter.conditionBuilder' );
+
+			// Shown until the picker loads: same markup as the picker's own input so
+			// nothing shifts, disabled so typed text can't get lost in the swap.
+			$codex = new Codex( new MediaWikiLocalization( $this->localizer ) );
+			$pickerPlaceholder = $codex->textInput()
+				->setPlaceholder( $this->localizer->msg( 'abusefilter-edit-builder-select' )->text() )
+				->setDisabled( true )
+				->build()
+				->getHtml();
+			$conditionBuilder = new Widget( [
+				'content' => new HtmlSnippet( $pickerPlaceholder ),
+				'classes' => [ 'mw-abusefilter-condition-builder' ]
+			] );
+
+			$dropdown = $this->getSuggestionsDropdown();
+
+			$formElements = [
+				new FieldLayout( $conditionBuilder ),
+				new FieldLayout( $dropdown, [
+					'classes' => [ 'mw-abusefilter-condition-builder-fallback' ]
+				] ),
+				new FieldLayout( $this->getEditorControls() )
+			];
+
+			$fieldSet = new FieldsetLayout( [
+				'items' => $formElements,
+				'classes' => [ 'mw-abusefilter-edit-buttons', 'mw-abusefilter-javascript-tools' ]
+			] );
+
+			$output .= $fieldSet;
+		}
+
+		if ( $addResultDiv ) {
+			$output .= Html::element(
+				'div',
+				[ 'id' => 'mw-abusefilter-syntaxresult', 'style' => 'display: none;' ]
+			);
+		}
+
+		return $output;
+	}
+
+	protected function getDropdownOptions(): array {
+		if ( $this->dropdownOptions === null ) {
+			$rawDropdown = $this->keywordsManager->getBuilderValues();
+
+			// The array needs to be rearranged to be understood by OOUI. It comes with the format
+			// [ group-msg-key => [ text-to-add => text-msg-key ] ] and we need it as
+			// [ group-msg => [ text-msg => text-to-add ] ]
+			// Also, the 'other' element must be the first one.
+			$dropdownOptions = [ $this->localizer->msg( 'abusefilter-edit-builder-select' )->text() => 'other' ];
+			foreach ( $rawDropdown as $group => $values ) {
+				// Give grep a chance to find the usages:
+				// abusefilter-edit-builder-group-op-arithmetic
+				// abusefilter-edit-builder-group-op-comparison
+				// abusefilter-edit-builder-group-op-bool
+				// abusefilter-edit-builder-group-misc
+				// abusefilter-edit-builder-group-funcs
+				// abusefilter-edit-builder-group-vars
+				$localisedGroup = $this->localizer->msg( "abusefilter-edit-builder-group-$group" )->text();
+				$dropdownOptions[ $localisedGroup ] = array_flip( $values );
+				$newKeys = array_map(
+					function ( $key ) use ( $group, $dropdownOptions, $localisedGroup ) {
+						// Force all operators and functions to be always shown as left to right text
+						// with the help of control characters:
+						// * 202A is LEFT-TO-RIGHT EMBEDDING (LRE)
+						// * 202C is POP DIRECTIONAL FORMATTING (PDF)
+						// This has to be done with control characters because
+						// markup cannot be used within <option> elements.
+						$operatorExample = "\u{202A}" .
+							$dropdownOptions[ $localisedGroup ][ $key ] .
+							"\u{202C}";
+						return $this->localizer->msg(
+							"abusefilter-edit-builder-$group-$key",
+							$operatorExample
+						)->text();
+					},
+					array_keys( $dropdownOptions[ $localisedGroup ] )
+				);
+				$dropdownOptions[ $localisedGroup ] = array_combine(
+					$newKeys,
+					$dropdownOptions[ $localisedGroup ]
+				);
+			}
+
+			$this->dropdownOptions = $dropdownOptions;
+		}
+		return $this->dropdownOptions;
+	}
+
+	private function getSuggestionsDropdown(): DropdownInputWidget {
+		$dropdownList = Html::listDropdownOptionsOoui( $this->getDropdownOptions() );
+		return new DropdownInputWidget( [
+			'name' => 'wpFilterBuilder',
+			'inputId' => 'wpFilterBuilder',
+			'options' => $dropdownList
+		] );
+	}
+
+	/**
+	 * Get an additional widget that "controls" the editor, and is placed next to it
+	 * Precondition: the user has full rights.
+	 */
+	protected function getEditorControls(): Widget {
+		return new ButtonWidget(
+			[
+				'label' => $this->localizer->msg( 'abusefilter-edit-check' )->text(),
+				'id' => 'mw-abusefilter-syntaxcheck'
+			]
+		);
+	}
+
+	/**
+	 * Generate the HTML for the actual edit box
+	 *
+	 * @param string $rules
+	 * @param bool $isUserAllowed
+	 * @param bool $externalForm
+	 * @return string
+	 */
+	abstract protected function getEditBox( string $rules, bool $isUserAllowed, bool $externalForm ): string;
+
+}
