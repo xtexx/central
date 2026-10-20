@@ -1,0 +1,9 @@
+{
+	"@metadata": {
+		"authors": [
+			"Умар"
+		]
+	},
+	"apihelp-templatedata-example-1": "Йухадерзаде TemplateData [[Template:Foobar]] жамӀашца, нагахь санна кеп йацахь йа йелахь, амма TemplateData йацахь",
+	"apihelp-templatedata-param-lang": "Локалан маьӀна йуха даладе хӀокху маттахь. Ӏадйитаран кепаца тӀекхочуш долу массо гочдарш меттахӀотта до."
+}

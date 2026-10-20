@@ -1,0 +1,117 @@
+@import 'mediawiki.skin.variables.less';
+
+.tdg-editscreen-main {
+	margin: 1em 0;
+
+	.skin-vector-legacy .ve-init-mw-desktopArticleTarget-originalContent & {
+		font-size: (14 / 16em);
+	}
+}
+
+.tdg-editscreen-main-helplink {
+	margin-left: 1em;
+}
+
+.tdg-editscreen-edit-notice {
+	margin-top: 0.5em;
+}
+
+.tdg-templateDataDialog-panels .oo-ui-messageWidget p {
+	&:first-child {
+		margin-top: 0;
+	}
+
+	&:last-child {
+		margin-bottom: 0;
+	}
+}
+
+.tdg-editscreen-input-error .oo-ui-inputWidget-input {
+	background-color: @background-color-error-subtle;
+}
+
+.tdg-templateDataParamWidget {
+	padding-right: 0.5em;
+
+	.oo-ui-iconElement-icon {
+		opacity: 0.2;
+	}
+
+	/* Hover events sometimes fire while dragging, so limit to highlighted widgets */
+	&.oo-ui-optionWidget-highlighted .oo-ui-iconElement-icon:hover {
+		opacity: 0.5;
+	}
+}
+
+.tdg-templateDataParamWidget-param {
+	&-name,
+	&-aliases,
+	&-description {
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		overflow: hidden;
+	}
+
+	&-name {
+		font-weight: bold;
+	}
+
+	&-aliases {
+		float: right;
+		font-size: 0.9em;
+		padding: 1px;
+	}
+
+	&-description {
+		color: @color-subtle;
+	}
+
+	&-alias {
+		border-radius: 0.3em;
+		padding: 0.125em 0.25em;
+		margin-left: 0.5em;
+		color: @color-subtle;
+		background-color: @background-color-neutral;
+		border: solid 1px @border-color-muted;
+
+		&:first-child {
+			background-color: @background-color-base;
+		}
+	}
+}
+
+.tdg-templateDataParamWidget-paramList-param-description {
+	clear: both;
+	color: @color-subtle;
+}
+
+.tdg-templateDataParamImportWidget {
+	display: block;
+	margin-top: 1em;
+
+	> .oo-ui-buttonElement-button {
+		display: block;
+		text-align: left;
+		font-weight: normal;
+	}
+}
+
+.tdg-languageResultWidget {
+	&-name {
+		text-align: left;
+	}
+
+	&-otherMatch {
+		float: right;
+		color: @color-subtle;
+	}
+
+	&-highlight {
+		font-weight: bold;
+	}
+}
+
+.mw-templateData-template-add-map-button .oo-ui-buttonElement-button {
+	text-align: left;
+	white-space: normal;
+}
