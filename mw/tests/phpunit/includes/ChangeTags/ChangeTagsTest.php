@@ -1,0 +1,1685 @@
+<?php
+
+namespace MediaWiki\Tests\ChangeTags;
+
+use InvalidArgumentException;
+use LogicException;
+use MediaWiki\Block\Block;
+use MediaWiki\ChangeTags\ChangeTags;
+use MediaWiki\ChangeTags\ChangeTagsStore;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\Deferred\DeferredUpdates;
+use MediaWiki\Logging\LogEntryBase;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Page\PageReference;
+use MediaWiki\Permissions\Authority;
+use MediaWiki\SpecialPage\SpecialPage;
+use MediaWiki\Tests\Unit\Permissions\MockAuthorityTrait;
+use MediaWiki\User\UserIdentity;
+use MediaWiki\User\UserIdentityValue;
+use MediaWikiIntegrationTestCase;
+use Wikimedia\Rdbms\IExpression;
+use Wikimedia\Rdbms\LikeValue;
+use Wikimedia\Rdbms\Platform\ISQLPlatform;
+
+/**
+ * @covers \MediaWiki\ChangeTags\ChangeTagsStore
+ * @covers \MediaWiki\ChangeTags\ChangeTags
+ * @group Database
+ */
+class ChangeTagsTest extends MediaWikiIntegrationTestCase {
+
+	use RestrictedTagTestTrait;
+	use MockAuthorityTrait;
+
+	private ChangeTagsStore $changeTags;
+
+	protected function setUp(): void {
+		parent::setUp();
+
+		$this->changeTags = $this->getServiceContainer()->getChangeTagsStore();
+	}
+
+	private function emptyChangeTagsTables() {
+		$dbw = $this->getDb();
+		$dbw->newDeleteQueryBuilder()
+			->deleteFrom( 'change_tag' )
+			->where( ISQLPlatform::ALL_ROWS )
+			->execute();
+		$dbw->newDeleteQueryBuilder()
+			->deleteFrom( 'change_tag_def' )
+			->where( ISQLPlatform::ALL_ROWS )
+			->execute();
+	}
+
+	// TODO most methods are not tested
+
+	public function testBuildTagFilterSelector_allTags() {
+		$this->hideDeprecated( ChangeTags::class . '::getChangeTagListSummary' );
+		// Set `activeOnly` to false
+		// Expect that at least all the software defined tags are returned
+		$allTags = $this->getServiceContainer()->getChangeTagsStore()->listDefinedTags();
+		$allTagsList = ChangeTags::getChangeTagListSummary(
+			RequestContext::getMain(),
+			RequestContext::getMain()->getLanguage(),
+			ChangeTags::TAG_SET_ALL
+		);
+		$this->assertTrue(
+			count( $allTagsList ) >= count( $allTags ),
+			'`activeOnly` is false, expect all software tags'
+		);
+	}
+
+	public function testBuildTagFilterSelector_allSoftwareTags() {
+		$this->hideDeprecated( ChangeTags::class . '::getChangeTagListSummary' );
+		// Set both `activeOnly` and `useAllTags` to false
+		// Expect that only software defined tags are returned
+		$allSoftwareTags = $this->getServiceContainer()->getChangeTagsStore()->getSoftwareTags( true );
+		$allSoftwareTagsList = ChangeTags::getChangeTagListSummary(
+			RequestContext::getMain(),
+			RequestContext::getMain()->getLanguage(),
+			ChangeTags::TAG_SET_ALL,
+			ChangeTags::USE_SOFTWARE_TAGS_ONLY
+		);
+		$this->assertTrue(
+			count( $allSoftwareTagsList ) == count( $allSoftwareTags ),
+			'`activeOnly` and `useAllTags` are false, expect only software tags'
+		);
+	}
+
+	public function testBuildTagFilterSelector_activeOnlyNoHits() {
+		$this->hideDeprecated( ChangeTags::class . '::getChangeTagListSummary' );
+		$this->hideDeprecated( ChangeTags::class . '::buildTagFilterSelector' );
+		// Enable and test `activeOnly` and expect no tags returned,
+		// as there are currently no tagged edits in the test database
+		$emptyTagListSummary = ChangeTags::getChangeTagListSummary(
+			RequestContext::getMain(),
+			RequestContext::getMain()->getLanguage(),
+			ChangeTags::TAG_SET_ACTIVE_ONLY
+		);
+		$this->assertCount( 0, $emptyTagListSummary, '`activeOnly` is true and no hits, expect no tags' );
+
+		// Assert that by default, an empty select is returned, as no tags have been used yet
+		$this->assertEquals(
+			[
+				'<label for="tagfilter"><a href="/wiki/Special:Tags" title="Special:Tags">Tag</a> filter:</label>',
+				'<input class="mw-tagfilter-input" size="20" id="tagfilter" list="tagfilter-datalist" name="tagfilter"><datalist id="tagfilter-datalist"></datalist>'
+			],
+			ChangeTags::buildTagFilterSelector(
+				'', false, RequestContext::getMain()
+			)
+		);
+	}
+
+	public function testBuildTagFilterSelector_activeOnly() {
+		$this->hideDeprecated( ChangeTags::class . '::getChangeTagListSummary' );
+		$this->hideDeprecated( ChangeTags::class . '::buildTagFilterSelector' );
+		// Disable patrolling so reverts will happen without approval
+		$this->overrideConfigValues( [ MainConfigNames::UseRCPatrol => false ] );
+
+		// Make an edit and replace the content, adding the `mw-replace` tag to the revision
+		$page = $this->getExistingTestPage();
+		$this->editPage( $page, '1' );
+		$this->editPage(
+			$page, '0', '', NS_MAIN, $this->getTestUser()->getUser()
+		);
+
+		// Ensure all deferred updates are run
+		DeferredUpdates::doUpdates();
+
+		// Assert that only the `mw-replace` tag is returned
+		$replaceOnlyTagList = ChangeTags::getChangeTagListSummary(
+			RequestContext::getMain(),
+			RequestContext::getMain()->getLanguage()
+		);
+		$this->assertCount( 1, $replaceOnlyTagList, '`activeOnly` is true with 1 hit, return 1 tag' );
+		$this->assertEquals(
+			'mw-replace', $replaceOnlyTagList[0]['name'],
+			'`activeOnly` is true with 1 hit, return expected tag'
+		);
+
+		// Assert that the tag is reflected in the default markup returned
+		$this->assertEquals(
+			[
+				'<label for="tagfilter"><a href="/wiki/Special:Tags" title="Special:Tags">Tag</a> filter:</label>',
+				'<input class="mw-tagfilter-input" size="20" id="tagfilter" list="tagfilter-datalist" name="tagfilter"><datalist id="tagfilter-datalist"><option value="mw-replace">Replaced</option></datalist>'
+			],
+			ChangeTags::buildTagFilterSelector(
+				'', false, RequestContext::getMain()
+			),
+			'`activeOnly` is true with 1 hit, return expected tag markup'
+		);
+	}
+
+	/** @dataProvider provideModifyDisplayQuery */
+	public function testModifyDisplayQuery(
+		$origQuery,
+		$filter_tag,
+		$useTags,
+		$avoidReopeningTables,
+		$modifiedQuery,
+		$exclude = false
+	) {
+		$this->hideDeprecated( ChangeTagsStore::class . '::modifyDisplayQuery' );
+		$this->overrideConfigValue( MainConfigNames::UseTagFilter, $useTags );
+		// Reset the ChangeTagsStore after the config change
+		$this->changeTags = $this->getServiceContainer()->getChangeTagsStore();
+
+		if (
+			$avoidReopeningTables &&
+			$this->getDb()->getType() === 'mysql' &&
+			str_contains( $this->getDb()->getSoftwareLink(), 'MySQL' )
+		) {
+			$this->markTestSkipped( 'See T256006' );
+		}
+
+		$rcId = 123;
+		$this->changeTags->updateTags( [ 'foo', 'bar', '0' ], [], $rcId );
+		// HACK resolve deferred group concats (see comment in provideModifyDisplayQuery)
+		if ( isset( $modifiedQuery['fields']['ts_tags'] ) ) {
+			[ $delim, $table, $join, $field, $where ] = $modifiedQuery['fields']['ts_tags'];
+			$dbr = $this->getDb();
+			$restrictedCond = $dbr->expr(
+				'ctd_name',
+				IExpression::NOT_LIKE,
+				new LikeValue( ChangeTagsStore::PRIVATE_TAG_PREFIX, $dbr->anyString() )
+			);
+			$modifiedQuery['fields']['ts_tags'] = $dbr
+				->newSelectQueryBuilder()
+				->table( $table )
+				->join( ...$join )
+				->field( $field )
+				->where( $where )
+				->andWhere( $restrictedCond )
+				->buildGroupConcatField( $delim );
+		}
+		if ( isset( $modifiedQuery['exception'] ) ) {
+			$this->expectException( $modifiedQuery['exception'] );
+		}
+		$actualQuery = $origQuery;
+		$this->changeTags->modifyDisplayQuery(
+			$actualQuery['tables'],
+			$actualQuery['fields'],
+			$actualQuery['conds'],
+			$actualQuery['join_conds'],
+			$actualQuery['options'],
+			$filter_tag,
+			$exclude
+		);
+		if ( !isset( $modifiedQuery['exception'] ) ) {
+			$this->assertArrayEquals(
+				$modifiedQuery,
+				$actualQuery,
+				/* ordered = */ false,
+				/* named = */ true
+			);
+		}
+	}
+
+	public static function provideModifyDisplayQuery() {
+		// HACK if we call buildGroupConcatField() now, it will return the wrong table names
+		// We have to have the test runner call it instead
+		$baseConcats = [
+			',',
+			'change_tag',
+			[ 'change_tag_def', null, 'ct_tag_id=ctd_id' ],
+			'ctd_name'
+		];
+		$groupConcats = [
+			'recentchanges' => array_merge( $baseConcats, [ [ 'ct_rc_id=rc_id' ] ] ),
+			'logging' => array_merge( $baseConcats, [ [ 'ct_log_id=log_id' ] ] ),
+			'revision' => array_merge( $baseConcats, [ [ 'ct_rev_id=rev_id' ] ] ),
+			'archive' => array_merge( $baseConcats, [ [ 'ct_rev_id=ar_rev_id' ] ] ),
+		];
+
+		return [
+			'simple recentchanges query' => [
+				[
+					'tables' => [ 'recentchanges' ],
+					'fields' => [ 'rc_id', 'rc_timestamp' ],
+					'conds' => [ "rc_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'rc_timestamp DESC' ],
+				],
+				'', // no tag filter
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'recentchanges' ],
+					'fields' => [ 'rc_id', 'rc_timestamp', 'ts_tags' => $groupConcats['recentchanges'] ],
+					'conds' => [ "rc_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'rc_timestamp DESC' ],
+				]
+			],
+			"simple query with strings, tagfilter=''" => [
+				[
+					'tables' => 'recentchanges',
+					'fields' => 'rc_id',
+					'conds' => "rc_timestamp > '20170714183203'",
+					'join_conds' => [],
+					'options' => 'ORDER BY rc_timestamp DESC',
+				],
+				'', // no tag filter
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'recentchanges' ],
+					'fields' => [ 'rc_id', 'ts_tags' => $groupConcats['recentchanges'] ],
+					'conds' => [ "rc_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY rc_timestamp DESC' ],
+				]
+			],
+			'simple query with strings, tagfilter=false' => [
+				[
+					'tables' => 'recentchanges',
+					'fields' => 'rc_id',
+					'conds' => "rc_timestamp > '20170714183203'",
+					'join_conds' => [],
+					'options' => 'ORDER BY rc_timestamp DESC',
+				],
+				false, // no tag filter
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'recentchanges' ],
+					'fields' => [ 'rc_id', 'ts_tags' => $groupConcats['recentchanges'] ],
+					'conds' => [ "rc_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY rc_timestamp DESC' ],
+				]
+			],
+			'simple query with strings, tagfilter=null' => [
+				[
+					'tables' => 'recentchanges',
+					'fields' => 'rc_id',
+					'conds' => "rc_timestamp > '20170714183203'",
+					'join_conds' => [],
+					'options' => 'ORDER BY rc_timestamp DESC',
+				],
+				null, // no tag filter
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'recentchanges' ],
+					'fields' => [ 'rc_id', 'ts_tags' => $groupConcats['recentchanges'] ],
+					'conds' => [ "rc_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY rc_timestamp DESC' ],
+				]
+			],
+			'recentchanges query with single tag filter' => [
+				[
+					'tables' => [ 'recentchanges' ],
+					'fields' => [ 'rc_id', 'rc_timestamp' ],
+					'conds' => [ "rc_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'rc_timestamp DESC' ],
+				],
+				'foo',
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'recentchanges', 'changetagdisplay' => 'change_tag' ],
+					'fields' => [ 'rc_id', 'rc_timestamp', 'ts_tags' => $groupConcats['recentchanges'] ],
+					'conds' => [ "rc_timestamp > '20170714183203'", 'changetagdisplay.ct_tag_id' => [ 1 ] ],
+					'join_conds' => [ 'changetagdisplay' => [ 'JOIN', 'changetagdisplay.ct_rc_id=rc_id' ] ],
+					'options' => [ 'ORDER BY' => 'rc_timestamp DESC' ],
+				]
+			],
+			'recentchanges query with "0" tag filter' => [
+				[
+					'tables' => [ 'recentchanges' ],
+					'fields' => [ 'rc_id', 'rc_timestamp' ],
+					'conds' => [ "rc_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'rc_timestamp DESC' ],
+				],
+				'0',
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'recentchanges', 'changetagdisplay' => 'change_tag' ],
+					'fields' => [ 'rc_id', 'rc_timestamp', 'ts_tags' => $groupConcats['recentchanges'] ],
+					'conds' => [ "rc_timestamp > '20170714183203'", 'changetagdisplay.ct_tag_id' => [ 3 ] ],
+					'join_conds' => [ 'changetagdisplay' => [ 'JOIN', 'changetagdisplay.ct_rc_id=rc_id' ] ],
+					'options' => [ 'ORDER BY' => 'rc_timestamp DESC' ],
+				]
+			],
+			'logging query with single tag filter and strings' => [
+				[
+					'tables' => 'logging',
+					'fields' => 'log_id',
+					'conds' => "log_timestamp > '20170714183203'",
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => [ 'log_timestamp DESC', 'log_id DESC' ] ],
+				],
+				'foo',
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'logging', 'changetagdisplay' => 'change_tag' ],
+					'fields' => [ 'log_id', 'ts_tags' => $groupConcats['logging'] ],
+					'conds' => [ "log_timestamp > '20170714183203'", 'changetagdisplay.ct_tag_id' => [ 1 ] ],
+					'join_conds' => [ 'changetagdisplay' => [ 'JOIN', 'changetagdisplay.ct_log_id=log_id' ] ],
+					'options' => [ 'ORDER BY' => [ 'log_timestamp DESC', 'log_id DESC' ] ],
+				]
+			],
+			'revision query with single tag filter' => [
+				[
+					'tables' => [ 'revision' ],
+					'fields' => [ 'rev_id', 'rev_timestamp' ],
+					'conds' => [ "rev_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'rev_timestamp DESC' ],
+				],
+				'foo',
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'revision', 'changetagdisplay' => 'change_tag' ],
+					'fields' => [ 'rev_id', 'rev_timestamp', 'ts_tags' => $groupConcats['revision'] ],
+					'conds' => [ "rev_timestamp > '20170714183203'", 'changetagdisplay.ct_tag_id' => [ 1 ] ],
+					'join_conds' => [ 'changetagdisplay' => [ 'JOIN', 'changetagdisplay.ct_rev_id=rev_id' ] ],
+					'options' => [ 'ORDER BY' => 'rev_timestamp DESC' ],
+				]
+			],
+			'archive query with single tag filter' => [
+				[
+					'tables' => [ 'archive' ],
+					'fields' => [ 'ar_id', 'ar_timestamp' ],
+					'conds' => [ "ar_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'ar_timestamp DESC' ],
+				],
+				'foo',
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'archive', 'changetagdisplay' => 'change_tag' ],
+					'fields' => [ 'ar_id', 'ar_timestamp', 'ts_tags' => $groupConcats['archive'] ],
+					'conds' => [ "ar_timestamp > '20170714183203'", 'changetagdisplay.ct_tag_id' => [ 1 ] ],
+					'join_conds' => [ 'changetagdisplay' => [ 'JOIN', 'changetagdisplay.ct_rev_id=ar_rev_id' ] ],
+					'options' => [ 'ORDER BY' => 'ar_timestamp DESC' ],
+				]
+			],
+			'archive query with single tag filter, avoiding reopening tables' => [
+				[
+					'tables' => [ 'archive' ],
+					'fields' => [ 'ar_id', 'ar_timestamp' ],
+					'conds' => [ "ar_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'ar_timestamp DESC' ],
+				],
+				'foo',
+				true, // tag filtering enabled
+				true, // avoid reopening tables
+				[
+					'tables' => [ 'archive', 'changetagdisplay' => 'change_tag' ],
+					'fields' => [ 'ar_id', 'ar_timestamp', 'ts_tags' => $groupConcats['archive'] ],
+					'conds' => [ "ar_timestamp > '20170714183203'", 'changetagdisplay.ct_tag_id' => [ 1 ] ],
+					'join_conds' => [ 'changetagdisplay' => [ 'JOIN', 'changetagdisplay.ct_rev_id=ar_rev_id' ] ],
+					'options' => [ 'ORDER BY' => 'ar_timestamp DESC' ],
+				]
+			],
+			'unsupported table name throws exception (even without tag filter)' => [
+				[
+					'tables' => [ 'foobar' ],
+					'fields' => [ 'fb_id', 'fb_timestamp' ],
+					'conds' => [ "fb_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'fb_timestamp DESC' ],
+				],
+				'',
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[ 'exception' => InvalidArgumentException::class ]
+			],
+			'tag filter ignored when tag filtering is disabled' => [
+				[
+					'tables' => [ 'archive' ],
+					'fields' => [ 'ar_id', 'ar_timestamp' ],
+					'conds' => [ "ar_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'ar_timestamp DESC' ],
+				],
+				'foo',
+				false, // tag filtering disabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'archive' ],
+					'fields' => [ 'ar_id', 'ar_timestamp', 'ts_tags' => $groupConcats['archive'] ],
+					'conds' => [ "ar_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'ar_timestamp DESC' ],
+				]
+			],
+			'recentchanges query with multiple tag filter' => [
+				[
+					'tables' => [ 'recentchanges' ],
+					'fields' => [ 'rc_id', 'rc_timestamp' ],
+					'conds' => [ "rc_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'rc_timestamp DESC' ],
+				],
+				[ 'foo', 'bar' ],
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'recentchanges', 'changetagdisplay' => 'change_tag' ],
+					'fields' => [ 'rc_id', 'rc_timestamp', 'ts_tags' => $groupConcats['recentchanges'] ],
+					'conds' => [ "rc_timestamp > '20170714183203'", 'changetagdisplay.ct_tag_id' => [ 1, 2 ] ],
+					'join_conds' => [ 'changetagdisplay' => [ 'JOIN', 'changetagdisplay.ct_rc_id=rc_id' ] ],
+					'options' => [ 'ORDER BY' => 'rc_timestamp DESC', 'DISTINCT' ],
+				]
+			],
+			'recentchanges query with exclusive multiple tag filter' => [
+				[
+					'tables' => [ 'recentchanges' ],
+					'fields' => [ 'rc_id', 'rc_timestamp' ],
+					'conds' => [ "rc_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'ORDER BY' => 'rc_timestamp DESC' ],
+				],
+				[ 'foo', 'bar' ],
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'recentchanges', 'changetagdisplay' => 'change_tag' ],
+					'fields' => [ 'rc_id', 'rc_timestamp', 'ts_tags' => $groupConcats['recentchanges'] ],
+					'conds' => [ "rc_timestamp > '20170714183203'", 'changetagdisplay.ct_tag_id' => null ],
+					'join_conds' => [ 'changetagdisplay' => [ 'LEFT JOIN', [ 'changetagdisplay.ct_rc_id=rc_id', 'changetagdisplay.ct_tag_id' => [ 1, 2 ] ] ] ],
+					'options' => [ 'ORDER BY' => 'rc_timestamp DESC' ],
+				],
+				true // exclude
+			],
+			'recentchanges query with multiple tag filter that already has DISTINCT' => [
+				[
+					'tables' => [ 'recentchanges' ],
+					'fields' => [ 'rc_id', 'rc_timestamp' ],
+					'conds' => [ "rc_timestamp > '20170714183203'" ],
+					'join_conds' => [],
+					'options' => [ 'DISTINCT', 'ORDER BY' => 'rc_timestamp DESC' ],
+				],
+				[ 'foo', 'bar' ],
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'recentchanges', 'changetagdisplay' => 'change_tag' ],
+					'fields' => [ 'rc_id', 'rc_timestamp', 'ts_tags' => $groupConcats['recentchanges'] ],
+					'conds' => [ "rc_timestamp > '20170714183203'", 'changetagdisplay.ct_tag_id' => [ 1, 2 ] ],
+					'join_conds' => [ 'changetagdisplay' => [ 'JOIN', 'changetagdisplay.ct_rc_id=rc_id' ] ],
+					'options' => [ 'DISTINCT', 'ORDER BY' => 'rc_timestamp DESC' ],
+				]
+			],
+			'recentchanges query with multiple tag filter with strings' => [
+				[
+					'tables' => 'recentchanges',
+					'fields' => 'rc_id',
+					'conds' => "rc_timestamp > '20170714183203'",
+					'join_conds' => [],
+					'options' => 'ORDER BY rc_timestamp DESC',
+				],
+				[ 'foo', 'bar' ],
+				true, // tag filtering enabled
+				false, // not avoiding reopening tables
+				[
+					'tables' => [ 'recentchanges', 'changetagdisplay' => 'change_tag' ],
+					'fields' => [ 'rc_id', 'ts_tags' => $groupConcats['recentchanges'] ],
+					'conds' => [ "rc_timestamp > '20170714183203'", 'changetagdisplay.ct_tag_id' => [ 1, 2 ] ],
+					'join_conds' => [ 'changetagdisplay' => [ 'JOIN', 'changetagdisplay.ct_rc_id=rc_id' ] ],
+					'options' => [ 'ORDER BY rc_timestamp DESC', 'DISTINCT' ],
+				]
+			],
+			'recentchanges query with multiple tag filter with strings, avoiding reopening tables' => [
+				[
+					'tables' => 'recentchanges',
+					'fields' => 'rc_id',
+					'conds' => "rc_timestamp > '20170714183203'",
+					'join_conds' => [],
+					'options' => 'ORDER BY rc_timestamp DESC',
+				],
+				[ 'foo', 'bar' ],
+				true, // tag filtering enabled
+				true, // avoid reopening tables
+				[
+					'tables' => [ 'recentchanges', 'changetagdisplay' => 'change_tag' ],
+					'fields' => [ 'rc_id', 'ts_tags' => $groupConcats['recentchanges'] ],
+					'conds' => [ "rc_timestamp > '20170714183203'", 'changetagdisplay.ct_tag_id' => [ 1, 2 ] ],
+					'join_conds' => [ 'changetagdisplay' => [ 'JOIN', 'changetagdisplay.ct_rc_id=rc_id' ] ],
+					'options' => [ 'ORDER BY rc_timestamp DESC', 'DISTINCT' ],
+				]
+			],
+		];
+	}
+
+	public static function provideGetSoftwareTags() {
+		return [
+			[
+				[
+					'mw-contentModelChange' => true,
+					'mw-redirect' => true,
+					'mw-rollback' => true,
+					'mw-blank' => true,
+					'mw-replace' => true,
+				],
+				[
+					'mw-rollback',
+					'mw-replace',
+					'mw-blank',
+				]
+			],
+
+			[
+				[
+					'mw-contentmodelchanged' => true,
+					'mw-replace' => true,
+					'mw-new-redirects' => true,
+					'mw-changed-redirect-target' => true,
+					'mw-rolback' => true,
+					'mw-blanking' => false
+				],
+				[
+					'mw-replace',
+					'mw-changed-redirect-target'
+				]
+			],
+
+			[
+				[
+					null,
+					false,
+					'Lorem ipsum',
+					'mw-translation'
+				],
+				[]
+			],
+
+			[
+				[],
+				[]
+			]
+		];
+	}
+
+	/**
+	 * @dataProvider provideGetSoftwareTags
+	 * @covers \MediaWiki\ChangeTags\ChangeTagsStore::getSoftwareTags
+	 */
+	public function testGetSoftwareTags( $softwareTags, $expected ) {
+		$this->overrideConfigValue( MainConfigNames::SoftwareTags, $softwareTags );
+		// Reset the ChangeTagsStore after the config change
+		$this->changeTags = $this->getServiceContainer()->getChangeTagsStore();
+
+		$actual = $this->changeTags->getSoftwareTags();
+		// Order of tags in arrays is not important
+		sort( $expected );
+		sort( $actual );
+		$this->assertEquals( $expected, $actual );
+	}
+
+	public function testUpdateTagParams(): void {
+		$rcId = 123;
+		$revId = 341;
+		$logId = null;
+		$this->changeTags->updateTags( [ 'tag1', 'tag2' ], [], $rcId, $revId, $logId, '{"first":1}' );
+
+		$this->assertTrue(
+			$this->changeTags->updateTagParams( 'tag1', '{"second":2}', $rcId, $revId ),
+			'the change carries the tag, so its params are replaced'
+		);
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'ctd_name', 'ct_params', 'ctd_count' ] )
+			->from( 'change_tag' )
+			->join( 'change_tag_def', null, 'ctd_id = ct_tag_id' )
+			->caller( __METHOD__ )
+			->assertResultSet( [
+				// values of fields 'ctd_name', 'ct_params', 'ctd_count'
+				[ 'tag1', '{"second":2}', 1 ],
+				[ 'tag2', '{"first":1}', 1 ],
+			] );
+	}
+
+	public function testUpdateTagParamsWhenTheChangeDoesNotCarryTheTag(): void {
+		$rcId = 123;
+		$revId = 341;
+		$this->changeTags->updateTags( [ 'tag1' ], [], $rcId, $revId );
+
+		$this->assertFalse(
+			$this->changeTags->updateTagParams( 'tag1', '{"a":1}', 999 ),
+			'a change that does not carry the tag reports no update'
+		);
+		$this->assertFalse(
+			$this->changeTags->updateTagParams( 'nosuchtag', '{"a":1}', $rcId, $revId ),
+			'a tag with no definition names no rows to update'
+		);
+	}
+
+	public function testUpdateTagParamsWithoutAChangeId(): void {
+		$this->expectException( InvalidArgumentException::class );
+		$this->changeTags->updateTagParams( 'tag1', null );
+	}
+
+	public function testUpdateTagParamsForSecondLogEntryWithSameAssociatedRevId(): void {
+		$revId = 789;
+		$firstRcId = 123;
+		$firstLogId = 456;
+		$this->changeTags->updateTags( [ 'tag' ], [], $firstRcId, $revId, $firstLogId, 'params1' );
+
+		$secondRcId = 124;
+		$secondLogId = 457;
+		$this->changeTags->updateTags( [ 'tag' ], [], $secondRcId, $revId, $secondLogId, 'params2' );
+
+		$this->assertTrue(
+			$this->changeTags->updateTagParams( 'tag', 'params3', $secondRcId, $revId, $secondLogId ),
+			'the row for the second log entry is updated even though it holds no rev ID'
+		);
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'ct_rc_id', 'ct_rev_id', 'ct_log_id', 'ct_params' ] )
+			->from( 'change_tag' )
+			->caller( __METHOD__ )
+			->assertResultSet( [
+				// values of fields 'ct_rc_id', 'ct_rev_id', 'ct_log_id', 'ct_params'
+				[ $firstRcId, $revId, $firstLogId, 'params1' ],
+				[ $secondRcId, null, $secondLogId, 'params3' ],
+			] );
+	}
+
+	public function testUpdateTagParamsOnRemoteWiki(): void {
+		$store = $this->getServiceContainer()->getChangeTagsStoreFactory()->getChangeTagsStore( 'remotewiki' );
+
+		$this->expectException( LogicException::class );
+		$store->updateTagParams( 'tag1', '{"a":1}', 123 );
+	}
+
+	public function testUpdateTags() {
+		$this->emptyChangeTagsTables();
+
+		$rcId = 123;
+		$revId = 341;
+		$this->changeTags->updateTags( [ 'tag1', 'tag2' ], [], $rcId, $revId );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'ctd_name', 'ctd_id', 'ctd_count' ] )
+			->from( 'change_tag_def' )
+			->assertResultSet( [
+				// values of fields 'ctd_name', 'ctd_id', 'ctd_count'
+				[ 'tag1', 1, 1 ],
+				[ 'tag2', 2, 1 ],
+			] );
+		$this->newSelectQueryBuilder()
+			->from( 'change_tag' )
+			->select( [ 'ct_tag_id', 'ct_rc_id', 'ct_rev_id' ] )
+			->assertResultSet( [
+				// values of fields 'ct_tag_id', 'ct_rc_id', 'ct_rev_id'
+				[ 1, 123, 341 ],
+				[ 2, 123, 341 ],
+			] );
+
+		$rcId = 124;
+		$revId = 342;
+		$this->changeTags->updateTags( [ 'tag1' ], [], $rcId, $revId );
+		$this->changeTags->updateTags( [ 'tag3' ], [], $rcId, $revId );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'ctd_name', 'ctd_id', 'ctd_count' ] )
+			->from( 'change_tag_def' )
+			->assertResultSet( [
+				// values of fields 'ctd_name', 'ctd_id', 'ctd_count'
+				[ 'tag1', 1, 2 ],
+				[ 'tag2', 2, 1 ],
+				[ 'tag3', 3, 1 ],
+			] );
+		$this->newSelectQueryBuilder()
+			->select( [ 'ct_tag_id', 'ct_rc_id', 'ct_rev_id' ] )
+			->from( 'change_tag' )
+			->assertResultSet( [
+				// values of fields 'ct_tag_id', 'ct_rc_id', 'ct_rev_id'
+				[ 1, 123, 341 ],
+				[ 1, 124, 342 ],
+				[ 2, 123, 341 ],
+				[ 3, 124, 342 ],
+			] );
+	}
+
+	public function testUpdateTagsSkipDuplicates() {
+		$this->emptyChangeTagsTables();
+
+		$rcId = 123;
+		$this->changeTags->updateTags( [ 'tag1', 'tag2' ], [], $rcId );
+		$this->changeTags->updateTags( [ 'tag2', 'tag3' ], [], $rcId );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'ctd_name', 'ctd_id', 'ctd_count' ] )
+			->from( 'change_tag_def' )
+			->assertResultSet( [
+				// values of fields 'ctd_name', 'ctd_id', 'ctd_count'
+				[ 'tag1', 1, 1 ],
+				[ 'tag2', 2, 1 ],
+				[ 'tag3', 3, 1 ],
+			] );
+		$this->newSelectQueryBuilder()
+			->select( [ 'ct_tag_id', 'ct_rc_id' ] )
+			->from( 'change_tag' )
+			->assertResultSet( [
+				// values of fields 'ct_tag_id', 'ct_rc_id',
+				[ 1, 123 ],
+				[ 2, 123 ],
+				[ 3, 123 ],
+			] );
+	}
+
+	public function testUpdateTagsDoNothingOnRepeatedCall() {
+		$this->emptyChangeTagsTables();
+
+		$rcId = 123;
+		$this->changeTags->updateTags( [ 'tag1', 'tag2' ], [], $rcId );
+		$res = $this->changeTags->updateTags( [ 'tag2', 'tag1' ], [], $rcId );
+		$this->assertEquals( [ [], [], [ 'tag1', 'tag2' ] ], $res );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'ctd_name', 'ctd_id', 'ctd_count' ] )
+			->from( 'change_tag_def' )
+			->assertResultSet( [
+				// values of fields 'ctd_name', 'ctd_id', 'ctd_count'
+				[ 'tag1', 1, 1 ],
+				[ 'tag2', 2, 1 ],
+			] );
+		$this->newSelectQueryBuilder()
+			->select( [ 'ct_tag_id', 'ct_rc_id' ] )
+			->from( 'change_tag' )
+			->assertResultSet( [
+				// values of fields 'ct_tag_id', 'ct_rc_id',
+				[ 1, 123 ],
+				[ 2, 123 ],
+			] );
+	}
+
+	public function testUpdateTagsWhenInsertIgnored(): void {
+		$revId = 341;
+		$rcId = 123;
+		$this->changeTags->updateTags( [ 'tag' ], [], $rcId, $revId );
+
+		// Nothing is added when RC ID is different for same revision ID
+		$secondRcId = 213132;
+		$res = $this->changeTags->updateTags( [ 'tag' ], [], $secondRcId, $revId );
+		$this->assertSame( [ [], [], [ 'tag' ] ], $res );
+
+		// Nothing is added when every insert does nothing.
+		$res = $this->changeTags->updateTags( [ 'tag' ], [], $rcId, $revId );
+		$this->assertSame( [ [], [], [ 'tag' ] ], $res );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'ctd_name', 'ctd_id', 'ctd_count' ] )
+			->from( 'change_tag_def' )
+			->assertRowValue( [ 'tag', 1, 1 ] );
+		$this->newSelectQueryBuilder()
+			->select( [ 'ct_tag_id', 'ct_rc_id', 'ct_rev_id', 'ct_log_id' ] )
+			->from( 'change_tag' )
+			->assertRowValue( [ 1, $rcId, $revId, null ] );
+	}
+
+	public function testUpdateTagsForTwoLogEntriesWithSameAssociatedRevId(): void {
+		$revId = 789;
+
+		$firstRcId = 123;
+		$firstLogId = 456;
+		$firstUpdateTagsResult = $this->changeTags->updateTags(
+			[ 'tag' ],
+			[],
+			$firstRcId,
+			$revId,
+			$firstLogId,
+			'params1'
+		);
+		$this->assertSame( [ [ 'tag' ], [], [] ], $firstUpdateTagsResult );
+
+		// Second call with different log ID and rc ID but same rev ID should create a new change_tag row
+		$secondRcId = 124;
+		$secondLogId = 457;
+		$secondUpdateTagsResult = $this->changeTags->updateTags(
+			[ 'tag' ],
+			[],
+			$secondRcId,
+			$revId,
+			$secondLogId,
+			'params2'
+		);
+		$this->assertSame( [ [ 'tag' ], [], [] ], $secondUpdateTagsResult );
+
+		// Third call with the same log ID as the second call should result in no changes
+		$thirdCallRcId = null;
+		$thirdUpdateTagsResult = $this->changeTags->updateTags(
+			[ 'tag' ],
+			[],
+			$thirdCallRcId,
+			$revId,
+			$secondLogId,
+			'params3'
+		);
+		$this->assertSame( [ [], [], [ 'tag' ] ], $thirdUpdateTagsResult );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'ctd_name', 'ctd_id', 'ctd_count' ] )
+			->from( 'change_tag_def' )
+			->assertRowValue( [ 'tag', 1, 2 ] );
+		$this->newSelectQueryBuilder()
+			->select( [ 'ct_tag_id', 'ct_rc_id', 'ct_rev_id', 'ct_log_id', 'ct_params' ] )
+			->from( 'change_tag' )
+			->assertResultSet( [
+				[ 1, 123, 789, 456, 'params1' ],
+				// The second change_tag row should hold the second log ID and rc ID, but skip the rev ID due to
+				// the unique constraint on (ct_tag_id, ct_rev_id)
+				[ 1, 124, null, 457, 'params2' ],
+			] );
+
+		// Removing the tag for the second log entry should leave the first unaffected
+		$fourthCallRevId = null;
+		$fourthUpdateTagsResult = $this->changeTags->updateTags( [], [ 'tag' ], $secondRcId, $fourthCallRevId, $secondLogId );
+		$this->assertSame( [ [], [ 'tag' ], [ 'tag' ] ], $fourthUpdateTagsResult );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'ctd_name', 'ctd_id', 'ctd_count' ] )
+			->from( 'change_tag_def' )
+			->assertRowValue( [ 'tag', 1, 1 ] );
+		$this->newSelectQueryBuilder()
+			->select( [ 'ct_tag_id', 'ct_rc_id', 'ct_rev_id', 'ct_log_id', 'ct_params' ] )
+			->from( 'change_tag' )
+			->assertRowValue( [ 1, 123, 789, 456, 'params1' ] );
+	}
+
+	public function testDeleteTags() {
+		$this->emptyChangeTagsTables();
+		$this->getServiceContainer()->resetServiceForTesting( 'NameTableStoreFactory' );
+
+		$rcId = 123;
+		$this->changeTags->updateTags( [ 'tag1', 'tag2', 'tag3' ], [], $rcId );
+		$this->changeTags->updateTags( [], [ 'tag2', 'tag3' ], $rcId );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'ctd_name', 'ctd_id', 'ctd_count' ] )
+			->from( 'change_tag_def' )
+			->assertResultSet( [
+				// values of fields 'ctd_name', 'ctd_id', 'ctd_count'
+				[ 'tag1', 1, 1 ],
+			] );
+		$this->newSelectQueryBuilder()
+			->select( [ 'ct_tag_id', 'ct_rc_id' ] )
+			->from( 'change_tag' )
+			->assertResultSet( [
+				// values of fields 'ct_tag_id', 'ct_rc_id',
+				[ 1, 123 ],
+			] );
+	}
+
+	public static function provideTags() {
+		$tags = [ 'tag 1', 'tag 2', 'tag 3' ];
+		$rcId = 123;
+		$revId = 456;
+		$logId = 789;
+
+		yield [ $tags, $rcId, null, null ];
+		yield [ $tags, null, $revId, null ];
+		yield [ $tags, null, null, $logId ];
+		yield [ $tags, $rcId, $revId, null ];
+		yield [ $tags, $rcId, null, $logId ];
+		yield [ $tags, $rcId, $revId, $logId ];
+	}
+
+	/**
+	 * @dataProvider provideTags
+	 */
+	public function testGetTags( array $tags, $rcId, $revId, $logId ) {
+		$this->changeTags->addTags( $tags, $rcId, $revId, $logId );
+
+		$actualTags = $this->changeTags->getTags( $this->getDb(), $rcId, $revId, $logId );
+
+		$this->assertSame( $tags, $actualTags );
+	}
+
+	public function testGetTags_multiple_arguments() {
+		$rcId = 123;
+		$revId = 456;
+		$logId = 789;
+
+		$this->changeTags->addTags( [ 'tag 1' ], $rcId );
+		$this->changeTags->addTags( [ 'tag 2' ], $rcId, $revId );
+		$this->changeTags->addTags( [ 'tag 3' ], $rcId, $revId, $logId );
+
+		$tags3 = [ 'tag 3' ];
+		$tags2 = array_merge( $tags3, [ 'tag 2' ] );
+		$tags1 = array_merge( $tags2, [ 'tag 1' ] );
+		$this->assertArrayEquals( $tags3, $this->changeTags->getTags( $this->getDb(), $rcId, $revId, $logId ) );
+		$this->assertArrayEquals( $tags2, $this->changeTags->getTags( $this->getDb(), $rcId, $revId ) );
+		$this->assertArrayEquals( $tags1, $this->changeTags->getTags( $this->getDb(), $rcId ) );
+	}
+
+	public function testGetTagsWithData() {
+		$rcId1 = 123;
+		$rcId2 = 456;
+		$rcId3 = 789;
+		$this->changeTags->addTags( [ 'tag 1' ], $rcId1, null, null, 'data1' );
+		$this->changeTags->addTags( [ 'tag 3_1' ], $rcId3, null, null );
+		$this->changeTags->addTags( [ 'tag 3_2' ], $rcId3, null, null, 'data3_2' );
+
+		$data = $this->changeTags->getTagsWithData( $this->getDb(), $rcId1 );
+		$this->assertSame( [ 'tag 1' => 'data1' ], $data );
+
+		$data = $this->changeTags->getTagsWithData( $this->getDb(), $rcId2 );
+		$this->assertSame( [], $data );
+
+		$data = $this->changeTags->getTagsWithData( $this->getDb(), $rcId3 );
+		$this->assertArrayEquals( [ 'tag 3_1' => null, 'tag 3_2' => 'data3_2' ], $data, false, true );
+	}
+
+	public function testTagUsageStatistics() {
+		$this->emptyChangeTagsTables();
+		$this->getServiceContainer()->resetServiceForTesting( 'NameTableStoreFactory' );
+
+		$rcId = 123;
+		$this->changeTags->updateTags( [ 'tag1', 'tag2' ], [], $rcId );
+
+		$rcId = 124;
+		$this->changeTags->updateTags( [ 'tag1' ], [], $rcId );
+
+		$this->assertEquals( [ 'tag1' => 2, 'tag2' => 1 ], $this->changeTags->tagUsageStatistics() );
+	}
+
+	public function testListExplicitlyDefinedTags() {
+		$this->emptyChangeTagsTables();
+
+		$rcId = 123;
+		$this->changeTags->updateTags( [ 'tag1', 'tag2' ], [], $rcId );
+		$this->changeTags->defineTag( 'tag2' );
+
+		$this->assertEquals( [ 'tag2' ], $this->changeTags->listExplicitlyDefinedTags() );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'ctd_name', 'ctd_user_defined' ] )
+			->from( 'change_tag_def' )
+			->assertResultSet( [
+				// values of fields 'ctd_name', 'ctd_user_defined'
+				[ 'tag1', 0 ],
+				[ 'tag2', 1 ],
+			] );
+	}
+
+	/** @dataProvider provideIsTagNameValid */
+	public function testIsTagNameValid( string $tag, ?string $expectedFatalErrorMessage ): void {
+		$actualStatus = ChangeTags::isTagNameValid( $tag );
+		if ( $expectedFatalErrorMessage === null ) {
+			$this->assertStatusGood( $actualStatus );
+		} else {
+			$this->assertStatusError( $expectedFatalErrorMessage, $actualStatus );
+		}
+	}
+
+	public static function provideIsTagNameValid(): array {
+		return [
+			'Valid tag' => [ 'tag' => 'tag1', 'expectedFatalErrorMessage' => null ],
+			'Empty tag' => [ 'tag' => '', 'expectedFatalErrorMessage' => 'tags-create-no-name' ],
+			'Tag with comma' => [ 'tag' => 'tag,1', 'expectedFatalErrorMessage' => 'tags-create-invalid-chars' ],
+			'Tag with pipe' => [ 'tag' => 'tag|1', 'expectedFatalErrorMessage' => 'tags-create-invalid-chars' ],
+			'Tag with slash' => [ 'tag' => 'tag/1', 'expectedFatalErrorMessage' => 'tags-create-invalid-chars' ],
+			'Tag matching restricted tag prefix' => [
+				'tag' => 'mw-private-',
+				'expectedFatalErrorMessage' => 'tags-create-reserved-prefix',
+			],
+			'Restricted tag' => [
+				'tag' => 'mw-private-tag',
+				'expectedFatalErrorMessage' => 'tags-create-reserved-prefix',
+			],
+			'Tag with some but not all of the restricted tag prefix' => [
+				'tag' => 'mw-private',
+				'expectedFatalErrorMessage' => null,
+			],
+		];
+	}
+
+	/** @dataProvider provideCanViewTag */
+	public function testCanViewTag( array $authorityRights, string $tag, bool $expectedReturnValue ): void {
+		$this->setRestrictedTags( [
+			'mw-private-hook-defined-tag' => [ 'suppress' ],
+			'mw-private-config-defined-tag' => [ 'patrol' ],
+		] );
+		$this->overrideConfigValue( MainConfigNames::RestrictedTagViewRights, [
+			'mw-private-config-defined-tag' => 'delete',
+		] );
+		$changeTags = $this->getServiceContainer()->getChangeTagsStore();
+
+		$authority = $this->mockRegisteredAuthorityWithPermissions( $authorityRights );
+		$this->assertSame( $expectedReturnValue, $changeTags->canViewTag( $tag, $authority ) );
+	}
+
+	public static function provideCanViewTag(): array {
+		return [
+			'Tag is not restricted' => [ 'authorityRights' => [], 'tag' => 'test-tag', 'expectedReturnValue' => true ],
+			'User has necessary right to view hook defined restricted tag' => [
+				'authorityRights' => [ 'suppress' ],
+				'tag' => 'mw-private-hook-defined-tag',
+				'expectedReturnValue' => true,
+			],
+			'User has necessary right to view config defined restricted tag' => [
+				'authorityRights' => [ 'delete' ],
+				'tag' => 'mw-private-config-defined-tag',
+				'expectedReturnValue' => true,
+			],
+			'Config overrides hook restrictions on conflict' => [
+				'authorityRights' => [ 'patrol' ],
+				'tag' => 'mw-private-config-defined-tag',
+				'expectedReturnValue' => false,
+			],
+			'User lacks necessary right to view hook defined restricted tag' => [
+				'authorityRights' => [ 'patrol', 'delete' ],
+				'tag' => 'mw-private-hook-defined-tag',
+				'expectedReturnValue' => false,
+			],
+			'Restricted tag absent from the map is visible to no-one' => [
+				'authorityRights' => [ 'suppress', 'patrol', 'delete' ],
+				'tag' => 'mw-private-undefined-tag',
+				'expectedReturnValue' => false,
+			],
+		];
+	}
+
+	/** @dataProvider provideUpdateTagsWithChecksForFailure */
+	public function testUpdateTagsWithChecksForFailure(
+		array $tagsToAdd,
+		array $tagsToRemove,
+		array $authorityRights,
+		string $expectedStatusErrorMessage
+	): void {
+		$this->setTemporaryHook(
+			'ListDefinedTags',
+			static function ( array &$tags ) {
+				$tags[] = 'mw-private-test';
+			}
+		);
+		$this->setRestrictedTags( [ 'mw-private-test' => 'delete' ] );
+
+		$actualStatus = ChangeTags::updateTagsWithChecks(
+			$tagsToAdd,
+			$tagsToRemove,
+			null,
+			null,
+			null,
+			null,
+			'',
+			$this->mockRegisteredAuthorityWithPermissions( $authorityRights )
+		);
+
+		$this->assertStatusError( $expectedStatusErrorMessage, $actualStatus );
+		$this->assertNull( $actualStatus->getValue() );
+	}
+
+	public static function provideUpdateTagsWithChecksForFailure(): array {
+		return [
+			'One tag is not defined when adding it' => [
+				'tagsToAdd' => [ 'undefined-tag' ],
+				'tagsToRemove' => [],
+				'authorityRights' => [ 'changetags' ],
+				'expectedStatusErrorMessage' => 'tags-update-add-not-allowed-one',
+			],
+			'Multiple tags are not defined when adding them' => [
+				'tagsToAdd' => [ 'undefined-tag', 'undefined-tag-2', 'undefined-tag-3' ],
+				'tagsToRemove' => [],
+				'authorityRights' => [ 'changetags' ],
+				'expectedStatusErrorMessage' => 'tags-update-add-not-allowed-multi',
+			],
+			'One tag is software defined when removing it' => [
+				'tagsToAdd' => [],
+				'tagsToRemove' => [ 'mw-contentmodelchange' ],
+				'authorityRights' => [ 'changetags' ],
+				'expectedStatusErrorMessage' => 'tags-update-remove-not-allowed-one',
+			],
+			'Multiple tags are software defined when removing them' => [
+				'tagsToAdd' => [],
+				'tagsToRemove' => [ 'mw-contentmodelchange', 'mw-new-redirect' ],
+				'authorityRights' => [ 'changetags' ],
+				'expectedStatusErrorMessage' => 'tags-update-remove-not-allowed-multi',
+			],
+			'Removing restricted tag that the authority cannot see' => [
+				'tagsToAdd' => [],
+				'tagsToRemove' => [ 'mw-private-test' ],
+				'authorityRights' => [ 'purge', 'changetags' ],
+				'expectedStatusErrorMessage' => 'tags-update-remove-not-allowed-one',
+			],
+			'Removing undefined restricted tag that the authority cannot see' => [
+				'tagsToAdd' => [],
+				'tagsToRemove' => [ 'mw-private-undefined' ],
+				'authorityRights' => [ 'purge', 'changetags' ],
+				'expectedStatusErrorMessage' => 'tags-update-remove-not-allowed-one',
+			],
+			'Adding restricted tag that the authority cannot see' => [
+				'tagsToAdd' => [ 'mw-private-test' ],
+				'tagsToRemove' => [],
+				'authorityRights' => [ 'purge', 'changetags' ],
+				'expectedStatusErrorMessage' => 'tags-update-add-not-allowed-one',
+			],
+			'Adding undefined restricted tag that the authority cannot see' => [
+				'tagsToAdd' => [ 'mw-private-undefined' ],
+				'tagsToRemove' => [],
+				'authorityRights' => [ 'purge', 'changetags' ],
+				'expectedStatusErrorMessage' => 'tags-update-add-not-allowed-one',
+			],
+		];
+	}
+
+	public function testUpdateTagsWhenUserSitewideBlocked(): void {
+		$this->changeTags->defineTag( 'test-tag' );
+		$block = $this->createMock( Block::class );
+		$block->method( 'isSitewide' )
+			->willReturn( true );
+
+		$actualStatus = ChangeTags::updateTagsWithChecks(
+			[ 'test-tag' ],
+			[],
+			null,
+			null,
+			null,
+			null,
+			'',
+			$this->mockUserAuthorityWithBlock( UserIdentityValue::newAnonymous( '1.2.3.4' ), $block, [ 'changetags' ] )
+		);
+
+		$this->assertStatusError( 'tags-update-no-permission', $actualStatus );
+		$this->assertNull( $actualStatus->getValue() );
+	}
+
+	public function testUpdateTagsWhenAuthoriseActionFails(): void {
+		$this->changeTags->defineTag( 'test-tag' );
+		$authority = $this->createMock( Authority::class );
+		$authority->method( 'isAllowed' )
+			->with( 'changetags' )
+			->willReturn( true );
+		$authority->method( 'isDefinitelyAllowed' )
+			->with( 'changetags' )
+			->willReturn( true );
+		$authority->method( 'authorizeAction' )
+			->with( 'changetags' )
+			->willReturnCallback( static function ( $action, $status ) {
+				$status->fatal( 'test-error' );
+				return false;
+			} );
+
+		$actualStatus = ChangeTags::updateTagsWithChecks( [ 'test-tag' ], [], null, null, null, null, '', $authority );
+
+		$this->assertStatusError( 'test-error', $actualStatus );
+		$this->assertNull( $actualStatus->getValue() );
+	}
+
+	public function testUpdateTagsWithChecksWhenTagAlreadyOnChange(): void {
+		$this->changeTags->defineTag( 'test-tag' );
+		$this->changeTags->addTags( 'test-tag', null, 123 );
+
+		$actualStatus = ChangeTags::updateTagsWithChecks(
+			[ 'test-tag' ],
+			[],
+			null,
+			123,
+			null,
+			'',
+			'',
+			$this->mockRegisteredAuthorityWithPermissions( [ 'changetags' ] )
+		);
+		$this->assertStatusGood( $actualStatus );
+		$this->assertArrayEquals(
+			[ 'logId' => null, 'addedTags' => [], 'removedTags' => [] ],
+			(array)$actualStatus->getValue(),
+			false,
+			true
+		);
+
+		$this->newSelectQueryBuilder()
+			->select( 'log_id' )
+			->from( 'logging' )
+			->caller( __METHOD__ )
+			->assertEmptyResult();
+	}
+
+	public function testUpdateTagsWithChecksForRevisionWhenTagAdded(): void {
+		$testPage = $this->getExistingTestPage();
+		$editStatus = $this->editPage( $testPage, 'Test content' );
+		$this->assertStatusGood( $editStatus );
+		$revId = $editStatus->getNewRevision()->getId();
+
+		$this->changeTags->defineTag( 'test-tag' );
+		$this->changeTags->defineTag( 'other-tag' );
+
+		$this->setTemporaryHook(
+			'ListDefinedTags',
+			static function ( array &$tags ) {
+				$tags[] = 'mw-private-test';
+			}
+		);
+		$this->setRestrictedTags( [ 'mw-private-test' => 'delete' ] );
+
+		$this->changeTags->addTags( [ 'other-tag', 'mw-private-test' ], null, $revId );
+
+		$testUser = $this->getTestUser()->getUserIdentity();
+		$actualStatus = ChangeTags::updateTagsWithChecks(
+			[ 'test-tag' ],
+			[],
+			null,
+			$revId,
+			null,
+			'',
+			'Test reason 1234',
+			$this->mockUserAuthorityWithPermissions( $testUser, [ 'changetags' ] )
+		);
+		$this->assertStatusGood( $actualStatus );
+
+		$actualLogId = $this->assertUpdateTagsCreatedLoggingRow(
+			$testPage,
+			$testUser,
+			'Test reason 1234',
+			$revId,
+			false,
+			[ 'test-tag' ],
+			[],
+			[ 'other-tag' ]
+		);
+
+		$this->assertArrayEquals(
+			[ 'logId' => $actualLogId, 'addedTags' => [ 'test-tag' ], 'removedTags' => [] ],
+			(array)$actualStatus->getValue(),
+			false,
+			true
+		);
+	}
+
+	private function assertUpdateTagsCreatedLoggingRow(
+		PageReference $expectedTargetPage,
+		UserIdentity $expectedPerformer,
+		string $expectedComment,
+		int|false $expectedRevId,
+		int|false $expectedLogId,
+		array $expectedTagsAdded,
+		array $expectedTagsRemoved,
+		array $expectedInitialTags
+	): int {
+		$actualLogIds = $this->newSelectQueryBuilder()
+			->select( 'log_id' )
+			->from( 'logging' )
+			->where( [ 'log_type' => 'tag', 'log_action' => 'update' ] )
+			->caller( __METHOD__ )
+			->fetchFieldValues();
+		$this->assertCount( 1, $actualLogIds );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'log_title', 'log_namespace', 'actor_name', 'comment_text' ] )
+			->from( 'logging' )
+			->join( 'actor', null, 'actor_id = log_actor' )
+			->join( 'comment', null, 'comment_id = log_comment_id' )
+			->where( [ 'log_id' => $actualLogIds[0] ] )
+			->caller( __METHOD__ )
+			->assertRowValue( [
+				$expectedTargetPage->getDBkey(),
+				$expectedTargetPage->getNamespace(),
+				$expectedPerformer->getName(),
+				$expectedComment
+			] );
+
+		$actualLogParams = $this->newSelectQueryBuilder()
+			->select( [ 'log_params' ] )
+			->from( 'logging' )
+			->where( [ 'log_id' => $actualLogIds[0] ] )
+			->caller( __METHOD__ )
+			->fetchField();
+		$this->assertArrayEquals(
+			[
+				'4::revid' => $expectedRevId,
+				'5::logid' => $expectedLogId,
+				'6:list:tagsAdded' => $expectedTagsAdded,
+				'7:number:tagsAddedCount' => count( $expectedTagsAdded ),
+				'8:list:tagsRemoved' => $expectedTagsRemoved,
+				'9:number:tagsRemovedCount' => count( $expectedTagsRemoved ),
+				'initialTags' => $expectedInitialTags,
+			],
+			LogEntryBase::extractParams( $actualLogParams ),
+			false,
+			true,
+			'Log params should be as expected (including not including the restricted tag in initialTags)'
+		);
+
+		return $actualLogIds[0];
+	}
+
+	public function testUpdateTagsWithChecksForLogWhenTagAdded(): void {
+		$this->changeTags->defineTag( 'test-tag' );
+
+		$logIdHavingTheTagChange = 1234;
+		$testUser = $this->getTestUser()->getUserIdentity();
+		$actualStatus = ChangeTags::updateTagsWithChecks(
+			[ 'test-tag' ],
+			[],
+			null,
+			null,
+			$logIdHavingTheTagChange,
+			'',
+			'Test reason 123',
+			$this->mockUserAuthorityWithPermissions( $testUser, [ 'changetags' ] )
+		);
+		$this->assertStatusGood( $actualStatus );
+
+		$actualLogId = $this->assertUpdateTagsCreatedLoggingRow(
+			SpecialPage::getTitleFor( 'Log' ),
+			$testUser,
+			'Test reason 123',
+			false,
+			$logIdHavingTheTagChange,
+			[ 'test-tag' ],
+			[],
+			[]
+		);
+
+		$this->assertArrayEquals(
+			[ 'logId' => $actualLogId, 'addedTags' => [ 'test-tag' ], 'removedTags' => [] ],
+			(array)$actualStatus->getValue(),
+			false,
+			true
+		);
+	}
+
+	public function testUpdateTagsWithChecksForRecentChangeWhenTagAdded(): void {
+		$this->changeTags->defineTag( 'test-tag' );
+
+		// Use an RC ID that does not associate to a log or rev ID so we can check the fallback handling for
+		// the log title
+		$rcId = 1234;
+		$testUser = $this->getTestUser()->getUserIdentity();
+		$actualStatus = ChangeTags::updateTagsWithChecks(
+			[ 'test-tag' ],
+			[],
+			$rcId,
+			null,
+			null,
+			'',
+			'Test reason',
+			$this->mockUserAuthorityWithPermissions( $testUser, [ 'changetags' ] )
+		);
+		$this->assertStatusGood( $actualStatus );
+
+		$actualLogId = $this->assertUpdateTagsCreatedLoggingRow(
+			SpecialPage::getTitleFor( 'Tags' ),
+			$testUser,
+			'Test reason',
+			false,
+			false,
+			[ 'test-tag' ],
+			[],
+			[]
+		);
+
+		$this->assertArrayEquals(
+			[ 'logId' => $actualLogId, 'addedTags' => [ 'test-tag' ], 'removedTags' => [] ],
+			(array)$actualStatus->getValue(),
+			false,
+			true
+		);
+	}
+
+	public function testFilterViewableTags(): void {
+		$this->setRestrictedTags( [ 'mw-private-test' => [ 'viewsuppressed', 'suppress' ] ] );
+
+		$privileged = $this->mockRegisteredAuthorityWithPermissions( [ 'suppress' ] );
+		$unprivileged = $this->mockRegisteredAuthorityWithoutPermissions( [ 'viewsuppressed', 'suppress' ] );
+
+		$tags = [ 'mw-undo', 'mw-private-test' ];
+		$this->assertSame( $tags, $this->changeTags->filterViewableTags( $tags, $privileged ) );
+		$this->assertSame( [ 'mw-undo' ], $this->changeTags->filterViewableTags( $tags, $unprivileged ) );
+	}
+
+	public function testFilterViewableTagsForPerformer(): void {
+		$this->setRestrictedTags( [ 'mw-private-test' => [ 'viewsuppressed', 'suppress' ] ] );
+
+		$privileged = $this->mockRegisteredAuthorityWithPermissions( [ 'suppress' ] );
+
+		$tags = [ 'mw-undo', 'mw-private-test' ];
+		$this->assertSame( [ 'mw-undo' ], $this->changeTags->filterViewableTagsForPerformer( $tags, null ) );
+		$this->assertSame( $tags, $this->changeTags->filterViewableTagsForPerformer( $tags, $privileged ) );
+	}
+
+	public function testGetViewableTags(): void {
+		$this->setRestrictedTags( [ 'mw-private-test' => 'patrol' ] );
+
+		$privileged = $this->mockRegisteredAuthorityWithPermissions( [ 'patrol' ] );
+		$unprivileged = $this->mockRegisteredAuthorityWithoutPermissions( [ 'patrol' ] );
+
+		$tags = [ 'mw-undo', 'mw-private-test' ];
+		$this->changeTags->addTags( $tags, 123 );
+
+		$this->assertSame( $tags, $this->changeTags->getViewableTags( $this->getDb(), $privileged, 123 ) );
+		$this->assertSame( [ 'mw-undo' ], $this->changeTags->getViewableTags( $this->getDb(), $unprivileged, 123 ) );
+	}
+
+	public function testCanCreateTagRejectsReservedPrefix(): void {
+		$this->assertStatusError( 'tags-create-reserved-prefix', ChangeTags::canCreateTag( 'mw-private-test' ) );
+	}
+
+	public function testCanDeleteTagRejectsWhenUserCannotSeeTag(): void {
+		$this->setRestrictedTags( [ 'mw-private-test' => 'patrol' ] );
+		$status = ChangeTags::canDeleteTag(
+			'mw-private-test',
+			$this->mockRegisteredAuthorityWithPermissions( [ 'deletechangetags' ] )
+		);
+		$this->assertStatusError( 'tags-delete-not-found', $status );
+	}
+
+	public function testCanActivateTagRejectsWhenUserCannotSeeTag(): void {
+		$this->setRestrictedTags( [ 'mw-private-test' => 'patrol' ] );
+		$status = ChangeTags::canActivateTag(
+			'mw-private-test',
+			$this->mockRegisteredAuthorityWithPermissions( [ 'managechangetags' ] )
+		);
+		$this->assertStatusError( 'tags-activate-not-found', $status );
+	}
+
+	public function testCanDeactivateTagRejectsWhenUserCannotSeeTag(): void {
+		$this->setRestrictedTags( [ 'mw-private-test' => 'patrol' ] );
+		$status = ChangeTags::canDeactivateTag(
+			'mw-private-test',
+			$this->mockRegisteredAuthorityWithPermissions( [ 'managechangetags' ] )
+		);
+		$this->assertStatusError( 'tags-deactivate-not-found', $status );
+	}
+
+	/** @dataProvider provideMakeTagSummarySubquery */
+	public function testMakeTagSummarySubquery( ?array $authorityRights, array $expectedTags ): void {
+		$this->filterDeprecated( '/without an Authority \$performer/' );
+		$this->setRestrictedTags( [ 'mw-private-secret' => [ 'suppress' ] ] );
+		$store = $this->getServiceContainer()->getChangeTagsStore();
+		$revId = $this->makeTaggedRevision();
+		$performer = $this->makePerformer( $authorityRights );
+
+		$tsTags = $this->getDb()->newSelectQueryBuilder()
+			->field( $store->makeTagSummarySubquery( 'revision', $performer ), 'ts_tags' )
+			->from( 'revision' )
+			->where( [ 'rev_id' => $revId ] )
+			->caller( __METHOD__ )
+			->fetchField();
+
+		$actualTags = explode( ',', $tsTags );
+		$this->assertArrayEquals( $expectedTags, $actualTags );
+	}
+
+	public static function provideMakeTagSummarySubquery(): array {
+		return [
+			'performer with the right sees the restricted tag' => [
+				'authorityRights' => [ 'suppress' ],
+				'expectedTags' => [ 'foo', 'mw-private-secret' ],
+			],
+			'performer without the right sees only the normal tag' => [
+				'authorityRights' => [],
+				'expectedTags' => [ 'foo' ],
+			],
+			'null performer sees only the normal tag' => [
+				'authorityRights' => null,
+				'expectedTags' => [ 'foo' ],
+			],
+		];
+	}
+
+	/** @dataProvider provideMakeTagSummarySubqueryExcludesUnmappedRestrictedTags */
+	public function testMakeTagSummarySubqueryExcludesUnmappedRestrictedTags(
+		?array $authorityRights,
+		array $expectedTags
+	): void {
+		$this->setRestrictedTags( [ 'mw-private-secret' => [ 'suppress' ] ] );
+		$store = $this->getServiceContainer()->getChangeTagsStore();
+		$revId = $this->makeTaggedRevision( [ 'foo', 'mw-private-secret', 'mw-private-unmapped' ] );
+		$performer = $this->makePerformer( $authorityRights );
+
+		$tsTags = $this->getDb()->newSelectQueryBuilder()
+			->field( $store->makeTagSummarySubquery( 'revision', $performer ), 'ts_tags' )
+			->from( 'revision' )
+			->where( [ 'rev_id' => $revId ] )
+			->caller( __METHOD__ )
+			->fetchField();
+
+		$actualTags = explode( ',', $tsTags );
+		$this->assertArrayEquals( $expectedTags, $actualTags );
+	}
+
+	public static function provideMakeTagSummarySubqueryExcludesUnmappedRestrictedTags(): array {
+		return [
+			'performer without rights sees only the normal tag' => [
+				'authorityRights' => [],
+				'expectedTags' => [ 'foo' ],
+			],
+			'performer with suppress sees the mapped tag but not the unmapped one' => [
+				'authorityRights' => [ 'suppress' ],
+				'expectedTags' => [ 'foo', 'mw-private-secret' ],
+			],
+		];
+	}
+
+	/** @dataProvider provideAddTagsToDisplayQueryExecuted */
+	public function testAddTagsToDisplayQueryExecuted(
+		array $authorityRights,
+		string $filterTag,
+		bool $exclude,
+		bool $expectRow,
+		?array $expectedTags
+	): void {
+		$this->overrideConfigValue( MainConfigNames::UseTagFilter, true );
+		$this->setRestrictedTags( [ 'mw-private-secret' => [ 'suppress' ] ] );
+		$store = $this->getServiceContainer()->getChangeTagsStore();
+		$revId = $this->makeTaggedRevision();
+		$performer = $this->mockRegisteredAuthorityWithPermissions( $authorityRights );
+
+		$queryBuilder = $this->getDb()->newSelectQueryBuilder()
+			->select( 'rev_id' )
+			->from( 'revision' )
+			->where( [ 'rev_id' => $revId ] )
+			->caller( __METHOD__ );
+		$store->addTagsToDisplayQuery( $queryBuilder, 'revision', $performer, $filterTag, $exclude );
+
+		$row = $queryBuilder->fetchRow();
+
+		if ( !$expectRow ) {
+			$this->assertFalse( $row );
+
+			return;
+		}
+
+		$this->assertNotFalse( $row );
+		$this->assertSame( $revId, (int)$row->rev_id );
+		$actualTags = explode( ',', $row->ts_tags );
+		$this->assertArrayEquals( $expectedTags, $actualTags );
+	}
+
+	public static function provideAddTagsToDisplayQueryExecuted(): array {
+		return [
+			'no filter, performer without the right hides the restricted tag' => [
+				'authorityRights' => [],
+				'filterTag' => '',
+				'exclude' => false,
+				'expectRow' => true,
+				'expectedTags' => [ 'foo' ],
+			],
+			'no filter, performer with the right sees the restricted tag' => [
+				'authorityRights' => [ 'suppress' ],
+				'filterTag' => '',
+				'exclude' => false,
+				'expectRow' => true,
+				'expectedTags' => [ 'foo', 'mw-private-secret' ],
+			],
+			'filter by restricted tag without the right returns no rows' => [
+				'authorityRights' => [],
+				'filterTag' => 'mw-private-secret',
+				'exclude' => false,
+				'expectRow' => false,
+				'expectedTags' => null,
+			],
+			'filter by restricted tag with the right returns the row' => [
+				'authorityRights' => [ 'suppress' ],
+				'filterTag' => 'mw-private-secret',
+				'exclude' => false,
+				'expectRow' => true,
+				'expectedTags' => [ 'foo', 'mw-private-secret' ],
+			],
+			'exclude by unviewable restricted tag is a no-op' => [
+				'authorityRights' => [],
+				'filterTag' => 'mw-private-secret',
+				'exclude' => true,
+				'expectRow' => true,
+				'expectedTags' => [ 'foo' ],
+			],
+		];
+	}
+
+	public function testModifyDisplayQueryBuilderHidesRestrictedTags(): void {
+		$this->hideDeprecated( ChangeTagsStore::class . '::modifyDisplayQueryBuilder' );
+		$this->overrideConfigValue( MainConfigNames::UseTagFilter, true );
+		$this->setRestrictedTags( [ 'mw-private-secret' => [ 'suppress' ] ] );
+		$store = $this->getServiceContainer()->getChangeTagsStore();
+		$revId = $this->makeTaggedRevision();
+
+		$queryBuilder = $this->getDb()->newSelectQueryBuilder()
+			->select( 'rev_id' )
+			->from( 'revision' )
+			->where( [ 'rev_id' => $revId ] )
+			->caller( __METHOD__ );
+		$store->modifyDisplayQueryBuilder( $queryBuilder, 'revision' );
+
+		$row = $queryBuilder->fetchRow();
+
+		$this->assertNotFalse( $row );
+		$this->assertArrayEquals( [ 'foo' ], explode( ',', $row->ts_tags ) );
+	}
+
+	public function testModifyDisplayQueryAlwaysHidesRestrictedTags(): void {
+		$this->hideDeprecated( ChangeTagsStore::class . '::modifyDisplayQuery' );
+		$this->overrideConfigValue( MainConfigNames::UseTagFilter, true );
+		$this->setRestrictedTags( [ 'mw-private-secret' => [ 'suppress' ] ] );
+		$store = $this->getServiceContainer()->getChangeTagsStore();
+
+		$tables = [ 'recentchanges' ];
+		$fields = [ 'rc_id' ];
+		$conds = [];
+		$joinConds = [];
+		$options = [];
+		$store->modifyDisplayQuery( $tables, $fields, $conds, $joinConds, $options, [ 'mw-private-secret' ] );
+
+		$this->assertContains( '0=1', $conds );
+		$this->assertNotContains( 'DISTINCT', $options );
+	}
+
+	private function makeTaggedRevision( array $tags = [ 'foo', 'mw-private-secret' ] ): int {
+		$revId = $this->getExistingTestPage()->getRevisionRecord()->getId();
+		$this->changeTags->addTags( $tags, null, $revId );
+
+		return $revId;
+	}
+
+	private function makePerformer( ?array $authorityRights ): ?Authority {
+		return $authorityRights === null
+			? null
+			: $this->mockRegisteredAuthorityWithPermissions( $authorityRights );
+	}
+
+}

@@ -1,0 +1,575 @@
+<?php
+
+namespace MediaWiki\Tests\Rest\Handler\Helper;
+
+use Exception;
+use MediaWiki\CommentStore\CommentStoreComment;
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Page\ExistingPageRecord;
+use MediaWiki\Page\PageIdentityValue;
+use MediaWiki\Permissions\Authority;
+use MediaWiki\Rest\Handler\Helper\PageContentHelper;
+use MediaWiki\Rest\HttpException;
+use MediaWiki\Rest\LocalizedHttpException;
+use MediaWiki\Rest\Response;
+use MediaWiki\Revision\MutableRevisionRecord;
+use MediaWiki\Revision\RevisionRecord;
+use MediaWiki\Revision\SlotRecord;
+use MediaWiki\Tests\ChangeTags\RestrictedTagTestTrait;
+use MediaWiki\Tests\Unit\Permissions\MockAuthorityTrait;
+use MediaWiki\Title\Title;
+use MediaWiki\User\UserIdentityValue;
+use MediaWikiIntegrationTestCase;
+use Wikimedia\TestingAccessWrapper;
+use Wikimedia\Timestamp\TimestampFormat as TS;
+
+/**
+ * @covers \MediaWiki\Rest\Handler\Helper\PageContentHelper
+ * @group Database
+ */
+class PageContentHelperTest extends MediaWikiIntegrationTestCase {
+	use MockAuthorityTrait;
+	use RestrictedTagTestTrait;
+
+	private const NO_REVISION_ETAG = '"7afa43d0f642f1fda1b8e30f4f67243049f5fe77"';
+
+	/**
+	 * @param array $params
+	 * @param Authority|null $authority
+	 * @return PageContentHelper
+	 * @throws Exception
+	 */
+	private function newHelper(
+		array $params = [],
+		?Authority $authority = null
+	): PageContentHelper {
+		$services = $this->getServiceContainer();
+		$helper = new PageContentHelper(
+			new ServiceOptions(
+				PageContentHelper::CONSTRUCTOR_OPTIONS,
+				[
+					MainConfigNames::RightsUrl => 'https://example.com/rights',
+					MainConfigNames::RightsText => 'some rights',
+				]
+			),
+			$services->getRevisionLookup(),
+			$services->getTitleFormatter(),
+			$services->getPageStore(),
+			$services->getTitleFactory(),
+			$services->getConnectionProvider(),
+			$services->getChangeTagsStore(),
+			$services->getShadowPageLoader(),
+		);
+
+		$authority = $authority ?: $this->mockRegisteredUltimateAuthority();
+		$helper->init( $authority, $params );
+		return $helper;
+	}
+
+	public function testGetRole() {
+		$helper = $this->newHelper();
+		$this->assertSame( SlotRecord::MAIN, $helper->getRole() );
+	}
+
+	public function testGetTitle() {
+		$this->getExistingTestPage( 'Foo' );
+
+		$helper = $this->newHelper( [ 'title' => 'Foo' ] );
+		$this->assertSame( 'Foo', $helper->getTitleText() );
+
+		$this->assertInstanceOf( ExistingPageRecord::class, $helper->getPage() );
+		$this->assertSame(
+			'Foo',
+			$this->getServiceContainer()->getTitleFormatter()->getPrefixedDBkey( $helper->getPage() )
+		);
+	}
+
+	public function testGetTargetRevisionAndContent() {
+		$page = $this->getExistingTestPage( __METHOD__ );
+		$rev = $page->getRevisionRecord();
+
+		$helper = $this->newHelper( [ 'title' => $page->getTitle()->getPrefixedDBkey() ] );
+
+		$targetRev = $helper->getTargetRevision();
+		$this->assertInstanceOf( RevisionRecord::class, $targetRev );
+		$this->assertSame( $rev->getId(), $targetRev->getId() );
+
+		$pageContent = $helper->getContent();
+		$this->assertSame(
+			$rev->getContent( SlotRecord::MAIN )->serialize(),
+			$pageContent->serialize()
+		);
+	}
+
+	/**
+	 * Ensure we can load the page with title "0" (T353687).
+	 */
+	public function testT353687() {
+		$page = $this->getExistingTestPage( '0' );
+		$rev = $page->getRevisionRecord();
+
+		$helper = $this->newHelper( [ 'title' => $page->getTitle()->getPrefixedDBkey() ] );
+
+		// Key assertion: this should not throw!
+		$helper->checkAccess();
+
+		$targetRev = $helper->getTargetRevision();
+		$this->assertInstanceOf( RevisionRecord::class, $targetRev );
+		$this->assertSame( $rev->getId(), $targetRev->getId() );
+	}
+
+	public function testNoTitle() {
+		$helper = $this->newHelper();
+
+		$this->assertNull( $helper->getTitleText() );
+		$this->assertNull( $helper->getPage() );
+
+		$this->assertFalse( $helper->hasContent() );
+
+		$this->assertNull( $helper->getTargetRevision() );
+
+		try {
+			$helper->getContent();
+			$this->fail( 'Expected HttpException' );
+		} catch ( HttpException $ex ) {
+			$this->assertSame( 404, $ex->getCode() );
+		}
+
+		try {
+			$helper->checkAccess();
+			$this->fail( 'Expected HttpException' );
+		} catch ( HttpException $ex ) {
+			$this->assertSame( 404, $ex->getCode() );
+		}
+	}
+
+	public static function provideBadTitle() {
+		yield [ '_' ];
+		yield [ '::Hello' ];
+		yield [ 'Special:Blankpage' ];
+	}
+
+	/**
+	 * @dataProvider provideBadTitle
+	 */
+	public function testBadTitle( $badTitle ) {
+		$helper = $this->newHelper( [ 'title' => $badTitle ] );
+
+		$this->assertNotNull( $helper->getTitleText() );
+		$this->assertNull( $helper->getPage() );
+
+		$this->assertFalse( $helper->hasContent() );
+		$this->assertNull( $helper->getTargetRevision() );
+
+		try {
+			$helper->getContent();
+			$this->fail( 'Expected HttpException' );
+		} catch ( HttpException $ex ) {
+			$this->assertSame( 404, $ex->getCode() );
+		}
+
+		try {
+			$helper->checkAccess();
+			$this->fail( 'Expected HttpException' );
+		} catch ( HttpException $ex ) {
+			$this->assertSame( 404, $ex->getCode() );
+		}
+	}
+
+	public function testCheckHasContent() {
+		$page = $this->getNonexistingTestPage( __METHOD__ )->getDBkey();
+		$helper = $this->newHelper( [ 'title' => $page ] );
+
+		$this->expectException( LocalizedHttpException::class );
+		$this->expectExceptionCode( 404 );
+
+		$helper->checkHasContent();
+	}
+
+	public function testCheckAccessPermission() {
+		// With no title there is no page to authorize against, so the request is
+		// reported as missing rather than as forbidden.
+		try {
+			$this->newHelper()->checkAccessPermission();
+			$this->fail( 'Expected LocalizedHttpException' );
+		} catch ( LocalizedHttpException $ex ) {
+			$this->assertSame( 404, $ex->getCode() );
+		}
+
+		// A page that exists but may not be read is forbidden.
+		$page = $this->getExistingTestPage( __METHOD__ );
+		$helper = $this->newHelper(
+			[ 'title' => $page->getTitle()->getPrefixedDBkey() ],
+			$this->mockAnonNullAuthority()
+		);
+
+		$this->expectException( LocalizedHttpException::class );
+		$this->expectExceptionCode( 403 );
+
+		$helper->checkAccessPermission();
+	}
+
+	public function testNonExistingPage() {
+		$page = $this->getNonexistingTestPage( __METHOD__ );
+		$title = $page->getTitle();
+		$helper = $this->newHelper( [ 'title' => $title->getPrefixedDBkey() ] );
+
+		$this->assertSame( $title->getPrefixedDBkey(), $helper->getTitleText() );
+		$this->assertNull( $helper->getPage() );
+
+		$this->assertFalse( $helper->hasContent() );
+		$this->assertTrue( $helper->isAccessible() );
+
+		$this->assertNull( $helper->getTargetRevision() );
+
+		$this->assertNull( $helper->getLastModified() );
+		$this->assertSame( self::NO_REVISION_ETAG, $helper->getETag() );
+
+		try {
+			$helper->getContent();
+			$this->fail( 'Expected HttpException' );
+		} catch ( HttpException $ex ) {
+			$this->assertSame( 404, $ex->getCode() );
+		}
+
+		try {
+			$helper->checkAccess();
+			$this->fail( 'Expected HttpException' );
+		} catch ( HttpException $ex ) {
+			$this->assertSame( 404, $ex->getCode() );
+		}
+	}
+
+	/** @dataProvider provideExistingPage */
+	public function testExistingPage( array $tagsOnLatestRevision ): void {
+		$page = $this->getExistingTestPage();
+		$revId = $page->getRevisionRecord()->getId();
+		$rcId = null;
+		$this->getServiceContainer()->getChangeTagsStore()->updateTags(
+			$tagsOnLatestRevision, [], $rcId, $revId
+		);
+
+		$title = $page->getTitle();
+		$helper = $this->newHelper(
+			[ 'title' => $title->getPrefixedDBkey() ],
+			$this->mockRegisteredUltimateAuthority()
+		);
+
+		$this->assertSame( $title->getPrefixedDBkey(), $helper->getTitleText() );
+		$this->assertTrue( $helper->getPage()->isSamePageAs( $title ) );
+
+		$this->assertTrue( $helper->hasContent() );
+		$this->assertFalse( $helper->useShadowContent() );
+		$this->assertNull( $helper->getShadowPage() );
+		$this->assertTrue( $helper->isAccessible() );
+
+		$this->assertSame( $page->getRevisionRecord()->getTimestamp(), $helper->getLastModified() );
+		$this->assertSame(
+			'"' . sha1(
+				$page->getRevisionRecord()->getId() . 'a1' .
+				implode( ', ', $tagsOnLatestRevision )
+			) . '"',
+			$helper->getETag(),
+			'ETag was not as expected'
+		);
+
+		// The line below should not throw any exception
+		$helper->checkAccess();
+	}
+
+	public static function provideExistingPage(): array {
+		return [
+			'No tags on most recent edit' => [ [] ],
+			'Tags on most recent edit' => [ [ 'mw-reverted' ] ],
+		];
+	}
+
+	public function testRestrictedTagsAreFilteredPerViewer(): void {
+		$this->setRestrictedTags( [ 'mw-private-test' => 'patrol' ] );
+
+		$page = $this->getExistingTestPage();
+		$revId = $page->getRevisionRecord()->getId();
+		$rcId = null;
+		$this->getServiceContainer()->getChangeTagsStore()->updateTags(
+			[ 'mw-reverted', 'mw-private-test' ], [], $rcId, $revId
+		);
+
+		$title = $page->getTitle()->getPrefixedDBkey();
+		$privileged = $this->newHelper( [ 'title' => $title ], $this->mockRegisteredUltimateAuthority() );
+		$unprivileged = $this->newHelper(
+			[ 'title' => $title ],
+			$this->mockRegisteredAuthorityWithoutPermissions( [ 'patrol' ] )
+		);
+
+		$this->assertTrue( $privileged->isAccessible(), 'Privileged viewer should be able to read the page' );
+		$this->assertTrue( $unprivileged->isAccessible(), 'Unprivileged viewer should be able to read the page' );
+
+		$this->assertEqualsCanonicalizing(
+			[ 'mw-reverted', 'mw-private-test' ],
+			$privileged->constructRestbaseCompatibleMetadata()['tags'],
+			'Privileged viewer should see the restricted tag in the metadata'
+		);
+		$this->assertSame(
+			[ 'mw-reverted' ],
+			$unprivileged->constructRestbaseCompatibleMetadata()['tags'],
+			'Restricted tag should be absent from the metadata for the unprivileged viewer'
+		);
+
+		$this->assertNotSame(
+			$privileged->getETag(),
+			$unprivileged->getETag(),
+			'ETag should differ between viewers with different tag visibility'
+		);
+	}
+
+	public function testForbiddenPage() {
+		$page = $this->getExistingTestPage( __METHOD__ );
+		$title = $page->getTitle();
+		$helper = $this->newHelper(
+			[ 'title' => $title->getPrefixedDBkey() ],
+			$this->mockAnonNullAuthority()
+		);
+
+		$this->assertSame( $title->getPrefixedDBkey(), $helper->getTitleText() );
+		$this->assertTrue( $helper->getPage()->isSamePageAs( $title ) );
+
+		$this->assertTrue( $helper->hasContent() );
+		$this->assertFalse( $helper->useShadowContent() );
+		$this->assertNull( $helper->getShadowPage() );
+		$this->assertFalse( $helper->isAccessible() );
+
+		$this->assertNull( $helper->getLastModified() );
+
+		try {
+			$helper->checkAccess();
+			$this->fail( 'Expected HttpException' );
+		} catch ( HttpException $ex ) {
+			$this->assertSame( 403, $ex->getCode() );
+		}
+	}
+
+	public function testForbiddenMessagePage() {
+		$page = $this->getNonexistingTestPage(
+			Title::makeTitle( NS_MEDIAWIKI, 'Logouttext' )
+		);
+		$title = $page->getTitle();
+		$helper = $this->newHelper(
+			[ 'title' => $title->getPrefixedDBkey() ],
+			$this->mockAnonNullAuthority()
+		);
+
+		$this->assertSame( $title->getPrefixedDBkey(), $helper->getTitleText() );
+		$this->assertNull( $helper->getPage() );
+
+		$this->assertTrue( $helper->hasContent() );
+		$this->assertTrue( $helper->useShadowContent() );
+		$this->assertNotNull( $helper->getShadowPage() );
+		$this->assertFalse( $helper->isAccessible() );
+
+		$this->assertNull( $helper->getLastModified() );
+
+		$this->expectException( HttpException::class );
+		$this->expectExceptionCode( 403 );
+		$helper->checkAccess();
+	}
+
+	public function testMessagePage() {
+		$page = $this->getNonexistingTestPage(
+			Title::makeTitle( NS_MEDIAWIKI, 'Logouttext' )
+		);
+		$title = $page->getTitle();
+		$helper = $this->newHelper(
+			[ 'title' => $title->getPrefixedDBkey() ],
+			$this->mockAnonUltimateAuthority()
+		);
+
+		$this->assertSame( $title->getPrefixedDBkey(), $helper->getTitleText() );
+		$this->assertNull( $helper->getPage() );
+
+		$this->assertTrue( $helper->hasContent() );
+		$this->assertTrue( $helper->useShadowContent() );
+		$this->assertNotNull( $helper->getShadowPage() );
+		$this->assertTrue( $helper->isAccessible() );
+
+		$this->assertNull( $helper->getLastModified() );
+
+		// The line below should not throw any exception
+		$helper->checkAccess();
+		$helper->checkHasContent(); // Status 404: Not Found
+		$helper->checkAccessPermission(); // Status 403: Forbidden
+
+		// ... but a route that does not serve shadow content sees the page as missing.
+		$this->expectException( LocalizedHttpException::class );
+		$this->expectExceptionCode( 404 );
+		$helper->checkHasContent( allowShadowContent: false );
+	}
+
+	public static function provideRedirectsAllowed() {
+		yield [ [], true ];
+		yield [ [ 'redirect' => true ], true ];
+		yield [ [ 'redirect' => false ], false ];
+	}
+
+	/**
+	 * @dataProvider provideRedirectsAllowed
+	 */
+	public function testRedirectsAllowed( array $params, bool $allowRedirect ) {
+		$page = $this->getNonexistingTestPage(
+			Title::makeTitle( NS_MEDIAWIKI, 'Logouttext' )
+		);
+		$title = $page->getTitle();
+		$helper = $this->newHelper(
+			$params + [ 'title' => $title->getPrefixedDBkey() ],
+			$this->mockAnonUltimateAuthority()
+		);
+
+		$this->assertSame( $allowRedirect, $helper->getRedirectsAllowed() );
+	}
+
+	public function testParameterSettings() {
+		$helper = $this->newHelper();
+		$settings = $helper->getParamSettings();
+		$this->assertArrayHasKey( 'title', $settings );
+	}
+
+	public function testCacheControl() {
+		$helper = $this->newHelper();
+
+		$response = new Response();
+
+		$helper->setCacheControl( $response ); // default
+		$this->assertStringContainsString( 'max-age=5', $response->getHeaderLine( 'Cache-Control' ) );
+
+		$helper->setCacheControl( $response, 2 ); // explicit
+		$this->assertStringContainsString( 'max-age=2', $response->getHeaderLine( 'Cache-Control' ) );
+
+		$helper->setCacheControl( $response, 1000 * 1000 ); // too big
+		$this->assertStringContainsString( 'max-age=5', $response->getHeaderLine( 'Cache-Control' ) );
+	}
+
+	public function testConstructMetadata() {
+		$page = $this->getExistingTestPage( __METHOD__ );
+		$title = $page->getTitle();
+
+		$revision = $page->getRevisionRecord();
+		$content = $revision->getContent( SlotRecord::MAIN );
+		$expected = [
+			'id' => $title->getArticleID(),
+			'key' => $title->getPrefixedDBkey(),
+			'title' => $title->getPrefixedText(),
+			'latest' => [
+				'id' => $revision->getId(),
+				'timestamp' => wfTimestampOrNull( TS::ISO_8601, $revision->getTimestamp() )
+			],
+			'content_model' => $content->getModel(),
+			'license' => [
+				'url' => 'https://example.com/rights',
+				'title' => 'some rights',
+			]
+		];
+
+		$helper = $this->newHelper( [ 'title' => $title->getPrefixedDBkey() ] );
+		$data = $helper->constructMetadata();
+
+		$this->assertEquals( $expected, $data );
+	}
+
+	public static function provideConstructRestbaseCompatibleMetadata() {
+		$pageName = 'User:Morg';
+		$page = PageIdentityValue::localIdentity( 7, NS_USER, 'Morg' );
+		$user = UserIdentityValue::newRegistered( 444, 'Morg' );
+		$comment = CommentStoreComment::newUnsavedComment( 'just an edit' );
+		$timestamp = '20220102112233';
+
+		$rev = new MutableRevisionRecord( $page );
+		$rev->setId( 123 );
+		$rev->setUser( $user );
+		$rev->setComment( $comment );
+		$rev->setTimestamp( $timestamp );
+
+		$expected = [
+			'title' => $pageName,
+			'page_id' => 7,
+			'rev' => 123,
+			'tid' => 'DUMMY',
+			'namespace' => NS_USER,
+			'user_id' => 444,
+			'user_text' => 'Morg',
+			'comment' => $comment->text,
+			'timestamp' => wfTimestampOrNull( TS::ISO_8601, $timestamp ),
+			'tags' => [],
+			'restrictions' => [],
+			'page_language' => 'en',
+			'redirect' => false
+		];
+
+		yield [
+			$pageName,
+			$rev,
+			$expected
+		];
+
+		// Construct a revision with a hidden comment
+		$rev = new MutableRevisionRecord( $page );
+		$rev->setId( 123 );
+		$rev->setUser( $user );
+		$rev->setComment( $comment );
+		$rev->setTimestamp( $timestamp );
+		$rev->setVisibility( RevisionRecord::DELETED_COMMENT );
+
+		$expectedHiddenComment = [
+			'comment' => null,
+			'restrictions' => [ 'commenthidden' ],
+		] + $expected;
+
+		yield [
+			$pageName,
+			$rev,
+			$expectedHiddenComment
+		];
+
+		// Construct a revision with a suppressed user
+		$rev = new MutableRevisionRecord( $page );
+		$rev->setId( 123 );
+		$rev->setUser( $user );
+		$rev->setComment( $comment );
+		$rev->setTimestamp( $timestamp );
+		$rev->setVisibility( RevisionRecord::DELETED_USER );
+
+		$expectedHiddenComment = [
+			'user_id' => null,
+			'user_text' => null,
+			'restrictions' => [ 'userhidden' ],
+		] + $expected;
+
+		yield [
+			$pageName,
+			$rev,
+			$expectedHiddenComment
+		];
+	}
+
+	/**
+	 * @dataProvider provideConstructRestbaseCompatibleMetadata
+	 */
+	public function testConstructRestbaseCompatibleMetadata(
+		string $pageName,
+		RevisionRecord $revision,
+		array $expected
+	) {
+		$helper = $this->newHelper( [ 'title' => $pageName ] );
+
+		$helperAccess = TestingAccessWrapper::newFromObject( $helper );
+		$helperAccess->pageIdentity = $revision->getPage();
+		$helperAccess->targetRevision = $revision;
+
+		$data = $helper->constructRestbaseCompatibleMetadata();
+
+		$this->assertEquals(
+			$expected,
+			$data
+		);
+	}
+
+}

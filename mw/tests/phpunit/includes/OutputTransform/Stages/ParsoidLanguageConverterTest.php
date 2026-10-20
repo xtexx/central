@@ -1,0 +1,84 @@
+<?php
+declare( strict_types = 1 );
+
+namespace MediaWiki\Tests\OutputTransform\Stages;
+
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\OutputTransform\Stages\ParsoidLanguageConverter;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Title\Title;
+use MediaWikiIntegrationTestCase;
+use Psr\Log\NullLogger;
+use Wikimedia\Bcp47Code\Bcp47CodeValue;
+use Wikimedia\Parsoid\Core\HtmlPageBundle;
+use Wikimedia\Parsoid\ParserTests\TestUtils;
+
+/**
+ * @covers \MediaWiki\OutputTransform\Stages\ParsoidLanguageConverter
+ */
+class ParsoidLanguageConverterTest extends MediaWikiIntegrationTestCase {
+
+	public function createStage(): ParsoidLanguageConverter {
+		return new ParsoidLanguageConverter(
+			new ServiceOptions( [] ),
+			new NullLogger(),
+			$this->getServiceContainer()->getParsoidSiteConfig(),
+			$this->getServiceContainer()->getLanguageFactory(),
+			$this->getServiceContainer()->getLanguageConverterFactory(),
+			$this->getServiceContainer()->getTitleFactory(),
+			$this->getServiceContainer()->getUrlUtils(),
+			$this->getServiceContainer()->getLinkBatchFactory(),
+		);
+	}
+
+	/**
+	 * @dataProvider provideDocsToConvert
+	 */
+	public function testApplyTransformation(
+		string $input, string $expected, string $pagelang,
+		?string $expectedFragment = null,
+	) {
+		$languageFactory = $this->getServiceContainer()->getLanguageFactory();
+		$conv = $this->createStage();
+		$po = $this->getServiceContainer()->getPageBundleParserOutputConverter()
+			->parserOutputFromPageBundle( new HtmlPageBundle( $input ), isParsoidContent: true );
+		$po->getContentHolder()->addFragment( 'my fragment', $input );
+		$po->setIndicator( 'foo', $input );
+		$po->setTitle( Title::newFromText( 'Test page' ) );
+		$variant = $languageFactory->getLanguage( new Bcp47CodeValue( $pagelang ) );
+		$baseLang = $languageFactory->getParentLanguage( $variant );
+		$popts = ParserOptions::newFromAnon();
+		$popts->setTargetLanguage( $baseLang );
+		$popts->setVariant( $variant );
+		$opts = [];
+		$po->setFromParserOptions( $popts );
+		$transf = $conv->transform( $po, $popts, $opts );
+		$resBody = $transf->getContentHolderText();
+		$resFragment = $transf->getContentHolder()->getAsHtmlString( 'my fragment' );
+		$fooFragment = $transf->getIndicators()['foo'];
+		self::assertEquals( $expected, TestUtils::stripParsoidIds( $resBody ) );
+		self::assertEquals( $expectedFragment ?? $expected, TestUtils::stripParsoidIds( $resFragment ) );
+		self::assertEquals( $expectedFragment ?? $expected, TestUtils::stripParsoidIds( $fooFragment ) );
+	}
+
+	public static function provideDocsToConvert() {
+		yield "Basic conversion" => [
+			'<p>Latin text</p>',
+			'<p>Латин теxт</p>',
+			'sr-Cyrl',
+		];
+		yield "Don't convert inside <style>" => [
+			'<p>Latin</p><style>.foo { display: none; }</style><p class="foo">More</p>',
+			'<p>Латин</p><style>.foo { display: none; }</style><p class="foo">Море</p>',
+			'sr-Cyrl',
+		];
+		yield "Update wrapper div" => [
+			'<div class="mw-parser-output mw-content-ltr" lang="ku" dir="ltr">Foo</div>',
+			'<div class="mw-parser-output mw-content-rtl" lang="ku-Arab" dir="rtl">فۆئۆ</div>',
+			'ku-Arab',
+			// Fragment wrapper isn't affected, only the wrapper div on the body is
+			// changed.  The contents of the fragment are converted, though.
+			'<div class="mw-parser-output mw-content-ltr" lang="ku" dir="ltr">فۆئۆ</div>',
+		];
+	}
+}

@@ -1,0 +1,73 @@
+{
+	"mwapi": "1.1.0",
+	"moduleId": "specs/v0",
+	"audience": "dev",
+	"info": {
+		"title": "Specs API",
+		"x-i18n-title": "rest-module-specs.v0-title",
+		"x-i18n-description": "rest-module-specs.v0-desc",
+		"version": "0.1.0"
+	},
+	"externalDocs": {
+		"description": "API documentation",
+		"url": "https://www.mediawiki.org/wiki/API:REST_API"
+	},
+	"tags": [
+		{
+			"name": "Discovery",
+			"description": "Operations related to discovery, which is the process of finding and understanding the available REST endpoints and their specifications.",
+			"x-i18n-description": "rest-tag-discovery-desc"
+		},
+		{
+			"name": "Modules",
+			"description": "Operations related to modules, which are grouped reusable components that provide specific functionality within the REST API.",
+			"x-i18n-description": "rest-tag-modules-desc"
+		}
+	],
+	"paths": {
+		"/discovery": {
+			"get": {
+				"tags": [
+					"Discovery"
+				],
+				"handler": {
+					"class": "MediaWiki\\Rest\\Handler\\DiscoveryHandler",
+					"services": [
+						"MainConfig"
+					]
+				},
+				"x-i18n-summary": "rest-endpoint-summ-specs-discovery"
+			}
+		},
+		"/module/{module}": {
+			"get": {
+				"tags": [
+					"Modules"
+				],
+				"handler": {
+					"class": "MediaWiki\\Rest\\Handler\\ModuleSpecHandler",
+					"services": [
+						"MainConfig",
+						"SessionManager"
+					]
+				},
+				"x-i18n-summary": "rest-endpoint-summ-specs-module"
+			}
+		},
+		"/module/{module}/{version}": {
+			"get": {
+				"tags": [
+					"Modules"
+				],
+				"handler": {
+					"class": "MediaWiki\\Rest\\Handler\\ModuleSpecHandler",
+					"services": [
+						"MainConfig",
+						"SessionManager"
+					]
+				},
+				"x-i18n-summary": "rest-endpoint-summ-specs-module-version"
+			}
+		}
+	}
+}

@@ -1,0 +1,75 @@
+<?php
+/**
+ * @license GPL-2.0-or-later
+ * @file
+ */
+
+namespace MediaWiki\Tests\Unit\EditPage\Constraint;
+
+use MediaWiki\Content\Content;
+use MediaWiki\EditPage\Constraint\EditConstraint;
+use MediaWiki\EditPage\Constraint\ImageRedirectConstraint;
+use MediaWiki\Page\PageReference;
+use MediaWiki\Permissions\Authority;
+use MediaWiki\Tests\Unit\Permissions\MockAuthorityTrait;
+use MediaWikiUnitTestCase;
+use Wikimedia\TestingAccessWrapper;
+
+/**
+ * Tests the ImageRedirectConstraint
+ *
+ * @author DannyS712
+ *
+ * @covers \MediaWiki\EditPage\Constraint\ImageRedirectConstraint
+ */
+class ImageRedirectConstraintTest extends MediaWikiUnitTestCase {
+	use EditConstraintTestTrait;
+	use MockAuthorityTrait;
+
+	/**
+	 * @param Authority $performer
+	 * @return ImageRedirectConstraint
+	 */
+	private function getConstraint( Authority $performer ) {
+		$content = $this->createMock( Content::class );
+		$content->method( 'isRedirect' )->willReturn( true );
+
+		$page = $this->createMock( PageReference::class );
+		$page->method( 'getNamespace' )->willReturn( NS_FILE );
+
+		return new ImageRedirectConstraint(
+			$content,
+			$page,
+			$performer
+		);
+	}
+
+	public function testPass() {
+		$constraint = $this->getConstraint( $this->mockRegisteredUltimateAuthority() );
+		$this->assertConstraintPassed( $constraint );
+	}
+
+	/**
+	 * @dataProvider provideTestFailure
+	 */
+	public function testFailure( string $performerSpec, int $expectedValue ) {
+		$performer = $performerSpec === 'anon'
+			? $this->mockAnonAuthorityWithoutPermissions( [ 'upload' ] )
+			: $this->mockRegisteredAuthorityWithoutPermissions( [ 'upload' ] );
+		$constraint = $this->getConstraint( $performer );
+		$status = $this->assertConstraintFailed( $constraint, $expectedValue );
+		$this->assertNotNull( TestingAccessWrapper::newFromObject( $status )->errorFunction );
+	}
+
+	public static function provideTestFailure() {
+		yield 'Anonymous user' => [
+			'performerSpec' => 'anon',
+			'expectedValue' => EditConstraint::AS_IMAGE_REDIRECT_ANON
+		];
+		yield 'Registered user' => [
+			'performerSpec' => 'registered',
+			'expectedValue' => EditConstraint::AS_IMAGE_REDIRECT_LOGGED
+		];
+	}
+
+}

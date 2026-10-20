@@ -1,0 +1,37 @@
+<?php
+
+namespace MediaWiki\Watchlist;
+
+use MediaWiki\JobQueue\Job;
+use MediaWiki\JobQueue\JobSpecification;
+use MediaWiki\MediaWikiServices;
+
+/**
+ * @internal For use by WatchedItemStore
+ * @ingroup JobQueue
+ */
+class WatchlistExpiryJob extends Job {
+
+	public function __construct( array $params = [] ) {
+		parent::__construct( 'watchlistExpiry', $params );
+	}
+
+	/**
+	 * Run the job recursively in batches of 100 until there are no more expired items.
+	 *
+	 * @return bool Always true, to indicate success.
+	 */
+	public function run() {
+		$services = MediaWikiServices::getInstance();
+		$watchedItemStore = $services->getWatchedItemStore();
+		$watchedItemStore->removeExpired( 100 );
+		if ( $watchedItemStore->countExpired() ) {
+			// If there are still items, add a new job.
+			$services->getJobQueueGroup()->push( new JobSpecification( $this->getType(), [] ) );
+		}
+		return true;
+	}
+
+}
+/** @deprecated class alias since 1.43 */
+class_alias( WatchlistExpiryJob::class, 'WatchlistExpiryJob' );

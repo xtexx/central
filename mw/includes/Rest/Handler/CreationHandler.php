@@ -1,0 +1,141 @@
+<?php
+
+namespace MediaWiki\Rest\Handler;
+
+use MediaWiki\Request\WebResponse;
+use MediaWiki\Rest\Handler;
+use MediaWiki\Rest\LocalizedHttpException;
+use MediaWiki\Rest\Response;
+use MediaWiki\Rest\ResponseHeaders;
+use Wikimedia\Message\MessageValue;
+use Wikimedia\ParamValidator\ParamValidator;
+
+/**
+ * Core REST API endpoint that handles page creation (main slot only)
+ */
+class CreationHandler extends EditHandler {
+
+	/**
+	 * @inheritDoc
+	 */
+	protected function getTitleParameter() {
+		$body = $this->getValidatedBodyArray();
+		return $body['title'];
+	}
+
+	/**
+	 * @inheritDoc
+	 * @return array
+	 */
+	public function getBodyParamSettings(): array {
+		return [
+			'source' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => true,
+				Handler::PARAM_DESCRIPTION => new MessageValue( 'rest-param-desc-source' ),
+				Handler::PARAM_EXAMPLE => 'Hello, world!',
+			],
+			'title' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => true,
+				Handler::PARAM_DESCRIPTION => new MessageValue( 'rest-param-desc-create-title' ),
+				Handler::PARAM_EXAMPLE => 'User:<my username>/Sandbox',
+			],
+			'comment' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => true,
+				Handler::PARAM_DESCRIPTION => new MessageValue( 'rest-param-desc-comment' ),
+				Handler::PARAM_EXAMPLE => 'Testing out the REST API',
+			],
+			'content_model' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				Handler::PARAM_DESCRIPTION => new MessageValue( 'rest-param-desc-contentmodel' ),
+				Handler::PARAM_EXAMPLE => 'wikitext',
+			],
+		]
+		+ $this->getTokenParamDefinition();
+	}
+
+	public function getRequestBodyDescription(): MessageValue|string|null {
+		return new MessageValue( 'rest-requestbody-desc-create-page' );
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	protected function getActionModuleParameters() {
+		$body = $this->getValidatedBodyArray();
+		$title = $this->getTitleParameter();
+
+		$contentmodel = $body['content_model'] ?: null;
+
+		if ( $contentmodel !== null && !$this->contentHandlerFactory->isDefinedModel( $contentmodel ) ) {
+			throw new LocalizedHttpException(
+				new MessageValue( 'rest-bad-content-model', [ $body['content_model'] ] ), 400
+			);
+		}
+
+		// Use a known good CSRF token if a token is not needed because we are
+		// using a method of authentication that protects against CSRF, like OAuth.
+		$token = $this->needsToken() ? $this->getToken() : $this->getUser()->getEditToken();
+
+		$params = [
+			'action' => 'edit',
+			'title' => $title,
+			'text' => $body['source'],
+			'summary' => $body['comment'],
+			'token' => $token,
+			'createonly' => true,
+		];
+
+		if ( $contentmodel !== null ) {
+			$params['contentmodel'] = $contentmodel;
+		}
+
+		return $params;
+	}
+
+	protected function mapActionModuleResponse(
+		WebResponse $actionModuleResponse,
+		array $actionModuleResult,
+		Response $response
+	) {
+		parent::mapActionModuleResponse(
+			$actionModuleResponse,
+			$actionModuleResult,
+			$response
+		);
+
+		$title = $this->urlEncodeTitle( $actionModuleResult['edit']['title'] );
+
+		$url = $this->getRouter()->getRouteUrl( '/v1/page/' . $title );
+		$response->setHeader( ResponseHeaders::LOCATION, $url );
+	}
+
+	/**
+	 * This method specifies the JSON schema file for the response
+	 * body when creating a new page.
+	 *
+	 * @return ?string The file path to the NewPage JSON schema.
+	 */
+	public function getResponseBodySchemaFileName( string $method ): ?string {
+		return __DIR__ . '/Schema/NewPage.json';
+	}
+
+	/** @inheritDoc */
+	public function getResponseHeaderSettings(): array {
+		return array_merge(
+			parent::getResponseHeaderSettings(),
+			[
+				ResponseHeaders::LOCATION => ResponseHeaders::RESPONSE_HEADER_DEFINITIONS[
+					ResponseHeaders::LOCATION
+				]
+			]
+		);
+	}
+}

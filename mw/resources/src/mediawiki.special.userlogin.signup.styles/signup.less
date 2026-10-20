@@ -1,0 +1,31 @@
+@import 'mediawiki.skin.variables.less';
+
+.mw-htmlformchecker-v2-hide {
+	// HACK utility class to toggle Codex CSS-only markup that is manipulated by client code, see HtmlformCheckerV2.js
+	// stylelint-disable-next-line declaration-no-important
+	display: none !important;
+}
+
+#userloginForm {
+	[ type='text' ] ~ .mw-password-reveal-icon,
+	[ type='password' ] ~ .mw-password-reveal-icon {
+		.cdx-mixin-css-icon( @cdx-icon-eye );
+		cursor: pointer;
+	}
+
+	.mw-createacct-username {
+		.cdx-label__description {
+			display: inline-flex;
+			align-items: center;
+			gap: @spacing-25;
+
+			button .cdx-button__icon {
+				.cdx-mixin-css-icon(
+					@cdx-icon-help-notice-filled,
+					@param-size-icon: @size-icon-small,
+					@param-is-button-icon: true
+				);
+			}
+		}
+	}
+}

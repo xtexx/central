@@ -1,0 +1,207 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"$id": "https://www.mediawiki.org/schema/mwapi-1.2",
+	"title": "MediaWiki REST API module definition",
+	"description": "Module definition files provide meta-data about modules and define the available routes. They are similar to OpenAPI specs.",
+	"type": "object",
+	"required": [ "mwapi", "info", "moduleId", "paths" ],
+	"properties": {
+		"mwapi": {
+			"description": "The version of the MediaWiki module definition schema used by the document.",
+			"type": "string"
+		},
+		"moduleId": {
+			"description": "The module name, also used as the path prefix",
+			"type": "string"
+		},
+		"info": {
+			"$ref": "#/definitions/Info"
+		},
+		"paths": {
+			"description": "Information about the API routes available for interacting with the wiki.",
+			"type": "object",
+			"minProperties": 1,
+			"additionalProperties": { "$ref": "#/definitions/Path" }
+		},
+		"externalDocs": {
+			"$ref": "https://spec.openapis.org/oas/3.0/schema/2021-09-28#/definitions/ExternalDocumentation"
+		},
+		"errorSchemaVersion": {
+			"description": "The version of the error response schema used by the module.",
+			"type": "string"
+		}
+	},
+	"definitions": {
+		"Info": {
+			"type": "object",
+			"required": [ "title", "version" ],
+			"properties": {
+				"title": {
+					"description": "The title of the application.",
+					"type": "string"
+				},
+				"description": {
+					"description": "A short description of the application.",
+					"type": "string"
+				},
+				"termsOfService": {
+					"description": "A URL to the Terms of Service for the API.",
+					"type": "string",
+					"format": "uri-reference"
+				},
+				"contact": {
+					"$ref": "https://spec.openapis.org/oas/3.0/schema/2021-09-28#/definitions/Contact"
+				},
+				"license": {
+					"$ref": "https://spec.openapis.org/oas/3.0/schema/2021-09-28#/definitions/License"
+				},
+				"version": {
+					"description": "The version of the OpenAPI document.",
+					"type": "string"
+				},
+				"deprecationSettings": {
+					"$ref": "#/definitions/DeprecationSettings"
+				},
+				"groups": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "The audience designation groups of this module."
+				},
+				"oadSpecPath": {
+					"description": "The path of an HTTP GET endpoint, relative to the module path prefix, which returns the OpenAPI schema document for this module. This should start with a slash.",
+					"type": "string"
+				}
+			},
+			"additionalProperties": true
+		},
+		"Path": {
+			"title": "REST API Path",
+			"description": "The operations available for a given path",
+			"type": "object",
+			"minProperties": 1,
+			"additionalProperties": { "$ref": "#/definitions/Operation" }
+		},
+		"Operation": {
+			"allOf": [
+				{ "$ref": "#/definitions/OperationInfo" },
+				{ "$ref": "#/definitions/OperationImpl" }
+			]
+		},
+		"OperationInfo": {
+			"properties": {
+				"tags": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"summary": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"deprecationSettings": {
+					"$ref": "#/definitions/DeprecationSettings"
+				},
+				"externalDocs": {
+					"$ref": "https://spec.openapis.org/oas/3.0/schema/2021-09-28#/definitions/ExternalDocumentation"
+				}
+			},
+			"patternProperties": {
+				"^x-i18n-": { "$ref": "#/definitions/i18n" }
+			}
+		},
+		"OperationImpl": {
+			"oneOf": [
+				{ "$ref": "#/definitions/WithHandler" },
+				{ "$ref": "#/definitions/WithRedirect" }
+			]
+		},
+		"WithHandler": {
+			"required": [ "handler" ],
+			"properties": {
+				"handler": {
+					"oneOf": [
+						{ "$ref": "#/definitions/MWObjectSpec" },
+						{ "$ref": "#/definitions/AdapterSpec" }
+					]
+				}
+			}
+		},
+		"AdapterSpec": {
+			"type": "object",
+			"description": "An adapter spec for adapters supported by Module (tagged union).",
+			"properties": {
+				"type": { "type": "string" },
+				"suppressedParams": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Any parameters that should not be exposed in the REST API."
+				}
+			},
+			"required": [ "type" ],
+			"additionalProperties": true
+		},
+		"MWObjectSpec": {
+			"type": "object",
+			"description": "An object-spec for use with the wikimedia/object-factory package.",
+			"properties": {
+				"class": {
+					"type": "string",
+					"description": "PHP class name of the object to create. If 'factory' is also specified, it will be used to validate the object."
+				},
+				"factory": {
+					"type": [ "string", "array" ],
+					"description": "Factory method for creating the object (a PHP callable)."
+				},
+				"args": {
+					"type": "array",
+					"description": "Arguments to pass to the constructor or the factory method.",
+					"items": {
+						"type": "object"
+					}
+				},
+				"services": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "List of services to pass as arguments. Each name will be looked up in MediaWikiServices."
+				},
+				"optional_services": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "List of services to pass as arguments. Each name will be looked up in MediaWikiServices. If the service is unknown the parameter is set to 'null' instead of causing an error."
+				}
+			},
+			"additionalProperties": true
+		},
+		"WithRedirect": {
+			"required": [ "redirect" ],
+			"properties": {
+				"redirect": {
+					"type": "object",
+					"required": [ "path" ],
+					"properties": {
+						"path": { "type": "string" },
+						"code": { "type": "integer" }
+					},
+					"additionalProperties": false
+				}
+			}
+		},
+		"i18n": {
+			"description": "internationalized version of some other key",
+			"type": "string"
+		},
+		"DeprecationSettings": {
+			"properties": {
+				"since": { "type": "integer" }
+			},
+			"additionalProperties": false
+		}
+	}
+}

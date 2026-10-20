@@ -1,0 +1,260 @@
+<?php
+
+namespace MediaWiki\Rest\Module;
+
+use MediaWiki\HookContainer\HookContainer;
+use MediaWiki\Rest\BasicAccess\BasicAuthorizerInterface;
+use MediaWiki\Rest\Handler\RedirectHandler;
+use MediaWiki\Rest\JsonLocalizer;
+use MediaWiki\Rest\PathTemplateMatcher\ModuleConfigurationException;
+use MediaWiki\Rest\Reporter\ErrorReporter;
+use MediaWiki\Rest\RouteDefinitionException;
+use MediaWiki\Rest\Router;
+use MediaWiki\Rest\Validator\Validator;
+use Wikimedia\ObjectFactory\ObjectFactory;
+
+/**
+ * A Module that is based on a module definition file similar to an OpenAPI spec.
+ * @see docs/rest/mwapi-1.0.json for the schema of module definition files.
+ *
+ * Just like an OpenAPI spec, the module definition file contains a "paths"
+ * section that maps paths and HTTP methods to operations. Each operation
+ * then specifies the PHP class that will handle the request under the "handler"
+ * key. The value of the "handler" key is an object spec for use with
+ * ObjectFactory::createObject.
+ *
+ * The following fields are supported as a shorthand notation:
+ * - "redirect": the route represents a redirect and will be handled by
+ *   the RedirectHandler class. The redirect is specified as a JSON object
+ *   that specifies the target "path", and optional the redirect "code".
+ *   If a redirect is defined, the "handler" key must be omitted.
+ *
+ * More shorthands may be added in the future.
+ *
+ * Route definitions can contain additional fields to configure the handler.
+ * The handler can access the route definition by calling getConfig().
+ *
+ * @internal
+ * @since 1.43
+ */
+class SpecBasedModule extends MatcherBasedModule {
+
+	private ?array $moduleDef = null;
+
+	private ?int $routeFileTimestamp = null;
+
+	private ?string $configHash = null;
+
+	/**
+	 * @internal
+	 */
+	public function __construct(
+		private readonly string $definitionFile,
+		Router $router,
+		string $pathPrefix,
+		JsonLocalizer $jsonLocalizer,
+		BasicAuthorizerInterface $basicAuth,
+		ObjectFactory $objectFactory,
+		Validator $restValidator,
+		ErrorReporter $errorReporter,
+		HookContainer $hookContainer,
+	) {
+		parent::__construct(
+			$router,
+			$pathPrefix,
+			$jsonLocalizer,
+			$basicAuth,
+			$objectFactory,
+			$restValidator,
+			$errorReporter,
+			$hookContainer
+		);
+	}
+
+	/**
+	 * Get a config version hash for cache invalidation
+	 */
+	protected function getConfigHash(): string {
+		if ( $this->configHash === null ) {
+			$this->configHash = md5( json_encode( [
+				'class' => __CLASS__,
+				'version' => 1,
+				'fileTimestamps' => $this->getRouteFileTimestamp()
+			] ) );
+		}
+		return $this->configHash;
+	}
+
+	/**
+	 * Load the module definition file.
+	 */
+	private function getModuleDefinition(): array {
+		if ( $this->moduleDef !== null ) {
+			return $this->moduleDef;
+		}
+
+		$this->routeFileTimestamp = filemtime( $this->definitionFile );
+		$this->moduleDef = static::loadModuleDefinition(
+			$this->definitionFile,
+			$this->getJsonLocalizer()
+		);
+
+		return $this->moduleDef;
+	}
+
+	/**
+	 * Load the module definition file.
+	 *
+	 * @param string $file The module definition file to load
+	 * @param JsonLocalizer $localizer
+	 *
+	 * @return array
+	 */
+	public static function loadModuleDefinition( string $file, JsonLocalizer $localizer ): array {
+		$moduleDef = static::loadJsonFile( $file );
+
+		// This does not guarantee the file is a valid flat route file, just that it appears
+		// to be of that format. Files containing only an empty array are assumed to be valid
+		// flat route files containing no routes rather than malformed module definition files.
+		// Some development flat route files in extensions, such as Wikibase's routes.dev.json,
+		// may exist as placeholders but intentionally contain no routes.
+		if ( array_is_list( $moduleDef ) ) {
+			throw new ModuleFormatException(
+				$file . ' appears to be a flat route file, not a module definition file.'
+			);
+		}
+
+		// The array_is_list() call above confuses phan. Force phan to consider $mwapi to be of
+		// the type we expect. Also check its type ourselves in code at runtime, just to be sure.
+		$mwapi = $moduleDef['mwapi'] ?? null;
+		'@phan-var ?string $mwapi';
+
+		if ( !is_string( $mwapi ) ) {
+			throw new ModuleConfigurationException(
+				'Missing or malformed mwapi version field in ' . $file
+			);
+		}
+
+		// Require a supported version of mwapi
+		if ( version_compare( $mwapi, '1.0.0', '<' ) ||
+			version_compare( $mwapi, '1.2.999', '>' )
+		) {
+			throw new ModuleConfigurationException(
+				"Unsupported mwapi version {$mwapi} in "
+				. $file
+			);
+		}
+
+		return $localizer->localizeJson( $moduleDef );
+	}
+
+	/**
+	 * Get last modification times of the module definition file.
+	 */
+	private function getRouteFileTimestamp(): int {
+		if ( $this->routeFileTimestamp === null ) {
+			$this->routeFileTimestamp = filemtime( $this->definitionFile );
+		}
+		return $this->routeFileTimestamp;
+	}
+
+	/**
+	 * @unstable for testing
+	 *
+	 * @return array[]
+	 */
+	public function getDefinedPaths(): array {
+		$paths = [];
+		$moduleDef = $this->getModuleDefinition();
+
+		foreach ( $moduleDef['paths'] as $path => $pSpec ) {
+			$paths[$path] = [];
+			foreach ( $pSpec as $method => $opSpec ) {
+				$paths[$path][] = strtoupper( $method );
+			}
+		}
+
+		return $paths;
+	}
+
+	protected function initRoutes(): void {
+		$moduleDef = $this->getModuleDefinition();
+
+		// The structure is similar to OpenAPI, see docs/rest/mwapi.1.0.json
+		foreach ( $moduleDef['paths'] as $path => $pathSpec ) {
+			foreach ( $pathSpec as $method => $opSpec ) {
+				$info = $this->makeRouteInfo( $path, $opSpec );
+				$this->addRoute( $method, $path, $info );
+			}
+		}
+	}
+
+	/**
+	 * Generate a route info array to be stored in the matcher tree,
+	 * in the form expected by MatcherBasedModule::addRoute()
+	 * and ultimately Module::getHandlerForPath().
+	 */
+	private function makeRouteInfo( string $path, array $opSpec ): array {
+		static $objectSpecKeys = [
+			'class',
+			'factory',
+			'services',
+			'optional_services',
+			'args',
+			'adapter', // for known adapter classes
+		];
+
+		static $oasKeys = [
+			'parameters',
+			'responses',
+			'summary',
+			'description',
+			'tags',
+			'externalDocs',
+			'deprecationSettings',
+			'operationId',
+		];
+
+		if ( isset( $opSpec['redirect'] ) ) {
+			// Redirect shorthand
+			$opSpec['handler'] = [
+				'class' => RedirectHandler::class,
+				'redirect' => $opSpec['redirect'],
+			];
+			unset( $opSpec['redirect'] );
+		}
+
+		$handlerSpec = $opSpec['handler'] ?? null;
+		if ( !$handlerSpec ) {
+			throw new RouteDefinitionException( 'Missing handler spec' );
+		}
+
+		$info = [
+			'spec' => array_intersect_key( $handlerSpec, array_flip( $objectSpecKeys ) ),
+			'config' => array_diff_key( $handlerSpec, array_flip( $objectSpecKeys ) ),
+			'openApiSpec' => array_intersect_key( $opSpec, array_flip( $oasKeys ) ),
+			'path' => $path,
+		];
+
+		return $info;
+	}
+
+	/** @inheritDoc */
+	public function getOpenApiInfo() {
+		$def = $this->getModuleDefinition();
+		return $def['info'] ?? [];
+	}
+
+	/** @inheritDoc */
+	public function getOpenApiExternalDocs(): array {
+		$def = $this->getModuleDefinition();
+		return $def['externalDocs'] ?? [];
+	}
+
+	/** @inheritDoc */
+	public function getOpenApiTags(): array {
+		$def = $this->getModuleDefinition();
+		return $def['tags'] ?? [];
+	}
+
+}

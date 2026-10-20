@@ -1,0 +1,1 @@
+Please see the "maintenance/README" file in the MediaWiki installation.

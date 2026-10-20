@@ -1,0 +1,163 @@
+<?php
+declare( strict_types = 1 );
+
+namespace MediaWiki\Tests\Parser\Parsoid;
+
+use MediaWiki\Language\LanguageFactory;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Parser\ParserOutputFlags;
+use MediaWiki\Parser\Parsoid\PageBundleParserOutputConverter;
+use MediaWiki\Revision\RevisionLookup;
+use MediaWiki\Title\TitleValue;
+use MediaWikiUnitTestCase;
+use Wikimedia\Bcp47Code\Bcp47CodeValue;
+use Wikimedia\Parsoid\Core\HtmlPageBundle;
+use Wikimedia\Parsoid\Mocks\MockSiteConfig;
+
+/**
+ * @covers \MediaWiki\Parser\Parsoid\PageBundleParserOutputConverter
+ */
+class PageBundleParserOutputConverterTest extends MediaWikiUnitTestCase {
+
+	private function newConverter(): PageBundleParserOutputConverter {
+		return new PageBundleParserOutputConverter(
+			new MockSiteConfig( [] ),
+			$this->createStub( RevisionLookup::class ),
+			$this->createStub( LanguageFactory::class ),
+		);
+	}
+
+	/** @dataProvider provideParserOutputFromPageBundle */
+	public function testParserOutputFromPageBundle( HtmlPageBundle $pageBundle ) {
+		$output = $this->newConverter()->parserOutputFromPageBundle( $pageBundle, isParsoidContent: true );
+		$this->assertSame( $pageBundle->html, $output->getContentHolderText() );
+
+		$outputPageBundle = $output->getContentHolder()->getBasePageBundle();
+		$this->assertEquals( $pageBundle->toBasePageBundle(), $outputPageBundle );
+	}
+
+	/** @dataProvider provideParserOutputFromPageBundle */
+	public function testParserOutputFromPageBundleShouldPreserveMetadata( HtmlPageBundle $pageBundle ) {
+		// Create a ParserOutput with some metadata properties already set.
+		$original = new ParserOutput();
+		$original->setExtensionData( 'test-key', 'test-data' );
+		$original->setOutputFlag( ParserOutputFlags::NO_GALLERY );
+		$original->setPageProperty( 'forcetoc', '' );
+		$original->recordOption( 'test1' );
+		$original->recordOption( 'test2' );
+		$original->setLanguage( new Bcp47CodeValue( 'fr' ) );
+		$original->setTitle( new TitleValue( NS_MAIN, 'Test_Page' ) );
+
+		// This should preserve the metadata.
+		$output = $this->newConverter()->parserOutputFromPageBundle(
+			$pageBundle,
+			isParsoidContent: true,
+			originalParserOutput: $original,
+		);
+		$this->assertSame( $pageBundle->html, $output->getContentHolderText() );
+
+		// Check the page bundle data
+		$outputPageBundle = $output->getContentHolder()->getBasePageBundle();
+		$this->assertEquals( $pageBundle->toBasePageBundle(), $outputPageBundle );
+
+		// Check our additional metadata properties
+		$this->assertSame( 'test-data', $output->getExtensionData( 'test-key' ) );
+		$this->assertSame( true, $output->getOutputFlag( ParserOutputFlags::NO_GALLERY ) );
+		$this->assertSame( '', $output->getPageProperty( 'forcetoc' ) );
+		$this->assertSame( [ 'test1', 'test2' ], $output->getUsedOptions() );
+		$this->assertSame( NS_MAIN, $output->getTitle()->getNamespace() );
+		$this->assertSame( 'Test_Page', $output->getTitle()->getDBkey() );
+
+		// Some meta-data can be overridden
+		if ( isset( $pageBundle->headers['content-language'] ) ) {
+			$this->assertSame(
+				$pageBundle->headers['content-language'],
+				(string)$output->getLanguage()
+			);
+		} else {
+			$this->assertSame( 'fr', (string)$output->getLanguage() );
+		}
+
+		// Check that $original and $output can be modified independently of each other
+		$original->setContentHolderText( 'new text version' );
+		$this->assertNotSame( 'new text version', $output->getContentHolderText() );
+	}
+
+	public static function provideParserOutputFromPageBundle() {
+		yield 'should convert HtmlPageBundle containing data-parsoid and data-mw' => [
+			new HtmlPageBundle(
+				html: 'html content',
+				parsoid: [ 'ids' => '1.33' ],
+				mw: [ 'ids' => '1.33' ], // looks bogus
+				contentVersion: '1.x',
+				headers: [ 'content-language' => 'abc' ],
+				contentmodel: 'testing'
+			)
+		];
+
+		yield 'should convert HtmlPageBundle that contains no data-parsoid or data-mw' => [
+			new HtmlPageBundle(
+				html: 'html content',
+				parsoid: [],
+				mw: [],
+				contentVersion: '1.x',
+				headers: [ 'content-language' => null ]
+			)
+		];
+	}
+
+	/** @dataProvider providePageBundleFromParserOutput */
+	public function testPageBundleFromParserOutput( HtmlPageBundle $pb ) {
+		$parserOutput = $this->getParserOutput( $pb );
+		$pageBundle = $this->newConverter()->htmlPageBundleFromParserOutput(
+			$parserOutput, bodyOnly: true,
+		);
+
+		$this->assertSame( $parserOutput->getContentHolderText(), $pageBundle->html );
+
+		$outputPageBundle = $parserOutput->getContentHolder()->getBasePageBundle();
+		$this->assertEquals( $pageBundle->toBasePageBundle(), $outputPageBundle );
+
+		if ( $parserOutput->getLanguage() ) {
+			$this->assertSame(
+				$parserOutput->getLanguage()->toBcp47Code(),
+				$pageBundle->headers['content-language']
+			);
+		}
+	}
+
+	public static function providePageBundleFromParserOutput() {
+		yield 'should convert ParsoidOutput containing data-parsoid and data-mw' => [
+			new HtmlPageBundle(
+				html: 'hello world',
+				parsoid: [ 'ids' => '1.22' ],
+				mw: [],
+				contentVersion: '2.x',
+				headers: [ 'content-language' => 'xyz' ]
+			)
+		];
+
+		yield 'should convert ParsoidOutput that does not contain data-parsoid or data-mw' => [
+			HtmlPageBundle::newEmpty( html: 'hello world' )
+		];
+	}
+
+	public function testTitleTransfer() {
+		$parserOutput = $this->getParserOutput(
+			HtmlPageBundle::newEmpty( 'abc' ),
+			new TitleValue( NS_MAIN, 'My_Title' )
+		);
+		$this->assertEquals( NS_MAIN, $parserOutput->getTitle()->getNamespace() );
+		$this->assertEquals( 'My_Title', $parserOutput->getTitle()->getDBkey() );
+	}
+
+	private function getParserOutput(
+		HtmlPageBundle $pb, $title = null
+	): ParserOutput {
+		return $this->newConverter()->parserOutputFromPageBundle(
+			$pb,
+			isParsoidContent: true,
+			title: $title,
+		);
+	}
+}

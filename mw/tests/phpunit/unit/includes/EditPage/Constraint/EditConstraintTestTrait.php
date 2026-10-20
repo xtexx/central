@@ -1,0 +1,38 @@
+<?php
+/**
+ * @license GPL-2.0-or-later
+ * @file
+ */
+
+namespace MediaWiki\Tests\Unit\EditPage\Constraint;
+
+use MediaWiki\EditPage\Constraint\EditConstraint;
+use MediaWiki\PageEdit\PageEditStatus;
+
+/**
+ * Helper for the various constraint test classes
+ *
+ * @author DannyS712
+ */
+trait EditConstraintTestTrait {
+
+	/**
+	 * Assert that the constraint passes and that the status is good
+	 */
+	public function assertConstraintPassed( EditConstraint $constraint ): PageEditStatus {
+		$status = $constraint->checkConstraint();
+		$this->assertStatusGood( $status );
+		return $status;
+	}
+
+	/**
+	 * Assert that the constraint fails with the specified status code
+	 */
+	public function assertConstraintFailed( EditConstraint $constraint, int $statusCode ): PageEditStatus {
+		$status = $constraint->checkConstraint();
+		$this->assertStatusNotOK( $status );
+		$this->assertStatusValue( $statusCode, $status );
+		return $status;
+	}
+
+}

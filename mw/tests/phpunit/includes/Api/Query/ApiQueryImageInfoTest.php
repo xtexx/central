@@ -1,0 +1,676 @@
+<?php
+
+namespace MediaWiki\Tests\Api\Query;
+
+use MediaWiki\Api\ApiQueryImageInfo;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\FileRepo\File\File;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Request\FauxRequest;
+use MediaWiki\Tests\Api\ApiTestCase;
+use MediaWiki\Tests\FileRepo\TestRepoTrait;
+use MediaWiki\Tests\Unit\Permissions\MockAuthorityTrait;
+use MediaWiki\Tests\User\TempUser\TempUserTestTrait;
+use MediaWiki\User\UserIdentity;
+use MediaWiki\User\UserIdentityValue;
+use MediaWiki\Utils\MWTimestamp;
+use Wikimedia\Timestamp\TimestampFormat as TS;
+
+/**
+ * @covers \MediaWiki\Api\ApiQueryImageInfo
+ * @group API
+ * @group medium
+ * @group Database
+ */
+class ApiQueryImageInfoTest extends ApiTestCase {
+	use MockAuthorityTrait;
+	use TempUserTestTrait;
+	use TestRepoTrait;
+
+	private const IMAGES_DIR = __DIR__ . '/../../../data/media';
+
+	private const IMAGE_NAME = 'Random-11m.png';
+
+	private const OLD_IMAGE_TIMESTAMP = '20201105235241';
+
+	private const NEW_IMAGE_TIMESTAMP = '20201105235242';
+
+	private const OLD_IMAGE_SIZE = 12345;
+
+	private const NEW_IMAGE_SIZE = 54321;
+
+	private const NO_COMMENT_TIMESTAMP = '20201105235239';
+
+	// T426802: A "lost" old file revision where the storage blob is missing
+	private const LOST_FILE_TIMESTAMP = '20201105235240';
+	private const LOST_FILE_SIZE = 99999;
+
+	private const IMAGE_2_NAME = 'Random-2.png';
+	private const IMAGE_2_TIMESTAMP = '20230101000000';
+	private const IMAGE_2_SIZE = 12345;
+
+	/** @var UserIdentity */
+	private $testUser = null;
+	/** @var User */
+	private $tempUser = null;
+
+	protected function setUp(): void {
+		ApiQueryImageInfo::resetTransformCountForUnitTest();
+		parent::setUp();
+	}
+
+	public function tearDown(): void {
+		self::destroyTestRepo();
+		parent::tearDown();
+	}
+
+	public function addDBData() {
+		parent::addDBData();
+
+		$this->initTestRepoGroup();
+
+		$this->testUser = new UserIdentityValue( 12364321, 'Dummy User' );
+
+		$actorId = $this->getServiceContainer()
+			->getActorStore()
+			->acquireActorId( $this->testUser, $this->getDb() );
+		$this->getDb()->newInsertQueryBuilder()
+			->insertInto( 'image' )
+			->row( [
+				'img_name' => 'Random-11m.png',
+				'img_size' => self::NEW_IMAGE_SIZE,
+				'img_width' => 1000,
+				'img_height' => 1800,
+				'img_metadata' => '',
+				'img_bits' => 16,
+				'img_media_type' => 'BITMAP',
+				'img_major_mime' => 'image',
+				'img_minor_mime' => 'png',
+				'img_description_id' => $this->getServiceContainer()
+					->getCommentStore()
+					->createComment( $this->getDb(), "'''comment'''" )->id,
+				'img_actor' => $actorId,
+				'img_timestamp' => $this->getDb()->timestamp( self::NEW_IMAGE_TIMESTAMP ),
+				'img_sha1' => 'sy02psim0bgdh0jt4vdltuzoh7j80ru',
+			] )
+			->caller( __METHOD__ )
+			->execute();
+		$this->getDb()->newInsertQueryBuilder()
+			->insertInto( 'oldimage' )
+			->row( [
+				'oi_name' => 'Random-11m.png',
+				'oi_archive_name' => self::OLD_IMAGE_TIMESTAMP . 'Random-11m.png',
+				'oi_size' => self::OLD_IMAGE_SIZE,
+				'oi_width' => 1000,
+				'oi_height' => 1800,
+				'oi_metadata' => '',
+				'oi_bits' => 16,
+				'oi_media_type' => 'BITMAP',
+				'oi_major_mime' => 'image',
+				'oi_minor_mime' => 'png',
+				'oi_description_id' => $this->getServiceContainer()
+					->getCommentStore()
+					->createComment( $this->getDb(), 'deleted comment' )->id,
+				'oi_actor' => $actorId,
+				'oi_timestamp' => $this->getDb()->timestamp( self::OLD_IMAGE_TIMESTAMP ),
+				'oi_sha1' => 'sy02psim0bgdh0jt4vdltuzoh7j80ru',
+				'oi_deleted' => File::DELETED_FILE | File::DELETED_COMMENT | File::DELETED_USER,
+			] )
+			->row( [
+				'oi_name' => 'Random-11m.png',
+				'oi_archive_name' => self::NO_COMMENT_TIMESTAMP . 'Random-11m.png',
+				'oi_size' => self::OLD_IMAGE_SIZE,
+				'oi_width' => 1000,
+				'oi_height' => 1800,
+				'oi_metadata' => '',
+				'oi_bits' => 16,
+				'oi_media_type' => 'BITMAP',
+				'oi_major_mime' => 'image',
+				'oi_minor_mime' => 'png',
+				'oi_description_id' => $this->getServiceContainer()
+					->getCommentStore()
+					->createComment( $this->getDb(), '' )->id,
+				'oi_actor' => $actorId,
+				'oi_timestamp' => $this->getDb()->timestamp( self::NO_COMMENT_TIMESTAMP ),
+				'oi_sha1' => 'sy02psim0bgdh0jt4vdltuzoh7j80ru',
+				'oi_deleted' => 0,
+			] )
+			->caller( __METHOD__ )
+			->execute();
+
+		// T426802: Insert a "lost" old file revision with empty archive name.
+		// This simulates a file where the storage blob is missing but the
+		// DB record still exists.
+		$this->getDb()->newInsertQueryBuilder()
+			->insertInto( 'oldimage' )
+			->row( [
+				'oi_name' => 'Random-11m.png',
+				'oi_archive_name' => '',
+				'oi_size' => self::LOST_FILE_SIZE,
+				'oi_width' => 800,
+				'oi_height' => 600,
+				'oi_metadata' => '',
+				'oi_bits' => 16,
+				'oi_media_type' => 'BITMAP',
+				'oi_major_mime' => 'image',
+				'oi_minor_mime' => 'png',
+				'oi_description_id' => $this->getServiceContainer()
+					->getCommentStore()
+					->createComment( $this->getDb(), 'lost file comment' )->id,
+				'oi_actor' => $actorId,
+				'oi_timestamp' => $this->getDb()->timestamp( self::LOST_FILE_TIMESTAMP ),
+				'oi_sha1' => 'sy02psim0bgdh0jt4vdltuzoh7j80ru',
+				'oi_deleted' => 0,
+			] )
+			->caller( __METHOD__ )
+			->execute();
+
+		// Set up temp user config
+		$this->enableAutoCreateTempUser();
+		$this->tempUser = $this->getServiceContainer()
+			->getTempUserCreator()
+			->create( null, new FauxRequest() )->getUser();
+		$tempActorId = $this->getServiceContainer()
+			->getActorStore()
+			->acquireActorId( $this->tempUser, $this->getDb() );
+		$this->getDb()->newInsertQueryBuilder()
+			->insertInto( 'image' )
+			->row( [
+				'img_name' => self::IMAGE_2_NAME,
+				'img_size' => self::IMAGE_2_SIZE,
+				'img_width' => 1000,
+				'img_height' => 1800,
+				'img_metadata' => '',
+				'img_bits' => 16,
+				'img_media_type' => 'BITMAP',
+				'img_major_mime' => 'image',
+				'img_minor_mime' => 'png',
+				'img_description_id' => $this->getServiceContainer()
+					->getCommentStore()
+					->createComment( $this->getDb(), "'''comment'''" )->id,
+				'img_actor' => $tempActorId,
+				'img_timestamp' => $this->getDb()->timestamp( self::IMAGE_2_TIMESTAMP ),
+				'img_sha1' => 'aaaaasim0bgdh0jt4vdltuzoh7',
+			] )
+			->caller( __METHOD__ )
+			->execute();
+	}
+
+	private function getImageInfoFromResult( array $result ) {
+		$this->assertArrayHasKey( 'query', $result );
+		$this->assertArrayHasKey( 'pages', $result['query'] );
+		$this->assertArrayHasKey( '-1', $result['query']['pages'] );
+		$info = $result['query']['pages']['-1'];
+		$this->assertSame( NS_FILE, $info['ns'] );
+		$this->assertSame( 'File:' . self::IMAGE_NAME, $info['title'] );
+		$this->assertTrue( $info['missing'] );
+		$this->assertTrue( $info['known'] );
+		$this->assertSame( 'test', $info['imagerepository'] );
+		$this->assertFalse( $info['badfile'] );
+		$this->assertIsArray( $info['imageinfo'] );
+		return $info['imageinfo'][0];
+	}
+
+	public function testGetImageInfoLatestImage() {
+		[ $result, ] = $this->doApiRequest( [
+			'action' => 'query',
+			'prop' => 'imageinfo',
+			'titles' => 'File:' . self::IMAGE_NAME,
+			'iiprop' => implode( '|', ApiQueryImageInfo::getPropertyNames() ),
+			'iistart' => self::NEW_IMAGE_TIMESTAMP,
+			'iiend' => self::NEW_IMAGE_TIMESTAMP,
+		] );
+		$image = $this->getImageInfoFromResult( $result );
+		$this->assertSame( MWTimestamp::convert( TS::ISO_8601, self::NEW_IMAGE_TIMESTAMP ), $image['timestamp'] );
+		$this->assertSame( "'''comment'''", $image['comment'] );
+		$this->assertSame( $this->testUser->getName(), $image['user'] );
+		$this->assertSame( $this->testUser->getId(), $image['userid'] );
+		$this->assertSame( self::NEW_IMAGE_SIZE, $image['size'] );
+	}
+
+	public static function provideGetImageInfoThumburls() {
+		yield 'default union landscape' => [
+			[
+				MainConfigNames::ThumbnailSteps => null,
+				MainConfigNames::ImageLimits => [
+					[ 32, 24 ],
+					[ 128, 96 ],
+					[ 256, 192 ],
+				],
+				MainConfigNames::ThumbLimits => [
+					30,
+					40,
+					110,
+				],
+				MainConfigNames::ResponsiveImages => true,
+			],
+			// 160x120 landscape (web-safe original)
+			self::IMAGES_DIR . '/landscape-plain.jpg',
+			'Landscape-plain.jpg',
+			[
+				// $wgThumbLimits, default + responsive
+				40 => [ 'width' => 40, 'height' => 30, 'src' => '/w/thumb.php?f=Landscape-plain.jpg&width=40', 'decoding' => 'async', 'loading' => 'lazy' ],
+				80 => [ 'width' => 80, 'height' => 60, 'src' => '/w/thumb.php?f=Landscape-plain.jpg&width=80', 'decoding' => 'async', 'loading' => 'lazy' ],
+				// $wgImageLimits
+				32 => [ 'width' => 32, 'height' => 24, 'src' => '/w/thumb.php?f=Landscape-plain.jpg&width=32', 'decoding' => 'async', 'loading' => 'lazy' ],
+				128 => [ 'width' => 128, 'height' => 96, 'src' => '/w/thumb.php?f=Landscape-plain.jpg&width=128', 'decoding' => 'async', 'loading' => 'lazy' ],
+				// $wgImageLimits 256x192 satisfied by web-safe original
+				160 => [ 'width' => 160, 'height' => 120, 'src' => '/w/images/b/b0/Landscape-plain.jpg', 'decoding' => 'async', 'loading' => 'lazy' ],
+			]
+		];
+		yield 'default union portrait' => [
+			[
+				MainConfigNames::ThumbnailSteps => null,
+				MainConfigNames::ImageLimits => [
+					[ 32, 24 ],
+					[ 128, 96 ],
+					[ 256, 192 ],
+				],
+				MainConfigNames::ThumbLimits => [
+					30,
+					40,
+					110,
+				],
+				MainConfigNames::ResponsiveImages => true,
+			],
+			// 120x160 portrait (requires rotation)
+			self::IMAGES_DIR . '/portrait-rotated.jpg',
+			'Portrait-rotated.jpg',
+			[
+				// $wgThumbLimits, default + responsive
+				40 => [ 'width' => 40, 'height' => 53, 'src' => '/w/thumb.php?f=Portrait-rotated.jpg&width=40', 'decoding' => 'async', 'loading' => 'lazy' ],
+				80 => [ 'width' => 80, 'height' => 107, 'src' => '/w/thumb.php?f=Portrait-rotated.jpg&width=80', 'decoding' => 'async', 'loading' => 'lazy' ],
+				// $wgImageLimits, fit portrait in 32x24, 128x96
+				18 => [ 'width' => 18, 'height' => 24, 'src' => '/w/thumb.php?f=Portrait-rotated.jpg&width=18', 'decoding' => 'async', 'loading' => 'lazy' ],
+				72 => [ 'width' => 72, 'height' => 96, 'src' => '/w/thumb.php?f=Portrait-rotated.jpg&width=72', 'decoding' => 'async', 'loading' => 'lazy' ],
+				// $wgImageLimits 256x192 (144x192) satisfied by transformed original (this JPEG requires rotation)
+				120 => [ 'width' => 120, 'height' => 160, 'src' => '/w/thumb.php?f=Portrait-rotated.jpg&width=144', 'decoding' => 'async', 'loading' => 'lazy' ],
+			]
+		];
+		yield 'default union svg' => [
+			[
+				MainConfigNames::ThumbnailSteps => null,
+				MainConfigNames::ImageLimits => [
+					[ 32, 24 ],
+					[ 128, 96 ],
+					[ 256, 192 ],
+				],
+				MainConfigNames::ThumbLimits => [
+					30,
+					40,
+					110,
+				],
+				MainConfigNames::ResponsiveImages => true,
+			],
+			self::IMAGES_DIR . '/QA_icon.svg',
+			'QA_icon.svg',
+			[
+				// $wgThumbLimits, default + responsive
+				40 => [ 'width' => 40, 'height' => 40, 'src' => '/w/thumb.php?f=QA_icon.svg&width=40', 'decoding' => 'async', 'loading' => 'lazy' ],
+				80 => [ 'width' => 80, 'height' => 80, 'src' => '/w/thumb.php?f=QA_icon.svg&width=80', 'decoding' => 'async', 'loading' => 'lazy' ],
+				// $wgImageLimits
+				24 => [ 'width' => 24, 'height' => 24, 'src' => '/w/thumb.php?f=QA_icon.svg&width=24', 'decoding' => 'async', 'loading' => 'lazy' ],
+				96 => [ 'width' => 96, 'height' => 96, 'src' => '/w/thumb.php?f=QA_icon.svg&width=96', 'decoding' => 'async', 'loading' => 'lazy' ],
+				192 => [ 'width' => 192, 'height' => 192, 'src' => '/w/thumb.php?f=QA_icon.svg&width=192', 'decoding' => 'async', 'loading' => 'lazy' ],
+			]
+		];
+		yield 'steps landscape' => [
+			[
+				MainConfigNames::ThumbnailSteps => [ 20, 40, 120, 250 ],
+			],
+			// 160x120 landscape (web-safe original)
+			self::IMAGES_DIR . '/landscape-plain.jpg',
+			'Landscape-plain.jpg',
+			[
+				20 => [ 'width' => 20, 'height' => 15, 'src' => '/w/thumb.php?f=Landscape-plain.jpg&width=20', 'decoding' => 'async', 'loading' => 'lazy' ],
+				40 => [ 'width' => 40, 'height' => 30, 'src' => '/w/thumb.php?f=Landscape-plain.jpg&width=40', 'decoding' => 'async', 'loading' => 'lazy' ],
+				120 => [ 'width' => 120, 'height' => 90, 'src' => '/w/thumb.php?f=Landscape-plain.jpg&width=120', 'decoding' => 'async', 'loading' => 'lazy' ],
+				// Step 250px satisified by web-safe original
+				160 => [ 'width' => 160, 'height' => 120, 'src' => '/w/images/b/b0/Landscape-plain.jpg', 'decoding' => 'async', 'loading' => 'lazy' ],
+			]
+		];
+		yield 'steps portrait' => [
+			[
+				MainConfigNames::ThumbnailSteps => [ 20, 40, 120, 250 ],
+			],
+			// 120x160 portrait (requires rotation)
+			self::IMAGES_DIR . '/portrait-rotated.jpg',
+			'Portrait-rotated.jpg',
+			[
+				20 => [ 'width' => 20, 'height' => 27, 'src' => '/w/thumb.php?f=Portrait-rotated.jpg&width=20', 'decoding' => 'async', 'loading' => 'lazy' ],
+				40 => [ 'width' => 40, 'height' => 53, 'src' => '/w/thumb.php?f=Portrait-rotated.jpg&width=40', 'decoding' => 'async', 'loading' => 'lazy' ],
+				// Step 120px satisfied by transformed original (this JPEG requires rotation)
+				120 => [ 'width' => 120, 'height' => 160, 'src' => '/w/thumb.php?f=Portrait-rotated.jpg&width=120', 'decoding' => 'async', 'loading' => 'lazy' ],
+			]
+		];
+		yield 'steps svg' => [
+			[
+				MainConfigNames::ThumbnailSteps => [ 20, 40, 120, 250 ],
+			],
+			self::IMAGES_DIR . '/QA_icon.svg',
+			'QA_icon.svg',
+			[
+				20 => [ 'width' => 20, 'height' => 20, 'src' => '/w/thumb.php?f=QA_icon.svg&width=20', 'decoding' => 'async', 'loading' => 'lazy' ],
+				40 => [ 'width' => 40, 'height' => 40, 'src' => '/w/thumb.php?f=QA_icon.svg&width=40', 'decoding' => 'async', 'loading' => 'lazy' ],
+				120 => [ 'width' => 120, 'height' => 120, 'src' => '/w/thumb.php?f=QA_icon.svg&width=120', 'decoding' => 'async', 'loading' => 'lazy' ],
+				250 => [ 'width' => 250, 'height' => 250, 'src' => '/w/thumb.php?f=QA_icon.svg&width=250', 'decoding' => 'async', 'loading' => 'lazy' ],
+			]
+		];
+	}
+
+	/**
+	 * @dataProvider provideGetImageInfoThumburls
+	 */
+	public function testGetImageInfoThumburls(
+		array $conf,
+		string $file,
+		string $name,
+		array $expected
+	) {
+		$this->overrideConfigValues( $conf + [
+			MainConfigNames::Server => 'http://example.com',
+			MainConfigNames::SVGNativeRendering => false,
+		] );
+		$this->mergeMwGlobalArrayValue( 'wgDefaultUserOptions', [ 'thumbsize' => 1 ] );
+		RequestContext::getMain()->setUser( $this->getTestUser()->getUser() );
+		$this->importFileToTestRepo( $file, $name );
+
+		[ $result, ] = $this->doApiRequest( [
+			'action' => 'query',
+			'prop' => 'imageinfo',
+			'titles' => "File:$name",
+			'iiprop' => 'thumburls',
+		] );
+
+		$info = $result['query']['pages']['1'];
+		$image = $info['imageinfo'][0];
+		// For backward compatibility, add 'url' to the list of thumbnail
+		// image attributes.
+		foreach ( $expected as $res => &$props ) {
+			$props['url'] = 'http://example.com' . $props['src'];
+		}
+		$this->assertEquals( $expected, $image['thumburls'] );
+	}
+
+	public function testGetImageInfoThumburlsWithUrlParam() {
+		$this->overrideConfigValues( [
+			MainConfigNames::ThumbnailSteps => [ 20, 40, 120 ],
+			MainConfigNames::Server => 'http://example.com',
+			MainConfigNames::SVGNativeRendering => false,
+		] );
+		$this->mergeMwGlobalArrayValue( 'wgDefaultUserOptions', [ 'thumbsize' => 1 ] );
+		RequestContext::getMain()->setUser( $this->getTestUser()->getUser() );
+		$this->importFileToTestRepo( self::IMAGES_DIR . '/QA_icon.svg', 'QA_icon.svg' );
+
+		[ $result, ] = $this->doApiRequest( [
+			'action' => 'query',
+			'prop' => 'imageinfo',
+			'titles' => 'File:QA_icon.svg',
+			'iiprop' => 'thumburls',
+			// SVG language must be carried into every suggested URL, not just the
+			// width-specific one.
+			'iiurlparam' => 'langde-40px',
+		] );
+
+		$thumburls = $result['query']['pages']['1']['imageinfo'][0]['thumburls'];
+		$this->assertEquals(
+			[
+				20 => [
+					'width' => 20,
+					'height' => 20,
+					'url' => 'http://example.com/w/thumb.php?f=QA_icon.svg&width=20&lang=de',
+					'src' => '/w/thumb.php?f=QA_icon.svg&width=20&lang=de',
+					'decoding' => 'async',
+					'loading' => 'lazy',
+				],
+				40 => [
+					'width' => 40,
+					'height' => 40,
+					'url' => 'http://example.com/w/thumb.php?f=QA_icon.svg&width=40&lang=de',
+					'src' => '/w/thumb.php?f=QA_icon.svg&width=40&lang=de',
+					'decoding' => 'async',
+					'loading' => 'lazy',
+				],
+				120 => [
+					'width' => 120,
+					'height' => 120,
+					'url' => 'http://example.com/w/thumb.php?f=QA_icon.svg&width=120&lang=de',
+					'src' => '/w/thumb.php?f=QA_icon.svg&width=120&lang=de',
+					'decoding' => 'async',
+					'loading' => 'lazy',
+				],
+			],
+			$thumburls,
+			'thumburl in the requested language'
+		);
+	}
+
+	public function testGetImageInfoThumburlsWithWidthlessUrlParam() {
+		$this->overrideConfigValues( [
+			MainConfigNames::ThumbnailSteps => [ 20, 40, 120 ],
+			MainConfigNames::Server => 'http://example.com',
+			MainConfigNames::SVGNativeRendering => false,
+		] );
+		$this->mergeMwGlobalArrayValue( 'wgDefaultUserOptions', [ 'thumbsize' => 1 ] );
+		RequestContext::getMain()->setUser( $this->getTestUser()->getUser() );
+		$this->importFileToTestRepo( self::IMAGES_DIR . '/QA_icon.svg', 'QA_icon.svg' );
+
+		[ $result, ] = $this->doApiRequest( [
+			'action' => 'query',
+			'prop' => 'imageinfo',
+			'titles' => 'File:QA_icon.svg',
+			'iiprop' => 'thumburls',
+			// SVG language without a trailing "-<n>px" width; the API synthesises
+			// one so the handler can parse it, then discards it per-size.
+			'iiurlparam' => 'langde',
+		] );
+
+		$thumburls = $result['query']['pages']['1']['imageinfo'][0]['thumburls'];
+		$this->assertEquals(
+			[
+				20 => [
+					'width' => 20,
+					'height' => 20,
+					'url' => 'http://example.com/w/thumb.php?f=QA_icon.svg&width=20&lang=de',
+					'src' => '/w/thumb.php?f=QA_icon.svg&width=20&lang=de',
+					'decoding' => 'async',
+					'loading' => 'lazy',
+				],
+				40 => [
+					'width' => 40,
+					'height' => 40,
+					'url' => 'http://example.com/w/thumb.php?f=QA_icon.svg&width=40&lang=de',
+					'src' => '/w/thumb.php?f=QA_icon.svg&width=40&lang=de',
+					'decoding' => 'async',
+					'loading' => 'lazy',
+				],
+				120 => [
+					'width' => 120,
+					'height' => 120,
+					'url' => 'http://example.com/w/thumb.php?f=QA_icon.svg&width=120&lang=de',
+					'src' => '/w/thumb.php?f=QA_icon.svg&width=120&lang=de',
+					'decoding' => 'async',
+					'loading' => 'lazy',
+				],
+			],
+			$thumburls,
+			'thumburl in the requested language despite the width-less urlparam'
+		);
+	}
+
+	/**
+	 * @dataProvider provideGetImageInfoThumburls
+	 */
+	public function testGetImageInfoThumbWidth(
+		array $conf,
+		string $file,
+		string $name,
+		array $expected
+	) {
+		$this->overrideConfigValues( $conf + [
+			MainConfigNames::Server => 'http://example.com',
+			MainConfigNames::SVGNativeRendering => false,
+		] );
+		$this->mergeMwGlobalArrayValue( 'wgDefaultUserOptions', [ 'thumbsize' => 1 ] );
+		RequestContext::getMain()->setUser( $this->getTestUser()->getUser() );
+		$this->importFileToTestRepo( $file, $name );
+
+		$width = min( array_keys( $expected ) );
+		[ $result, ] = $this->doApiRequest( [
+			'action' => 'query',
+			'prop' => 'imageinfo',
+			'titles' => "File:$name",
+			'iiprop' => 'url',
+			'iiurlwidth' => $width,
+		] );
+
+		$info = $result['query']['pages']['1'];
+		$image = $info['imageinfo'][0];
+		$this->assertEquals( 'http://example.com' . $expected[$width]['src'], $image['thumburl'] );
+		$this->assertEquals( $width, $image['thumbwidth'] );
+		// We don't have $expected data for the srcset returned in the
+		// thumbattribs, so exclude it from the comparison.
+		unset( $image['thumbattribs']['srcset'] );
+		$this->assertEquals( $expected[$width], $image['thumbattribs'] );
+	}
+
+	public function testGetImageCreatedByTempUser() {
+		[ $result, ] = $this->doApiRequest( [
+			'action' => 'query',
+			'prop' => 'imageinfo',
+			'titles' => 'File:' . self::IMAGE_2_NAME
+		] );
+		$image = $result['query']['pages']['-1']['imageinfo'][0];
+		$this->assertArrayHasKey( 'temp', $image );
+		$this->assertTrue( $image['temp'] );
+	}
+
+	public function testGetImageEmptyComment() {
+		[ $result, ] = $this->doApiRequest( [
+			'action' => 'query',
+			'prop' => 'imageinfo',
+			'titles' => 'File:' . self::IMAGE_NAME,
+			'iiprop' => implode( '|', ApiQueryImageInfo::getPropertyNames() ),
+			'iistart' => self::NO_COMMENT_TIMESTAMP,
+			'iiend' => self::NO_COMMENT_TIMESTAMP,
+		] );
+		$image = $this->getImageInfoFromResult( $result );
+		$this->assertSame( MWTimestamp::convert( TS::ISO_8601, self::NO_COMMENT_TIMESTAMP ), $image['timestamp'] );
+		$this->assertSame( '', $image['comment'] );
+		$this->assertArrayNotHasKey( 'commenthidden', $image );
+	}
+
+	public function testGetImageInfoOldRestrictedImage() {
+		[ $result, ] = $this->doApiRequest( [
+				'action' => 'query',
+				'prop' => 'imageinfo',
+				'titles' => 'File:' . self::IMAGE_NAME,
+				'iiprop' => implode( '|', ApiQueryImageInfo::getPropertyNames() ),
+				'iistart' => self::OLD_IMAGE_TIMESTAMP,
+				'iiend' => self::OLD_IMAGE_TIMESTAMP,
+			],
+			null,
+			false,
+			$this->getTestUser()->getAuthority()
+		);
+		$image = $this->getImageInfoFromResult( $result );
+		$this->assertSame( MWTimestamp::convert( TS::ISO_8601, self::OLD_IMAGE_TIMESTAMP ), $image['timestamp'] );
+		$this->assertTrue( $image['commenthidden'] );
+		$this->assertArrayNotHasKey( "comment", $image );
+		$this->assertTrue( $image['userhidden'] );
+		$this->assertArrayNotHasKey( 'user', $image );
+		$this->assertArrayNotHasKey( 'userid', $image );
+		$this->assertTrue( $image['filehidden'] );
+		$this->assertSame( self::OLD_IMAGE_SIZE, $image['size'] );
+	}
+
+	public function testGetImageInfoOldRestrictedImage_sysop() {
+		[ $result, ] = $this->doApiRequest( [
+			'action' => 'query',
+			'prop' => 'imageinfo',
+			'titles' => 'File:' . self::IMAGE_NAME,
+			'iiprop' => implode( '|', ApiQueryImageInfo::getPropertyNames() ),
+			'iistart' => self::OLD_IMAGE_TIMESTAMP,
+			'iiend' => self::OLD_IMAGE_TIMESTAMP,
+		],
+			null,
+			false,
+			$this->mockRegisteredUltimateAuthority()
+		);
+		$image = $this->getImageInfoFromResult( $result );
+		$this->assertSame( MWTimestamp::convert( TS::ISO_8601, self::OLD_IMAGE_TIMESTAMP ), $image['timestamp'] );
+		$this->assertTrue( $image['commenthidden'] );
+		$this->assertSame( 'deleted comment', $image['comment'] );
+		$this->assertTrue( $image['userhidden'] );
+		$this->assertSame( $this->testUser->getName(), $image['user'] );
+		$this->assertSame( $this->testUser->getId(), $image['userid'] );
+		$this->assertTrue( $image['filehidden'] );
+		$this->assertSame( self::OLD_IMAGE_SIZE, $image['size'] );
+	}
+
+	/**
+	 * T426802: When an old file revision has a DB record but the storage
+	 * blob is missing (empty archive name), timestamp and user should
+	 * still be included in the API response alongside filemissing=true.
+	 */
+	public function testGetImageInfoLostFile() {
+		[ $result, ] = $this->doApiRequest( [
+			'action' => 'query',
+			'prop' => 'imageinfo',
+			'titles' => 'File:' . self::IMAGE_NAME,
+			'iiprop' => 'timestamp|user|userid|size|comment',
+			'iilimit' => 'max',
+		] );
+		$this->assertArrayHasKey( 'query', $result );
+		$this->assertArrayHasKey( 'pages', $result['query'] );
+		$info = $result['query']['pages']['-1'];
+		$this->assertIsArray( $info['imageinfo'] );
+
+		// Find the entry for the lost file revision by looking for filemissing
+		$lostEntry = null;
+		foreach ( $info['imageinfo'] as $entry ) {
+			if ( isset( $entry['filemissing'] ) ) {
+				$lostEntry = $entry;
+				break;
+			}
+		}
+
+		$this->assertNotNull( $lostEntry, 'Should have an entry with filemissing' );
+		$this->assertTrue( $lostEntry['filemissing'] );
+
+		// These fields should now be present even though the file blob is missing
+		$this->assertArrayHasKey( 'timestamp', $lostEntry,
+			'Timestamp should be present for lost files (T426802)' );
+		$this->assertSame(
+			MWTimestamp::convert( TS::ISO_8601, self::LOST_FILE_TIMESTAMP ),
+			$lostEntry['timestamp']
+		);
+		$this->assertArrayHasKey( 'user', $lostEntry,
+			'User should be present for lost files (T426802)' );
+		$this->assertSame( $this->testUser->getName(), $lostEntry['user'] );
+		$this->assertSame( $this->testUser->getId(), $lostEntry['userid'] );
+		$this->assertSame( self::LOST_FILE_SIZE, $lostEntry['size'] );
+		$this->assertSame( 'lost file comment', $lostEntry['comment'] );
+	}
+
+	/**
+	 * T221812: Querying imageinfo for a completely non-existent file
+	 * (no DB record, no storage blob) should not crash and should not
+	 * return any imageinfo data. Note: this exercises the execute()
+	 * early-return path, not getInfo().
+	 */
+	public function testGetImageInfoNonExistentFile() {
+		[ $result, ] = $this->doApiRequest( [
+			'action' => 'query',
+			'prop' => 'imageinfo',
+			'titles' => 'File:This_file_does_not_exist_at_all.png',
+			'iiprop' => 'timestamp|user|size|comment',
+		] );
+		$this->assertArrayHasKey( 'query', $result );
+		$this->assertArrayHasKey( 'pages', $result['query'] );
+		$page = reset( $result['query']['pages'] );
+		// Non-existent file should not have imageinfo at all
+		$this->assertArrayNotHasKey( 'imageinfo', $page );
+		$this->assertSame( '', $page['imagerepository'] );
+	}
+}

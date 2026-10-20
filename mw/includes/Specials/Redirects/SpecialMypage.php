@@ -1,0 +1,80 @@
+<?php
+/**
+ * @license GPL-2.0-or-later
+ * @file
+ * @ingroup SpecialPage
+ */
+
+namespace MediaWiki\Specials\Redirects;
+
+use MediaWiki\SpecialPage\RedirectSpecialArticle;
+use MediaWiki\Title\Title;
+use MediaWiki\User\TempUser\TempUserConfig;
+
+/**
+ * Redirect to the current user's user page.
+ *
+ * @ingroup SpecialPage
+ */
+class SpecialMypage extends RedirectSpecialArticle {
+
+	public function __construct( private readonly TempUserConfig $tempUserConfig ) {
+		parent::__construct( 'Mypage' );
+	}
+
+	/** @inheritDoc */
+	public function execute( $subpage ) {
+		// Redirect to login for anon users when temp accounts are enabled.
+		if ( $this->tempUserConfig->isEnabled() && $this->getUser()->isAnon() ) {
+			$this->requireLogin();
+		}
+		parent::execute( $subpage );
+	}
+
+	/** @inheritDoc */
+	public function getRedirect( $subpage ) {
+		// T120386 - disallow raw action
+		if ( $this->getRequest()->getRawVal( 'action' ) === 'raw' ) {
+			return false;
+		}
+
+		// This should be unreachable as the same is already done in execute() above.
+		// Repeated just to be sure.
+		if ( $this->tempUserConfig->isEnabled() && $this->getUser()->isAnon() ) {
+			return false;
+		}
+
+		if ( $subpage === null || $subpage === '' ) {
+			return Title::makeTitle( NS_USER, $this->getUser()->getName() );
+		}
+
+		return Title::makeTitle( NS_USER, $this->getUser()->getName() . '/' . $subpage );
+	}
+
+	/**
+	 * Target identifies a specific User. See T109724.
+	 *
+	 * @codeCoverageIgnore Merely declarative
+	 * @since 1.27
+	 * @return bool
+	 */
+	public function personallyIdentifiableTarget() {
+		return true;
+	}
+
+	protected function showNoRedirectPage() {
+		$action = $this->getRequest()->getRawVal( 'action' ) ?? 'view';
+		$this->getOutput()->addHTML(
+			$this->msg( 'mypage-disallowed-action' )->params( $action )->escaped()
+		);
+	}
+
+}
+
+// @codeCoverageIgnoreStart
+/**
+ * Retain the old class name for backwards compatibility.
+ * @deprecated since 1.41
+ */
+class_alias( SpecialMypage::class, 'SpecialMypage' );
+// @codeCoverageIgnoreEnd

@@ -1,0 +1,1325 @@
+<?php
+/**
+ * @license GPL-2.0-or-later
+ * @file
+ */
+
+namespace MediaWiki\ChangeTags;
+
+use InvalidArgumentException;
+use LogicException;
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\HookContainer\HookContainer;
+use MediaWiki\HookContainer\HookRunner;
+use MediaWiki\Logging\ManualLogEntry;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Permissions\Authority;
+use MediaWiki\Permissions\SimpleAuthority;
+use MediaWiki\RecentChanges\RecentChange;
+use MediaWiki\Status\Status;
+use MediaWiki\Storage\NameTableAccessException;
+use MediaWiki\Storage\NameTableStore;
+use MediaWiki\Title\Title;
+use MediaWiki\User\UserFactory;
+use MediaWiki\User\UserIdentity;
+use MediaWiki\User\UserIdentityValue;
+use Psr\Log\LoggerInterface;
+use Wikimedia\ObjectCache\WANObjectCache;
+use Wikimedia\Rdbms\IConnectionProvider;
+use Wikimedia\Rdbms\IExpression;
+use Wikimedia\Rdbms\IReadableDatabase;
+use Wikimedia\Rdbms\LikeValue;
+use Wikimedia\Rdbms\RawSQLValue;
+use Wikimedia\Rdbms\SelectQueryBuilder;
+
+/**
+ * Read-write access to the change_tags table.
+ *
+ * This class also provides a limited functionality for querying tags on remote wikis.
+ *
+ * @since 1.41
+ * @ingroup ChangeTags
+ */
+class ChangeTagsStore {
+
+	/**
+	 * Name of change_tag table
+	 */
+	private const CHANGE_TAG = 'change_tag';
+
+	/**
+	 * Name of change_tag_def table
+	 */
+	private const CHANGE_TAG_DEF = 'change_tag_def';
+
+	public const DISPLAY_TABLE_ALIAS = 'changetagdisplay';
+
+	/**
+	 * @internal For use by ServiceWiring
+	 */
+	public const CONSTRUCTOR_OPTIONS = [
+		MainConfigNames::SoftwareTags,
+		MainConfigNames::UseTagFilter,
+		MainConfigNames::RestrictedTagViewRights,
+	];
+
+	/**
+	 * A list of tags defined and used by MediaWiki itself.
+	 */
+	private const DEFINED_SOFTWARE_TAGS = [
+		'mw-contentmodelchange',
+		'mw-new-redirect',
+		'mw-removed-redirect',
+		'mw-changed-redirect-target',
+		'mw-blank',
+		'mw-replace',
+		'mw-recreated',
+		'mw-rollback',
+		'mw-undo',
+		'mw-manual-revert',
+		'mw-reverted',
+		'mw-server-side-upload',
+		'mw-ipblock-appeal',
+		'mw-edited-other-users-js',
+		'mw-edited-other-users-css',
+	];
+
+	/**
+	 * Reserved name prefix for rights-restricted change tags. A tag whose name
+	 * starts with this prefix cannot be defined by users and are only visible
+	 * to users with the required right.
+	 *
+	 * @internal Use {@link ChangeTagsStore::isRestrictedTag()} to check if a tag is restricted.
+	 *   Only public for use by {@link ChangeTags}.
+	 */
+	public const string PRIVATE_TAG_PREFIX = 'mw-private-';
+
+	private IConnectionProvider $dbProvider;
+	private LoggerInterface $logger;
+	private ServiceOptions $options;
+	private NameTableStore $changeTagDefStore;
+	private WANObjectCache $wanCache;
+	private HookRunner $hookRunner;
+	private UserFactory $userFactory;
+	private HookContainer $hookContainer;
+	private string|false $wiki;
+
+	/** @var array<string,string[]>|null Instance cache of the map of restricted tags to the rights */
+	private ?array $restrictedTagRights = null;
+
+	public function __construct(
+		IConnectionProvider $dbProvider,
+		NameTableStore $changeTagDefStore,
+		WANObjectCache $wanCache,
+		HookContainer $hookContainer,
+		LoggerInterface $logger,
+		UserFactory $userFactory,
+		ServiceOptions $options,
+		string|false $wiki = false
+	) {
+		$options->assertRequiredOptions( self::CONSTRUCTOR_OPTIONS );
+		$this->dbProvider = $dbProvider;
+		$this->logger = $logger;
+		$this->options = $options;
+		$this->changeTagDefStore = $changeTagDefStore;
+		$this->wanCache = $wanCache;
+		$this->hookContainer = $hookContainer;
+		$this->userFactory = $userFactory;
+		$this->hookRunner = new HookRunner( $hookContainer );
+		$this->wiki = $wiki;
+	}
+
+	/**
+	 * Loads defined core tags, checks for invalid types (if not array),
+	 * and filters for supported and enabled (if $all is false) tags only.
+	 *
+	 * This operation is supported only for the local wiki.
+	 *
+	 * @param bool $all If true, return all valid defined tags. Otherwise, return only enabled ones.
+	 * @return array Array of all defined/enabled tags.
+	 */
+	public function getSoftwareTags( $all = false ): array {
+		if ( $this->wiki !== false ) {
+			throw new LogicException( 'ChangeTagsStore does not support listing software tags on remote wikis' );
+		}
+
+		$coreTags = $this->options->get( MainConfigNames::SoftwareTags );
+		if ( !is_array( $coreTags ) ) {
+			$this->logger->warning( 'wgSoftwareTags should be associative array of enabled tags.
+			Please refer to documentation for the list of tags you can enable' );
+			return [];
+		}
+
+		$availableSoftwareTags = !$all ?
+			array_keys( array_filter( $coreTags ) ) :
+			array_keys( $coreTags );
+
+		return array_intersect(
+			$availableSoftwareTags,
+			self::DEFINED_SOFTWARE_TAGS
+		);
+	}
+
+	/**
+	 * Expose the codebase-level defined software tags.
+	 * No filtering is available for this function.
+	 *
+	 * @return array Array of all core-defined tags
+	 */
+	public function getCoreDefinedTags(): array {
+		return self::DEFINED_SOFTWARE_TAGS;
+	}
+
+	/**
+	 * Return all the tags associated with the given recent change ID,
+	 * revision ID, and/or log entry ID, along with any data stored with the tag.
+	 *
+	 * Does not remove tags that the viewing user cannot see, use {@link self::filterViewableTags} on the array
+	 * keys to filter for tags that the user can see.
+	 *
+	 * @param IReadableDatabase $db the database to query
+	 * @param int|null $rc_id
+	 * @param int|null $rev_id
+	 * @param int|null $log_id
+	 * @return string[] Tag name => data. Data format is tag-specific.
+	 * @since 1.41
+	 */
+	public function getTagsWithData(
+		IReadableDatabase $db, $rc_id = null, $rev_id = null, $log_id = null
+	): array {
+		if ( !$rc_id && !$rev_id && !$log_id ) {
+			throw new InvalidArgumentException(
+				'At least one of: RCID, revision ID, and log ID MUST be ' .
+				'specified when loading tags from a change!' );
+		}
+
+		$conds = array_filter(
+			[
+				'ct_rc_id' => $rc_id,
+				'ct_rev_id' => $rev_id,
+				'ct_log_id' => $log_id,
+			]
+		);
+		$result = $db->newSelectQueryBuilder()
+			->select( [ 'ct_tag_id', 'ct_params' ] )
+			->from( self::CHANGE_TAG )
+			->where( $conds )
+			->caller( __METHOD__ )
+			->fetchResultSet();
+
+		$tags = [];
+		foreach ( $result as $row ) {
+			$tagName = $this->changeTagDefStore->getName( (int)$row->ct_tag_id );
+			$tags[$tagName] = $row->ct_params;
+		}
+
+		return $tags;
+	}
+
+	/**
+	 * Make the tag summary subquery based on the given tables and return it.
+	 *
+	 * Restricted tags (the mw-private- prefix) that the given performer may not view are excluded;
+	 * a null performer excludes all of them.
+	 *
+	 * @param string|array $tables Table names, see Database::select
+	 * @param Authority|null $performer Viewer, for restricted-tag access checks. Null hides all
+	 *   restricted tags. (since 1.47); passing null is deprecated since 1.47
+	 *
+	 * @return string tag summary subquery
+	 */
+	public function makeTagSummarySubquery( $tables, ?Authority $performer = null ): string {
+		if ( $performer === null ) {
+			wfDeprecatedMsg( __METHOD__ . ' without an Authority $performer is deprecated', '1.47' );
+		}
+
+		return $this->buildTagSummarySubquery( $tables, $performer ?? self::getAuthorityForPublicTags() );
+	}
+
+	/**
+	 * makeTagSummarySubquery() without the null-performer deprecation, for internal callers.
+	 *
+	 * @param string|array $tables Table names, see Database::select
+	 * @param Authority $performer Viewer, for restricted-tag access checks
+	 * @return string
+	 */
+	private function buildTagSummarySubquery( $tables, Authority $performer ): string {
+		// Normalize to arrays
+		$tables = (array)$tables;
+
+		// Figure out which ID field to use
+		if ( in_array( 'recentchanges', $tables ) ) {
+			$join_cond = 'ct_rc_id=rc_id';
+		} elseif ( in_array( 'logging', $tables ) ) {
+			$join_cond = 'ct_log_id=log_id';
+		} elseif ( in_array( 'revision', $tables ) ) {
+			$join_cond = 'ct_rev_id=rev_id';
+		} elseif ( in_array( 'archive', $tables ) ) {
+			$join_cond = 'ct_rev_id=ar_rev_id';
+		} else {
+			throw new InvalidArgumentException( 'Unable to determine appropriate JOIN condition for tagging.' );
+		}
+
+		$dbr = $this->dbProvider->getReplicaDatabase( $this->wiki );
+		$queryBuilder = $dbr->newSelectQueryBuilder()
+			->table( self::CHANGE_TAG )
+			->join( self::CHANGE_TAG_DEF, null, 'ct_tag_id=ctd_id' )
+			->field( 'ctd_name' )
+			->where( $join_cond );
+
+		// Exclude restricted tags by prefix; re-include the ones the performer may view.
+		$restrictedCond = $dbr->expr(
+			'ctd_name', IExpression::NOT_LIKE, new LikeValue( self::PRIVATE_TAG_PREFIX, $dbr->anyString() )
+		);
+		$viewable = $this->filterViewableTags( array_keys( $this->getRestrictedTagRights() ), $performer );
+		if ( $viewable ) {
+			$restrictedCond = $dbr->orExpr( [ $restrictedCond, $dbr->expr( 'ctd_name', '=', $viewable ) ] );
+		}
+		$queryBuilder->andWhere( $restrictedCond );
+
+		return $queryBuilder->buildGroupConcatField( ',' );
+	}
+
+	/**
+	 * Set ctd_user_defined = 1 in change_tag_def without checking that the tag name is valid.
+	 * Extensions should NOT use this function; they can use the ListDefinedTags
+	 * hook instead.
+	 *
+	 * This operation is supported only for the local wiki.
+	 *
+	 * @param string $tag Tag to create
+	 * @since 1.41
+	 */
+	public function defineTag( $tag ) {
+		if ( $this->wiki !== false ) {
+			throw new LogicException( 'ChangeTagsStore does not support defining tags on remote wikis' );
+		}
+
+		$dbw = $this->dbProvider->getPrimaryDatabase();
+		$dbw->newInsertQueryBuilder()
+			->insertInto( self::CHANGE_TAG_DEF )
+			->row( [
+				'ctd_name' => $tag,
+				'ctd_user_defined' => 1,
+				'ctd_count' => 0
+			] )
+			->onDuplicateKeyUpdate()
+			->uniqueIndexFields( [ 'ctd_name' ] )
+			->set( [ 'ctd_user_defined' => 1 ] )
+			->caller( __METHOD__ )->execute();
+
+		// clear the memcache of defined tags
+		$this->purgeTagCacheAll();
+	}
+
+	/**
+	 * Update ctd_user_defined = 0 field in change_tag_def.
+	 * The tag may remain in use by extensions, and may still show up as 'defined'
+	 * if an extension is setting it from the ListDefinedTags hook.
+	 *
+	 * This operation is supported only for the local wiki.
+	 *
+	 * @param string $tag Tag to remove
+	 * @since 1.41
+	 */
+	public function undefineTag( $tag ) {
+		if ( $this->wiki !== false ) {
+			throw new LogicException( 'ChangeTagsStore does not support undefining tags on remote wikis' );
+		}
+
+		$dbw = $this->dbProvider->getPrimaryDatabase();
+
+		$dbw->newUpdateQueryBuilder()
+			->update( self::CHANGE_TAG_DEF )
+			->set( [ 'ctd_user_defined' => 0 ] )
+			->where( [ 'ctd_name' => $tag ] )
+			->caller( __METHOD__ )->execute();
+
+		$dbw->newDeleteQueryBuilder()
+			->deleteFrom( self::CHANGE_TAG_DEF )
+			->where( [ 'ctd_name' => $tag, 'ctd_count' => 0 ] )
+			->caller( __METHOD__ )->execute();
+
+		// clear the memcache of defined tags
+		$this->purgeTagCacheAll();
+	}
+
+	/**
+	 * Writes a tag action into the tag management log.
+	 *
+	 * This operation is supported only for the local wiki.
+	 *
+	 * @param string $action
+	 * @param string $tag
+	 * @param string $reason
+	 * @param UserIdentity $user Who to attribute the action to
+	 * @param int|null $tagCount For deletion only, how many usages the tag had before
+	 * it was deleted.
+	 * @param array $logEntryTags Change tags to apply to the entry
+	 * that will be created in the tag management log
+	 * @return int ID of the inserted log entry
+	 * @since 1.41
+	 */
+	public function logTagManagementAction( string $action, string $tag, string $reason,
+		UserIdentity $user, $tagCount = null, array $logEntryTags = []
+	) {
+		if ( $this->wiki !== false ) {
+			throw new LogicException( 'ChangeTagsStore does not support logging actions on remote wikis' );
+		}
+		$dbw = $this->dbProvider->getPrimaryDatabase();
+
+		$logEntry = new ManualLogEntry( 'managetags', $action );
+		$logEntry->setPerformer( $user );
+		// target page is not relevant, but it has to be set, so we just put in
+		// the title of Special:Tags
+		$logEntry->setTarget( Title::newFromText( 'Special:Tags' ) );
+		$logEntry->setComment( $reason );
+
+		$params = [ '4::tag' => $tag ];
+		if ( $tagCount !== null ) {
+			$params['5:number:count'] = $tagCount;
+		}
+		$logEntry->setParameters( $params );
+		$logEntry->setRelations( [ 'Tag' => $tag ] );
+		$logEntry->addTags( $logEntryTags );
+
+		$logId = $logEntry->insert( $dbw );
+		$logEntry->publish( $logId );
+		return $logId;
+	}
+
+	/**
+	 * Permanently removes all traces of a tag from the DB. Good for removing
+	 * misspelt or temporary tags.
+	 *
+	 * This function should be directly called by maintenance scripts only, never
+	 * by user-facing code. See deleteTagWithChecks() for functionality that can
+	 * safely be exposed to users.
+	 *
+	 * This operation is supported only for the local wiki.
+	 *
+	 * @param string $tag Tag to remove
+	 * @return Status The returned status will be good unless a hook changed it
+	 * @since 1.41
+	 */
+	public function deleteTagEverywhere( $tag ) {
+		if ( $this->wiki !== false ) {
+			throw new LogicException( 'ChangeTagsStore does not support deleting tags on remote wikis' );
+		}
+
+		$dbw = $this->dbProvider->getPrimaryDatabase();
+		$dbw->startAtomic( __METHOD__ );
+
+		// fetch tag id, this must be done before calling undefineTag(), see T225564
+		$tagId = $this->changeTagDefStore->getId( $tag );
+
+		// set ctd_user_defined = 0
+		$this->undefineTag( $tag );
+
+		// delete from change_tag
+		$dbw->newDeleteQueryBuilder()
+			->deleteFrom( self::CHANGE_TAG )
+			->where( [ 'ct_tag_id' => $tagId ] )
+			->caller( __METHOD__ )->execute();
+		$dbw->newDeleteQueryBuilder()
+			->deleteFrom( self::CHANGE_TAG_DEF )
+			->where( [ 'ctd_name' => $tag ] )
+			->caller( __METHOD__ )->execute();
+		$dbw->endAtomic( __METHOD__ );
+
+		// give extensions a chance
+		$status = Status::newGood();
+		$this->hookRunner->onChangeTagAfterDelete( $tag, $status );
+		// let's not allow error results, as the actual tag deletion succeeded
+		if ( !$status->isOK() ) {
+			$this->logger->debug( 'ChangeTagAfterDelete error condition downgraded to warning' );
+			$status->setOK( true );
+		}
+
+		// clear the memcache of defined tags
+		$this->purgeTagCacheAll();
+
+		return $status;
+	}
+
+	/**
+	 * Invalidates the short-term cache of defined tags used by the
+	 * list*DefinedTags functions, as well as the tag statistics cache.
+	 * @since 1.41
+	 */
+	public function purgeTagCacheAll() {
+		$this->wanCache->touchCheckKey( $this->wanCache->makeKey( 'active-tags', $this->wiki ) );
+		$this->wanCache->touchCheckKey( $this->wanCache->makeKey( 'valid-tags-db', $this->wiki ) );
+		$this->wanCache->touchCheckKey( $this->wanCache->makeKey( 'valid-tags-hook', $this->wiki ) );
+		$this->wanCache->touchCheckKey( $this->wanCache->makeKey( 'tags-usage-statistics', $this->wiki ) );
+
+		$this->changeTagDefStore->reloadMap();
+	}
+
+	/**
+	 * Returns a map of any tags used on the wiki to number of edits
+	 * tagged with them, ordered descending by the hitcount.
+	 * This does not include tags defined somewhere that have never been applied.
+	 * @return array Array of string => int
+	 */
+	public function tagUsageStatistics(): array {
+		$fname = __METHOD__;
+		$dbProvider = $this->dbProvider;
+		$wiki = $this->wiki;
+
+		$callback = static function () use ( $fname, $dbProvider, $wiki ) {
+			$dbr = $dbProvider->getReplicaDatabase( $wiki );
+			$res = $dbr->newSelectQueryBuilder()
+				->select( [ 'ctd_name', 'ctd_count' ] )
+				->from( self::CHANGE_TAG_DEF )
+				->orderBy( 'ctd_count', SelectQueryBuilder::SORT_DESC )
+				->caller( $fname )
+				->fetchResultSet();
+
+			$out = [];
+			foreach ( $res as $row ) {
+				$out[$row->ctd_name] = $row->ctd_count;
+			}
+
+			return $out;
+		};
+		return $this->wanCache->buildGetWithSetCallback()
+			->key( 'tags-usage-statistics', $wiki )
+			->keepForAnHour()
+			->invalidatedByKey( 'tags-usage-statistics', $this->wiki )
+			->allowStale( WANObjectCache::TTL_HOUR )
+			->longProcessCache()
+			->callback( $callback )
+			->fetch();
+	}
+
+	/**
+	 * Lists tags explicitly defined in the `change_tag_def` table of the database.
+	 *
+	 * Tries memcached first.
+	 *
+	 * @return string[] Array of strings: tags
+	 * @since 1.25
+	 */
+	public function listExplicitlyDefinedTags() {
+		$fname = __METHOD__;
+		$dbProvider = $this->dbProvider;
+		$wiki = $this->wiki;
+
+		$callback = static function () use ( $fname, $dbProvider, $wiki ) {
+			$dbr = $dbProvider->getReplicaDatabase( $wiki );
+			$tags = $dbr->newSelectQueryBuilder()
+				->select( 'ctd_name' )
+				->from( self::CHANGE_TAG_DEF )
+				->where( [ 'ctd_user_defined' => 1 ] )
+				->caller( $fname )
+				->fetchFieldValues();
+
+			return array_unique( $tags );
+		};
+
+		return $this->wanCache->buildGetWithSetCallback()
+			->key( 'valid-tags-db', $wiki )
+			->keepForAnHour()
+			->invalidatedByKey( 'valid-tags-db', $this->wiki )
+			->allowStale( WANObjectCache::TTL_HOUR )
+			->longProcessCache()
+			->callback( $callback )
+			->fetch();
+	}
+
+	/**
+	 * Lists tags defined by core or extensions using the ListDefinedTags hook.
+	 * Extensions need only define those tags they deem to be in active use.
+	 *
+	 * Tries memcached first.
+	 *
+	 * @return string[] Array of strings: tags
+	 * @since 1.25
+	 */
+	public function listSoftwareDefinedTags() {
+		// core defined tags
+		$tags = $this->getSoftwareTags( true );
+		if ( !$this->hookContainer->isRegistered( 'ListDefinedTags' ) ) {
+			return $tags;
+		}
+		$hookRunner = $this->hookRunner;
+		$wiki = $this->wiki;
+		$callback = static function () use ( $tags, $hookRunner ) {
+			$hookRunner->onListDefinedTags( $tags );
+			return array_unique( $tags );
+		};
+		return $this->wanCache->buildGetWithSetCallback()
+			->key( 'valid-tags-hook', $wiki )
+			->keepForAnHour()
+			->invalidatedByKey( 'valid-tags-hook', $this->wiki )
+			->allowStale( WANObjectCache::TTL_HOUR )
+			->longProcessCache()
+			->callback( $callback )
+			->fetch();
+	}
+
+	/**
+	 * Return all the tags associated with the given recent change ID, revision ID, and/or log entry ID.
+	 *
+	 * Does not remove tags that the viewing user cannot see, use {@link self::getViewableTags} for that
+	 * instead.
+	 *
+	 * @param IReadableDatabase $db the database to query
+	 * @param int|null $rc_id
+	 * @param int|null $rev_id
+	 * @param int|null $log_id
+	 * @return string[]
+	 */
+	public function getTags( IReadableDatabase $db, $rc_id = null, $rev_id = null, $log_id = null ) {
+		return array_keys( $this->getTagsWithData( $db, $rc_id, $rev_id, $log_id ) );
+	}
+
+	/**
+	 * Return all the tags viewable by the provided {@link Authority} that are associated with the given
+	 * recent change ID, revision ID, and/or log entry ID.
+	 *
+	 * To get all the tags use {@link self::getTags} instead.
+	 *
+	 * @since 1.47
+	 * @param IReadableDatabase $db
+	 * @param Authority $performer
+	 * @param int|null $recentChangeId
+	 * @param int|null $revisionId
+	 * @param int|null $logId
+	 * @return string[]
+	 */
+	public function getViewableTags(
+		IReadableDatabase $db,
+		Authority $performer,
+		?int $recentChangeId = null,
+		?int $revisionId = null,
+		?int $logId = null
+	): array {
+		return $this->filterViewableTags( $this->getTags( $db, $recentChangeId, $revisionId, $logId ), $performer );
+	}
+
+	/**
+	 * Basically lists defined tags which count even if they aren't applied to anything.
+	 * It returns a union of the results of listExplicitlyDefinedTags() and
+	 * listSoftwareDefinedTags()
+	 *
+	 * @return string[] Array of strings: tags
+	 */
+	public function listDefinedTags() {
+		$tags1 = $this->listExplicitlyDefinedTags();
+		$tags2 = $this->listSoftwareDefinedTags();
+		return array_values( array_unique( array_merge( $tags1, $tags2 ) ) );
+	}
+
+	/**
+	 * Get tag IDs given a list of tag names. If any name is invalid, its ID
+	 * will be omitted from the return value.
+	 *
+	 * @since 1.45
+	 * @param string[] $tagNames
+	 * @return array<string,int>
+	 */
+	public function getTagIdsFromNames( $tagNames ) {
+		$tagIds = [];
+		foreach ( $tagNames as $name ) {
+			try {
+				$tagIds[$name] = $this->changeTagDefStore->getId( $name );
+			} catch ( NameTableAccessException ) {
+			}
+		}
+		return $tagIds;
+	}
+
+	/**
+	 * Returns whether the given tag name is a restricted (private-prefixed) tag.
+	 *
+	 * @since 1.47
+	 */
+	public function isRestrictedTag( string $tag ): bool {
+		return str_starts_with( $tag, self::PRIVATE_TAG_PREFIX );
+	}
+
+	/**
+	 * Map of restricted tag name to the right(s) required to view it, as
+	 * declared by the ListRestrictedTags hook and the RestrictedTagViewRights
+	 * config (which overrides the hook). Cached for the request.
+	 *
+	 * @return array<string,string[]>
+	 */
+	private function getRestrictedTagRights(): array {
+		if ( $this->restrictedTagRights === null ) {
+			$restrictedTags = [];
+			$this->hookRunner->onListRestrictedTags( $restrictedTags );
+			$restrictedTags = array_merge(
+				$restrictedTags,
+				$this->options->get( MainConfigNames::RestrictedTagViewRights )
+			);
+
+			$this->restrictedTagRights = [];
+			foreach ( $restrictedTags as $tag => $rights ) {
+				if ( !$this->isRestrictedTag( $tag ) ) {
+					$this->logger->error(
+						'Restricted tags map contains tag {tag} without the required prefix; ignoring',
+						[ 'tag' => $tag ]
+					);
+					continue;
+				}
+				$this->restrictedTagRights[$tag] = (array)$rights;
+			}
+		}
+		return $this->restrictedTagRights;
+	}
+
+	/**
+	 * Determine whether the given {@link Authority} may view the provided tag.
+	 *
+	 * @since 1.47
+	 */
+	public function canViewTag( string $tag, Authority $performer ): bool {
+		if ( !$this->isRestrictedTag( $tag ) ) {
+			return true;
+		}
+
+		$rights = $this->getRestrictedTagRights()[$tag] ?? [];
+		foreach ( $rights as $right ) {
+			if ( $performer->isAllowed( $right ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Filter a list of tag names down to those the performer may view. Does not query the database.
+	 *
+	 * @since 1.47
+	 * @param string[] $tags
+	 * @param Authority $performer
+	 * @return string[]
+	 */
+	public function filterViewableTags( array $tags, Authority $performer ): array {
+		return array_values( array_filter(
+			$tags,
+			fn ( string $tag ) => !$this->isRestrictedTag( $tag ) || $this->canViewTag( $tag, $performer )
+		) );
+	}
+
+	/**
+	 * @internal Transitional, until all callers pass a performer.
+	 *
+	 * Like filterViewableTags(), but a null performer may view no restricted
+	 * tags at all.
+	 *
+	 * @param string[] $tags
+	 * @param Authority|null $performer
+	 * @return string[]
+	 */
+	public function filterViewableTagsForPerformer( array $tags, ?Authority $performer ): array {
+		return $this->filterViewableTags( $tags, $performer ?? self::getAuthorityForPublicTags() );
+	}
+
+	/** @return Authority allowed to view no rights-restricted tags, for external-facing public queries. */
+	private static function getAuthorityForPublicTags(): Authority {
+		return new SimpleAuthority( UserIdentityValue::newAnonymous( '127.0.0.1' ), [] );
+	}
+
+	/**
+	 * Add and remove tags to/from a change given its rc_id, rev_id and/or log_id,
+	 * without verifying that the tags exist or are valid. If a tag is present in
+	 * both $tagsToAdd and $tagsToRemove, it will be removed.
+	 *
+	 * This function should only be used by extensions to manipulate tags they
+	 * have registered using the ListDefinedTags hook. When dealing with user
+	 * input, call updateTagsWithChecks() instead.
+	 *
+	 * This operation is supported only for the local wiki.
+	 *
+	 * @param string|array|null $tagsToAdd Tags to add to the change
+	 * @param string|array|null $tagsToRemove Tags to remove from the change
+	 * @param int|null &$rc_id The rc_id of the change to add the tags to.
+	 * Pass a variable whose value is null if the rc_id is not relevant or unknown.
+	 * @param int|null &$rev_id The rev_id of the change to add the tags to.
+	 * Pass a variable whose value is null if the rev_id is not relevant or unknown.
+	 * @param int|null &$log_id The log_id of the change to add the tags to.
+	 * Pass a variable whose value is null if the log_id is not relevant or unknown.
+	 * @param string|null $params Params to put in the ct_params field of table
+	 * 'change_tag' when adding tags
+	 * @param RecentChange|null $rc Recent change being tagged, in case the tagging accompanies
+	 * the action
+	 * @param UserIdentity|null $user Tagging user, in case the tagging is subsequent to the tagged action
+	 *
+	 * @return array Index 0 is an array of tags actually added, index 1 is an
+	 * array of tags actually removed, index 2 is an array of tags present on the
+	 * revision or log entry before any changes were made
+	 */
+	public function updateTags( $tagsToAdd, $tagsToRemove, &$rc_id = null,
+		&$rev_id = null, &$log_id = null, $params = null, ?RecentChange $rc = null,
+		?UserIdentity $user = null
+	) {
+		if ( $this->wiki !== false ) {
+			throw new LogicException( 'ChangeTagsStore does not support updating tags on remote wikis' );
+		}
+
+		$tagsToAdd = array_filter(
+			(array)$tagsToAdd, // Make sure we're submitting all tags...
+			static function ( $value ) {
+				return ( $value ?? '' ) !== '';
+			}
+		);
+		$tagsToRemove = array_filter(
+			(array)$tagsToRemove,
+			static function ( $value ) {
+				return ( $value ?? '' ) !== '';
+			}
+		);
+
+		if ( !$rc_id && !$rev_id && !$log_id ) {
+			throw new InvalidArgumentException( 'At least one of: RCID, revision ID, and log ID MUST be ' .
+				'specified when adding or removing a tag from a change!' );
+		}
+
+		$dbw = $this->dbProvider->getPrimaryDatabase();
+
+		// Check if the change being requested would be a no-op, and if so, return early. We do this before
+		// expanding out any null IDs so that users can remove tags from log IDs where the rev ID has multiple
+		// associated log IDs.
+		$prevTags = $this->getTags( $dbw, $rc_id, $rev_id, $log_id );
+
+		// add tags
+		$tagsToAdd = array_values( array_diff( $tagsToAdd, $prevTags ) );
+		$newTags = array_unique( array_merge( $prevTags, $tagsToAdd ) );
+
+		// remove tags
+		$tagsToRemove = array_values( array_intersect( $tagsToRemove, $newTags ) );
+		$newTags = array_values( array_diff( $newTags, $tagsToRemove ) );
+
+		sort( $prevTags );
+		sort( $newTags );
+		if ( $prevTags == $newTags ) {
+			return [ [], [], $prevTags ];
+		}
+
+		// Might as well look for rcids and so on.
+		if ( !$rc_id ) {
+			// Info might be out of date, somewhat fractionally, on replica DB.
+			// LogEntry/LogPage and WikiPage match rev/log/rc timestamps,
+			// so use that relation to avoid full table scans.
+			if ( $log_id ) {
+				$rc_id = $dbw->newSelectQueryBuilder()
+					->select( 'rc_id' )
+					->from( 'logging' )
+					->join( 'recentchanges', null, [
+						'rc_timestamp = log_timestamp',
+						'rc_logid = log_id'
+					] )
+					->where( [ 'log_id' => $log_id ] )
+					->caller( __METHOD__ )
+					->fetchField();
+			} elseif ( $rev_id ) {
+				$rc_id = $dbw->newSelectQueryBuilder()
+					->select( 'rc_id' )
+					->from( 'revision' )
+					->join( 'recentchanges', null, [
+						'rc_this_oldid = rev_id'
+					] )
+					->where( [ 'rev_id' => $rev_id ] )
+					->caller( __METHOD__ )
+					->fetchField();
+			}
+		} elseif ( !$log_id && !$rev_id ) {
+			// Info might be out of date, somewhat fractionally, on replica DB.
+			$log_id = $dbw->newSelectQueryBuilder()
+				->select( 'rc_logid' )
+				->from( 'recentchanges' )
+				->where( [ 'rc_id' => $rc_id ] )
+				->caller( __METHOD__ )
+				->fetchField();
+			$rev_id = $dbw->newSelectQueryBuilder()
+				->select( 'rc_this_oldid' )
+				->from( 'recentchanges' )
+				->where( [ 'rc_id' => $rc_id ] )
+				->caller( __METHOD__ )
+				->fetchField();
+		}
+
+		if ( $log_id && !$rev_id ) {
+			$rev_id = $dbw->newSelectQueryBuilder()
+				->select( 'ls_value' )
+				->from( 'log_search' )
+				->where( [ 'ls_field' => 'associated_rev_id', 'ls_log_id' => $log_id ] )
+				->caller( __METHOD__ )
+				->fetchField();
+		} elseif ( !$log_id && $rev_id ) {
+			$log_id = $dbw->newSelectQueryBuilder()
+				->select( 'ls_log_id' )
+				->from( 'log_search' )
+				->where( [ 'ls_field' => 'associated_rev_id', 'ls_value' => (string)$rev_id ] )
+				->caller( __METHOD__ )
+				->fetchField();
+		}
+
+		// insert a row into change_tag for each new tag
+		$tagsAdded = [];
+		if ( count( $tagsToAdd ) ) {
+			$fname = __METHOD__;
+			foreach ( $tagsToAdd as $tag ) {
+				$changeTagId = $this->changeTagDefStore->acquireId( $tag );
+
+				$row = array_filter( [
+					'ct_rc_id' => $rc_id,
+					'ct_log_id' => $log_id,
+					'ct_rev_id' => $rev_id,
+					'ct_params' => $params,
+					'ct_tag_id' => $changeTagId,
+				] );
+
+				$dbw->newInsertQueryBuilder()
+					->insertInto( self::CHANGE_TAG )
+					->ignore()
+					->row( $row )
+					->caller( __METHOD__ )->execute();
+				$insertOccurred = $dbw->affectedRows() > 0;
+
+				// If the insert failed due to unique constraint violation, insert a new row without the rev_id if
+				// the log_id on the conflicting row is different so both log entries can have the same tag (T437238)
+				if ( !$insertOccurred && $log_id && $rev_id ) {
+					$logIdOnExistingRow = $dbw->newSelectQueryBuilder()
+						->select( 'ct_log_id' )
+						->from( self::CHANGE_TAG )
+						->where( [
+							'ct_tag_id' => $changeTagId,
+							'ct_rev_id' => $rev_id,
+						] )
+						->caller( __METHOD__ )
+						->fetchField();
+					if ( $logIdOnExistingRow && (int)$logIdOnExistingRow !== (int)$log_id ) {
+						unset( $row['ct_rev_id'] );
+						$dbw->newInsertQueryBuilder()
+							->insertInto( self::CHANGE_TAG )
+							->ignore()
+							->row( $row )
+							->caller( __METHOD__ )
+							->execute();
+						$insertOccurred = $dbw->affectedRows() > 0;
+					}
+				}
+				if ( $insertOccurred ) {
+					$tagsAdded[] = $tag;
+				} else {
+					$prevTags[] = $tag;
+				}
+			}
+
+			if ( count( $tagsAdded ) ) {
+				// T207881: update the counts at the end of the transaction
+				$dbw->onTransactionPreCommitOrIdle( static function () use ( $dbw, $tagsAdded, $fname ) {
+					$dbw->newUpdateQueryBuilder()
+						->update( self::CHANGE_TAG_DEF )
+						->set( [ 'ctd_count' => new RawSQLValue( 'ctd_count + 1' ) ] )
+						->where( [ 'ctd_name' => $tagsAdded ] )
+						->caller( $fname )->execute();
+				}, $fname );
+			}
+		}
+
+		// delete from change_tag
+		$tagsRemoved = [];
+		if ( count( $tagsToRemove ) ) {
+			$fname = __METHOD__;
+			foreach ( $tagsToRemove as $tag ) {
+				$matchingChangeIdConds = [ $dbw->andExpr( array_filter( [
+					'ct_rc_id' => $rc_id,
+					'ct_log_id' => $log_id,
+					'ct_rev_id' => $rev_id,
+				] ) ) ];
+
+				// If the more than one log ID is associated with a rev ID, the change_tag row to delete may have
+				// our log ID but the rev ID as null.
+				if ( $log_id !== null && $rev_id !== null ) {
+					$logSpecificCond = [
+						'ct_log_id' => $log_id,
+						'ct_rev_id' => null,
+					];
+					if ( $rc_id !== null ) {
+						$logSpecificCond['ct_rc_id'] = $rc_id;
+					}
+					$matchingChangeIdConds[] = $dbw->andExpr( $logSpecificCond );
+				}
+
+				$dbw->newDeleteQueryBuilder()
+					->deleteFrom( self::CHANGE_TAG )
+					->where( $dbw->expr( 'ct_tag_id', '=', $this->changeTagDefStore->getId( $tag ) ) )
+					->andWhere( $dbw->orExpr( $matchingChangeIdConds ) )
+					->caller( __METHOD__ )->execute();
+				if ( $dbw->affectedRows() ) {
+					$tagsRemoved[] = $tag;
+				}
+			}
+
+			if ( count( $tagsRemoved ) ) {
+				// T207881: update the counts at the end of the transaction
+				$dbw->onTransactionPreCommitOrIdle( static function () use ( $dbw, $tagsRemoved, $fname ) {
+					$dbw->newUpdateQueryBuilder()
+						->update( self::CHANGE_TAG_DEF )
+						->set( [ 'ctd_count' => new RawSQLValue( 'ctd_count - 1' ) ] )
+						->where( [ 'ctd_name' => $tagsRemoved ] )
+						->caller( $fname )->execute();
+
+					$dbw->newDeleteQueryBuilder()
+						->deleteFrom( self::CHANGE_TAG_DEF )
+						->where( [ 'ctd_name' => $tagsRemoved, 'ctd_count' => 0, 'ctd_user_defined' => 0 ] )
+						->caller( $fname )->execute();
+				}, $fname );
+			}
+		}
+
+		$userObj = $user ? $this->userFactory->newFromUserIdentity( $user ) : null;
+		$this->hookRunner->onChangeTagsAfterUpdateTags(
+			$tagsAdded, $tagsRemoved, $prevTags, $rc_id, $rev_id, $log_id, $params, $rc, $userObj );
+
+		return [ $tagsAdded, $tagsRemoved, $prevTags ];
+	}
+
+	/**
+	 * Replace the params of a tag already applied to a change.
+	 *
+	 * {@link self::updateTags()} writes ct_params when it applies a tag, and applying a tag the change
+	 * already has does nothing. Use this to change the params of a tag in place, rather
+	 * than removing the tag and applying it again.
+	 *
+	 * This operation is supported only for the local wiki.
+	 *
+	 * At least one of $rcId, $revId and $logId must be given.
+	 *
+	 * @since 1.47
+	 * @param string $tag Name of the tag to update
+	 * @param string|null $params Params to put in the ct_params field of table 'change_tag'
+	 * @param int|null $rcId The rc_id of the change the tag is on
+	 * @param int|null $revId The rev_id of the change the tag is on
+	 * @param int|null $logId The log_id of the change the tag is on
+	 * @return bool Whether the change carried the tag, and so was updated
+	 */
+	public function updateTagParams(
+		string $tag,
+		?string $params,
+		?int $rcId = null,
+		?int $revId = null,
+		?int $logId = null
+	): bool {
+		if ( $this->wiki !== false ) {
+			throw new LogicException( 'ChangeTagsStore does not support updating tag params on remote wikis' );
+		}
+
+		if ( !$rcId && !$logId && !$revId ) {
+			throw new InvalidArgumentException(
+				'At least one of: RCID, revision ID, and log ID MUST be ' .
+				'specified when updating the params of a tag on a change!'
+			);
+		}
+
+		try {
+			$tagId = $this->changeTagDefStore->getId( $tag );
+		} catch ( NameTableAccessException ) {
+			return false;
+		}
+
+		$dbw = $this->dbProvider->getPrimaryDatabase();
+
+		$matchingChangeIdConds = [ $dbw->andExpr( array_filter( [
+			'ct_rc_id' => $rcId,
+			'ct_log_id' => $logId,
+			'ct_rev_id' => $revId,
+		] ) ) ];
+
+		// If more than one log ID is associated with a rev ID, the change_tag row to update may
+		// have our log ID but the rev ID as null.
+		if ( $logId !== null && $revId !== null ) {
+			$logSpecificCond = [
+				'ct_log_id' => $logId,
+				'ct_rev_id' => null,
+			];
+			if ( $rcId !== null ) {
+				$logSpecificCond['ct_rc_id'] = $rcId;
+			}
+			$matchingChangeIdConds[] = $dbw->andExpr( $logSpecificCond );
+		}
+
+		$dbw->newUpdateQueryBuilder()
+			->update( self::CHANGE_TAG )
+			->set( [ 'ct_params' => $params ] )
+			->where( $dbw->expr( 'ct_tag_id', '=', $tagId ) )
+			->andWhere( $dbw->orExpr( $matchingChangeIdConds ) )
+			->caller( __METHOD__ )
+			->execute();
+
+		return (bool)$dbw->affectedRows();
+	}
+
+	/**
+	 * Add tags to a change given its rc_id, rev_id and/or log_id
+	 *
+	 * @param string|string[] $tags Tags to add to the change
+	 * @param int|null $rc_id The rc_id of the change to add the tags to
+	 * @param int|null $rev_id The rev_id of the change to add the tags to
+	 * @param int|null $log_id The log_id of the change to add the tags to
+	 * @param string|null $params Params to put in the ct_params field of table 'change_tag'
+	 * @param RecentChange|null $rc Recent change, in case the tagging accompanies the action
+	 * (this should normally be the case)
+	 *
+	 * @return bool False if no changes are made, otherwise true
+	 */
+	public function addTags( $tags, $rc_id = null, $rev_id = null,
+		$log_id = null, $params = null, ?RecentChange $rc = null
+	) {
+		$result = $this->updateTags( $tags, null, $rc_id, $rev_id, $log_id, $params, $rc );
+		return (bool)$result[0];
+	}
+
+	/**
+	 * Lists those tags which core or extensions report as being "active".
+	 *
+	 * @return array
+	 * @since 1.41
+	 */
+	public function listSoftwareActivatedTags() {
+		// core active tags
+		$tags = $this->getSoftwareTags();
+		if ( !$this->hookContainer->isRegistered( 'ChangeTagsListActive' ) ) {
+			return $tags;
+		}
+		$hookRunner = $this->hookRunner;
+		$wiki = $this->wiki;
+		$callback = static function () use ( $tags, $hookRunner ) {
+			// Ask extensions which tags they consider active
+			$hookRunner->onChangeTagsListActive( $tags );
+			return $tags;
+		};
+		return $this->wanCache->buildGetWithSetCallback()
+			->key( 'active-tags', $wiki )
+			->keepForAnHour()
+			->invalidatedByKey( 'active-tags', $this->wiki )
+			->allowStale( WANObjectCache::TTL_HOUR )
+			->longProcessCache()
+			->callback( $callback )
+			->fetch();
+	}
+
+	/**
+	 * Applies all tags-related changes to a query.
+	 * Handles selecting tags, and filtering.
+	 * Needs $tables to be set up properly, so we can figure out which join conditions to use.
+	 *
+	 * When querying table from a remote wiki, this function honors the local wiki's UseTagFilter
+	 * configuration setting.
+	 *
+	 * Restricted tags are always hidden from this method's output and cannot be filtered on; use
+	 * addTagsToDisplayQuery() instead.
+	 *
+	 * WARNING: If $filter_tag contains more than one tag and $exclude is false, this function
+	 * will add DISTINCT, which may cause performance problems for your query unless you put
+	 * the ID field of your table at the end of the ORDER BY, and set a GROUP BY equal to the
+	 * ORDER BY. For example, if you had ORDER BY foo_timestamp DESC, you will now need
+	 * GROUP BY foo_timestamp, foo_id ORDER BY foo_timestamp DESC, foo_id DESC.
+	 *
+	 * @deprecated since 1.41 use ChangeTagsStore::addTagsToDisplayQuery instead
+	 *
+	 * @param string|array &$tables Table names, see Database::select
+	 * @param string|array &$fields Fields used in query, see Database::select
+	 * @param string|array &$conds Conditions used in query, see Database::select
+	 * @param array &$join_conds Join conditions, see Database::select
+	 * @param string|array &$options Options, see Database::select
+	 * @param string|array|false|null $filter_tag Tag(s) to select on (OR)
+	 * @param bool $exclude If true, exclude tag(s) from $filter_tag (NOR)
+	 */
+	public function modifyDisplayQuery( &$tables, &$fields, &$conds,
+		&$join_conds, &$options, $filter_tag = '', bool $exclude = false
+	) {
+		wfDeprecated( __METHOD__, '1.41' );
+
+		$useTagFilter = $this->options->get( MainConfigNames::UseTagFilter );
+
+		// Normalize to arrays
+		$tables = (array)$tables;
+		$fields = (array)$fields;
+		$conds = (array)$conds;
+		$options = (array)$options;
+
+		$fields['ts_tags'] = $this->makeTagSummarySubquery( $tables, self::getAuthorityForPublicTags() );
+		// We use an alias and qualify the conditions in case there are
+		// multiple joins to this table.
+		// In particular for compatibility with the RC filters that extension Translate does.
+
+		// Figure out which ID field to use
+		if ( in_array( 'recentchanges', $tables ) ) {
+			$join_cond = self::DISPLAY_TABLE_ALIAS . '.ct_rc_id=rc_id';
+		} elseif ( in_array( 'logging', $tables ) ) {
+			$join_cond = self::DISPLAY_TABLE_ALIAS . '.ct_log_id=log_id';
+		} elseif ( in_array( 'revision', $tables ) ) {
+			$join_cond = self::DISPLAY_TABLE_ALIAS . '.ct_rev_id=rev_id';
+		} elseif ( in_array( 'archive', $tables ) ) {
+			$join_cond = self::DISPLAY_TABLE_ALIAS . '.ct_rev_id=ar_rev_id';
+		} else {
+			throw new InvalidArgumentException( 'Unable to determine appropriate JOIN condition for tagging.' );
+		}
+
+		if ( !$useTagFilter ) {
+			return;
+		}
+
+		if ( !is_array( $filter_tag ) ) {
+			// some callers provide false or null
+			$filter_tag = (string)$filter_tag;
+		}
+
+		if ( $filter_tag !== [] && $filter_tag !== '' ) {
+			// Somebody wants to filter on a tag.
+			// Add an INNER JOIN on change_tag
+			$viewableFilterTags = $this->filterViewableTags( (array)$filter_tag, self::getAuthorityForPublicTags() );
+			$filterTagIds = array_values( $this->getTagIdsFromNames( $viewableFilterTags ) );
+
+			if ( $exclude ) {
+				if ( $filterTagIds !== [] ) {
+					$tables[self::DISPLAY_TABLE_ALIAS] = self::CHANGE_TAG;
+					$join_conds[self::DISPLAY_TABLE_ALIAS] = [
+						'LEFT JOIN',
+						[ $join_cond, self::DISPLAY_TABLE_ALIAS . '.ct_tag_id' => $filterTagIds ]
+					];
+					$conds[self::DISPLAY_TABLE_ALIAS . '.ct_tag_id'] = null;
+				}
+			} else {
+				$tables[self::DISPLAY_TABLE_ALIAS] = self::CHANGE_TAG;
+				$join_conds[self::DISPLAY_TABLE_ALIAS] = [ 'JOIN', $join_cond ];
+				if ( $filterTagIds !== [] ) {
+					$conds[self::DISPLAY_TABLE_ALIAS . '.ct_tag_id'] = $filterTagIds;
+				} else {
+					// all tags were invalid, return nothing
+					$conds[] = '0=1';
+				}
+
+				if (
+					count( $viewableFilterTags ) > 1 &&
+					!in_array( 'DISTINCT', $options )
+				) {
+					$options[] = 'DISTINCT';
+				}
+			}
+		}
+	}
+
+	/**
+	 * Applies all tags-related changes to a query builder object.
+	 *
+	 * Handles selecting tags, and filtering.
+	 *
+	 * When querying table from a remote wiki, this function honors the local wiki's UseTagFilter
+	 * configuration setting.
+	 *
+	 * WARNING: If $filterTag contains more than one tag and $exclude is false, this function
+	 * will add DISTINCT, which may cause performance problems for your query unless you put
+	 * the ID field of your table at the end of the ORDER BY, and set a GROUP BY equal to the
+	 * ORDER BY. For example, if you had ORDER BY foo_timestamp DESC, you will now need
+	 * GROUP BY foo_timestamp, foo_id ORDER BY foo_timestamp DESC, foo_id DESC.
+	 *
+	 * @since 1.47
+	 * @param SelectQueryBuilder $queryBuilder Query builder to add the join
+	 * @param string $table Table name. Must be either of 'recentchanges', 'logging', 'revision', or 'archive'
+	 * @param Authority $performer Viewer, for restricted-tag access checks
+	 * @param string|array $filterTag Tag(s) to select on (OR)
+	 * @param bool $exclude If true, exclude tag(s) from $filterTag (NOR)
+	 */
+	public function addTagsToDisplayQuery(
+		SelectQueryBuilder $queryBuilder,
+		string $table,
+		Authority $performer,
+		string|array $filterTag = '',
+		bool $exclude = false
+	): void {
+		$useTagFilter = $this->options->get( MainConfigNames::UseTagFilter );
+		$queryBuilder->field( $this->buildTagSummarySubquery( [ $table ], $performer ), 'ts_tags' );
+
+		// We use an alias and qualify the conditions in case there are
+		// multiple joins to this table.
+		// In particular for compatibility with the RC filters that extension Translate does.
+		// Figure out which ID field to use
+		if ( $table === 'recentchanges' ) {
+			$join_cond = self::DISPLAY_TABLE_ALIAS . '.ct_rc_id=rc_id';
+		} elseif ( $table === 'logging' ) {
+			$join_cond = self::DISPLAY_TABLE_ALIAS . '.ct_log_id=log_id';
+		} elseif ( $table === 'revision' ) {
+			$join_cond = self::DISPLAY_TABLE_ALIAS . '.ct_rev_id=rev_id';
+		} elseif ( $table === 'archive' ) {
+			$join_cond = self::DISPLAY_TABLE_ALIAS . '.ct_rev_id=ar_rev_id';
+		} else {
+			throw new InvalidArgumentException( 'Unable to determine appropriate JOIN condition for tagging.' );
+		}
+
+		if ( !$useTagFilter ) {
+			return;
+		}
+
+		if ( is_string( $filterTag ) ) {
+			$filterTag = $filterTag === '' ? [] : [ $filterTag ];
+		}
+		if ( $filterTag !== [] ) {
+			// Somebody wants to filter on a tag.
+			// Add an INNER JOIN on change_tag
+			$viewableFilterTags = $this->filterViewableTags( $filterTag, $performer );
+			$filterTagIds = array_values( $this->getTagIdsFromNames( $viewableFilterTags ) );
+
+			if ( $exclude ) {
+				if ( $filterTagIds !== [] ) {
+					$queryBuilder->leftJoin(
+						self::CHANGE_TAG,
+						self::DISPLAY_TABLE_ALIAS,
+						[ $join_cond, self::DISPLAY_TABLE_ALIAS . '.ct_tag_id' => $filterTagIds ]
+					);
+					$queryBuilder->where( [ self::DISPLAY_TABLE_ALIAS . '.ct_tag_id' => null ] );
+				}
+			} else {
+				$queryBuilder->join(
+					self::CHANGE_TAG,
+					self::DISPLAY_TABLE_ALIAS,
+					$join_cond
+				);
+				if ( $filterTagIds !== [] ) {
+					$queryBuilder->where( [ self::DISPLAY_TABLE_ALIAS . '.ct_tag_id' => $filterTagIds ] );
+				} else {
+					// all tags were invalid, return nothing
+					$queryBuilder->where( '0=1' );
+				}
+
+				if ( count( $viewableFilterTags ) > 1 ) {
+					$queryBuilder->distinct();
+				}
+			}
+		}
+	}
+
+	/**
+	 * Applies all tags-related changes to a query builder object.
+	 *
+	 * Handles selecting tags, and filtering. Restricted tags are always hidden from this
+	 * method's output; use addTagsToDisplayQuery() with an Authority instead.
+	 *
+	 * @deprecated since 1.47, use {@link self::addTagsToDisplayQuery()} instead
+	 * @param SelectQueryBuilder $queryBuilder Query builder to add the join
+	 * @param string $table Table name. Must be either of 'recentchanges', 'logging', 'revision', or 'archive'
+	 * @param string|array|false|null $filter_tag Tag(s) to select on (OR)
+	 * @param bool $exclude If true, exclude tag(s) from $filter_tag (NOR)
+	 */
+	public function modifyDisplayQueryBuilder(
+		SelectQueryBuilder $queryBuilder,
+		$table,
+		$filter_tag = '',
+		bool $exclude = false
+	): void {
+		wfDeprecated( __METHOD__, '1.47' );
+
+		$this->addTagsToDisplayQuery(
+			$queryBuilder, $table, self::getAuthorityForPublicTags(),
+			$filter_tag === false || $filter_tag === null ? '' : $filter_tag,
+			$exclude
+		);
+	}
+}

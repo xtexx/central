@@ -1,0 +1,150 @@
+{
+	"@metadata": {
+		"authors": [
+			"Nemoralis"
+		],
+		"comment": "Grammar transformation rules for Azerbaijani."
+	},
+	"yiyəlik": "genitive",
+	"genitive": [
+		[ "@metadata", [ "comment", "Special case: 'su' (water) → 'suyun'" ] ],
+		[ "^[Ss]u$", "$0yun" ],
+
+		[ "@metadata", [ "comment", "k→y mutation: word ends in 'k', suffix by last vowel" ] ],
+		[ "^(.*[aı][^aıoueəiöü]*)k$", "$1yın" ],
+		[ "^(.*[ou][^aıoueəiöü]*)k$", "$1yun" ],
+		[ "^(.*[eəi][^aıoueəiöü]*)k$", "$1yin" ],
+		[ "^(.*[öü][^aıoueəiöü]*)k$", "$1yün" ],
+
+		[ "@metadata", [ "comment", "q→ğ mutation: word ends in 'q', suffix by last vowel" ] ],
+		[ "^(.*[aı][^aıoueəiöü]*)q$", "$1ğın" ],
+		[ "^(.*[ou][^aıoueəiöü]*)q$", "$1ğun" ],
+		[ "^(.*[eəi][^aıoueəiöü]*)q$", "$1ğin" ],
+		[ "^(.*[öü][^aıoueəiöü]*)q$", "$1ğün" ],
+
+		[ "@metadata", [ "comment", "Vowel-final words: append linking 'n', then suffix by last vowel" ] ],
+		[ "^(.*[aı])$", "$1nın" ],
+		[ "^(.*[ou])$", "$1nun" ],
+		[ "^(.*[eəi])$", "$1nin" ],
+		[ "^(.*[öü])$", "$1nün" ],
+
+		[ "@metadata", [ "comment", "Consonant-final words: suffix by last vowel" ] ],
+		[ "^(.*[aı][^aıoueəiöü]+)$", "$1ın" ],
+		[ "^(.*[ou][^aıoueəiöü]+)$", "$1un" ],
+		[ "^(.*[eəi][^aıoueəiöü]+)$", "$1in" ],
+		[ "^(.*[öü][^aıoueəiöü]+)$", "$1ün" ]
+	],
+	"sıra sayı": "ordinal",
+	"ordinal": [
+		[ "@metadata", [ "comment", "Pure-zero inputs (sıfır): last vowel 'ı' → cı" ] ],
+		[ "^(0+)$", "$1-cı" ],
+
+		[ "@metadata", [ "comment", "Multiples of named units — order matters (milyard before milyon before min)" ] ],
+		[ "^(\\d+0{9})$", "$1-cı" ],
+		[ "^(\\d+0{6})$", "$1-cu" ],
+		[ "^(\\d+0{3})$", "$1-ci" ],
+
+		[ "@metadata", [ "comment", "Multiples of 100, not caught above" ] ],
+		[ "^(\\d+00)$", "$1-cü" ],
+
+		[ "@metadata", [ "comment", "Multiples of 10: last two digits determine suffix" ] ],
+		[ "^(\\d*(?:10|30))$", "$1-cu" ],
+		[ "^(\\d*(?:20|50|70|80))$", "$1-ci" ],
+		[ "^(\\d*(?:40|60|90))$", "$1-cı" ],
+
+		[ "@metadata", [ "comment", "Non-zero final digit" ] ],
+		[ "^(\\d*9)$", "$1-cu" ],
+		[ "^(\\d*[12578])$", "$1-ci" ],
+		[ "^(\\d*[34])$", "$1-cü" ],
+		[ "^(\\d*6)$", "$1-cı" ]
+	],
+
+	"təsirlik": "accusative",
+	"accusative": [
+		[ "@metadata", [ "comment", "Special case: 'su' (water) → 'suyu'" ] ],
+		[ "^[Ss]u$", "$0yu" ],
+
+		[ "@metadata", [ "comment", "k→y mutation: word ends in 'k', replace with y + suffix by last vowel" ] ],
+		[ "^(.*[aı][^aıoueəiöü]*)k$", "$1yı" ],
+		[ "^(.*[ou][^aıoueəiöü]*)k$", "$1yu" ],
+		[ "^(.*[eəi][^aıoueəiöü]*)k$", "$1yi" ],
+		[ "^(.*[öü][^aıoueəiöü]*)k$", "$1yü" ],
+
+		[ "@metadata", [ "comment", "q→ğ mutation: word ends in 'q', replace with ğ + suffix by last vowel" ] ],
+		[ "^(.*[aı][^aıoueəiöü]*)q$", "$1ğı" ],
+		[ "^(.*[ou][^aıoueəiöü]*)q$", "$1ğu" ],
+		[ "^(.*[eəi][^aıoueəiöü]*)q$", "$1ği" ],
+		[ "^(.*[öü][^aıoueəiöü]*)q$", "$1ğü" ],
+
+		[ "@metadata", [ "comment", "Vowel-final words: append linking 'n', then suffix by last vowel" ] ],
+		[ "^(.*[aı])$", "$1nı" ],
+		[ "^(.*[ou])$", "$1nu" ],
+		[ "^(.*[eəi])$", "$1ni" ],
+		[ "^(.*[öü])$", "$1nü" ],
+
+		[ "@metadata", [ "comment", "Consonant-final words: suffix by last vowel" ] ],
+		[ "^(.*[aı][^aıoueəiöü]+)$", "$1ı" ],
+		[ "^(.*[ou][^aıoueəiöü]+)$", "$1u" ],
+		[ "^(.*[eəi][^aıoueəiöü]+)$", "$1i" ],
+		[ "^(.*[öü][^aıoueəiöü]+)$", "$1ü" ]
+	],
+
+	"yerlik": "locative",
+	"locative": [
+		[ "@metadata", [ "comment", "Multi-word phrases ending in possessive suffix (-ı/-i/-u/-ü): linking -n- before suffix. Note: plain words that happen to end in these vowels (e.g. 'su', 'qapı') will also match; a dictionary lookup would be needed to distinguish them." ] ],
+		[ "^(.* .*[ıu])$", "$1nda" ],
+		[ "^(.* .*[iü])$", "$1ndə" ],
+
+		[ "@metadata", [ "comment", "Vowel-final words: use -da/-də by last vowel" ] ],
+		[ "^(.*[aıou])$", "$1da" ],
+		[ "^(.*[eəiöü])$", "$1də" ],
+
+		[ "@metadata", [ "comment", "Consonant-final words: use -da/-də by last vowel" ] ],
+		[ "^(.*[aıou][^aıoueəiöü]+)$", "$1da" ],
+		[ "^(.*[eəiöü][^aıoueəiöü]+)$", "$1də" ]
+	],
+
+	"yönlük": "dative",
+	"dative": [
+		[ "@metadata", [ "comment", "Multi-word phrases ending in possessive suffix (-ı/-i/-u/-ü): linking -n- before suffix. Note: plain words that happen to end in these vowels (e.g. 'su', 'qapı') will also match; a dictionary lookup would be needed to distinguish them." ] ],
+		[ "^(.* .*[ıu])$", "$1na" ],
+		[ "^(.* .*[iü])$", "$1nə" ],
+
+		[ "@metadata", [ "comment", "Vowel-final words: linking -y- before suffix" ] ],
+		[ "^(.*[aıou])$", "$1ya" ],
+		[ "^(.*[eəiöü])$", "$1yə" ],
+
+		[ "@metadata", [ "comment", "Consonant-final words: use -a/-ə by last vowel" ] ],
+		[ "^(.*[aıou][^aıoueəiöü]+)$", "$1a" ],
+		[ "^(.*[eəiöü][^aıoueəiöü]+)$", "$1ə" ]
+	],
+
+	"çıxışlıq": "ablative",
+	"ablative": [
+		[ "@metadata", [ "comment", "Numbers: suffix by last non-zero digit. Back: 0,4,6 → -dan; Front: 1,2,3,5,7,8,9 → -dən" ] ],
+		[ "^(\\d+0{9})$", "$1-dan" ],
+		[ "^(\\d+0{6})$", "$1-dən" ],
+		[ "^(\\d+0{3})$", "$1-dən" ],
+		[ "^(\\d+00)$", "$1-dən" ],
+		[ "^(\\d*(?:10|30))$", "$1-dan" ],
+		[ "^(\\d*20)$", "$1-dən" ],
+		[ "^(\\d*60)$", "$1-dan" ],
+		[ "^(\\d*40)$", "$1-dan" ],
+		[ "^(\\d*(?:50|70|80|90))$", "$1-dən" ],
+		[ "^(\\d*0)$", "$1-dan" ],
+		[ "^(\\d*[12345789])$", "$1-dən" ],
+		[ "^(\\d*6)$", "$1-dan" ],
+
+		[ "@metadata", [ "comment", "Multi-word phrases ending in possessive suffix (-ı/-i/-u/-ü): linking -n- before suffix. Note: plain words that happen to end in these vowels (e.g. 'su', 'qapı') will also match; a dictionary lookup would be needed to distinguish them." ] ],
+		[ "^(.* .*[ıu])$", "$1ndan" ],
+		[ "^(.* .*[iü])$", "$1ndən" ],
+
+		[ "@metadata", [ "comment", "Vowel-final words: use -dan/-dən by last vowel" ] ],
+		[ "^(.*[aıou])$", "$1dan" ],
+		[ "^(.*[eəiöü])$", "$1dən" ],
+
+		[ "@metadata", [ "comment", "Consonant-final words: use -dan/-dən by last vowel" ] ],
+		[ "^(.*[aıou][^aıoueəiöü]+)$", "$1dan" ],
+		[ "^(.*[eəiöü][^aıoueəiöü]+)$", "$1dən" ]
+	]
+}

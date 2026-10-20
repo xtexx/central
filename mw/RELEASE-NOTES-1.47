@@ -1,0 +1,861 @@
+= MediaWiki 1.47 =
+
+PHP 8.3 workboard: https://phabricator.wikimedia.org/tag/php_8.3_support/
+PHP 8.4 workboard: https://phabricator.wikimedia.org/tag/php_8.4_support/
+PHP 8.5 workboard: https://phabricator.wikimedia.org/tag/php_8.5_support/
+PHP 8.6 workboard: https://phabricator.wikimedia.org/tag/php_8.6_support/
+
+== MediaWiki 1.47.0-PRERELEASE ==
+
+THIS IS NOT A RELEASE YET
+
+MediaWiki 1.47 is an alpha-quality development branch, and is not recommended
+for use in production.
+
+== Upgrading notes for 1.47 ==
+Don't forget to always back up your database before upgrading!
+
+See the file UPGRADE for more detailed per-version upgrade instructions from the
+oldest supported upgrading version, MediaWiki 1.39.
+
+Some specific notes for MediaWiki 1.47 upgrades are below:
+
+* Direct upgrade from 1.43 to 1.47 is supported per our compatibility policy
+  but in a one-time departure from policy, *rollback* from 1.47 to 1.43
+  is not supported without clearing the ParserCache of entries generated
+  by 1.47.  Rollback from 1.47 to 1.45 is fully supported.  We recommend
+  a two-step upgrade from 1.43 to 1.45.6 and then to 1.47, which will
+  preserve rollback-compatibility of ParserCache entries.
+* …
+
+For notes on 1.46.x and older releases, see HISTORY.
+
+=== Configuration changes for system administrators in 1.47 ===
+* $wgGroupPermissions['*']['autocreateaccount'] now defaults to true.
+  This matches the default for $wgGroupPermissions['*']['createaccount'].
+  If you're using an extension that allows autocreation
+  of local accounts, you wish to prevent it,
+  and you've already set `$wgGroupPermissions['*']['createaccount'] = false`,
+  set `$wgGroupPermissions['*']['autocreateaccount'] = false` too.
+* If $wgSVGConverter is 'rsvg' then you must have librsvg version 2.52 or higher
+  installed (i.e. any version that supports the `--accept-language` option).
+  This is due to a change in `$wgSVGConverter['rsvg']`; see T125710.
+* 'xx-uca-ckb' collation is no longer supported for $wgCategoryCollation,
+  use 'uppercase-ckb' collation instead.
+* …
+
+==== New configuration ====
+
+* (T410654) Added $wgRestrictUserPageEditing, which prevents users from editing
+  other users' pages and is disabled by default. Users with the new
+  'editalluserpages' right are exempt. By default, no group has the right.
+* (T422686) Added $wgHTTPUserAgentContact, which is enabled by default and adds
+  $wgCanonicalServer as contact URL in the default user agent string. You may
+  want to change this on intranet wikis or large wiki farms to a fixed public
+  homepage or email address.
+  If you currently set the 'userAgent' option in ForeignAPIRepo for
+  $wgForeignFileRepos, you may want to set $wgHTTPUserAgentContact instead.
+* $wgRestModuleOverrides - (T422756) Defaults to `[]`, allows overriding the
+  default behavior mode of REST modules. See MediaWiki\Rest\Module\ModuleMode
+  for details on available modes.
+* $wgReauthenticateForActions - Allows overriding which sensitive actions
+  require reauthentication.
+* $wgRestrictedTagViewRights maps a rights-restricted ("mw-private-" prefixed)
+  change tag to the right(s) that may view it. Default: [].
+* (T74768) Added $wgEnableChunkedUploads, which enables JavaScript chunked
+  uploads on upload forms (at least Special:Upload), allowing uploads larger
+  than the PHP request size limit up to $wgMaxUploadSize. Disabled by default.
+* (T422940) Added $wgRemoteVirtualDomainsMapping, which allows configuring
+  virtual domains for remote wikis.
+* (T384501) Added $wgSharedUploadDBschema, a shortcut for the ForeignDBRepo
+  'dbSchema' setting in $wgForeignFileRepos. Needed for shared upload
+  repositories on database types that use schemas, such as PostgreSQL.
+* (T435645) Added $wgSplitParsoidParserCache, which controls whether legacy
+  and Parsoid ParserOutput are saved in different ParserCache objects in
+  ParserOutputAccess. The split was introduced to mitigate risk during
+  the migration to Parsoid. It is disabled by default and will be removed in
+  a future release. However, wikis using the ParserMigration extension may need
+  to enable it to avoid effectively invalidating the ParserCache.
+* (T432760) Added $wgUseParsoidParser, $wgUseParsoidLinksUpdate,
+  and $wgUseParsoidMessages to control the use of Parsoid for wikitext parsing.
+  $wgUseParsoidParser is enabled by default, meaning articles will be rendered
+  by Parsoid. $wgUseParsoidLinksUpdate is set to null, meaning that it will
+  take the same value as $wgUseParsoidParser. $wgUseParsoidMessages is
+  disabled by default. Using Parsoid for parsing messages is still considered
+  experimental.
+* …
+
+==== Changed configuration ====
+
+* …
+
+==== Removed configuration ====
+* $wgThumbnailStepsRatio, a temporary config, has been removed.
+* $wgAllowSecuritySensitiveOperationIfCannotReauthenticate has been removed.
+  Whether security-sensitive operations are allowed when the session type does
+  not support reauthentication is now decided per session type, via
+  SessionProvider::allowSecuritySensitiveOperationIfCannotReauthenticate().
+* $wgCachePrefix has been removed without deprecation (T272194). It no longer
+  has any effect and site administrators that set this configuration setting
+  can safely remove it. Cache keys are now always prefixed by wiki ID.
+* $wgVirtualRestConfig has been removed (T436054). It has been unused since
+  the removal of VirtualRESTService in 1.42.
+* $wgPHPSessionHandling, deprecated since 1.45, has been removed (T431315).
+  This means `$_SESSION` is no longer supported in MediaWiki core and will no
+  longer read or write to the MediaWiki session store. If you access $_SESSION
+  this will call the PHP built-in session handler (e.g. local tmp files).
+  It is recommended to turn this off in php.ini to prevent misuse (T434399).
+* …
+
+=== New user-facing features in 1.47 ===
+
+* (T196386) MediaWiki now disallows account creation if an account by that
+  name has previously existed and has been renamed, to prevent impersonation
+  and (if this feature is enabled on your wiki) taking over user
+  Javascript and CSS pages redirected after the rename.
+  Users with the 'createpreviouslyrenamedaccount' right (granted to
+  the 'sysop' group by default) can override this in the account
+  creation form. Renaming an existing account to a previously existing
+  username displays a warning, which can also be overridden.
+* (T391926) The CodeMirror extension, which provides syntax highlighting for
+  wikitext editing tools and an editor for non-wikitext pages like CSS, is now
+  bundled with MediaWiki and enabled by default, alongside the older Ace-based
+  CodeEditor extension.
+* (T424179) A new tag has been added called "Edited other user's CSS". It is
+  automatically applied to edits to CSS pages in userspace that are not
+  subpages of the user making the edit.
+* (T433203) __EXPECTSHORTPAGE__ on a short page causes it to be hidden
+  on Special:ShortPages.
+* (T74768) Special:Upload now handles chunked uploads, increasing the
+  maximum upload size from the PHP limit to $wgMaxUploadSize. A textual
+  progress indicator next to the submit button updates as the upload
+  progresses. Falls back to the old non-chunked behavior if JS is disabled.
+  This is enabled with $wgEnableChunkedUploads, or per-request with a
+  '?usechunked=1' GET parameter.
+* (T151682, T432882) MediaWiki now supports adding a page header above any
+  non-wikitext page via interface messages such as "subjectpageheader-json".
+  This is similar to the "clearyourcache" message but more broadly for any
+  non-wikitext content, including for extension-provided content models such
+  as "Scribunto" module pages, and TemplateStyles "sanitized-css" pages.
+* (T253844) Special:Contributions now shows a note if the target IP address or
+  range is affected by a $wgSoftBlockRanges block.
+* The new {{CATEGORYSORT:}} magic word sets the default ordering of a category
+  listing. {{CATEGORYSORT:TIMESTAMP}} lists members by the time they were added
+  to the category, oldest first, and {{CATEGORYSORT:RTIMESTAMP}} lists the most
+  recently added members first. Readers can still override this with the
+  'cldsort' URL parameter, and the new 'cldorder=desc' URL parameter reverses a
+  'cldsort=timestamp' listing.
+* (T32211) The page move form now detects if someone else moved the page
+  between the form being opened and submitted.
+* …
+
+=== New features for sysadmins in 1.47 ===
+
+* (T430604) On Special:CreateAccount, the messages "createacct-helpusername"
+  and "createacct-username-help" are no longer used. In the future, there will
+  be a small button on that form which opens a popover with three bullet
+  points. The text of those messages can be overridden in the usual way to give
+  wiki-specific guidance instead. This popup will also have a link to reading
+  the wiki's username policy if the message "createacct-helpusername-url" is
+  set to an existing wikipage on the local wiki, like "Project:Username_policy"
+* (T430940) A new maintenance script, reportObjectStashStats.php, reports a
+  read-only census of resident keys in a DB-backed object stash, grouped by key
+  group and cluster. It censuses the main object stash (MainStash) by default,
+  or any other SqlBagOStuff-backed entry in $wgObjectCaches given with --cache.
+  With --report it emits the totals as StatsFactory gauges
+  (bagostuff_resident_keys and bagostuff_resident_bytes, plus the per-cluster
+  totals bagostuff_resident_cluster_keys and bagostuff_resident_cluster_bytes)
+  for tracking growth over time.
+* …
+
+=== New developer features in 1.47 ===
+* (T389281) The Language and LocalisationCache classes now support using the
+  Leximorph library. Language supports Leximorph for grammar, plural, gender,
+  formality, and bidi transformations, which also affects parser functions that
+  use these Language methods. LocalisationCache supports loading plural rules
+  from Leximorph. When $wgUseLeximorph is enabled, these features use
+  Leximorph's modular handlers instead of the legacy implementations and
+  plural-rule files.
+* Two new hooks, OutputTransformFirstStageHook and
+  OutputTransformLastStageHook, provide a modern replacement for the
+  ParserOutputPostCacheTransform hook, allowing DOM-based manipulation in
+  the postprocessing phase.
+* (T318376) The SkinTemplateNavigation::Universal hook now supports
+  'footer-info' and 'footer-places' keys for modifying footer menus, as
+  an alternative to the SkinAddFooterLinks hook.
+* Authentication providers can now check whether an authentication process
+  is a login or a reauthentication, and what the security level is, by looking
+  at the ElevatedSecurityAuthenticationRequest (or lack thereof).
+  Reauthentication can be triggered via a new 'securityLevel' option to
+  AuthManager::getAuthenticationRequests().
+* (T422551) The REST API framework now supports audience designations on REST
+  modules. See MediaWiki\Rest\Module\AudienceDesignation for details. Modules
+  requiring a different behavior mode can use the new RestModuleOverrides
+  configuration variable.
+* (T429399) The REST API discovery endpoint (/discovery) now includes a
+  "groups" array inside each module's "info" object. The group names are
+  resolved from the module's audience designation or configuration override.
+  Groups will enable front-end clients to filter and toggle availability of
+  endpoints.
+* (T423058) The "site.v1" and "specs.v0" REST modules are now enabled by
+  default. They can be disabled by using the new RestModuleOverrides
+  configuration variable.
+* (T412542) The UrlUtils class now has an option to allow any URL protocol:
+  `UrlUtils::VALID_PROTOCOLS => UrlUtils::ALL_PROTOCOLS`.
+* (T386456) A new hook ListRestrictedTags allows defining which right(s)
+  allow a user to view a rights-restricted change tag (tags starting with
+  'mw-private-').
+* ChangeTagsStore::makeTagSummarySubquery() gained an optional $performer
+  (Authority) parameter. When it is null, rights-restricted change tags are
+  hidden from the tag summary.
+* ChangeTagsStore::addTagsToDisplayQuery() is a new method that supersedes
+  modifyDisplayQueryBuilder(). It takes a required Authority $performer before
+  the optional filter arguments, so that rights-restricted change tags can be
+  shown to and filtered on by users who are allowed to view them.
+* ChangeTagsStore::updateTagParams() is a new method that replaces the params
+  of a tag a change already carries, without removing the tag and applying it
+  again.
+* (T432457) The UnifiedDiffFormatter class is now stable to extend.
+* (T408666) A new hook LinkTargetIsAlwaysKnownBatch allows overriding whether
+  links are always known for a batch of link targets at once. It deprecates
+  the TitleIsAlwaysKnown hook, which should no longer be used.
+* (T74768) Add support for overriding chunk size in 'mediawiki.Upload.js'.
+* SessionProvider subclasses can override
+  allowSecuritySensitiveOperationIfCannotReauthenticate() to fail closed (or
+  decide dynamically, based on the session's provider metadata and the current
+  request) when reauthentication is not possible for the session type.
+* New hook CategoryViewerGenerateLinkHook as replacement for deprecated hook
+  CategoryViewer__generateLinkHook.
+* (T424361) WANObjectCache::buildGetWithSetCallback() returns a new fluent
+  builder, WANGetWithSetCallbackBuilder, for getWithSetCallback() calls. It
+  makes the cache key itself (so callers no longer need
+  makeKey()/makeGlobalKey()) and replaces the untyped options map with named
+  methods. Its callback is
+  given a CacheRegenerationContext instead of the by-reference $ttl and
+  $setOpts parameters. The plain getWithSetCallback() method is unchanged.
+* (T424361) WANObjectCache::getWithInfo() is a new method that returns the
+  value of a key and the metadata about it as a CachedValue object, instead of
+  through the by-reference $curTTL and $info parameters of get().
+* (T314399) ParserOutput::setDisplayTitleParts() and
+  ::getDisplayTitleParts() store/fetch the display title as separate localized
+  namespace, separator, and main title pieces, so that skins can target
+  them individually; see Parser::formatPageTitle().
+  OutputPage::setDisplayTitleParts() and ::getDisplayTitleParts()
+  carry that split through to the skin, so that the localized namespace and
+  the main part of the display title no longer have to be recovered from the
+  combined string.
+* (T424361) New interface IWANCacheBuilder now exists exposing
+  ::buildGetWithSetCallback() method which can replace direct use of
+  WANObjectCache.
+* (T427815) Add MediaWiki\Logging\LogRecord, a new immutable value object
+  representing an entry in the logging table.
+* (T290916) The vue-router module has been added to provide convenient routing
+  to Vue applications.
+* (T388663) New Notification types TitleNotification and AgentNotification
+  were added for notifications that have only a related page or only an agent,
+  complementing WikiNotification, which requires both.
+* …
+
+=== External library changes in 1.47 ===
+
+==== New external libraries ====
+
+* Added symfony/mailer at 7.4.19.
+* Added symfony/mime at 7.4.19.
+* Added symfony/polyfill-php86 at 1.43.0.
+* …
+
+===== New development-only external libraries =====
+
+* Added @stoplight/spectral-cli at 6.16.3.
+* Added fig/log-test at 1.2.1.
+* …
+
+==== Changed external libraries ====
+
+* Updated codex, codex-design-tokens and codex-icons
+  from v2.5.1 to v2.7.0.
+* Updated composer/semver from 3.4.4 to 3.5.1.
+* Updated guzzlehttp/guzzle from 7.12.3 to 7.15.5.
+* Updated mck89/peast from 1.17.5 to 1.18.0.
+* Updated monolog/monolog from 2.11.0 to 3.12.0.
+* Updated OOUI from v0.53.2 to v0.54.2
+* Updated @pinia/testing from 0.0.12 to 1.0.3.
+* Updated pinia from 2.0.16 to 3.0.4.
+* Updated psr/log from 1.1.4 to 3.0.2.
+* Updated symfony/polyfill-php84 from 1.36.0 to 1.43.0.
+* Updated symfony/polyfill-php85 from 1.36.0 to 1.43.0.
+* Updated symfony/yaml from 7.4.6 to 7.4.20.
+* Updated wikimedia/cldr-plural-rule-parser from 3.0.1 to 3.0.2.
+* Updated wikimedia/codex (Codex PHP) from 0.7.1 to 0.8.0.
+* Updated wikimedia/cssjanus from 2.3.0 to 2.3.1.
+* Updated wikimedia/json-codec from 4.0.0 to 5.0.0.
+* Updated wikimedia/language-data from 1.1.13 to 1.1.14.
+* Updated wikimedia/minify from 2.10.0 to 2.12.0.
+* Updated wikimedia/object-factory from 6.0.0 to 7.0.0.
+* Updated wikimedia/shellbox from 4.4.0 to 4.5.2.
+* …
+
+===== Changed development-only external libraries =====
+
+* Updated @wdio/* from 9.23.2 to 9.32.0.
+* Updated api-testing from 1.7.1 to 1.8.1.
+* Updated composer/spdx-licenses from 1.5.9 to 1.6.0.
+* Updated doctrine/dbal from 3.10.5 to 3.10.6.
+* Updated eslint-config-wikimedia from 0.32.3 to 0.32.6.
+* Updated ergebnis/phpunit-slow-test-detector from 2.24.0 to 2.26.0.
+* Updated grunt from 1.6.2 to 1.6.3.
+* Updated jsdoc-wmf-theme from 1.3.0 to 1.3.1.
+* Updated mediawiki/mediawiki-codesniffer from 50.0.0 to 52.0.1.
+* Updated phpunit/phpunit from 9.6.34 to 9.6.38.
+* Updated QUnit from 2.24.1 to 3.0.0.
+* Updated seld/jsonlint from 1.11.0 to 1.12.1.
+* Updated stylelint-config-wikimedia from 0.19.2 to 0.19.4.
+* Updated svgo from 3.3.3 to 3.3.5.
+* …
+
+==== Removed external libraries ====
+
+* Removed pear/mail, pear/mail_mime and pear/net_smtp (and their abandoned
+  transitive dependency pear/net_socket), replaced by symfony/mailer and
+  symfony/mime.
+* Removed wikimedia/php-session-serializer, no longer used (T431315).
+* …
+
+=== Bug fixes in 1.47 ===
+
+* (T74768) Fix an issue in 'mediawiki.Upload.js' where 'watchlist' is set to an
+  integer instead of an enum, resulting in a badvalue error if set.
+* …
+
+=== Action API changes in 1.47 ===
+* php response format has been removed.
+* When encountering a 'reauthenticate' error, clients must start a new
+  authentication process by passing the "operation" value included in the
+  error into meta=authmanagerinfo&amirequestsfor=login as 'amireauthenticate',
+  and then passing the received requests to action=clientlogin and following
+  the normal login process.
+* The action=logout API has a new 'global' optional parameter. When set to
+  truish, the user will be logged out on all devices, not just the current one.
+  Unlike the old behavior, global logout can be performed via an authentication
+  type where "log out on the current device" doesn't make sense (e.g. OAuth).
+* (T426802) prop=imageinfo now includes timestamp, user, size, and comment
+  fields for file revisions where the file blob is missing from storage,
+  alongside the existing "filemissing" flag.
+* (T247552) list=tags no longer includes "extension" alongside "software" for
+  the 'source' prop in results. The deprecated "extension" source was removed.
+* The `action=parse` API has a new `prop=parseroutput` parameter.
+  This returns the JSON serialization of the ParserOutput.  This API
+  is marked internal as there are no guarantees about the format of
+  the result; the format of the ParserOutput is governed by
+  [[mw:Manual:Parser cache/Serialization compatibility]] not by an
+  Action API policy. (T428786)
+* (T74768) action=upload has new 'license', 'copystatus', 'source' and
+  'autotext' parameters. When 'autotext' is set, the file page wikitext is
+  generated server-side from 'comment', 'license', 'copystatus' and 'source',
+  overriding the 'text' parameter. Extensions may alter the generated text via
+  the UploadForm:getInitialPageText hook, just like Special:Upload POST.
+* …
+
+=== Action API internal changes in 1.47 ===
+
+* Added EnumDef::PARAM_INTERNAL_VALUES to mark individual enum parameter values
+  as internal/unstable; these appear in action=paraminfo output as
+  "internalvalues".
+* …
+
+=== Languages updated in 1.47 ===
+MediaWiki supports over 350 languages. Many localisations are updated regularly.
+Below only new and removed languages are listed, as well as changes to languages
+because of Phabricator reports.
+
+* …
+
+=== Breaking changes in 1.47 ===
+
+* Certain compatibility hacks relating to PHPVersionCheck were removed; they
+  existed so that error messages could be shown in PHP 4 through 5.3. Custom
+  entry points that call wfEntryPointCheck() or use PHPVersionCheck would be
+  broken by these changes.
+* The minimum supported version of MariaDB has been raised to 10.11 (from 2022),
+  up from 10.3 (from 2017).
+* It is no longer possible to pass null to the $output parameter of
+  FeedUtils::checkFeedOutput. This behaviour was deprecated in 1.46.
+* The following deprecated methods of ParserOutput have been removed, with
+  the version they were deprecated in square brackets:
+  - ::getRawText()           [1.45] use ::getContentHolderText()
+  - ::getLanguageLinks()     [1.43] use ::getLinkList(::LANGUAGE)
+  - ::getInterwikiLinks()    [1.43] use ::getLinkList(::INTERWIKI)
+  - ::getLinks()             [1.43] use ::getLinkList(::LOCAL)
+  - ::getLinksSpecial()      [1.43] use ::getLinkList(::SPECIAL)
+  - ::getTemplates()         [1.43] use ::getLinkList(::TEMPLATE)
+  - ::getTemplateIds()       [1.43] use ::getLinkList(::TEMPLATE)
+  - ::getImages()            [1.43] use ::getLinkList(::MEDIA)
+  - ::getFileSearchOptions() [1.43] use ::getLinkList(::MEDIA)
+  - ::getTimestamp()         [1.42] use ::getRevisionTimestamp()
+  - ::setRawText()           [1.45] use ::setContentHolderText()
+  - ::setText()              [1.42] use ::setContentHolderText()
+  - ::setLanguageLinks()     [1.42] use ::addLanguageLink()
+  - ::setTimestamp()         [1.42] use ::setRevisionTimestamp()
+  - ::__serialize()          [1.39] use JSON serialization
+* ParserOutput::getExternalLinks(), which used to return a mutable reference
+  to its array, now returns the array by value.  Mutating the array returned
+  by ::getExternalLinks() has been deprecated since 1.43.
+* CategoryViewer::getSubcategorySortChar(), deprecated in 1.45,
+  has been removed.
+* CollationCkb class, deprecated since 1.44, has been removed.
+* OutputPage::getTarget() has been removed without deprecation. Its setter was
+  removed in 1.43, but this was missed.
+* SessionInfo::compare() has been removed without deprecation.
+* ChannelFeed::outHeader(), ::outItem(), ::outFooter(), ::httpHeaders() and
+  ::outXmlHeader() have been removed. Use/override ::outputHeader(),
+  ::outputItem(), ::outputFooter(), ::sendHttpHeaders() and ::outputXmlHeader()
+  instead.
+* Maintenance::runChild(), deprecated in 1.43, has been removed.
+* Profiler::getAllowOutput(), deprecated since 1.41, has been removed.
+* Profiler::setProfileID(), deprecated since 1.41, has been removed.
+* Html::buttonAttributes() and Html::getTextInputAttributes(),
+  deprecated in 1.43, have been removed.
+* WebRequest::isSafeRequest() and WebRequest::markAsSafeRequest(),
+  deprecated since 1.41, have been removed. Use ::hasSafeMethod() instead.
+* WebRequest::getCrossSiteCookie(), deprecated since 1.42, has been removed.
+* AutoloadGenerator::setPsr4Namespaces, deprecated in 1.40, has been removed.
+* ResourceLoader::makeConfigSetScript, deprecated in 1.44, has been removed.
+  Use package files instead or return mw.config.set() combined with
+  RL\Context::encodeJson, if available. Otherwise, use FormatJson::encode.
+* IDatabase::lockIsFree, deprecated in 1.46, was removed.
+  For non-blocking locks, use IDatabase::lock with timeout 0 instead.
+* BaseSearchResultSet::next() and ::rewind(), deprecated since 1.32 have now
+  been removed. Use ::extractResults() or a foreach loop instead.
+* The global function wfGetUrlUtils(), deprecated since 1.43, has been removed.
+* ExternalLinksLookup::getExternalLinksForPage(), deprecated since 1.45,
+  has been removed.
+* Some static methods in Xml, deprecated in 1.42, have been removed:
+  - Xml::attrib(),
+  - Xml::buildForm(),
+  - Xml::fieldset(),
+  - Xml::label(),
+  - Xml::listDropdown(),
+  - Xml::listDropdownOptions() & Xml::listDropdownOptionsOoui(), and
+  - Xml::option().
+* XmlSelect::setTagName(), deprecated since 1.45, has been removed.
+* Content::getNativeData(), deprecated since 1.33, has been removed.
+* WikitextContent::getRedirectTargetAndText(), deprecated since 1.43,
+  has been removed.
+* LinksUpdate::getImages(), deprecated since 1.44, has been removed. Use
+  LinksUpdate::getParserOutput()->getLinkList(::MEDIA) instead.
+* LinksUpdate::getAddedLinks(), ::getRemovedLinks(), deprecated since 1.38,
+  have been removed.
+* TitleLinksTable::getTitleArray(), deprecated since 1.38, has been removed.
+* The ParsoidService class, deprecated since 1.39, has been removed. Use the
+  relevant MediaWikiServices access points instead.
+* The method Action::getArticle is now final. Overriding of this method fails
+  now.
+* LockManager::doLockByType and LockManager::doUnlockByType must be implemented
+  by subclasses. LockManager::doLock and LockManager::doUnlock no longer must
+  be implemented.
+* The SpecialPage root and intermediate classes are now marked as abstract:
+  - SpecialPage
+  - ContributionsSpecialPage
+  - IncludableSpecialPage
+  - UnlistedSpecialPage
+  Instantiate a subclass instead.
+* The following LogPager methods, deprecated in 1.45, were removed:
+  getType, getPage, getPattern, getYear, getMonth, getDay, getTagFilter,
+  getTagInvert, getAction.
+* It is no longer possible to call File::getShortDesc, File::getLongDesc,
+  File::getDescriptionText, File::getDimensionsString,
+  MediaHandler::getGeneralShortDesc or MediaHandler::getGeneralLongDesc without
+  specifying a language, deprecated in 1.46.
+* The following methods of OutputPage have been removed:
+  - showNewSectionLink (deprecated in 1.44)
+  - forceHideNewSectionLink (deprecated in 1.44)
+  - setLanguageLinks (deprecated in 1.43)
+  - getNoGallery (deprecated in 1.44)
+  - setCategoryLinks (deprecated in 1.43)
+  - parserOptions (deprecated in 1.44)
+  - setRevisionTimestamp (deprecated in 1.44)
+  - wrapWikiTextAsInterface (deprecated in 1.45)
+* The following changes have been made to methods of OutputPage, with the
+  version the old behavior was deprecated in parentheses:
+  - getModules, getModuleStyles: now take only 1 argument (1.44)
+  - setIndexPolicy: index followed by noindex results in index (1.43)
+  - addParserOutputContent: requires non-null ParserOptions (1.44)
+  - addParserOutputText: requires string first argument (1.42)
+  - addParserOutput: requires non-null ParserOptions (1.44)
+* The unused method SpecialVersion::getVersionLinked, deprecated in 1.46, has
+  been removed.
+* The ConditionalDefaultOptionsAddCondition hook, deprecated in 1.46, has been
+  removed. There is no replacement.
+* The ability to construct a HTMLFormField without a parent, deprecated in 1.40,
+  has been removed.
+* The HtmlCacheUpdater service, a deprecated alias of the HTMLCacheUpdater
+  service since 1.46, has been removed. Use the new service name instead.
+* The EditFilter hook, deprecated in 1.46, has been removed. Use
+  EditFilterMergedContent or MultiContentSave instead.
+* Passing a MessageLocalizer to ChangesList::formatSummaryRow is now mandatory.
+  Passing null was deprecated in 1.46.
+* Passing an IContextSource to ChangesList::buildTagFilterSelector is now
+  mandatory. Passing null was deprecated in 1.46.
+* Passing a performer to WikiImporterFactory::getImporter is mandatory now.
+  Passing null was deprecated in 1.42.
+* Passing a performer to ChangesList::userCan is mandatory now. Passing null was
+  deprecated in 1.46.
+* Passing a context to ChangesList::showCharacterDifference
+  and ChangesList::flag is mandatory now. Passing null was deprecated in 1.46.
+* RecentChange::getCharacterDifference, deprecated in 1.46, has been removed.
+  Use ChangesList::showCharacterDifference or
+  ChangesList::formatCharacterDifference instead.
+* Passing a context so SpecialPageFactory::getUsablePages is mandatory now.
+  Passing null was deprecated in 1.46.
+* Passing a performer to UploadBase::checkWarnings is mandatory now. Passing
+  null was deprecated in 1.46.
+* UploadBase::isThrottled(), deprecated since 1.41, has been removed.
+* UploadBase::verifyExtension(), UploadBase::detectScript() and
+  UploadBase::detectVirus(), deprecated since 1.45, have been removed.
+* Maintenance::error() no longer accepts a $die argument. This behaviour
+  was deprecated in 1.31. Use Maintenance::fatalError() instead.
+* OutputPage::showNewSectionLink(), ::forceHideNewSectionLink(), and
+  ::noGallery() are now merged like all other ParserOutput flags in
+  ::addParserOutputMetadata().  That is, these flags are now set if *any*
+  ParserOutput added to the page sets the flag; previously they were
+  last-ParserOutput-wins.
+* Parser::replaceLinkHolders(), deprecated in 1.34, has been removed.
+* ContentHandler::getAutoDeleteReason() and WikiPage::getAutoDeleteReason()
+  no longer accept the $hasHistory parameter. This parameter has been
+  emitting warnings since 1.38 and has no replacement.
+* Passing a WikiPage to PageEditStash::parseAndCache(), deprecated since 1.42,
+  now throws a TypeError.
+* The protected static method UserMailer::sendWithPear() has been removed
+  following the migration from PEAR Mail to symfony/mailer.
+* UserCache class and MediaWikiServices::getUserCache(), deprecated since 1.43,
+  have been removed.
+* UserNameUtils::getTempPlaceholder(), deprecated since 1.45, has been removed.
+* DBLoadBalancerFactoryConfigBuilder service has been removed without
+  deprecation. It is internal to the rdbms library and shouldn't be used
+  outside of it.
+* Passing null to any of the three constructor parameters of TextboxBuilder,
+  deprecated in 1.46, will now throw a PHP error. Use the service to get an
+  instance of the class.
+* Title::getPageViewLanguage(), deprecated in 1.42, has been removed.
+* ContentHandler::getPageViewLanguage(), deprecated in 1.42, has been removed.
+* The SpecialVersion::getGitHeadSha1 method, deprecated in 1.41, has
+  been removed.
+* The previously protected property Article::$mContext was made private.
+  Access to it has been deprecated since 1.35.
+* BlockManager::getUserBlock(), deprecated since 1.42, has been removed.
+* The following ChangeTags methods which were deprecated in 1.41 have been
+  removed:
+  - getTags
+  - getTagsWithData
+  - updateTags
+  - getSoftwareTags
+  - modifyDisplayQuery
+  - getDisplayTableName
+  - makeTagSummarySubquery
+  - defineTag
+  - deleteTagEverywhere
+  - listSoftwareActivatedTags
+  - listDefinedTags
+  - listExplicitlyDefinedTags
+  - listSoftwareDefinedTags
+  - purgeTagCacheAll
+  - tagUsageStatistics
+  - addTags
+* The Router::getModule() method in the REST framework now returns a partially
+  initialized Module instance, useful for introspection (OpenAPI) but not
+  suitable for execution. Use getModuleForRequest() to get a Module for
+  execution.
+* Less mixin 'mediawiki.mixins.rotation.less', deprecated in 1.46, was removed.
+  Use standard CSS transform and @keyframes instead.
+* The SpecialPage constructor parameters $restriction, $listed, $function,
+  $file and $includable and the property $mRestricted have been removed.
+* Task::getVirtualDomains() and the "VirtualDomains" installer provision have
+  been removed. Installer tasks that need the list of virtual domains should
+  read the VirtualDomainsMapping configuration variable instead.
+* ConfigRepository class and MediaWikiServices::getConfigRepository(),
+  deprecated since 1.42, have been removed.
+* ApiBase::makeMessage(), deprecated since 1.43, has been removed.
+* …
+
+=== Deprecations in 1.47 ===
+
+* (T166010) All PHP code in MediaWiki is slowly being moved to be in a class
+  namespace as appropriate, so that we can use PSR-4 auto-loading, which will
+  speed up general code loading of MediaWiki. The old global namespace class
+  names are being left behind as deprecated aliases.
+
+  In this release of MediaWiki, XXX classes now have a namespace and XXX do
+  not yet (XXX% done, up from 99% in MediaWiki 1.46.0). The following have newly
+  been moved:
+  - Wikimedia:
+    - Cookie
+    - CookieJar
+    - Deflate
+    - DnsSrvDiscoverer
+    - MWCryptHash
+    - RiffExtractor
+    - UDPTransport
+    - XhprofData
+  - Wikimedia\Iterators:
+    - IteratorDecorator
+    - MappedIterator
+    - NotRecursiveIterator
+  - Wikimedia\ObjectCache:
+    - MemoizedCallable
+  - MediaWiki\Language\Dependency:
+    - CacheDependency
+    - ConstantDependency
+    - DependencyWrapper
+    - FileDependency
+    - GlobalDependency
+    - MainConfigDependency
+  - …
+* The PatrolLog::record method is deprecated and will trigger
+  deprecation warnings. Use PatrolManager::createPatrolLog instead.
+* Title::canUseNoindex() is deprecated with warnings. Please use
+  NamespaceInfo::canUseNoindex() instead.
+* Passing null as the $performer parameter to
+  ChangeTagsStore::makeTagSummarySubquery() is deprecated and emits deprecation
+  warnings. Pass an Authority so that rights-restricted change tags can be shown
+  to users who are allowed to view them.
+* ArchivedRevisionLookup::listRevisions() is deprecated and emits deprecation
+  warnings. Use listArchivedRevisions() instead, passing an Authority.
+* ChangeTagsStore::modifyDisplayQueryBuilder() is deprecated and emits
+  deprecation warnings. Use addTagsToDisplayQuery() instead, passing an
+  Authority.
+* ChangeTagsStore::modifyDisplayQuery() is now deprecated; instead, use
+  ChangeTagsStore::addTagsToDisplayQuery().
+* $wgGalleryOptions['captionLength'], deprecated since 1.28, now emits
+  deprecation warnings when set to a non-default value (T310076).
+* The MarkPatrolledComplete hook has been deprecated and will trigger
+  deprecation warnings. Use the MarkPatrolledAudit hook instead.
+* The MaintenanceRefreshLinksInit hook has been deprecated.
+* FileBackendStore::memCache is now deprecated. Instead, subclasses should
+  use FileBackendStore::wanStatCache.
+* FileBackendStore::cheapCache is now deprecated. Instead, subclasses should
+  use FileBackendStore::procFileStatCache.
+* FileBackendStore::expensiveCache is now deprecated. Instead, subclasses should
+  use FileBackendStore::procFileDataCache.
+* ParserOutput::setTitleText(), ::getTitleText(), ::setDisplayTitle(), and
+  ::getDisplayTitle() are deprecated. Use ::setDisplayTitleParts() and
+  ::getDisplayTitleParts() instead, which keep the localized namespace,
+  separator, and main title as separate pieces rather than a single
+  pre-formatted HTML string (T314399). Rather than relying on the implicit
+  page property set by ::setDisplayTitle(), use
+  ::setUnsortedPageProperty('displaytitle') explicitly (T293514).
+* FSFile::extensionFromPath() has been deprecated. Use the older
+  FileBackend::extensionFromPath() instead.
+* Calling FileBackend::extensionFromPath() with a $case parameter is deprecated
+  and will default to lowercase in the future.
+* ResourceLoader::inDebugMode is now deprecated and emits deprecation warnings.
+* The "MainWANObjectCache" service and MediaWikiServices::getMainWANObjectCache
+  method have been deprecated. Inject the "WANObjectCache" service name
+  or call MediaWikiServices::getWANObjectCache instead.
+* OutputPage::setPrintable, OutputPage::isPrintable, and
+  OutputPage::transformCssMedia are no longer needed per T259141 and have been
+  deprecated without replacement.
+* QuickTemplate::msg() and QuickTemplate::haveMsg() got deprecated and shouldn't
+  be used any more.
+* The shell global functions wfEscapeShellArg(), wfShellExec(),
+  wfShellExecWithStderr() deprecated since 1.30 and wfShellWikiCmd()
+  deprecated in 1.31 will now emit warnings. Use Shell::escpae(),
+  Shell::command() and Shell::makeScriptCommand() instead.
+* The EditPageBeforeConflictDiff hook has been deprecated and will trigger
+  deprecation warnings.
+* Customizing API help output by overriding the ApiBase::modifyHelp() method
+  or by the APIHelpModifyOutput hook has been deprecated.
+* ApiUpload::getDummyInstance(), deprecated since 1.46, now emits
+  deprecation warnings.
+* The global variable $wgLang has been deprecated. Use an available
+  ContextSource instead, falling back to RequestContext::getMain(). As MediaWiki
+  Core no longer reads from $wgLang, writing to $wgLang in extensions will no
+  longer affect core.
+* Supplying the $request parameter to EditPage::importFormData() has been
+  deprecated and emits deprecation warnings. The method will use the request
+  from the context stored in the Article passed to the EditPage constructor
+  instead. To use a different request, provide the Article with an appropriate
+  context before instantiating EditPage.
+* Skin::mapInterwikiToLanguage has been deprecated. Use the
+  InterlanguageLinkCodeMap config setting directly.
+* Backwards compatibility for extensions using the hook
+  SkinTemplateNavigation::Universal, deprecated in 1.46. to modify the
+  namespaces menu has been removed (T416651).
+* ParserOptions::getThumbSize() and ::setThumbSize() have been deprecated.
+  Use UserOptionsLookup::getDefaultOption( 'thumbsize' ) instead; scaling
+  is done client-side now (T417514)
+* Parser::statelessFetchTemplate() and ::statelessFetchRevisionRecord() have
+  been deprecated. Use ParserOptions::getTemplateCallback() to get the original
+  handler.
+* Parser::getExternalLinkRel() has been deprecated. Use LinkRenderer.
+* Title::hasSourceText(), ::getDefaultMessageText() and
+  ::getDefaultSystemMessage() have been deprecated. Use ShadowPageLoader.
+* Passing $revision as a string to LintErrorChecker::check() and ::checkSome()
+  is deprecated and will trigger deprecation warnings.  Use
+  MutableRevisionRecord::newFromContent() to pass a WikitextContent constructed
+  with your string.
+* A non-empty $query parameter to Linker::makeBrokenImageLinkObj() and
+  Linker::getUploadUrl() has been deprecated and will trigger deprecation
+  warnings. There appear to be few users of these methods and no users
+  of this parameter since around MW 1.21 when they were removed from Skin.
+* Linker::makeBrokenImageLinkObj() used to wfWarn if the first argument
+  was not a LinkTarget.  This has been changed to a deprecation warning.
+  In a future release this will be a type hint on the argument.
+* Linker::linkKnown(), deprecated since 1.28, now emits deprecation
+  warnings. Use LinkRenderer::makeKnownLink() instead.
+* The ParserOptionsRegister hook has been deprecated and replaced by
+  ParserOptionsDefaults.
+* The PagerTools class has been deprecated and emits deprecation warnings. Use
+  the new ChangeToolsFactory service instead.
+* TextboxBuilder::mergeClassesIntoAttributes(), deprecated since 1.44, now
+  emits deprecation warnings.
+* MediaWikiIntegrationTestCase::assertSelect() has been deprecated,
+  use MediaWikiIntegrationTestCase::newSelectQueryBuilder() instead.
+* MediaWikiIntegrationTestCase::assertArraySubmapSame() has been deprecated,
+  use MediaWikiTestCaseTrait::assertArrayContains() instead.
+* File::getMetadata(), LocalFile::getMetadata() and ArchivedFile::getMetadata(),
+  deprecated since 1.37, now emits warnings. Use the getMetadataArray() or
+  getMetadataItems() functions instead.
+* MediaTransformOutput::streamFile(), deprecated since 1.26, now emits
+  deprecation warnings. Use streamFileWithStatus() instead.
+* UploadBase::getImageInfo(), deprecated since 1.42, now emits
+  deprecation warnings.
+* PageUpdater::isUnchanged(), deprecated since 1.38, now emits
+  deprecation warnings.
+* LanguageQqx::getMessage(), deprecated since 1.41, now emits deprecation
+  warnings. Use LanguageFactory::getLanguage( 'qqx' ) instead.
+* LocalFile::lock() and LocalFile::unlock(), deprecated since 1.38, now emit
+  deprecation warnings. Use acquireFileLock() and releaseFileLock() instead.
+  LocalFileLockError is deprecated along with these methods.
+* SpecialEmailUser::getTarget(), deprecated since 1.42, now emits deprecation
+  warnings.
+* The global function wfArrayPlus2d(), deprecated since 1.46, now emits
+  deprecation warnings.
+* The global function wfArrayInsertAfter(), deprecated since 1.46, now emits
+  deprecation warnings.
+* $wgUseCopyrightUpload has been deprecated and will be removed in a future
+  version. See T430254 for details.
+* Calling WikiPage::newPageUpdater() with an Authority as $performer has been
+  deprecated. Pass a UserIdentity instead.
+* WikiPage::isBatchedDelete(), deprecated since 1.37, now emits deprecation
+  warnings.
+* WikiPage::insertRedirectEntry(), deprecated since 1.43, now emits deprecation
+  warnings.
+* WANObjectCache::adaptiveTTL, is now deprecated and emits deprecation
+  warnings.
+* WikiPage::getRedirectTarget(), deprecated since 1.38, now emits deprecation
+  warnings.
+* SpecialVersion::getExtensionTypeName() is unused and has been deprecated.
+* The following ChangeTags methods have been deprecated and emit deprecation
+  warnings:
+  - tagDescription: use ChangeTagsFormatter::getTagDescription instead
+  - tagShortDescriptionMessage
+  - tagLongDescriptionMessage
+  - tagHelpLink
+  - formatSummaryRow: use ChangeTagsFormatter::formatTagsAsSummaryList instead
+  - canUpdateTags: use ChangeTags::updateTagsWithChecks instead
+  - getChangeTagListSummary: use ChangeTagsFormatter::getChangeTagListSummary
+    instead
+  - getChangeTagList: use ChangeTagsFormatter::getChangeTagList instead
+  - buildTagFilterSelector: use ChangeTagsFormatter::buildTagFilter instead
+* Database::getCacheSetOptions() is now a no-op, and emits deprecation warnings.
+* The 'ParserCache' service has been deprecated. Use ParserOutputAccess
+  instead.
+* Router::getModuleForPath() is deprecated. Use ::getModuleForRequest() instead.
+* (T408666) The TitleIsAlwaysKnown hook has been deprecated. Use the
+  LinkTargetIsAlwaysKnownBatch hook instead.
+* Overriding MediaHandler::getMetadata() and ::getImageSize(), deprecated since
+  1.37, now emits deprecation warnings.
+* ApiEditPage supplements messages when a handler for the
+  "EditPage::attemptSave:after" or "EditFilterMergedContent" hook sets certain
+  status values without setting a message. This behaviour is now deprecated,
+  and hook handlers are expected to supply messages themselves.
+* WikiPage::checkFlags(), deprecated since 1.32, now emits deprecation
+  warnings.
+* (T433783) The SpecialCreateAccountBenefitsHook has been deprecated and will
+  be removed in a future version. There will be no replacement.
+* Title::isAlwaysKnown() has been deprecated. Use the LinkAlwaysKnownLookup
+  service instead.
+* The hook CategoryViewer__generateLinkHook has been deprecated. Use the hook
+  CategoryViewerGenerateLinkHook instead.
+* The SiteStore service has been deprecated in favor of SiteLookup.
+* The IDatabase::getScopedLockAndFlush() has been deprecated and will trigger
+  deprecation warnings. Use the lock manager service instead.
+* PrefixSearch (and the corresponding StringPrefixSearch/TitlePrefixSearch) have
+  been deprecated. Use SearchEngine::completionSearch() instead.
+* (T301020) Changing the flags of the ParserOutput in an OutputPageParserOutput
+  hook handler is deprecated and emits warnings. Set the flag on the
+  OutputPage (for example, with OutputPage::getMetadata()->setOutputFlag())
+  instead.
+* The ResourceLoader module mediawiki.skinning.content.parsoid has been
+  deprecated. Please remove usages.
+* Title::estimateRevisionCount() is unused and has been deprecated.
+* Title::getOtherPage(), deprecated since 1.34, now emits deprecation warnings.
+* WikiPage::shouldCheckParserCache() has been deprecated. Use
+  ParserOutputAccess::shouldUseCache() instead.
+* (T436997) Passing an int bitmask as the $options parameter to
+  ParserOutputAccess::getParserOutput() and ::getCachedParserOutput() is
+  deprecated and emits deprecation warnings. Pass an options array instead.
+* Calling PageConfigFactory::createFromParserOptions() with ParserOptions
+  that do not have the 'useParsoid' option set is deprecated and emits
+  warnings.
+* Calling PageConfigFactory::createFromParserOptions() with the
+  $pageLanguageOverride parameter is deprecated and emits warnings;
+  instead use ::setTargetLanguage() on the ParserOptions passed to the
+  method.
+* …
+
+=== Other changes in 1.47 ===
+
+* The UserModifyCreateAccountEmailHook has been added to allow modification of
+  both the email subject and the email body sent to new accounts when another
+  user creates an account on their behalf (such as using Special:CreateAccount).
+* Virtual domains in databases no longer require being registered via
+  "DatabaseVirtualDomains" option in extension.json. But they must all start
+  with 'virtual-' to be recognized as a virtual domain.
+* The REST API endpoints /page/{title}/html and /page/{title}/lint now
+  respond with 404 instead of 403 when the requested title is invalid.
+* …
+
+== Compatibility ==
+
+MediaWiki 1.47 requires PHP 8.3.0 or later and the following PHP extensions:
+* ctype
+* dom
+* fileinfo
+* iconv
+* intl
+* mbstring
+* xml
+
+MariaDB is the recommended database software. MySQL, PostgreSQL, or SQLite can
+be used instead, but support for them is somewhat less mature.
+
+The supported versions are:
+
+* MariaDB 10.11 or higher
+* MySQL 5.7.0 or higher
+* PostgreSQL 10 or later
+* SQLite 3.31.0 or later
+
+== Online documentation ==
+Documentation for both end-users and site administrators is available on
+MediaWiki.org, and is covered under the GNU Free Documentation License (except
+for pages that explicitly state that their contents are in the public domain):
+
+  <https://www.mediawiki.org/wiki/Special:MyLanguage/Documentation>
+
+== Mailing list ==
+A mailing list is available for MediaWiki user support and discussion:
+
+  <https://lists.wikimedia.org/postorius/lists/mediawiki-l.lists.wikimedia.org/>
+
+A low-traffic announcements-only list is also available:
+
+  <https://lists.wikimedia.org/postorius/lists/mediawiki-announce.lists.wikimedia.org/>
+
+It's highly recommended that you sign up for one of these lists if you're
+going to run a public MediaWiki, so you can be notified of security fixes.
+
+== IRC help ==
+There's usually someone online in #mediawiki on irc.libera.chat.

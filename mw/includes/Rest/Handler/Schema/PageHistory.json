@@ -1,0 +1,100 @@
+{
+	"x-i18n-description": "rest-schema-desc-page-history",
+	"required": [
+		"revisions",
+		"latest"
+	],
+	"properties": {
+		"revisions": {
+			"type": "array",
+			"x-i18n-description": "rest-property-desc-revision-array",
+			"items": {
+				"type": "object",
+				"required": [
+					"id",
+					"timestamp",
+					"minor",
+					"size",
+					"comment",
+					"user",
+					"delta"
+				],
+				"properties": {
+					"id": {
+						"type": "integer",
+						"x-i18n-description": "rest-property-desc-revision-id",
+						"example": 1218700625
+					},
+					"timestamp": {
+						"type": "string",
+						"format": "date-time",
+						"x-i18n-description": "rest-property-desc-revision-timestamp",
+						"example": "2024-04-13T08:05:03Z"
+					},
+					"minor": {
+						"type": "boolean",
+						"x-i18n-description": "rest-property-desc-revision-minor",
+						"example": false
+					},
+					"size": {
+						"type": "integer",
+						"x-i18n-description": "rest-property-desc-revision-size",
+						"example": 195291
+					},
+					"comment": {
+						"type": "string",
+						"nullable": true,
+						"x-i18n-description": "rest-property-desc-revision-comment",
+						"example": "Alter: date, template type"
+					},
+					"user": {
+						"type": "object",
+						"nullable": true,
+						"x-i18n-description": "rest-property-desc-revision-user",
+						"properties": {
+							"id": {
+								"type": "integer",
+								"nullable": true,
+								"x-i18n-description": "rest-property-desc-user-id",
+								"example": 7903804
+							},
+							"name": {
+								"type": "string",
+								"x-i18n-description": "rest-property-desc-user-name",
+								"example": "Citation bot"
+							}
+						},
+						"required": [
+							"id",
+							"name"
+						]
+					},
+					"delta": {
+						"type": "integer",
+						"nullable": true,
+						"x-i18n-description": "rest-property-desc-revision-delta",
+						"example": 139
+					}
+				}
+			}
+		},
+		"latest": {
+			"type": "string",
+			"format": "uri",
+			"x-i18n-description": "rest-property-desc-revision-url",
+			"example": "https://en.wikipedia.org/w/rest.php/v1/page/Solar_System/history"
+		},
+		"older": {
+			"type": "string",
+			"format": "uri",
+			"x-i18n-description": "rest-property-desc-revision-url-older",
+			"example": "https://en.wikipedia.org/w/rest.php/v1/page/Solar_System/history?older_than=1218700625"
+		},
+		"newer": {
+			"type": "string",
+			"format": "uri",
+			"x-i18n-description": "rest-property-desc-revision-url-newer",
+			"example": "https://en.wikipedia.org/w/rest.php/v1/page/Solar_System/history?newer_than=1256949142"
+		}
+	}
+}

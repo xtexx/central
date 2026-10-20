@@ -1,0 +1,695 @@
+<?php
+declare( strict_types = 1 );
+/**
+ * Copyright (C) 2011-2022 Wikimedia Foundation and others.
+ *
+ * @license GPL-2.0-or-later
+ */
+
+namespace MediaWiki\Parser\Parsoid\Config;
+
+use MediaWiki\Category\TrackingCategories;
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\Content\Transform\ContentTransformer;
+use MediaWiki\FileRepo\File\File;
+use MediaWiki\FileRepo\RepoGroup;
+use MediaWiki\HookContainer\HookContainer;
+use MediaWiki\HookContainer\HookRunner;
+use MediaWiki\Html\Html;
+use MediaWiki\Language\LanguageCode;
+use MediaWiki\Linker\Linker;
+use MediaWiki\Linker\LinkRenderer;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Media\MediaTransformError;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Page\File\BadFileLookup;
+use MediaWiki\Page\LinkBatchFactory;
+use MediaWiki\Parser\Parser;
+use MediaWiki\Parser\ParserFactory;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Parser\PPFrame;
+use MediaWiki\Title\Title;
+use Wikimedia\Assert\UnreachableException;
+use Wikimedia\Parsoid\Config\DataAccess as IDataAccess;
+use Wikimedia\Parsoid\Config\PageConfig as IPageConfig;
+use Wikimedia\Parsoid\Config\PageContent as IPageContent;
+use Wikimedia\Parsoid\Config\SiteConfig as ISiteConfig;
+use Wikimedia\Parsoid\Core\ContentMetadataCollector;
+use Wikimedia\Parsoid\Core\LinkTarget as ParsoidLinkTarget;
+use Wikimedia\Parsoid\Ext\ParsoidExtensionAPI;
+use Wikimedia\Parsoid\Fragments\ExtTagPFragment;
+use Wikimedia\Parsoid\Fragments\HtmlPFragment;
+use Wikimedia\Parsoid\Fragments\PFragment;
+use Wikimedia\Rdbms\ReadOnlyMode;
+
+/**
+ * Implement Parsoid's abstract class for data access.
+ *
+ * @since 1.39
+ * @internal
+ */
+class DataAccess extends IDataAccess {
+	public const CONSTRUCTOR_OPTIONS = [
+		MainConfigNames::SVGMaxSize,
+	];
+
+	private readonly HookRunner $hookRunner;
+	/** Lazy-created via self::prepareParser() */
+	private ?Parser $parser = null;
+	private PPFrame $ppFrame;
+	private ?PageConfig $previousPageConfig = null;
+	private int $markerIndex = 0;
+
+	/**
+	 * @param ServiceOptions $config MediaWiki main configuration object
+	 * @param RepoGroup $repoGroup
+	 * @param BadFileLookup $badFileLookup
+	 * @param HookContainer $hookContainer
+	 * @param ContentTransformer $contentTransformer
+	 * @param TrackingCategories $trackingCategories
+	 * @param ReadOnlyMode $readOnlyMode used to disable linting when the
+	 *   database is read-only.
+	 * @param ParserFactory $parserFactory A legacy parser factory,
+	 *   for PST/preprocessing/extension handling
+	 * @param LinkBatchFactory $linkBatchFactory
+	 * @param LinkRenderer $linkRenderer
+	 */
+	public function __construct(
+		private readonly ServiceOptions $config,
+		private readonly RepoGroup $repoGroup,
+		private readonly BadFileLookup $badFileLookup,
+		private readonly HookContainer $hookContainer,
+		private readonly ContentTransformer $contentTransformer,
+		private readonly TrackingCategories $trackingCategories,
+		private readonly ReadOnlyMode $readOnlyMode,
+		private readonly ParserFactory $parserFactory,
+		private readonly LinkBatchFactory $linkBatchFactory,
+		private readonly LinkRenderer $linkRenderer,
+	) {
+		$config->assertRequiredOptions( self::CONSTRUCTOR_OPTIONS );
+		$this->hookRunner = new HookRunner( $hookContainer );
+
+		$this->previousPageConfig = null; // ensure we initialize parser options
+	}
+
+	/**
+	 * @param IPageConfig $pageConfig
+	 * @param File $file
+	 * @param array $hp
+	 * @return array
+	 */
+	private function makeTransformOptions( IPageConfig $pageConfig, $file, array $hp ): array {
+		$isDefault = ( $hp['isDefault'] ?? false );
+		unset( $hp['isDefault'] );
+
+		// Validate the input parameters like Parser::makeImage()
+		$handler = $file->getHandler();
+		if ( !$handler ) {
+			return []; // will get iconThumb()
+		}
+		foreach ( $hp as $name => $value ) {
+			if ( !$handler->validateParam( $name, $value ) ) {
+				unset( $hp[$name] );
+			}
+		}
+
+		// This part is similar to Linker::makeImageLink(). If there is no width,
+		// set one based on the source file size.
+		$page = $hp['page'] ?? 0;
+		$width = $file->getWidth( $page );
+
+		if ( !isset( $hp['width'] ) ) {
+			if ( isset( $hp['height'] ) && $file->isVectorized() ) {
+				// If it's a vector image, and user only specifies height
+				// we don't want it to be limited by its "normal" width.
+				$hp['width'] = $this->config->get( MainConfigNames::SVGMaxSize );
+			} else {
+				$hp['width'] = $width;
+			}
+
+			// The legacy implementation provides a default width here
+			// for dimensionless files, ie. !$hp['width'], but Parsoid handles
+			// that case after the fact.
+			//
+			// We don't need to fill in a default thumbnail width here, since
+			// that is done by Parsoid. Parsoid always sets the width parameter
+			// for thumbnails.
+		} else {
+			// If a default width is provided by Parsoid, use the width which is smaller:
+			// file width or default width, unless it's a scalable vector
+			if ( $isDefault && !$file->isVectorized() && ( $hp['width'] > $width ) ) {
+				$hp['width'] = $width;
+			}
+		}
+
+		// Parser::makeImage() always sets this
+		$hp['targetlang'] = LanguageCode::bcp47ToInternal(
+			$pageConfig->getPageLanguageBcp47()
+		);
+
+		$hp['requestProvenance'] = 'parser';
+
+		return $hp;
+	}
+
+	/** @inheritDoc */
+	public function getPageInfo( $pageConfigOrTitle, array $titles, bool $defaultLinkCaption = false ): array {
+		if ( $pageConfigOrTitle instanceof IPageConfig ) {
+			$context_title = Title::newFromLinkTarget(
+				$pageConfigOrTitle->getLinkTarget()
+			);
+		} elseif ( is_string( $pageConfigOrTitle ) ) {
+			// Temporary, deprecated.
+			$context_title = Title::newFromTextThrow( $pageConfigOrTitle );
+		} elseif ( $pageConfigOrTitle instanceof ParsoidLinkTarget ) {
+			$context_title = Title::newFromLinkTarget( $pageConfigOrTitle );
+		} else {
+			throw new UnreachableException( "Bad type for argument 1" );
+		}
+		$titleObjs = [];
+		$pagemap = [];
+		$classes = [];
+		$ret = [];
+		foreach ( $titles as $name ) {
+			$t = Title::newFromText( $name );
+			// Filter out invalid titles. Title::newFromText in core (not our bespoke
+			// version in src/Utils/Title.php) can return null for invalid titles.
+			if ( !$t ) {
+				// FIXME: This is a bandaid to patch up the fact that Env::makeTitle treats
+				// this as a valid title, but Title::newFromText treats it as invalid.
+				// T237535
+				// This matches what ApiQuery::outputGeneralPageInfo() would
+				// return for an invalid title.
+				$ret[$name] = [
+					'pageId' => -1,
+					'revId' => -1,
+					'invalid' => true,
+					'invalidreason' => 'The requested page title is invalid',
+				];
+			} else {
+				$titleObjs[$name] = $t;
+			}
+		}
+		$this->linkBatchFactory->newLinkBatch( $titleObjs )
+			->setCaller( __METHOD__ )
+			->execute();
+
+		foreach ( $titleObjs as $obj ) {
+			$pdbk = $obj->getPrefixedDBkey();
+			$pagemap[$obj->getArticleID()] = $pdbk;
+			$classes[$pdbk] = $this->linkRenderer->getLinkClasses( $obj, $defaultLinkCaption );
+		}
+		$this->hookRunner->onGetLinkColours(
+			# $classes is passed by reference and mutated
+			$pagemap, $classes, $context_title
+		);
+
+		foreach ( $titleObjs as $name => $obj ) {
+			/** @var Title $obj */
+			$pdbk = $obj->getPrefixedDBkey();
+			$c = preg_split(
+				'/\s+/', $classes[$pdbk] ?? '', -1, PREG_SPLIT_NO_EMPTY
+			);
+			$ret[$name] = [
+				'pageId' => $obj->getArticleID(),
+				'revId' => $obj->getLatestRevID(),
+				'missing' => !$obj->exists(),
+				'known' => $obj->isKnown(),
+				'redirect' => $obj->isRedirect(),
+				'linkclasses' => $c, # See ApiQueryInfo::getLinkClasses() in core
+			];
+		}
+		return $ret;
+	}
+
+	/** @inheritDoc */
+	public function getFileInfo( IPageConfig $pageConfig, array $files ): array {
+		$page = Title::newFromLinkTarget( $pageConfig->getLinkTarget() );
+
+		$keys = [];
+		foreach ( $files as $f ) {
+			$keys[] = $f[0];
+		}
+		// Use findFile() for a single lookup to take advantage of the WAN cache.
+		if ( count( $keys ) === 1 ) {
+			$key = $keys[0];
+			$file = $this->repoGroup->findFile( $key );
+			$fileObjs = $file ? [ $key => $file ] : [];
+		} else {
+			$fileObjs = $this->repoGroup->findFiles( $keys );
+		}
+
+		$ret = [];
+		foreach ( $files as $f ) {
+			$filename = $f[0];
+			$dims = $f[1];
+
+			/** @var File $file */
+			$file = $fileObjs[$filename] ?? null;
+			if ( !$file ) {
+				$ret[] = null;
+				continue;
+			}
+
+			// See Linker::makeImageLink; 'page' is a key in $handlerParams
+			// core uses 'false' as the default then casts to (int) => 0
+			$pageNum = $dims['page'] ?? 0;
+
+			$result = [
+				'width' => $file->getWidth( $pageNum ),
+				'height' => $file->getHeight( $pageNum ),
+				'size' => $file->getSize(),
+				'mediatype' => $file->getMediaType(),
+				'mime' => $file->getMimeType(),
+				'url' => $file->getFullUrl(),
+				'mustRender' => $file->mustRender(),
+				'isVectorized' => $file->isVectorized(),
+				'badFile' => $this->badFileLookup->isBadFile( $file, $page ),
+				'timestamp' => $file->getTimestamp(),
+				'sha1' => $file->getSha1(),
+				'canonicaltitle' => $file->getTitle(),
+			];
+
+			$length = $file->getLength();
+			if ( $length ) {
+				$result['duration'] = (float)$length;
+			}
+
+			if ( isset( $dims['seek'] ) ) {
+				// Parsoid sets this as int|float but TMH's validateParam
+				// expects it as a string
+				$dims['thumbtime'] = (string)$dims['seek'];
+			}
+
+			$txopts = $this->makeTransformOptions( $pageConfig, $file, $dims );
+			$mto = $file->transform( $txopts );
+			if ( $mto ) {
+				if ( $mto->isError() && $mto instanceof MediaTransformError ) {
+					$result['thumberror'] = $mto->toText();
+				} else {
+					if ( $txopts ) {
+						// Do srcset scaling
+						Linker::processResponsiveImages( $file, $mto, $txopts );
+						if ( count( $mto->responsiveUrls ) ) {
+							$result['responsiveUrls'] = [];
+							foreach ( $mto->responsiveUrls as $density => $url ) {
+								$result['responsiveUrls'][$density] = $url;
+							}
+						}
+					}
+
+					// Proposed MediaTransformOutput serialization method for T51896 etc.
+					// Note that getAPIData(['fullurl']) would return
+					// UrlUtils::expand(), which wouldn't respect the wiki's
+					// protocol preferences -- instead it would use the
+					// protocol used for the API request.
+					$getAPIData = [ $mto, 'getAPIData' ];
+					if ( is_callable( $getAPIData ) ) {
+						$result['thumbdata'] = $getAPIData( [ 'withhash' ] );
+					}
+
+					$result['thumburl'] = $mto->getUrl();
+					$result['thumbwidth'] = $mto->getWidth();
+					$result['thumbheight'] = $mto->getHeight();
+
+					$result['thumbattribs'] = $mto->getAttribs();
+				}
+			} else {
+				$result['thumberror'] = "Presumably, invalid parameters, despite validation.";
+			}
+
+			$ret[] = $result;
+		}
+
+		return $ret;
+	}
+
+	/**
+	 * Return information about blocked/rewritten external URLs.
+	 *
+	 * @param ISiteConfig $siteConfig
+	 * @param list<string> $hrefList The external URLs to query.
+	 * @param ParsoidLinkTarget $contextTitle The context title, for
+	 *   wgNoFollowNsExceptions lookups.
+	 * @return list<array{originalHref:string,href:?string,class:?string,rel:?string,title:?string}>
+	 *   Information about the external URL: the href can be rewritten
+	 *   or blocked (null), and optional class, title, and rel attributes can
+	 *   be added (if non-null).  The results are in the same order as
+	 *   the input $hrefList.
+	 */
+	public function getExternalUrlInfo(
+		ISiteConfig $siteConfig,
+		array $hrefList,
+		ParsoidLinkTarget $contextTitle
+	): array {
+		return array_map( function ( $href ) use ( $contextTitle ) {
+			$originalHref = $href;
+			$linkText = 'modifying link text not supported';
+			$linkHtml = 'modifying link HTML not supported';
+			$attribs = [];
+			/* First obtain the rel information. */
+			$rel = $this->linkRenderer->getExternalLinkRel( $href, $contextTitle );
+			if ( $rel !== null ) {
+				$attribs['rel'] = $rel;
+			}
+			/* Now allow other modifications via hook. */
+			$result = $this->hookRunner->onLinkerMakeExternalLink(
+				$href, $linkText, $linkHtml, $attribs, 'text'
+			);
+			if ( !$result ) {
+				wfDeprecated( "Parsoid does not support modifying link html", "1.46" );
+			}
+			$this->hookRunner->onLinkerMakeExternalLinkWithContext(
+				$href, $linkText, $attribs, 'text', $contextTitle
+			);
+			// Allow either array or string form for $attribs, but normalize
+			// to a single string.
+			$class = Html::expandClassList( $attribs['class'] ?? '' );
+			$rel = Html::expandClassList( $attribs['rel'] ?? '' );
+			return [
+				'originalHref' => $originalHref,
+				'href' => $href,
+				// Setting class/rel to '' is the same as not setting them
+				'class' => $class ?: null,
+				'rel' => $rel ?: null,
+				// Setting `title` to '' might be useful to override a default
+				'title' => $attribs['title'] ?? null,
+			];
+		}, $hrefList );
+	}
+
+	/**
+	 * Prepare MediaWiki's parser for preprocessing or extension tag parsing,
+	 * clearing its state if necessary.
+	 *
+	 * @note The caller is expected to call Parser::resetOutput() and
+	 * reset the watcher if needed on $pageConfig->getParserOptions()
+	 * as needed.
+	 *
+	 * @param IPageConfig $pageConfig
+	 * @param int $outputType
+	 * @return Parser
+	 */
+	private function prepareParser(
+		IPageConfig $pageConfig,
+		int $outputType,
+	) {
+		'@phan-var PageConfig $pageConfig'; // @var PageConfig $pageConfig
+		// Clear the state only when the PageConfig changes, so that Parser's internal caches can
+		// be retained. This should also provide better compatibility with extension tags.
+		$clearState = $this->previousPageConfig !== $pageConfig;
+		$this->previousPageConfig = $pageConfig;
+		$parserOptions = $pageConfig->getParserOptions();
+		$oldWatcher = $parserOptions->registerWatcher( null );
+		// Use the same legacy parser object for all calls to extension tag
+		// processing, for greater compatibility.
+		$this->parser ??= $this->parserFactory->create();
+		$this->parser->setUseParsoidFragments( true );
+		$this->parser->startExternalParse(
+			Title::newFromLinkTarget( $pageConfig->getLinkTarget() ),
+			$parserOptions,
+			$outputType, $clearState, $pageConfig->getRevisionId() );
+
+		// Retain a PPFrame object between preprocess requests since it contains
+		// some useful caches.
+		if ( $clearState ) {
+			$this->ppFrame = $this->parser->getPreprocessor()->newFrame();
+			// If $clearState is true, then we've reset the parser output and
+			// clobbered the watcher on the parser options; restore the old
+			// one.
+			$parserOptions->registerWatcher( $oldWatcher );
+		}
+		return $this->parser;
+	}
+
+	/** @internal */
+	public function makeLimitReport(
+		IPageConfig $pageConfig,
+		ParserOptions $parserOptions,
+		ParserOutput $parserOutput
+	) {
+		$parser = $this->prepareParser( $pageConfig, Parser::OT_HTML );
+		// This next call doesn't touch $parser::$mParserOutput so we
+		// don't need to call Parser::resetOutput() here.
+		$parser->makeLimitReport( $parserOptions, $parserOutput );
+	}
+
+	/** @inheritDoc */
+	public function parseWikitextWithTitle(
+		IPageConfig $pageConfig,
+		ContentMetadataCollector $metadata,
+		string|PFragment $wikitext,
+		?ParsoidLinkTarget $titleOverride = null,
+		?ParsoidExtensionAPI $extApi = null,
+	): string {
+		'@phan-var PageConfig $pageConfig'; // @var PageConfig $pageConfig
+		$parser = $this->prepareParser( $pageConfig, Parser::OT_HTML );
+
+		// XXX: Ideally we will eventually have the legacy parser use our
+		// ContentMetadataCollector instead of having a new ParserOutput
+		// created (in Parser::resetOutput() here) which we then have to
+		// manually merge.  On the other hand, this will let us precisely
+		// identify metadata added by $wikitext.
+		$parserOptions = $pageConfig->getParserOptions();
+		$oldWatcher = $parserOptions->registerWatcher( null );
+		$parser->resetOutput();
+
+		$wikitext = $this->parsoidToStrip( $wikitext, $parser );
+		$frame = false;
+		if ( $titleOverride !== null ) {
+			$frame = $this->ppFrame->newChild(
+				false, Title::newFromLinkTarget( $titleOverride )
+			);
+		}
+		$html = $parser->parseExtensionTagAsTopLevelDoc( $wikitext, $frame );
+		$html = $parser->getStripState()->unstripParsoid( $html, $extApi );
+		$html = Parser::extractBody( $html );
+
+		$out = $parser->getOutput();
+		$out->collectMetadata( $metadata ); # merges $out into $metadata
+		$parserOptions->registerWatcher( $oldWatcher );
+
+		return $html;
+	}
+
+	/** @inheritDoc */
+	public function preprocessWikitext(
+		IPageConfig $pageConfig,
+		ContentMetadataCollector $metadata,
+		$wikitext
+	) {
+		'@phan-var PageConfig $pageConfig'; // @var PageConfig $pageConfig
+
+		$parser = $this->prepareParser( $pageConfig, Parser::OT_PREPROCESS );
+
+		// XXX: Ideally we will eventually have the legacy parser use our
+		// ContentMetadataCollector instead of having a new ParserOutput
+		// created (in Parser::resetOutput() here) which we then have to
+		// manually merge.  On the other hand, this will let us precisely
+		// identify metadata added by $wikitext.
+		$parserOptions = $pageConfig->getParserOptions();
+		$oldWatcher = $parserOptions->registerWatcher( null );
+		$parser->resetOutput();
+
+		$wikitext = $this->parsoidToStrip( $wikitext, $parser );
+		$this->hookRunner->onParserBeforePreprocess(
+			# $wikitext is passed by reference and mutated
+			$parser, $wikitext, $parser->getStripState()
+		);
+		// New PFragment-based support (T374616)
+		$wikitext = $parser->replaceVariables(
+			$wikitext, $this->ppFrame, false, [
+				'parsoidTopLevelCall' => true,
+			]
+		);
+
+		$out = $parser->getOutput();
+		$out->collectMetadata( $metadata ); # merges $out into $metadata
+		$parserOptions->registerWatcher( $oldWatcher );
+
+		return self::unstripForParsoid( $wikitext, $parser );
+	}
+
+	/**
+	 * Convert Parsoid PFragments to strip markers.
+	 */
+	public function parsoidToStrip( PFragment|string $wikitext, Parser $parser ): string {
+		if ( $wikitext instanceof PFragment ) {
+			$result = [];
+			$index = 1;
+			foreach ( $wikitext->split() as $fragment ) {
+				if ( is_string( $fragment ) ) {
+					$result[] = $fragment;
+				} else {
+					$marker = Parser::MARKER_PREFIX . '-parsoid-' .
+						sprintf( '%08X', $this->markerIndex++ ) .
+						Parser::MARKER_SUFFIX;
+					$parser->getStripState()->addParsoidOpaque(
+						$marker, $fragment
+					);
+					$result[] = $marker;
+				}
+			}
+			$wikitext = implode( $result );
+		}
+		return $wikitext;
+	}
+
+	/**
+	 * Where the result has strip state markers, tunnel this content
+	 * through Parsoid as a PFragment type.
+	 */
+	public static function unstripForParsoid( string $wikitext, Parser $parser ): string|PFragment {
+		// Temporary config flag while we test this functionality
+		$useExtTagPFragments = in_array(
+			'ExtTagPFragment',
+			MediaWikiServices::getInstance()->getMainConfig()
+				->get( MainConfigNames::ReturnExperimentalPFragmentTypes ),
+			true
+		);
+
+		$pieces = $parser->getStripState()->split(
+			$wikitext,
+			keepExtTag: $useExtTagPFragments,
+		);
+		if ( count( $pieces ) > 1 || ( $pieces[0]['type'] ?? null ) !== 'string' ) {
+			for ( $i = 0; $i < count( $pieces ); $i++ ) {
+				[ 'type' => $type, 'content' => $content ] = $pieces[$i];
+				if ( $type === 'string' ) {
+					// wikitext (could include extension tag snippets like <tag..>...</tag>)
+					$pieces[$i] = $content;
+				} elseif ( $type === 'parsoid' ) {
+					// @phan-suppress-next-line PhanTypePossiblyInvalidDimOffset
+					$pieces[$i] = $pieces[$i]['extra']; // replace w/ fragment
+				} elseif ( $type === 'nowiki' ) {
+					$extra = $pieces[$i]['extra'] ?? null;
+					// T388819: If this is from an actual <nowiki>, we
+					// wrap <span typeof="mw:Nowiki"> around $contents.
+					if ( $extra !== null ) {
+						$content = Html::rawElement( 'span', [
+							'typeof' => 'mw:Nowiki',
+						], $parser->getStripState()->unstripNoWiki( $content ) );
+					}
+					$pieces[$i] = $content ? HtmlPFragment::newFromHtmlString( $content, null ) : '';
+				} elseif ( $type === 'exttag' && $useExtTagPFragments ) {
+					$frame = $pieces[$i]['extra'] ?? null;
+					$sub = self::unstripForParsoid( $content, $parser );
+					$pieces[$i] = new ExtTagPFragment( $sub, $frame->getTitle() );
+				} else {
+					// T381709: technically this fragment should
+					// be subject to language conversion and some
+					// additional processing
+					$pieces[$i] = $content ? HtmlPFragment::newFromHtmlString( $content, null ) : '';
+				}
+			}
+			// Concatenate wikitext strings generated by extension tags,
+			// so that PFragment doesn't try to add <nowiki>s between
+			// the pieces to prevent token-gluing.
+			$result = [];
+			$wt = '';
+			foreach ( $pieces as $p ) {
+				if ( is_string( $p ) ) {
+					$wt .= $p;
+				} else {
+					$result[] = $wt;
+					$result[] = $p;
+					$wt = '';
+				}
+			}
+			$result[] = $wt;
+			// result will be a PFragment, no longer a string.
+			$wikitext = PFragment::fromSplitWt( $result );
+		}
+		return $wikitext;
+	}
+
+	/** @inheritDoc */
+	public function fetchTemplateSource(
+		IPageConfig $pageConfig, $title
+	): ?IPageContent {
+		'@phan-var PageConfig $pageConfig'; // @var PageConfig $pageConfig
+		if ( is_string( $title ) ) {
+			$titleObj = Title::newFromTextThrow( $title );
+		} else {
+			$titleObj = Title::newFromLinkTarget( $title );
+		}
+
+		// Use the PageConfig to take advantage of custom template
+		// fetch hooks like FlaggedRevisions, etc.
+		$revRecord = $pageConfig->fetchRevisionRecordOfTemplate( $titleObj, $this->parser );
+
+		return $revRecord ? new PageContent( $revRecord ) : null;
+	}
+
+	/** @inheritDoc */
+	public function fetchTemplateData( IPageConfig $pageConfig, $title ): ?array {
+		$ret = [];
+		if ( !is_string( $title ) ) {
+			$titleObj = Title::newFromLinkTarget( $title );
+			$title = $titleObj->getPrefixedText();
+		}
+		// @todo: This hook needs some clean up: T304899
+		$this->hookRunner->onParserFetchTemplateData(
+			[ $title ],
+			$ret # value returned by reference
+		);
+
+		// Cast value to array since the hook returns this as a stdclass
+		$tplData = $ret[$title] ?? null;
+		if ( $tplData ) {
+			// Deep convert to associative array
+			$tplData = json_decode( json_encode( $tplData ), true );
+		}
+		return $tplData;
+	}
+
+	/**
+	 * Add a tracking category with the given key to the metadata for the page.
+	 * @param IPageConfig $pageConfig the page on which the tracking category
+	 *   is to be added
+	 * @param ContentMetadataCollector $metadata The metadata for the page
+	 * @param string $key Message key (not localized)
+	 */
+	public function addTrackingCategory(
+		IPageConfig $pageConfig,
+		ContentMetadataCollector $metadata,
+		string $key
+	): void {
+		$page = Title::newFromLinkTarget( $pageConfig->getLinkTarget() );
+		$this->trackingCategories->addTrackingCategory(
+			$metadata, $key, $page
+		);
+	}
+
+	/** @inheritDoc */
+	public function logLinterData( IPageConfig $pageConfig, array $lints ): void {
+		if ( $this->readOnlyMode->isReadOnly() ) {
+			return;
+		}
+
+		$revId = $pageConfig->getRevisionId();
+		if ( $revId === null ) {
+			// The revision is not saved yet. Do not look up the page here,
+			// because the page row can be missing (T432762).
+			return;
+		}
+		// Do not use getPageInfo() here. It gets the Title from the
+		// Title::newFromText() cache, and it keeps page fields (for example
+		// the redirect flag) in that Title. During a save, these fields can
+		// be out of date. Other code then gets the incorrect values from
+		// the cache (T432762). Use a new Title object instead.
+		$titleObj = Title::newFromLinkTarget(
+			$pageConfig->getLinkTarget(), Title::NEW_CLONE
+		);
+		$latest = $titleObj->getLatestRevID();
+
+		// Only send the request if it the latest revision
+		if ( $revId === $latest ) {
+			$this->hookRunner->onParserLogLinterData(
+				$titleObj->getPrefixedText(), $revId, $lints
+			);
+		}
+	}
+
+}

@@ -1,0 +1,53 @@
+/*!
+ * Display neat icons on redirect pages.
+ */
+
+/* stylelint-disable selector-class-pattern */
+@import 'mediawiki.skin.variables.less';
+@import 'mediawiki.mixins.less';
+
+/**
+ * Hide, but keep accessible for screen-readers.
+ * Prefix with .mw-body to override any skin defaults for `p` tag.
+*/
+.mw-body .redirectMsg p {
+	overflow: hidden;
+	height: 0;
+	padding: 0;
+}
+
+.redirectText {
+	list-style: none;
+	display: inline;
+	margin: 0;
+	padding: 0;
+
+	li {
+		display: inline;
+		margin: 0;
+		padding: 0;
+
+		&::before {
+			content: '';
+			display: inline-block;
+			vertical-align: middle;
+			width: 47px;
+			height: 20px;
+			background: @color-base;
+
+			.mw-content-ltr & {
+				/* @noflip */
+				-webkit-mask-image: url( images/redirect-ltr.svg );
+				/* @noflip */
+				mask-image: url( images/redirect-ltr.svg );
+			}
+
+			.mw-content-rtl & {
+				/* @noflip */
+				-webkit-mask-image: url( images/redirect-rtl.svg );
+				/* @noflip */
+				mask-image: url( images/redirect-rtl.svg );
+			}
+		}
+	}
+}

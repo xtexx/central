@@ -1,0 +1,240 @@
+<?php
+/**
+ * @license GPL-2.0-or-later
+ * @file
+ */
+
+namespace MediaWiki\Permissions;
+
+use MediaWiki\Block\AbstractBlock;
+use MediaWiki\Block\Block;
+use MediaWiki\Block\CompositeBlock;
+use MediaWiki\Exception\ErrorPageError;
+use MediaWiki\Exception\PermissionsError;
+use MediaWiki\Exception\ThrottledError;
+use MediaWiki\Exception\UserBlockedError;
+use StatusValue;
+
+/**
+ * A StatusValue for permission errors.
+ *
+ * This status will never have a value. It's only used to keep track of errors.
+ *
+ * @todo Add compat code for PermissionManager::getPermissionErrors
+ *       and additional info about user blocks.
+ *
+ * @unstable
+ * @since 1.36
+ * @extends StatusValue<never>
+ */
+class PermissionStatus extends StatusValue {
+
+	/** @var ?Block */
+	private $block = null;
+
+	/** @var bool */
+	private $rateLimitExceeded = false;
+
+	/** @var ?string */
+	private $permission = null;
+
+	private ?string $reauthOperation = null;
+
+	/** @var string[] Potential reauth operations checked for this action */
+	private array $checkedReauthOperations = [];
+
+	/**
+	 * @note Merging two PermissionStatus objects with different permission fields is not advised.
+	 *   If both $this and $other have permission set, the one from $this will be kept and the
+	 *   one from $other will be lost.
+	 * @inheritDoc
+	 */
+	public function merge( $other, $overwriteValue = false ) {
+		parent::merge( $other, $overwriteValue );
+		if ( $other instanceof PermissionStatus ) {
+			if ( $other->block !== null ) {
+				if ( $this->block === null ) {
+					$this->block = $other->block;
+				} elseif (
+					$other->block->getIdentifier() !== $this->block->getIdentifier() &&
+					// For Phan
+					$this->block instanceof AbstractBlock &&
+					$other->block instanceof AbstractBlock
+				) {
+					$this->block = CompositeBlock::createFromBlocks( $this->block, $other->block );
+				}
+			}
+			if ( $this->permission === null ) {
+				$this->permission = $other->permission;
+			}
+			if ( $other->rateLimitExceeded !== null ) {
+				$this->rateLimitExceeded = $this->rateLimitExceeded || $other->rateLimitExceeded;
+			}
+			if ( $other->reauthOperation !== null ) {
+				$this->reauthOperation = $other->reauthOperation;
+			}
+			foreach ( $other->checkedReauthOperations as $operation ) {
+				$this->addCheckedReauthOperation( $operation );
+			}
+		}
+		return $this;
+	}
+
+	/**
+	 * Returns the user block that contributed to permissions being denied,
+	 * if such a block was provided via setBlock().
+	 *
+	 * This is intended to be used to provide additional information to the user that
+	 * allows them to determine the reason for them being denied an action.
+	 *
+	 * @since 1.37
+	 *
+	 * @return ?Block
+	 */
+	public function getBlock(): ?Block {
+		return $this->block;
+	}
+
+	/**
+	 * Returns true when permissions were denied because the user is blocked.
+	 *
+	 * @since 1.41
+	 *
+	 * @return bool
+	 */
+	public function isBlocked(): bool {
+		return $this->block !== null;
+	}
+
+	/**
+	 * @since 1.37
+	 * @internal
+	 * @param Block $block
+	 */
+	public function setBlock( Block $block ): void {
+		$this->block = $block;
+		$this->setOK( false );
+	}
+
+	public static function newEmpty(): static {
+		return new static();
+	}
+
+	/**
+	 * Call this to indicate that the user is over the rate limit for some action.
+	 * @since 1.41
+	 * @internal
+	 * Will cause isRateLimitExceeded() to return true.
+	 */
+	public function setRateLimitExceeded() {
+		$this->rateLimitExceeded = true;
+		$this->fatal( 'actionthrottledtext' );
+	}
+
+	/**
+	 * Whether the user is over the rate limit for some action.
+	 * @since 1.41
+	 * @return bool True if setRateLimitExceeded() was called.
+	 */
+	public function isRateLimitExceeded(): bool {
+		return $this->rateLimitExceeded;
+	}
+
+	/**
+	 * Sets the name of the permission that is being checked.
+	 *
+	 * @since 1.41
+	 * @internal
+	 */
+	public function setPermission( string $permission ) {
+		$this->permission = $permission;
+	}
+
+	/**
+	 * Returns the name of the permission that was being checked.
+	 *
+	 * @return string|null The permission, if known
+	 * @since 1.41
+	 */
+	public function getPermission(): ?string {
+		return $this->permission;
+	}
+
+	/**
+	 * Call this to indicate the user needs to reauthenticate in order to perform the requested action.
+	 * @param string $operation The name of the operation the user needs to reauthenticate for
+	 */
+	public function setReauthOperation( string $operation ): void {
+		$this->reauthOperation = $operation;
+	}
+
+	/**
+	 * Get the name of the operation the user needs to reauthenticate for, if any.
+	 * @return string|null The name of the operation if reauthentication is required, or null otherwise.
+	 */
+	public function getReauthOperation(): ?string {
+		return $this->reauthOperation;
+	}
+
+	/**
+	 * Record that a reauth-gated operation was checked for the requested action,
+	 * whether or not the reauthentication requirement was currently satisfied.
+	 *
+	 * @since 1.47
+	 * @param string $operation The name of the reauth operation that was checked
+	 */
+	public function addCheckedReauthOperation( string $operation ): void {
+		if ( !in_array( $operation, $this->checkedReauthOperations, true ) ) {
+			$this->checkedReauthOperations[] = $operation;
+		}
+	}
+
+	/**
+	 * List the reauth operation(s) that gate the requested action, even if they
+	 * were satisfied by a recent reauthentication event (T430197).
+	 *
+	 * Unlike getReauthOperation(), which is only set when reauthentication is
+	 * currently required (SEC_REAUTH) or impossible (SEC_FAIL), this also
+	 * includes operations whose check returned SEC_OK. It allows callers to
+	 * arm client-side reauth UX (e.g. AuthPopup) for the case where a currently
+	 * valid reauthentication expires before the user completes the action.
+	 *
+	 * @since 1.47
+	 * @return string[]
+	 */
+	public function getCheckedReauthOperations(): array {
+		return $this->checkedReauthOperations;
+	}
+
+	/**
+	 * Will throw an appropriate ErrorPageError if isOK() returns false.
+	 * If isOK() returns true, this method does nothing.
+	 *
+	 * This is a convenience method for use in user interaction code,
+	 * such as subclasses of SpecialPage.
+	 *
+	 * @unstable Introduced in 1.41, but unstable since the future of ErrorPageError is unclear (T281935).
+	 *
+	 * @throws ErrorPageError
+	 * @return void
+	 */
+	public function throwErrorPageError(): void {
+		if ( $this->isOK() ) {
+			return;
+		}
+
+		$block = $this->getBlock();
+		if ( $block ) {
+			throw new UserBlockedError( $block );
+		}
+
+		if ( $this->isRateLimitExceeded() ) {
+			throw new ThrottledError();
+		}
+
+		$messages = $this->getStatusArray( 'error' );
+
+		throw new PermissionsError( $this->permission, $messages );
+	}
+
+}

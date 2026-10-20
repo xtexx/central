@@ -1,0 +1,166 @@
+<?php
+
+namespace MediaWiki\Rest\Handler;
+
+use MediaWiki\Deferred\LinksUpdate\LangLinksTable;
+use MediaWiki\Language\LanguageNameUtils;
+use MediaWiki\Page\ExistingPageRecord;
+use MediaWiki\Page\PageLookup;
+use MediaWiki\Rest\Handler;
+use MediaWiki\Rest\Handler\Helper\PageRedirectHelper;
+use MediaWiki\Rest\Handler\Helper\PageRestHelperFactory;
+use MediaWiki\Rest\LocalizedHttpException;
+use MediaWiki\Rest\Response;
+use MediaWiki\Rest\SimpleHandler;
+use MediaWiki\Title\MalformedTitleException;
+use MediaWiki\Title\TitleFormatter;
+use MediaWiki\Title\TitleParser;
+use Wikimedia\Message\MessageValue;
+use Wikimedia\ParamValidator\ParamValidator;
+use Wikimedia\Rdbms\IConnectionProvider;
+use Wikimedia\Timestamp\TimestampFormat as TS;
+
+/**
+ * Class LanguageLinksHandler
+ * REST API handler for /page/{title}/links/language endpoint.
+ */
+class LanguageLinksHandler extends SimpleHandler {
+
+	/**
+	 * @var ExistingPageRecord|false|null
+	 */
+	private $page = false;
+
+	public function __construct(
+		private readonly IConnectionProvider $dbProvider,
+		private readonly LanguageNameUtils $languageNameUtils,
+		private readonly TitleFormatter $titleFormatter,
+		private readonly TitleParser $titleParser,
+		private readonly PageLookup $pageLookup,
+		private readonly PageRestHelperFactory $helperFactory,
+	) {
+	}
+
+	private function getRedirectHelper(): PageRedirectHelper {
+		return $this->helperFactory->newPageRedirectHelper(
+			$this->getResponseFactory(),
+			$this->getRouter(),
+			$this->getRoutePath(),
+			$this->getRequest()
+		);
+	}
+
+	private function getPage(): ?ExistingPageRecord {
+		if ( $this->page === false ) {
+			$this->page = $this->pageLookup->getExistingPageByText(
+					$this->getValidatedParams()['title']
+				);
+		}
+		return $this->page;
+	}
+
+	/**
+	 * @param string $title
+	 * @return Response
+	 * @throws LocalizedHttpException
+	 */
+	public function run( $title ) {
+		$page = $this->getPage();
+		$params = $this->getValidatedParams();
+
+		if ( !$page ) {
+			throw new LocalizedHttpException(
+				( new MessageValue( 'rest-nonexistent-title' ) )->plaintextParams( $title ),
+				404
+			);
+		}
+
+		'@phan-var \MediaWiki\Page\ExistingPageRecord $page';
+		$redirectResponse = $this->getRedirectHelper()->createNormalizationRedirectResponseIfNeeded(
+			$page,
+			$params['title'] ?? null
+		);
+
+		if ( $redirectResponse !== null ) {
+			return $redirectResponse;
+		}
+
+		if ( !$this->getAuthority()->authorizeRead( 'read', $page ) ) {
+			throw new LocalizedHttpException(
+				( new MessageValue( 'rest-permission-denied-title' ) )->plaintextParams( $title ),
+				403
+			);
+		}
+
+		return $this->getResponseFactory()
+			->createJson( $this->fetchLinks( $page->getId() ) );
+	}
+
+	private function fetchLinks( int $pageId ): array {
+		$result = [];
+		$res = $this->dbProvider->getReplicaDatabase( LangLinksTable::VIRTUAL_DOMAIN )->newSelectQueryBuilder()
+			->select( [ 'll_title', 'll_lang' ] )
+			->from( 'langlinks' )
+			->where( [ 'll_from' => $pageId ] )
+			->orderBy( 'll_lang' )
+			->caller( __METHOD__ )->fetchResultSet();
+		foreach ( $res as $item ) {
+			try {
+				$targetTitle = $this->titleParser->parseTitle( $item->ll_title );
+				$result[] = [
+					'code' => $item->ll_lang,
+					'name' => $this->languageNameUtils->getLanguageName( $item->ll_lang ),
+					'key' => $this->titleFormatter->getPrefixedDBkey( $targetTitle ),
+					'title' => $this->titleFormatter->getPrefixedText( $targetTitle )
+				];
+			} catch ( MalformedTitleException ) {
+				// skip malformed titles
+			}
+		}
+		return $result;
+	}
+
+	/** @inheritDoc */
+	public function needsWriteAccess() {
+		return false;
+	}
+
+	/** @inheritDoc */
+	public function getParamSettings() {
+		return [
+			'title' => [
+				self::PARAM_SOURCE => 'path',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => true,
+				Handler::PARAM_DESCRIPTION => new MessageValue( 'rest-param-desc-language-links-title' ),
+				Handler::PARAM_EXAMPLE => 'Jupiter',
+			],
+		];
+	}
+
+	protected function getETag(): ?string {
+		$page = $this->getPage();
+		if ( !$page ) {
+			return null;
+		}
+
+		// XXX: use hash of the rendered HTML?
+		return '"' . $page->getLatest() . '@' . wfTimestamp( TS::MW, $page->getTouched() ) . '"';
+	}
+
+	protected function getLastModified(): ?string {
+		$page = $this->getPage();
+		return $page ? $page->getTouched() : null;
+	}
+
+	/**
+	 * @return bool
+	 */
+	protected function hasRepresentation() {
+		return (bool)$this->getPage();
+	}
+
+	public function getResponseBodySchemaFileName( string $method ): ?string {
+		return __DIR__ . '/Schema/PageLanguageLinks.json';
+	}
+}

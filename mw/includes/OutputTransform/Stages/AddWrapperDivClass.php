@@ -1,0 +1,97 @@
+<?php
+declare( strict_types = 1 );
+
+namespace MediaWiki\OutputTransform\Stages;
+
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\Html\Html;
+use MediaWiki\Language\Language;
+use MediaWiki\Language\LanguageFactory;
+use MediaWiki\OutputTransform\OutputTransformStage;
+use MediaWiki\Parser\ContentHolder;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Parser\ParserOutput;
+use Psr\Log\LoggerInterface;
+
+/**
+ * Wrap the output in a div with the provided class name
+ * @internal
+ */
+class AddWrapperDivClass extends OutputTransformStage {
+
+	public function __construct(
+		ServiceOptions $options,
+		LoggerInterface $logger,
+		private LanguageFactory $langFactory,
+		private Language $contentLang
+	) {
+		parent::__construct( $options, $logger );
+	}
+
+	/**
+	 * Returns the class name for the wrapper div, or null if no wrapper
+	 * div should be added.
+	 */
+	public static function wrapperDivClass( ParserOutput $po, ParserOptions $popts, array $options = [] ): ?string {
+		$wrapperDivClass = $options['wrapperDivClass'] ?? $po->getWrapperDivClass();
+		if ( $wrapperDivClass === '' || ( $options['unwrap'] ?? false ) ) {
+			// Don't wrap!
+			return null;
+		}
+		return $wrapperDivClass;
+	}
+
+	public function shouldRun( ParserOutput $po, ParserOptions $popts, array $options = [] ): bool {
+		return self::wrapperDivClass( $po, $popts, $options ) !== null;
+	}
+
+	public function transform( ParserOutput $po, ParserOptions $popts, array &$options ): ParserOutput {
+		$wrapperDivClass = self::wrapperDivClass( $po, $popts, $options );
+		$pageLang = $this->getLanguageWithFallbackGuess( $po );
+		$extraAttrs = [];
+		$parsoidVersion = $po->getExtensionData( 'core:parsoid-version' );
+		$htmlVersion = $po->getExtensionData( 'core:html-version' );
+		if ( $parsoidVersion !== null ) {
+			$extraAttrs['data-mw-parsoid-version'] = $parsoidVersion;
+		}
+		if ( $htmlVersion !== null ) {
+			$extraAttrs['data-mw-html-version'] = $htmlVersion;
+		}
+		$attrs = [
+			'class' => 'mw-content-' . $pageLang->getDir() . ' ' . $wrapperDivClass,
+			'lang' => $pageLang->toBcp47Code(),
+			'dir' => $pageLang->getDir(),
+		] + $extraAttrs;
+		$contentHolder = $po->getContentHolder();
+		if ( $contentHolder->preferDom() ) {
+			$divFragment = $contentHolder->createFragment(
+				Html::rawElement( 'div', $attrs, '' )
+			);
+			// @phan-suppress-next-line PhanParamTooManyInternal phan bug
+			$divFragment->firstElementChild->append(
+				$contentHolder->getAsDom( ContentHolder::BODY_FRAGMENT )
+			);
+			$contentHolder->setAsDom(
+				ContentHolder::BODY_FRAGMENT,
+				$divFragment
+			);
+		} else {
+			$text = $contentHolder->getAsHtmlString(
+				ContentHolder::BODY_FRAGMENT
+			) ?? '';
+			$contentHolder->setAsHtmlString(
+				ContentHolder::BODY_FRAGMENT,
+				Html::rawElement( 'div', $attrs, $text )
+			);
+		}
+		return $po;
+	}
+
+	private function getLanguageWithFallbackGuess( ParserOutput $po ): Language {
+		$pageLang = $po->getLanguage();
+		if ( $pageLang ) {
+			return $this->langFactory->getLanguage( $pageLang );
+		}
+		return $this->contentLang;
+	}
+}

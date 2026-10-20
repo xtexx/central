@@ -1,0 +1,89 @@
+<?php
+declare( strict_types = 1 );
+
+namespace MediaWiki\OutputTransform;
+
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\Language\LanguageFactory;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Parser\Parsoid\PageBundleParserOutputConverter;
+use MediaWiki\Revision\RevisionLookup;
+use MediaWiki\Tests\OutputTransform\DummyDOMTransformStage;
+use MediaWiki\Title\TitleValue;
+use MediaWikiCoversValidator;
+use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
+use Wikimedia\Parsoid\Core\HtmlPageBundle;
+use Wikimedia\Parsoid\Mocks\MockSiteConfig;
+
+class ContentDOMTransformStageTest extends TestCase {
+	use MediaWikiCoversValidator;
+
+	public function createStage(): ContentDOMTransformStage {
+		return new DummyDOMTransformStage(
+			new ServiceOptions( [] ),
+			new NullLogger(),
+			true
+		);
+	}
+
+	private function newConverter(): PageBundleParserOutputConverter {
+		return new PageBundleParserOutputConverter(
+			new MockSiteConfig( [] ),
+			$this->createStub( RevisionLookup::class ),
+			$this->createStub( LanguageFactory::class ),
+		);
+	}
+
+	/**
+	 * Regression test for T365036 - checking that a very basic ParserOutput continues serializing after going
+	 * through a ContentDOMTransformStage
+	 * @covers \MediaWiki\OutputTransform\ContentDOMTransformStage::transformDOM
+	 */
+	public function testTransform() {
+		$html = "<div>some output</div>";
+		$po = $this->newConverter()->parserOutputFromPageBundle(
+			new HtmlPageBundle( html: $html ),
+			isParsoidContent: true,
+			title: new TitleValue( NS_MAIN, 'Test_Page' ),
+		);
+		$transform = $this->createStage();
+		$popts = ParserOptions::newFromAnon();
+		$options = [];
+		$this->assertTrue( $po->getContentHolder()->isParsoidContent() );
+		$po = $transform->transform( $po, $popts, $options );
+		$json = MediaWikiServices::getInstance()->getJsonCodec()->serialize( $po );
+		self::assertStringContainsString( "pageBundle", $json );
+	}
+
+	/**
+	 * @covers \MediaWiki\OutputTransform\ContentDOMTransformStage::transform
+	 */
+	public function testTransformOption() {
+		$html = "<div>some output</div>";
+		$po = new ParserOutput( $html );
+		$transform = $this->createStage();
+
+		// Legacy, should roundtrip the input
+		$popts = ParserOptions::newFromAnon();
+		$options = [];
+		$this->assertFalse( $po->getContentHolder()->isParsoidContent() );
+		$po = $transform->transform( $po, $popts, $options );
+		$text = $po->getContentHolderText();
+		$this->assertEquals( $html, $text );
+
+		// Parsoid, also roundtrips the input since document creation marks it as new
+		$po = $this->newConverter()->parserOutputFromPageBundle(
+			new HtmlPageBundle( html: $html ),
+			isParsoidContent: true,
+			title: new TitleValue( NS_MAIN, 'Test_Page' ),
+		);
+		$this->assertTrue( $po->getContentHolder()->isParsoidContent() );
+		$po = $transform->transform( $po, $popts, $options );
+		$text = $po->getContentHolderText();
+		$this->assertEquals( $html, $text );
+	}
+
+}

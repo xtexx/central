@@ -1,0 +1,116 @@
+<?php
+declare( strict_types = 1 );
+
+namespace MediaWiki\Tests\OutputTransform\Stages;
+
+use MediaWiki\Config\HashConfig;
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\OutputTransform\OutputTransformStage;
+use MediaWiki\OutputTransform\Stages\HandleSectionLinks;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Tests\OutputTransform\OutputTransformStageTestBase;
+use MediaWiki\Tests\OutputTransform\TestUtils;
+use Psr\Log\NullLogger;
+use Wikimedia\Parsoid\Core\HtmlPageBundle;
+
+/** @covers \MediaWiki\OutputTransform\Stages\HandleSectionLinks */
+class HandleSectionLinksTest extends OutputTransformStageTestBase {
+
+	public function createStage(): OutputTransformStage {
+		return new HandleSectionLinks(
+			new ServiceOptions(
+				HandleSectionLinks::CONSTRUCTOR_OPTIONS,
+				new HashConfig()
+			),
+			new NullLogger(),
+			$this->getServiceContainer()->getTitleFactory()
+		);
+	}
+
+	public static function provideShouldRun(): array {
+		return [ [ new ParserOutput(), ParserOptions::newFromAnon(), [] ] ];
+	}
+
+	public static function provideShouldNotRun(): iterable {
+		yield [
+			self::getStubPageBundleParserOutputConverter()
+				->parserOutputFromPageBundle(
+					new HtmlPageBundle( '' ),
+					isParsoidContent: true,
+				),
+			ParserOptions::newFromAnon(),
+			[],
+		];
+	}
+
+	private static function newParserOutput(
+		?string $rawText,
+		?ParserOptions $parserOptions,
+		string $fragment,
+		string ...$flags
+	) {
+		$po = new ParserOutput( $rawText ?? '' );
+		if ( $parserOptions !== null ) {
+			$po->setFromParserOptions( $parserOptions );
+		}
+		foreach ( $flags as $f ) {
+			$po->setOutputFlag( $f );
+		}
+		$po->getContentHolder()->setAsHtmlString( 'my fragment', $fragment );
+		// T428677: temporarily mark parser output generated with the
+		// data-mw-wikitext marking
+		$po->setExtensionData( 'core:new-heading-attr', true );
+		return $po;
+	}
+
+	public static function provideTransform(): iterable {
+		yield "TEST_DOC default: with links" => [
+			self::newParserOutput( TestUtils::TEST_DOC, null, TestUtils::TEST_DOC ),
+			ParserOptions::newFromAnon(), [],
+			self::newParserOutput( TestUtils::TEST_DOC_WITH_LINKS, null, TestUtils::TEST_DOC )
+		];
+		yield "TEST_DOC default ParserOptions: with links" => [
+			self::newParserOutput( TestUtils::TEST_DOC, null, TestUtils::TEST_DOC ),
+			ParserOptions::newFromAnon(), [],
+			self::newParserOutput( TestUtils::TEST_DOC_WITH_LINKS, null, TestUtils::TEST_DOC )
+		];
+		yield 'TEST_DOC disabled via $options: no links' => [
+			self::newParserOutput( TestUtils::TEST_DOC, null, TestUtils::TEST_DOC ),
+			ParserOptions::newFromAnon(), [ 'enableSectionEditLinks' => false ],
+			self::newParserOutput( TestUtils::TEST_DOC_WITHOUT_LINKS, null, TestUtils::TEST_DOC )
+		];
+		$pOptsNoLinks = ParserOptions::newFromAnon();
+		$pOptsNoLinks->setSuppressSectionEditLinks();
+		yield 'TEST_DOC disabled via ParserOptions: no links' => [
+			self::newParserOutput( TestUtils::TEST_DOC, $pOptsNoLinks, TestUtils::TEST_DOC ),
+			$pOptsNoLinks, [],
+			self::newParserOutput( TestUtils::TEST_DOC_WITHOUT_LINKS, $pOptsNoLinks, TestUtils::TEST_DOC )
+		];
+		yield 'TEST_DOC enabled via $options: with links' => [
+			self::newParserOutput( TestUtils::TEST_DOC, null, TestUtils::TEST_DOC ),
+			ParserOptions::newFromAnon(), [ 'enableSectionEditLinks' => true ],
+			self::newParserOutput( TestUtils::TEST_DOC_WITH_LINKS, null, TestUtils::TEST_DOC )
+		];
+		yield 'TEST_DOC_ANGLE_BRACKETS default: with links' => [
+			self::newParserOutput( TestUtils::TEST_DOC_ANGLE_BRACKETS, null, TestUtils::TEST_DOC ),
+			ParserOptions::newFromAnon(), [],
+			self::newParserOutput( TestUtils::TEST_DOC_ANGLE_BRACKETS_WITH_LINKS, null, TestUtils::TEST_DOC )
+		];
+		yield 'TEST_DOC_ANGLE_BRACKETS disabled via $options: no links' => [
+			self::newParserOutput( TestUtils::TEST_DOC_ANGLE_BRACKETS, null, TestUtils::TEST_DOC ),
+			ParserOptions::newFromAnon(), [ 'enableSectionEditLinks' => false ],
+			self::newParserOutput( TestUtils::TEST_DOC_ANGLE_BRACKETS_WITHOUT_LINKS, null, TestUtils::TEST_DOC )
+		];
+		yield 'TEST_DOC_ANGLE_BRACKETS disabled via ParserOptions: no links' => [
+			self::newParserOutput( TestUtils::TEST_DOC_ANGLE_BRACKETS, $pOptsNoLinks, TestUtils::TEST_DOC ),
+			$pOptsNoLinks, [],
+			self::newParserOutput( TestUtils::TEST_DOC_ANGLE_BRACKETS_WITHOUT_LINKS, $pOptsNoLinks, TestUtils::TEST_DOC )
+		];
+		yield 'TEST_DOC_ANGLE_BRACKETS enabled via $options: with links' => [
+			self::newParserOutput( TestUtils::TEST_DOC_ANGLE_BRACKETS, null, TestUtils::TEST_DOC ),
+			ParserOptions::newFromAnon(), [ 'enableSectionEditLinks' => true ],
+			self::newParserOutput( TestUtils::TEST_DOC_ANGLE_BRACKETS_WITH_LINKS, null, TestUtils::TEST_DOC )
+		];
+	}
+}

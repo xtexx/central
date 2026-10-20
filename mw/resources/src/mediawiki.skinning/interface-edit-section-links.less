@@ -1,0 +1,65 @@
+@import 'mediawiki.mixins.less';
+@import 'mediawiki.skin.variables.less';
+
+.mw-editsection {
+	.user-select( none );
+}
+
+/* Display editsection links smaller and next to headings */
+.mw-editsection,
+.mw-editsection-like {
+	font-size: small;
+	font-weight: normal;
+	.margin-inline( 1em, 0 );
+	vertical-align: baseline;
+	/* Avoid increasing the CSS 2.1 §10.8.1 line box height of the heading */
+	line-height: 0;
+	unicode-bidi: isolate;
+
+	a {
+		// Disallow line breaking between the link and its bracket(s) (T432071),
+		// but permit line breaking before the links and between them (T253601)
+		white-space: pre;
+		// Needed for 'pointer-events' below
+		display: inline-block;
+		// Override the inherited zero line-height so that the inline-block has
+		// a non-zero height, used by the :focus-visible ring.
+		line-height: 1;
+
+		&::before,
+		&::after {
+			color: @color-subtle;
+			// Do not make this a clickable part of the link
+			pointer-events: none;
+			display: inline-block;
+		}
+	}
+
+	a:first-of-type::before {
+		content: '[';
+		// For browsers supporting alt text in 'content', make it empty
+		content: '[' / '';
+		margin-right: 0.25em;
+		margin-inline: 0 0.25em;
+	}
+
+	a:last-of-type::after {
+		content: ']';
+		// For browsers supporting alt text in 'content', make it empty
+		content: ']' / '';
+		margin-left: 0.25em;
+		margin-inline: 0.25em 0;
+	}
+
+	a:not( :last-of-type )::after {
+		content: '@{msg-pipe-separator}';
+		// For browsers supporting alt text in 'content', make it empty
+		content: '@{msg-pipe-separator}' / '';
+	}
+}
+
+// TODO: Remove these elements from the HTML. (T268900)
+.mw-editsection-bracket,
+.mw-editsection-divider {
+	display: none;
+}

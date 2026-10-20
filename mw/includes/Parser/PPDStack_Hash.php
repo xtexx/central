@@ -1,0 +1,120 @@
+<?php
+/**
+ * @license GPL-2.0-or-later
+ * @file
+ * @ingroup Parser
+ */
+
+namespace MediaWiki\Parser;
+
+use RuntimeException;
+
+/**
+ * Stack class to help Preprocessor::preprocessToObj()
+ * @ingroup Parser
+ */
+// phpcs:ignore Squiz.Classes.ValidClassName.NotCamelCaps
+class PPDStack_Hash {
+	/** @var PPDStackElement_Hash[] */
+	public $stack;
+	/** @var string[] */
+	public $rootAccum;
+	/** @var string[] */
+	public $accum;
+
+	/**
+	 * @var PPDStackElement_Hash|false
+	 */
+	public $top;
+	/** @var string|null */
+	public $out;
+	/** @var class-string<PPDStackElement_Hash> */
+	public $elementClass = PPDStackElement_Hash::class;
+
+	public function __construct() {
+		$this->stack = [];
+		$this->top = false;
+		$this->rootAccum = [];
+		$this->accum =& $this->rootAccum;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function count() {
+		return count( $this->stack );
+	}
+
+	/** @return string[] */
+	public function &getAccum() {
+		return $this->accum;
+	}
+
+	/**
+	 * @return false|PPDPart_Hash
+	 */
+	public function getCurrentPart() {
+		if ( $this->top === false ) {
+			return false;
+		} else {
+			return $this->top->getCurrentPart();
+		}
+	}
+
+	/**
+	 * @param PPDStackElement_Hash|array $data
+	 */
+	public function push( $data ) {
+		if ( $data instanceof $this->elementClass ) {
+			$this->stack[] = $data;
+		} else {
+			$class = $this->elementClass;
+			$this->stack[] = new $class( $data );
+		}
+		$this->top = $this->stack[count( $this->stack ) - 1];
+		$this->accum =& $this->top->getAccum();
+	}
+
+	/** @return PPDStackElement_Hash */
+	public function pop() {
+		if ( $this->stack === [] ) {
+			throw new RuntimeException( __METHOD__ . ': no elements remaining' );
+		}
+		$temp = array_pop( $this->stack );
+
+		if ( count( $this->stack ) ) {
+			$this->top = $this->stack[count( $this->stack ) - 1];
+			$this->accum =& $this->top->getAccum();
+		} else {
+			$this->top = false;
+			$this->accum =& $this->rootAccum;
+		}
+		return $temp;
+	}
+
+	/**
+	 * @param string $s
+	 */
+	public function addPart( $s = '' ) {
+		$this->top->addPart( $s );
+		$this->accum =& $this->top->getAccum();
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getFlags() {
+		if ( $this->stack === [] ) {
+			return [
+				'findEquals' => false,
+				'findPipe' => false,
+				'inHeading' => false,
+			];
+		} else {
+			return $this->top->getFlags();
+		}
+	}
+}
+
+/** @deprecated class alias since 1.43 */
+class_alias( PPDStack_Hash::class, 'PPDStack_Hash' );

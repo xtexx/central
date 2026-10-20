@@ -1,0 +1,207 @@
+<?php
+declare( strict_types = 1 );
+
+namespace MediaWiki\Tests\Parser\Parsoid;
+
+use MediaWiki\MainConfigNames;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Parser\Parsoid\PageBundleParserOutputConverter;
+use MediaWiki\Title\TitleValue;
+use MediaWikiIntegrationTestCase;
+use Wikimedia\Bcp47Code\Bcp47CodeValue;
+use Wikimedia\Parsoid\Core\HtmlPageBundle;
+use Wikimedia\Parsoid\Mocks\MockSiteConfig;
+use Wikimedia\Parsoid\Parsoid;
+use Wikimedia\Parsoid\Utils\DOMCompat;
+use Wikimedia\Parsoid\Utils\DOMUtils;
+
+/**
+ * @covers \MediaWiki\Parser\Parsoid\PageBundleParserOutputConverter
+ * @group Database
+ */
+class PageBundleParserOutputConverterIntegrationTest extends MediaWikiIntegrationTestCase {
+	public function testLanguageTransfer() {
+		$parserOutput = $this->getParserOutput( HtmlPageBundle::newEmpty( '' ) );
+		$parserOutput->setLanguage( new Bcp47CodeValue( 'de' ) );
+		$pb = $this->getServiceContainer()->getPageBundleParserOutputConverter()
+			->htmlPageBundleFromParserOutput( $parserOutput, bodyOnly: false );
+		$this->assertIsString( $pb->headers['content-language'] );
+		$this->assertEquals( 'de', $pb->headers['content-language'] );
+	}
+
+	public function testParserOutputFromPageBundleShouldPreserveMetadata() {
+		$pageBundle = new HtmlPageBundle(
+			html: 'html content',
+			parsoid: [],
+			mw: [],
+			contentVersion: '1.x',
+			headers: [ 'content-language' => null ]
+		);
+
+		$defaultExpiration = $this->getServiceContainer()->getMainConfig()->get(
+			MainConfigNames::ParserCacheExpireTime
+		);
+
+		$converter = $this->getServiceContainer()->getPageBundleParserOutputConverter();
+		$original = new ParserOutput();
+		$output = $converter->parserOutputFromPageBundle(
+			$pageBundle, isParsoidContent: true, originalParserOutput: $original
+		);
+		$this->assertSame( $defaultExpiration, $output->getCacheExpiry(),
+			"Cache expiration doesn't match default expiry." );
+
+		$original->updateCacheExpiry( 100 );
+		$output = $converter->parserOutputFromPageBundle(
+			$pageBundle, isParsoidContent: true, originalParserOutput: $original
+		);
+		$this->assertSame( 100, $output->getCacheExpiry(),
+			"Cache expiration doesn't matched updated reduced expiry." );
+	}
+
+	/** @dataProvider provideHtmlPageBundleFromParserOutputAsFullDocument */
+	public function testHtmlPageBundleFromParserOutputAsFullDocument(
+		ParserOutput $parserOutput,
+		string $expectedTitle,
+		string $expectedBodyContent,
+		string $expectedLanguage,
+		// T429391: in the future the @dataProvider may provide non-Parsoid
+		// ParserOutputs as well.
+		bool $isParsoid = true,
+	) {
+		$pageBundle = $this->getServiceContainer()->getPageBundleParserOutputConverter()
+			->htmlPageBundleFromParserOutput( $parserOutput, bodyOnly: false );
+
+		$html = $pageBundle->html;
+		$this->assertStringStartsWith( '<!DOCTYPE html>', $html );
+		$this->assertStringContainsString( '<meta charset="utf-8"', $html );
+		$this->assertStringContainsString( '<base href=', $html );
+		$this->assertStringContainsString( '<title>' . $expectedTitle . '</title>', $html );
+		$this->assertStringContainsString( $expectedBodyContent, $html );
+		$this->assertStringContainsString( 'class="', $html );
+		$this->assertStringContainsString( 'mw-body-content', $html );
+
+		$this->assertStringContainsString( 'lang="' . $expectedLanguage . '"', $html );
+		$this->assertSame(
+			$expectedLanguage,
+			$pageBundle->headers['content-language']
+		);
+		// Test that this is valid HTML by round-tripping it: parse it to a
+		// DOM and reserialize it, and verify that the output is unchanged.
+		// This would catch things like (eg) forgetting to close the <body>
+		// tag in the 'full document' form.
+		$doc = DOMUtils::parseHTML( $html, validateXMLNames: true );
+		$roundTripped = "<!DOCTYPE html>\n" .
+			DOMCompat::getOuterHTML( $doc->documentElement );
+		$this->assertSame( $html, $roundTripped, "Invalid HTML." );
+		// Check for the presence or absence of Parsoid-specific features.
+		$body = DOMCompat::querySelector( $doc, 'body' );
+		$this->assertSame(
+			$isParsoid,
+			DOMCompat::getClassList( $body )->contains( 'parsoid-body' ),
+			'parsoid-body class on body'
+		);
+		$this->assertSame(
+			$isParsoid,
+			$body->hasAttribute( 'data-mw-parsoid-version' ),
+			'data-mw-parsoid-version on body'
+		);
+		$this->assertSame(
+			$isParsoid,
+			$body->hasAttribute( 'data-mw-html-version' ),
+			'data-mw-html-version on body'
+		);
+		$this->assertSame(
+			$isParsoid,
+			DOMCompat::querySelector( $doc, 'meta[property="mw:htmlVersion"]' ) !== null,
+			'mw:htmlVersion meta tag'
+		);
+	}
+
+	private static function assertMetaExists( $doc, string $key, ?string $value = null ): void {
+		$el = DOMCompat::querySelector( $doc, "meta[property=\"mw:$key\"]" );
+		self::assertNotNull(
+			$el,
+			"meta mw:$key should be present"
+		);
+		if ( $value !== null ) {
+			self::assertSame( $el->getAttribute( 'content' ), $value );
+		}
+	}
+
+	private static function assertMetaAbsent( $doc, string $key ): void {
+		self::assertNull(
+			DOMCompat::querySelector( $doc, "meta[property=\"mw:$key\"]" ),
+			"meta mw:$key should be absent"
+		);
+	}
+
+	public function testMetadataProperPage() {
+		$page = $this->getExistingTestPage();
+		$parserOutput = $this->getParserOutput( HtmlPageBundle::newEmpty( 'hello world' ), $page->getTitle() );
+		$parserOutput->setCacheRevisionId( $page->getRevisionRecord()->getId() );
+		$pb = $this->getServiceContainer()->getPageBundleParserOutputConverter()->htmlPageBundleFromParserOutput(
+			$parserOutput, bodyOnly: false,
+		);
+		$doc = DOMUtils::parseHTML( $pb->html, validateXMLNames: true );
+		self::assertMetaExists( $doc, 'pageId' );
+		self::assertMetaExists( $doc, 'pageNamespace' );
+		self::assertMetaExists( $doc, 'revisionSHA1' );
+	}
+
+	public function testMetadataSpecialPage() {
+		$title = new TitleValue( NS_SPECIAL, "SpecialPage" );
+		$parserOutput = $this->getParserOutput( HtmlPageBundle::newEmpty( 'hello world' ), $title );
+		$pb = $this->getServiceContainer()->getPageBundleParserOutputConverter()->htmlPageBundleFromParserOutput(
+			$parserOutput, bodyOnly: false,
+		);
+		$doc = DOMUtils::parseHTML( $pb->html, validateXMLNames: true );
+		self::assertMetaAbsent( $doc, 'pageId' );
+		self::assertMetaExists( $doc, 'pageNamespace', (string)NS_SPECIAL );
+		self::assertMetaAbsent( $doc, 'revisionSHA1' );
+	}
+
+	public function testMetadataBogusPage() {
+		$page = $this->getExistingTestPage();
+		$bogusTitle = new TitleValue( NS_SPECIAL, "BogusPage" );
+		$parserOutput = $this->getParserOutput( HtmlPageBundle::newEmpty( 'hello world' ), $bogusTitle );
+		$parserOutput->setCacheRevisionId( $page->getRevisionRecord()->getId() );
+		$pb = $this->getServiceContainer()->getPageBundleParserOutputConverter()->htmlPageBundleFromParserOutput(
+			$parserOutput, bodyOnly: false,
+		);
+		$doc = DOMUtils::parseHTML( $pb->html, validateXMLNames: true );
+		// When the revision ID is provided, the metadata information will
+		// correspond to the revision ID, not the (potentially bogus) title
+		self::assertMetaExists( $doc, 'pageId', (string)$page->getId() );
+		self::assertMetaExists( $doc, 'pageNamespace', (string)$page->getNamespace() );
+		self::assertMetaExists( $doc, 'revisionSHA1' );
+	}
+
+	public static function provideHtmlPageBundleFromParserOutputAsFullDocument() {
+		// Without a RevisionLookup or a LanguageFactory we might be
+		// missing some content in the <head> for full-document form,
+		// but most functionality will be present.
+		$pageBundleParserOutputConverter = new PageBundleParserOutputConverter(
+			new MockSiteConfig( [] ),
+			null,
+			null,
+		);
+		$po = $pageBundleParserOutputConverter->parserOutputFromPageBundle(
+			new HtmlPageBundle(
+				html: 'hello world',
+				contentVersion: Parsoid::defaultHTMLVersion(),
+				headers: [ 'content-language' => 'zh-Hant-TW' ],
+			),
+			isParsoidContent: true,
+		);
+		$po->setTitle( new TitleValue( NS_MAIN, 'Test_Page' ) );
+		$po->setLanguage( new Bcp47CodeValue( 'zh-Hant-TW' ) );
+		yield "with language and title" => [ $po, 'Test Page', 'hello world', 'zh-Hant-TW' ];
+	}
+
+	private function getParserOutput(
+		HtmlPageBundle $pb, $title = null
+	): ParserOutput {
+		return $this->getServiceContainer()->getPageBundleParserOutputConverter()
+			->parserOutputFromPageBundle( $pb, isParsoidContent: true, title: $title );
+	}
+}

@@ -1,0 +1,554 @@
+<?php
+
+use MediaWiki\Context\RequestContext;
+use MediaWiki\MainConfigNames;
+use MediaWiki\MainConfigSchema;
+use MediaWiki\Message\Message;
+use MediaWiki\Page\Article;
+use MediaWiki\Page\ParserOutputAccess;
+use MediaWiki\Parser\ParserCacheFactory;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Request\FauxRequest;
+use MediaWiki\Status\Status;
+use MediaWiki\Tests\Parser\ParserCacheTestBase;
+use MediaWiki\Title\Title;
+use MediaWiki\User\User;
+use Wikimedia\ObjectCache\HashBagOStuff;
+
+/**
+ * @group Database
+ */
+class ArticleTest extends ParserCacheTestBase {
+
+	public function setUp(): void {
+		parent::setUp();
+	}
+
+	/**
+	 * @param Title $title
+	 * @param User|null $user
+	 *
+	 * @return Article
+	 */
+	private function newArticle( Title $title, ?User $user = null ): Article {
+		if ( !$user ) {
+			$user = $this->getTestUser()->getUser();
+		}
+
+		$context = new RequestContext();
+		$article = new Article( $title );
+		$context->setUser( $user );
+		$context->setTitle( $title );
+		$article->setContext( $context );
+
+		return $article;
+	}
+
+	/**
+	 * @covers \MediaWiki\Page\Article::__sleep
+	 */
+	public function testSerialization_fails() {
+		$article = new Article( Title::newMainPage() );
+
+		$this->expectException( LogicException::class );
+		serialize( $article );
+	}
+
+	/**
+	 * Tests that missing article page shows parser contents
+	 * of the well-known system message for NS_MEDIAWIKI pages
+	 *
+	 * @covers \MediaWiki\Page\Article::showMissingArticle
+	 */
+	public function testMissingArticleMessage() {
+		// Use a well-known system message
+		$title = Title::makeTitle( NS_MEDIAWIKI, 'Uploadedimage' );
+		$article = $this->newArticle( $title );
+
+		$article->showMissingArticle();
+		$output = $article->getContext()->getOutput();
+		// Compare only the text. The HTML of the legacy parser and of Parsoid
+		// is different.
+		$this->assertStringContainsString(
+			strip_tags( Message::newFromKey( 'uploadedimage' )->parse() ),
+			strip_tags( $output->getHTML() )
+		);
+	}
+
+	/**
+	 * Test if patrol footer is possible to show
+	 *
+	 * @covers \MediaWiki\Page\Article::showPatrolFooter
+	 * @dataProvider provideShowPatrolFooter
+	 */
+	public function testShowPatrolFooter( $group, $title, $editPageText, $isEditedBySameUser, $expectedResult ) {
+		$testPage = $this->getNonexistingTestPage( $title );
+		$user1 = $this->getTestUser( $group )->getUser();
+		$user2 = $this->getTestUser()->getUser();
+		if ( $editPageText !== null ) {
+			$editedUser = $isEditedBySameUser ? $user1 : $user2;
+			$editIsGood = $this->editPage( $testPage, $editPageText, '', NS_MAIN, $editedUser )->isGood();
+			$this->assertTrue( $editIsGood, 'edited a page' );
+		}
+
+		$article = $this->newArticle( $title, $user1 );
+		$this->assertSame( $expectedResult, $article->showPatrolFooter() );
+	}
+
+	public static function provideShowPatrolFooter() {
+		yield 'UserAllowedRevExist' => [
+			'sysop',
+			Title::makeTitle( NS_MAIN, 'Page1' ),
+			'EditPage1',
+			false,
+			true
+		];
+
+		yield 'UserNotAllowedRevExist' => [
+			null,
+			Title::makeTitle( NS_MAIN, 'Page2' ),
+			'EditPage2',
+			false,
+			false
+		];
+
+		yield 'UserAllowedNoRev' => [
+			'sysop',
+			Title::makeTitle( NS_MAIN, 'Page3' ),
+			null,
+			false,
+			false
+		];
+
+		yield 'UserAllowedRevExistBySameUser' => [
+			'sysop',
+			Title::makeTitle( NS_MAIN, 'Page4' ),
+			'EditPage4',
+			true,
+			false
+		];
+	}
+
+	/**
+	 * Show patrol footer even if the page was moved (T162871).
+	 *
+	 * @covers \MediaWiki\Page\Article::showPatrolFooter
+	 */
+	public function testShowPatrolFooterMovedPage() {
+		$oldTitle = Title::makeTitle( NS_USER, 'NewDraft' );
+		$newTitle = Title::makeTitle( NS_MAIN, 'NewDraft' );
+		$editor = $this->getTestUser()->getUser();
+
+		$editIsGood = $this->editPage( $oldTitle, 'Content', '', NS_USER, $editor )->isGood();
+		$this->assertTrue( $editIsGood, 'edited a page' );
+
+		$status = $this->getServiceContainer()
+			->getMovePageFactory()
+			->newMovePage( $oldTitle, $newTitle )
+			->move( $this->getTestUser()->getUser() );
+		$this->assertStatusOK( $status );
+
+		$sysop = $this->getTestUser( 'sysop' )->getUser();
+		$article = $this->newArticle( $newTitle, $sysop );
+
+		$this->assertTrue( $article->showPatrolFooter() );
+	}
+
+	/**
+	 * Ensure that content that is present in the parser cache will be used.
+	 *
+	 * @covers \MediaWiki\Page\Article::generateContentOutput
+	 */
+	public function testUsesCachedOutput() {
+		$title = $this->getExistingTestPage()->getTitle();
+
+		$parserOutputAccess = $this->createNoOpMock( ParserOutputAccess::class, [ 'getCachedParserOutput' ] );
+		$parserOutputAccess->method( 'getCachedParserOutput' )
+			->willReturn( new ParserOutput( 'Kittens' ) );
+
+		$this->setService( 'ParserOutputAccess', $parserOutputAccess );
+
+		$article = $this->newArticle( $title );
+		$article->view();
+		$this->assertStringContainsString( 'Kittens', $article->getContext()->getOutput()->getHTML() );
+	}
+
+	/**
+	 * Ensure that content that is present in the parser cache will be used.
+	 *
+	 * @covers \MediaWiki\Page\Article::generateContentOutput
+	 */
+	public function testOutputIsCached() {
+		$this->overrideConfigValue(
+			MainConfigNames::ParsoidCacheConfig,
+			MainConfigSchema::getDefaultValue( MainConfigNames::ParsoidCacheConfig )
+		);
+		// Legacy string used in constructing the ParserOutput
+		$this->overrideConfigValue( MainConfigNames::UseParsoidParser, false );
+		$title = $this->getExistingTestPage()->getTitle();
+		// Run any jobs enqueued by the creation of the test page
+		$this->runJobs( [ 'minJobs' => 0 ] );
+
+		$parserOutputAccess = $this->createNoOpMock(
+			ParserOutputAccess::class,
+			[ 'getCachedParserOutput', 'getParserOutput', ]
+		);
+		$parserOutputAccess->method( 'getCachedParserOutput' )
+			->willReturn( null );
+		$parserOutputAccess
+			->expects( $this->once() ) // This is the key assertion in this test case.
+			->method( 'getParserOutput' )
+			->with(
+				$this->anything(),
+				$this->callback( function ( ParserOptions $parserOptions ) {
+					$this->assertSame( 'page_view', $parserOptions->getRenderReason() );
+					return true;
+				} ),
+				$this->anything(),
+				$this->callback( function ( $options ) {
+					$this->assertTrue( $options[ ParserOutputAccess::OPT_NO_CHECK_CACHE ] ?? false,
+						"The cache is not checked again" );
+					$this->assertTrue( $options[ ParserOutputAccess::OPT_LINKS_UPDATE ] ?? false,
+						"WikiPage::triggerOpportunisticLinksUpdate is attempted" );
+					return true;
+				} )
+			)
+			->willReturn(
+				// This creates a legacy content holder from a legacy string
+				Status::newGood( new ParserOutput( 'Kittens' )
+			) );
+
+		$this->setService( 'ParserOutputAccess', $parserOutputAccess );
+
+		$article = $this->newArticle( $title );
+		$article->view();
+
+		// This is just a sanity check, not the key assertion.
+		$this->assertStringContainsString( 'Kittens', $article->getContext()->getOutput()->getHTML() );
+	}
+
+	/**
+	 * Ensure that protection indicators are shown when the page is protected.
+	 * @covers \MediaWiki\Page\Article::showProtectionIndicator
+	 */
+	public function testShowProtectionIndicator() {
+		$this->overrideConfigValue(
+			MainConfigNames::EnableProtectionIndicators,
+			true
+		);
+		$title = $this->getExistingTestPage()->getTitle();
+		$article = $this->newArticle( $title );
+
+		$wikiPageFactory = $this->getServiceContainer()->getWikiPageFactory();
+		$wikiPage = $wikiPageFactory->newFromTitle( $title );
+		$cascade = false;
+		$wikiPage->doUpdateRestrictions(
+			[ 'edit' => 'autoconfirmed' ],
+			[ 'edit' => 'infinity' ],
+			$cascade,
+			'Test reason',
+			$this->getTestSysop()->getUser()
+		);
+
+		$article->showProtectionIndicator();
+		$output = $article->getContext()->getOutput();
+		$this->assertArrayHasKey( 'protection-autoconfirmed', $output->getIndicators(), 'Protection indicators are shown when a page is protected' );
+
+		$templateTitle = Title::newFromText( 'CascadeProtectionTest', NS_TEMPLATE );
+		$this->editPage( $templateTitle, 'Some text here', 'Test', NS_TEMPLATE, $this->getTestSysop()->getUser() );
+		$articleTitle = $this->getExistingTestPage()->getTitle();
+		$this->editPage( $articleTitle, '{{CascadeProtectionTest}}', 'Test', NS_MAIN, $this->getTestSysop()->getUser() );
+		$wikiPage = $wikiPageFactory->newFromTitle( $articleTitle );
+		$cascade = true;
+		$wikiPage->doUpdateRestrictions(
+			[ 'edit' => 'sysop' ],
+			[ 'edit' => 'infinity' ],
+			$cascade,
+			'Test reason',
+			$this->getTestSysop()->getUser()
+		);
+
+		$this->getServiceContainer()->getRestrictionStore()->flushRestrictions( $templateTitle );
+
+		$template = $this->newArticle( $templateTitle );
+
+		$template->showProtectionIndicator();
+		$output = $template->getContext()->getOutput();
+		$this->assertArrayHasKey(
+			'protection-sysop-cascade',
+			$output->getIndicators(),
+			'Protection indicators are shown when a page protected using cascade protection'
+		);
+	}
+
+	/** @covers \MediaWiki\Page\Article::view */
+	public function testPostprocFeatureflagFalse(): void {
+		$this->overrideConfigValue( MainConfigNames::UsePostprocCacheLegacy, false );
+		$this->overrideConfigValue( MainConfigNames::UsePostprocCacheParsoid, false );
+		$this->overrideConfigValue( MainConfigNames::UseParsoidParser, false );
+		$parserCacheFactory = $this->createMock( ParserCacheFactory::class );
+		$calls = [];
+		$caches = [];
+		$parserCacheFactory
+			->method( 'getParserCache' )
+			->willReturnCallback( static function ( $cacheName ) use ( &$calls, &$caches ) {
+				static $cacheList = [];
+				$calls[] = $cacheName;
+				$which = array_search( $cacheName, $cacheList );
+				if ( $which === false ) {
+					$which = count( $cacheList );
+					$cacheList[] = $cacheName;
+				}
+				return $caches[$which];
+			} );
+		// This destroys the existing container, including the services
+		// object held by any existing JsonCodec.
+		$this->overrideMwServices( null, [
+			'ParserCacheFactory' => static function () use ( $parserCacheFactory ) {
+				return $parserCacheFactory;
+			}
+		] );
+		$caches[] = $this->getParserCache( 'test', new HashBagOStuff() );
+		$caches[] = $this->getParserCache( 'test', new HashBagOStuff() );
+		$title = $this->getExistingTestPage()->getTitle();
+		$article = $this->newArticle( $title );
+		$this->editPage( $title, '== Hello ==' );
+		$article->view();
+		$this->assertArrayEquals( [ 'pcache', 'pcache', 'pcache' ], $calls, true );
+		$html = $article->getContext()->getOutput()->getHTML();
+		// check that we're running postprocessing (if the headers are wrapped then that's a good sign)
+		$this->assertStringContainsString(
+			'<div class="mw-heading mw-heading2"><h2 id="Hello">Hello</h2><span class="mw-editsection">',
+				$html
+		);
+		$article = $this->newArticle( $title );
+		$article->view();
+		$this->assertArrayEquals( [ 'pcache', 'pcache', 'pcache', 'pcache' ], $calls, true );
+		$html2 = $article->getContext()->getOutput()->getHTML();
+		$this->assertEquals( $html, $html2 );
+	}
+
+	public static function provideSplitParsoidParserCache(): array {
+		return [
+			'With Parsoid parser cache split' => [ true ],
+			'Without Parsoid parser cache split' => [ false ],
+		];
+	}
+
+	/**
+	 * @covers \MediaWiki\Page\Article::view
+	 * @dataProvider provideSplitParsoidParserCache
+	 */
+	public function testPostprocFeatureflagTrue( bool $splitParsoidParserCache ): void {
+		$this->overrideConfigValue( MainConfigNames::UsePostprocCacheParsoid, true );
+		$this->overrideConfigValue( MainConfigNames::UseParsoidParser, true );
+		$this->overrideConfigValue(
+			MainConfigNames::SplitParsoidParserCache, $splitParsoidParserCache
+		);
+		$infix = $splitParsoidParserCache ? 'parsoid-' : '';
+		$parserCacheFactory = $this->createMock( ParserCacheFactory::class );
+		$caches = [];
+		$calls = [];
+		$parserCacheFactory
+			->method( 'getParserCache' )
+			->willReturnCallback( static function ( $cacheName ) use ( &$calls, &$caches ) {
+				static $cacheList = [];
+				$calls[] = $cacheName;
+				$which = array_search( $cacheName, $cacheList );
+				if ( $which === false ) {
+					$which = count( $cacheList );
+					$cacheList[] = $cacheName;
+				}
+				return $caches[$which];
+			} );
+		// This destroys the existing container, including the services
+		// object held by any existing JsonCodec.
+		$this->overrideMwServices( null, [
+			'ParserCacheFactory' => static function () use ( $parserCacheFactory ) {
+				return $parserCacheFactory;
+			}
+		] );
+		$caches[] = $this->getParserCache( 'test', new HashBagOStuff() );
+		$caches[] = $this->getParserCache( 'test', new HashBagOStuff() );
+		$caches[] = $this->getParserCache( 'test', new HashBagOStuff() );
+		$title = $this->getExistingTestPage()->getTitle();
+		$article = $this->newArticle( $title );
+		$this->editPage( $title, '== Hello ==' );
+		$this->assertArrayEquals( [ "{$infix}pcache", "{$infix}pcache" ], $calls, true );
+
+		$calls = [];
+		$article->view();
+		$this->assertArrayEquals( [
+			"postproc-{$infix}pcache", // first view, get postproc, miss
+			"postproc-{$infix}pcache", // creates worker to render the page
+			"{$infix}pcache", // first view, get pcache, hit from derived data update
+			"postproc-{$infix}pcache", // first view, store postproc
+			"postproc-{$infix}pcache", // postprocess, compute cache key for report
+		], $calls, true );
+		$html = $article->getContext()->getOutput()->getHTML();
+		// check that we're running postprocessing (if the headers are wrapped then that's a good sign)
+		$this->assertStringContainsString(
+			'<div class="mw-heading mw-heading2"><h2 id="Hello">Hello</h2><span class="mw-editsection">',
+			$html
+		);
+		$article = $this->newArticle( $title );
+
+		$calls = [];
+		$article->view();
+		$html2 = $article->getContext()->getOutput()->getHTML();
+		// second run, we're cached, we hit the postproc cache once
+		$this->assertArrayEquals( [
+			"postproc-{$infix}pcache"
+		], $calls, true );
+		$this->assertEquals( $html, $html2 );
+	}
+
+	/**
+	 * @covers \MediaWiki\Page\Article::view
+	 * @covers \MediaWiki\OutputTransform\Stages\ParsoidLanguageConverter
+	 * @dataProvider provideParsoidLanguageConversion
+	 */
+	public function testParsoidLanguageConversion( bool $useSameVariant ): void {
+		$this->overrideConfigValue( MainConfigNames::UsePostprocCacheParsoid, true );
+		$this->overrideConfigValue( MainConfigNames::UseParsoidParser, true );
+		$this->overrideConfigValue( MainConfigNames::SplitParsoidParserCache, true );
+		$this->overrideConfigValue( MainConfigNames::UsePigLatinVariant, true );
+		$parserCacheFactory = $this->createMock( ParserCacheFactory::class );
+		$caches = [];
+		$calls = [];
+		$parserCacheFactory
+			->method( 'getParserCache' )
+			->willReturnCallback( static function ( $cacheName ) use ( &$calls, &$caches ) {
+				static $cacheList = [];
+				$calls[] = $cacheName;
+				$which = array_search( $cacheName, $cacheList );
+				if ( $which === false ) {
+					$which = count( $cacheList );
+					$cacheList[] = $cacheName;
+				}
+				return $caches[$which];
+			} );
+		// This destroys the existing container, including the services
+		// object held by any existing JsonCodec.
+		$this->overrideMwServices( null, [
+			'ParserCacheFactory' => static function () use ( $parserCacheFactory ) {
+				return $parserCacheFactory;
+			}
+		] );
+		$caches[] = $this->getParserCache( 'test', new HashBagOStuff() );
+		$caches[] = $this->getParserCache( 'test', new HashBagOStuff() );
+		$caches[] = $this->getParserCache( 'test', new HashBagOStuff() );
+		$title = $this->getExistingTestPage()->getTitle();
+		$req = new FauxRequest( [ 'variant' => 'en-x-piglatin' ] );
+		$this->setRequest( $req );
+		$context = new RequestContext();
+		$context->setRequest( $req );
+		$context->setTitle( $title );
+		$article = $this->newArticle( $title );
+		$article->setContext( $context );
+		$this->editPage( $title, '== Hello, -{world}- ==' );
+		$this->assertArrayEquals( [ 'parsoid-pcache', 'parsoid-pcache' ], $calls, true );
+
+		$calls = [];
+		$article->view();
+		$expectedCallPattern = [
+			'postproc-parsoid-pcache', // first view, get postproc, miss
+			'postproc-parsoid-pcache', // creates worker to render the page
+			'parsoid-pcache', // first view, get pcache, hit from derived data update
+			'postproc-parsoid-pcache', // first view, store postproc
+			'postproc-parsoid-pcache', // postprocess, compute cache key for report
+		];
+		$html = self::removeTimingData(
+			$article->getContext()->getOutput()->getHTML()
+		);
+		$this->assertArrayEquals( $expectedCallPattern, $calls, true );
+		// check that we're running postprocessing
+		// (headers should be wrapped, text should be pig latin)
+		$this->assertStringContainsString(
+			'<div class="mw-heading mw-heading2"><h2 id="Hello,_-{world}-">',
+			$html
+		);
+		$this->assertStringContainsString(
+			'Ellohay, <span',
+			$html
+		);
+		$this->assertStringContainsString(
+			'world</span></h2>',
+			$html
+		);
+
+		// Clear the per-process local cache (since even uncacheable parses
+		// are actually cached in the local cache)
+		$this->getServiceContainer()->getParserOutputAccess()->clearLocalCache();
+		$this->resetServices();
+
+		$req = new FauxRequest( [
+			'variant' => $useSameVariant ? 'en-x-piglatin' : 'en',
+		] );
+		$this->setRequest( $req );
+		$context = new RequestContext();
+		$context->setRequest( $req );
+		$context->setTitle( $title );
+		$article = $this->newArticle( $title );
+		$article->setContext( $context );
+
+		$calls = [];
+		$article->view();
+		$html2 = self::removeTimingData(
+			$article->getContext()->getOutput()->getHTML()
+		);
+		if ( $useSameVariant ) {
+			// With the same variant, this hits in the postprocessing cache.
+			$this->assertArrayEquals( [
+				'postproc-parsoid-pcache', // hit
+			], $calls, true );
+			$this->assertEquals( $html, $html2 );
+		} else {
+			// With variant set to a different variant we miss in the
+			// postprocessing cache but hit in the canonical cache.
+			$this->assertArrayEquals( [
+				'postproc-parsoid-pcache', // first view, get postproc, miss
+				'postproc-parsoid-pcache', // creates worker to render the page
+				'parsoid-pcache', // first view, *HIT IN PCACHE*
+				'postproc-parsoid-pcache', // first view, store postproc
+				'postproc-parsoid-pcache', // postprocess, compute cache key for report
+			], $calls, true );
+			$this->assertNotEquals(
+				// Results should not be the same since we are converting to
+				// a different variant.
+				self::removeTimingData( $html ),
+				self::removeTimingData( $html2 )
+			);
+			// Check that the "parent" language was converted correctly.
+			$this->assertStringContainsString(
+				'<div class="mw-heading mw-heading2"><h2 id="Hello,_-{world}-">',
+				$html2
+			);
+			$this->assertStringContainsString(
+				'Hello, <span',
+				$html2
+			);
+			// Note in particular that this span is not empty.
+			$this->assertStringContainsString(
+				'world</span></h2>',
+				$html2
+			);
+		}
+	}
+
+	public static function provideParsoidLanguageConversion() {
+		yield "Same variant, should be cached" => [ true ];
+		yield "Different variant, should not be cached" => [ false ];
+	}
+
+	private static function removeTimingData( string $html ): string {
+		// Strip limit report and other timing data which could cause
+		// HTML equality checks to nondeterministically fail.
+		$html = preg_replace( '/NewPP limit report.*?(?=-->)/s', '', $html );
+		$html = preg_replace( '/Transclusion expansion time report.*?(?=-->)/s', '', $html );
+		$html = preg_replace( '/, generated at \d+/', '', $html );
+		$html = preg_replace( '/\n<!-- Render ID (.*?)-->\n/', '', $html );
+		return $html;
+	}
+}

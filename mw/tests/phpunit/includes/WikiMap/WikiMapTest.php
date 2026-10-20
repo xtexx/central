@@ -1,0 +1,413 @@
+<?php
+
+use MediaWiki\Config\SiteConfiguration;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Tests\Site\TestSites;
+use MediaWiki\WikiMap\WikiMap;
+use MediaWiki\WikiMap\WikiReference;
+use Wikimedia\Rdbms\DatabaseDomain;
+
+/**
+ * @covers \MediaWiki\WikiMap\WikiMap
+ *
+ * @group Database
+ */
+class WikiMapTest extends MediaWikiLangTestCase {
+
+	protected function setUp(): void {
+		parent::setUp();
+		$this->overrideConfigValues( [
+			MainConfigNames::Server => '//this.wiki.org',
+			MainConfigNames::CanonicalServer => 'https://this.wiki.org',
+			MainConfigNames::DBname => 'thiswiki',
+			MainConfigNames::DBprefix => ''
+		] );
+		$this->setMwGlobals( [
+			'wgConf' => new SiteConfiguration(),
+		] );
+	}
+
+	private function setWgConf() {
+		global $wgConf;
+		$wgConf->settings = [
+			'wgServer' => [
+				'enwiki' => 'http://en.example.org',
+				'ruwiki' => '//ru.example.org',
+				'nopathwiki' => '//nopath.example.org',
+				'thiswiki' => '//this.wiki.org'
+			],
+			'wgCanonicalServer' => [
+				'enwiki' => 'http://en.example.org',
+				'ruwiki' => 'https://ru.example.org',
+				'nopathwiki' => 'https://nopath.example.org',
+				'thiswiki' => 'https://this.wiki.org'
+			],
+			'wgArticlePath' => [
+				'enwiki' => '/w/$1',
+				'ruwiki' => '/wiki/$1',
+			],
+		];
+		$wgConf->suffixes = [ 'wiki' ];
+		$this->overrideConfigValues( [
+			MainConfigNames::LocalDatabases => [ 'enwiki', 'ruwiki', 'nopathwiki' ],
+		] );
+	}
+
+	public static function provideGetWiki_default() {
+		$current = new WikiReference( 'https://this.wiki.org', '/wiki/$1', '//this.wiki.org' );
+		return [
+			'current' => [ $current, 'thiswiki' ],
+			'unknown' => [ null, 'xyzzy' ],
+			'enwiki' => [ null, 'enwiki' ],
+			'enwiktionary' => [ null, 'enwiktionary' ],
+		];
+	}
+
+	/** @dataProvider provideGetWiki_default */
+	public function testGetWiki_default( $expected, $wikiId ) {
+		$this->assertEquals( $expected, WikiMap::getWiki( $wikiId ) );
+	}
+
+	public static function provideGetWiki_withWgConf() {
+		$current = new WikiReference( 'https://this.wiki.org', '/wiki/$1', '//this.wiki.org' );
+		$enwiki = new WikiReference( 'http://en.example.org', '/w/$1' );
+		$ruwiki = new WikiReference( 'https://ru.example.org', '/wiki/$1', '//ru.example.org' );
+		return [
+			'current' => [ $current, 'thiswiki' ],
+			'unknown' => [ null, 'xyzzy' ],
+			'enwiki (wgConf)' => [ $enwiki, 'enwiki' ],
+			'ruwiki (wgConf)' => [ $ruwiki, 'ruwiki' ],
+			'nopathwiki (wgConf)' => [ null, 'nopathwiki' ],
+			'enwiktionary' => [ null, 'enwiktionary' ],
+		];
+	}
+
+	/** @dataProvider provideGetWiki_withWgConf */
+	public function testGetWiki_withWgConf( $expected, $wikiId ) {
+		$this->setWgConf();
+
+		$this->assertEquals( $expected, WikiMap::getWiki( $wikiId ) );
+	}
+
+	/**
+	 * Regression test for T440997
+	 *
+	 * Generally it would not make sense for LocalSettings.php to both set
+	 * a setting via $wgConf, and also set it manually to something
+	 * different for the same wiki.
+	 *
+	 * But, auth.wikimedia.org is an example where this happens.
+	 */
+	public function testGetWiki_withGlobalsDifferentFromWgConf() {
+		global $wgConf;
+		$wgConf->suffixes = [ 'wiki' ];
+		$wgConf->settings = [
+			'wgServer' => [
+				'enwiki' => 'http://en.differ.test',
+				'thiswiki' => 'https://this.differ.test',
+			],
+			'wgCanonicalServer' => [
+				'enwiki' => 'http://en.differ.test',
+				'thiswiki' => 'https://this.differ.test',
+			],
+			'wgArticlePath' => [
+				'default' => '/wiki/$1',
+			],
+		];
+		$this->overrideConfigValues( [
+			MainConfigNames::LocalDatabases => [ 'enwiki', 'thiswiki' ],
+
+			MainConfigNames::DBname => 'thiswiki',
+			MainConfigNames::DBprefix => '',
+			MainConfigNames::Server => 'https://proxy.test',
+			MainConfigNames::CanonicalServer => 'https://proxy.test',
+			MainConfigNames::ArticlePath => '/thiswiki/wiki/$1',
+		] );
+
+		$expected = new WikiReference( 'https://this.differ.test', '/wiki/$1', 'https://this.differ.test' );
+		$this->assertEquals( $expected, WikiMap::getWiki( WikiMap::getCurrentWikiId() ) );
+	}
+
+	public static function provideGetWiki_withSites() {
+		$current = new WikiReference( 'https://this.wiki.org', '/wiki/$1', '//this.wiki.org' );
+		$enwiki = new WikiReference( 'https://en.wikipedia.org', '/wiki/$1' );
+		$nlwiki = new WikiReference( 'https://nl.wikipedia.org', '/wiki/$1' );
+		$enwiktionary = new WikiReference( 'https://en.wiktionary.org', '/wiki/$1' );
+		return [
+			'current' => [ $current, 'thiswiki' ],
+			'unknown' => [ null, 'xyzzy' ],
+			'enwiki' => [ $enwiki, 'enwiki' ],
+			'nlwiki (sites)' => [ $nlwiki, 'nlwiki' ],
+			'enwiktionary (sites)' => [ $enwiktionary, 'enwiktionary' ],
+		];
+	}
+
+	/** @dataProvider provideGetWiki_withSites */
+	public function testGetWiki_withSites( $expected, $wikiId ) {
+		TestSites::insertIntoDb();
+
+		$this->assertEquals( $expected, WikiMap::getWiki( $wikiId ) );
+	}
+
+	public static function provideGetWikiName() {
+		return [
+			'current' => [ 'this.wiki.org', 'thiswiki' ],
+			'unknown' => [ 'xyzzy', 'xyzzy' ],
+			'enwiki' => [ 'en.example.org', 'enwiki' ],
+			'ruwiki' => [ 'ru.example.org', 'ruwiki' ],
+			'enwiktionary (sites)' => [ 'en.wiktionary.org', 'enwiktionary' ],
+		];
+	}
+
+	/**
+	 * @dataProvider provideGetWikiName
+	 */
+	public function testGetWikiName( $expected, $wikiId ) {
+		$this->setWgConf();
+		TestSites::insertIntoDb();
+		$this->assertEquals( $expected, WikiMap::getWikiName( $wikiId ) );
+	}
+
+	public static function provideMakeForeignLink() {
+		return [
+			'current' => [
+				'<a class="external" rel="nofollow" href="//this.wiki.org/wiki/Foo">Foo</a>',
+				'thiswiki',
+				'Foo'
+			],
+			'unknown' => [ false, 'xyzzy', 'Foo' ],
+			'enwiki' => [
+				'<a class="external" rel="nofollow" ' .
+					'href="http://en.example.org/w/Foo">Foo</a>',
+				'enwiki',
+				'Foo'
+			],
+			'ruwiki' => [
+				'<a class="external" rel="nofollow" ' .
+					'href="//ru.example.org/wiki/%D0%A4%D1%83">вар</a>',
+				'ruwiki',
+				'Фу',
+				'вар'
+			],
+			'enwiktionary (sites)' => [
+				'<a class="external" rel="nofollow" ' .
+					'href="https://en.wiktionary.org/wiki/Kitten">Kittens!</a>',
+				'enwiktionary',
+				'Kitten',
+				'Kittens!'
+			],
+		];
+	}
+
+	/**
+	 * @dataProvider provideMakeForeignLink
+	 */
+	public function testMakeForeignLink( $expected, $wikiId, $page, $text = null ) {
+		$this->setWgConf();
+		TestSites::insertIntoDb();
+		$this->assertEquals(
+			$expected,
+			WikiMap::makeForeignLink( $wikiId, $page, $text )
+		);
+	}
+
+	public static function provideForeignUserLink() {
+		return [
+			'current' => [
+				'<a class="external" rel="nofollow" href="//this.wiki.org/wiki/User:Foo">User:Foo</a>',
+				'thiswiki',
+				'Foo'
+			],
+			'unknown' => [ false, 'xyzzy', 'Foo' ],
+			'enwiki' => [
+				'<a class="external" rel="nofollow" ' .
+					'href="http://en.example.org/w/User:Foo">User:Foo</a>',
+				'enwiki',
+				'Foo'
+			],
+			'ruwiki' => [
+				'<a class="external" rel="nofollow" ' .
+					'href="//ru.example.org/wiki/User:%D0%A4%D1%83">вар</a>',
+				'ruwiki',
+				'Фу',
+				'вар'
+			],
+			'enwiktionary (sites)' => [
+				'<a class="external" rel="nofollow" ' .
+					'href="https://en.wiktionary.org/wiki/User:Dummy">Whatever</a>',
+				'enwiktionary',
+				'Dummy',
+				'Whatever'
+			],
+		];
+	}
+
+	/**
+	 * @dataProvider provideForeignUserLink
+	 */
+	public function testForeignUserLink( $expected, $wikiId, $user, $text = null ) {
+		$this->setWgConf();
+		TestSites::insertIntoDb();
+		$this->assertEquals( $expected, WikiMap::foreignUserLink( $wikiId, $user, $text ) );
+	}
+
+	public static function provideGetForeignURL() {
+		return [
+			'current' => [ '//this.wiki.org/wiki/Foo', 'thiswiki', 'Foo' ],
+			'unknown' => [ false, 'xyzzy', 'Foo' ],
+			'enwiki' => [ 'http://en.example.org/w/Foo', 'enwiki', 'Foo' ],
+			'enwiktionary (sites)' => [
+				'https://en.wiktionary.org/wiki/Testme',
+				'enwiktionary',
+				'Testme'
+			],
+			'ruwiki with fragment' => [
+				'//ru.example.org/wiki/%D0%A4%D1%83#%D0%B2%D0%B0%D1%80',
+				'ruwiki',
+				'Фу',
+				'вар'
+			],
+		];
+	}
+
+	/**
+	 * @dataProvider provideGetForeignURL
+	 */
+	public function testGetForeignURL( $expected, $wikiId, $page, $fragment = null ) {
+		$this->setWgConf();
+		TestSites::insertIntoDb();
+		$this->assertEquals( $expected, WikiMap::getForeignURL( $wikiId, $page, $fragment ) );
+	}
+
+	public function testGetCanonicalServerInfoForAllWikis() {
+		$this->setWgConf();
+		$expected = [
+			'thiswiki' => [
+				'url' => 'https://this.wiki.org',
+				'parts' => [ 'scheme' => 'https', 'host' => 'this.wiki.org', 'delimiter' => '://' ]
+			],
+			'enwiki' => [
+				'url' => 'http://en.example.org',
+				'parts' => [
+					'scheme' => 'http', 'host' => 'en.example.org', 'delimiter' => '://' ]
+			],
+			'ruwiki' => [
+				'url' => 'https://ru.example.org',
+				'parts' => [ 'scheme' => 'https', 'host' => 'ru.example.org', 'delimiter' => '://' ]
+			]
+		];
+
+		$this->assertArrayEquals(
+			$expected,
+			WikiMap::getCanonicalServerInfoForAllWikis(),
+			true,
+			true
+		);
+	}
+
+	public function testGetWikiFromUrl_default() {
+		$this->assertEquals( 'thiswiki', WikiMap::getWikiFromUrl( 'https://this.wiki.org' ), 'current wiki HTTPS' );
+		$this->assertEquals( 'thiswiki', WikiMap::getWikiFromUrl( 'http://this.wiki.org' ), 'current wiki HTTP' );
+		$this->assertEquals( 'thiswiki', WikiMap::getWikiFromUrl( '//this.wiki.org' ), 'current wiki protocol-relative' );
+
+		$this->assertFalse( WikiMap::getWikiFromUrl( 'http://en.example.org' ), 'unknown farm' );
+		$this->assertFalse( WikiMap::getWikiFromUrl( 'https://en.wiktionary.org' ), 'unknown site' );
+		$this->assertFalse( WikiMap::getWikiFromUrl( 'http://not.defined.org' ), 'unknown' );
+	}
+
+	public static function provideGetWikiFromUrl() {
+		return [
+			[ 'http://this.wiki.org', 'thiswiki' ],
+			[ 'https://this.wiki.org', 'thiswiki' ],
+			[ '//this.wiki.org', 'thiswiki' ],
+			[ 'http://this.wiki.org/$1', 'thiswiki' ],
+			[ 'https://this.wiki.org/$2', 'thiswiki' ],
+			[ 'http://en.example.org', 'enwiki' ],
+			[ 'https://en.example.org', 'enwiki' ],
+			[ 'http://en.example.org/$1', 'enwiki' ],
+			[ 'https://en.example.org/$2', 'enwiki' ],
+			[ 'http://ru.example.org', 'ruwiki' ],
+			[ 'https://ru.example.org', 'ruwiki' ],
+			[ 'http://ru.example.org/$1', 'ruwiki' ],
+			[ 'https://ru.example.org/$2', 'ruwiki' ],
+			[ 'http://not.defined.org', false ],
+			[ 'ftp://this.wiki.org', false ],
+		];
+	}
+
+	/**
+	 * @dataProvider provideGetWikiFromUrl
+	 */
+	public function testGetWikiFromUrl_withWgConf( $url, $wiki ) {
+		$this->setWgConf();
+		$this->assertEquals( $wiki, WikiMap::getWikiFromUrl( $url ) );
+	}
+
+	public static function provideGetWikiIdFromDbDomain() {
+		return [
+			[ 'db-prefix_', 'db-prefix_' ],
+			[ WikiMap::getCurrentWikiId(), WikiMap::getCurrentWikiId() ],
+			[ new DatabaseDomain( 'db-dash', null, 'prefix_' ), 'db-dash-prefix_' ],
+			[ WikiMap::getCurrentWikiId(), WikiMap::getCurrentWikiId() ],
+			[ new DatabaseDomain( 'db-dash', null, 'prefix_' ), 'db-dash-prefix_' ],
+			[ new DatabaseDomain( 'db', 'mediawiki', 'prefix_' ), 'db-prefix_' ], // schema ignored
+			[ new DatabaseDomain( 'db', 'custom', 'prefix_' ), 'db-custom-prefix_' ],
+		];
+	}
+
+	/**
+	 * @dataProvider provideGetWikiIdFromDbDomain
+	 */
+	public function testGetWikiIdFromDbDomain( $domain, $wikiId ) {
+		$this->assertEquals( $wikiId, WikiMap::getWikiIdFromDbDomain( $domain ) );
+	}
+
+	public function testIsCurrentWikiDomain() {
+		$this->overrideConfigValue( MainConfigNames::DBmwschema, 'mediawiki' );
+
+		$localDomain = WikiMap::getCurrentWikiDbDomain()->getId();
+		$this->assertTrue( WikiMap::isCurrentWikiDbDomain( $localDomain ) );
+
+		$localDomain = DatabaseDomain::newFromId( $localDomain );
+		$domain1 = new DatabaseDomain(
+			$localDomain->getDatabase(), 'someschema', $localDomain->getTablePrefix() );
+		$domain2 = new DatabaseDomain(
+			$localDomain->getDatabase(), null, $localDomain->getTablePrefix() );
+
+		$this->assertFalse( WikiMap::isCurrentWikiDbDomain( $domain1 ), 'Schema not ignored' );
+		$this->assertFalse( WikiMap::isCurrentWikiDbDomain( $domain2 ), 'Null schema not ignored' );
+
+		$this->assertTrue( WikiMap::isCurrentWikiDbDomain( WikiMap::getCurrentWikiDbDomain() ) );
+	}
+
+	public static function provideIsCurrentWikiId() {
+		return [
+			[ 'db', 'db', null, '' ],
+			[ 'db-schema-', 'db', 'schema', '' ],
+			[ 'db', 'db', 'mediawiki', '' ], // common b/c case
+			[ 'db-prefix_', 'db', null, 'prefix_' ],
+			[ 'db-schema-prefix_', 'db', 'schema', 'prefix_' ],
+			[ 'db-prefix_', 'db', 'mediawiki', 'prefix_' ], // common b/c case
+			// Bad hyphen cases (best effort support)
+			[ 'db-stuff', 'db-stuff', null, '' ],
+			[ 'db-stuff-prefix_', 'db-stuff', null, 'prefix_' ],
+			[ 'db-stuff-schema-', 'db-stuff', 'schema', '' ],
+			[ 'db-stuff-schema-prefix_', 'db-stuff', 'schema', 'prefix_' ],
+			[ 'db-stuff-prefix_', 'db-stuff', 'mediawiki', 'prefix_' ] // common b/c case
+		];
+	}
+
+	/**
+	 * @dataProvider provideIsCurrentWikiId
+	 */
+	public function testIsCurrentWikiId( $wikiId, $db, $schema, $prefix ) {
+		$this->overrideConfigValues( [
+			MainConfigNames::DBname => $db,
+			MainConfigNames::DBmwschema => $schema,
+			MainConfigNames::DBprefix => $prefix
+		] );
+
+		$this->assertTrue( WikiMap::isCurrentWikiId( $wikiId ), "ID matches" );
+		$this->assertNotTrue( WikiMap::isCurrentWikiId( $wikiId . '-more' ), "Bogus ID" );
+	}
+}

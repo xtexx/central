@@ -1,0 +1,239 @@
+<?php
+
+namespace MediaWiki\Rest;
+
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\EntryPointEnvironment;
+use MediaWiki\Exception\MWExceptionRenderer;
+use MediaWiki\MainConfigNames;
+use MediaWiki\MediaWikiEntryPoint;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Registration\ExtensionRegistry;
+use MediaWiki\Rest\BasicAccess\CompoundAuthorizer;
+use MediaWiki\Rest\BasicAccess\MWBasicAuthorizer;
+use MediaWiki\Rest\Module\ModuleManager;
+use MediaWiki\Rest\Reporter\MWErrorReporter;
+use MediaWiki\Rest\Validator\Validator;
+use Wikimedia\Assert\Assert;
+use Wikimedia\Message\ITextFormatter;
+
+/**
+ * @internal
+ */
+class EntryPoint extends MediaWikiEntryPoint {
+
+	private ?Router $router = null;
+	private ?CorsUtils $cors  = null;
+
+	/**
+	 * @internal Public for use in core tests
+	 *
+	 * @param MediaWikiServices $services
+	 * @param IContextSource $context
+	 * @param RequestInterface $request
+	 * @param ITextFormatter[] $textFormatters
+	 * @param bool $showExceptionDetails
+	 * @param CorsUtils $cors
+	 *
+	 * @return Router
+	 */
+	public static function createRouter(
+		MediaWikiServices $services,
+		IContextSource $context,
+		RequestInterface $request,
+		array $textFormatters,
+		bool $showExceptionDetails,
+		CorsUtils $cors
+	): Router {
+		Assert::parameter(
+			count( $textFormatters ) > 0,
+			'$textFormatters', 'must not be empty'
+		);
+
+		$conf = $services->getMainConfig();
+
+		$authority = $context->getAuthority();
+		$authorizer = new CompoundAuthorizer();
+		$authorizer
+			->addAuthorizer( new MWBasicAuthorizer( $authority ) )
+			->addAuthorizer( $cors );
+
+		$objectFactory = $services->getObjectFactory();
+		$restValidator = new Validator( $objectFactory,
+			$request,
+			$authority
+		);
+
+		$stats = $services->getStatsFactory();
+
+		// NOTE: Use preferred language, see getTextFormatters().
+		$defaultTextFormatter = array_first( $textFormatters );
+		$moduleManager = new ModuleManager(
+			new ServiceOptions( ModuleManager::CONSTRUCTOR_OPTIONS, $conf ),
+			ExtensionRegistry::getInstance()->getAttribute( 'RestModuleFiles' ),
+			$services->getLocalServerObjectCache(),
+			new JsonLocalizer( $defaultTextFormatter )
+		);
+
+		return ( new Router(
+			$moduleManager,
+			ExtensionRegistry::getInstance()->getAttribute( 'RestRoutes' ),
+			new ServiceOptions( Router::CONSTRUCTOR_OPTIONS, $conf ),
+			$services->getLocalServerObjectCache(),
+			$textFormatters,
+			$showExceptionDetails,
+			$authorizer,
+			$authority,
+			$objectFactory,
+			$restValidator,
+			new MWErrorReporter(),
+			$services->getHookContainer(),
+			$context->getRequest()->getSession(),
+			$services->getUrlUtils(),
+		) )
+			->setCors( $cors )
+			->setStats( $stats );
+	}
+
+	/**
+	 * @internal
+	 * @return RequestInterface The RequestInterface object used by this entry point.
+	 */
+	public static function getMainRequest(): RequestInterface {
+		static $mainRequest = null;
+
+		if ( $mainRequest === null ) {
+			$conf = MediaWikiServices::getInstance()->getMainConfig();
+			$mainRequest = new RequestFromGlobals( [
+				'cookiePrefix' => $conf->get( MainConfigNames::CookiePrefix )
+			] );
+		}
+
+		return $mainRequest;
+	}
+
+	protected function doSetup() {
+		parent::doSetup();
+
+		$context = $this->getContext();
+		$textFormatters = $this->getTextFormatters();
+		$showExceptionDetails = MWExceptionRenderer::shouldShowExceptionDetails();
+
+		$this->cors = new CorsUtils(
+			new ServiceOptions(
+				CorsUtils::CONSTRUCTOR_OPTIONS,
+				$this->getServiceContainer()->getMainConfig()
+			),
+			$context->getUser()
+		);
+
+		if ( !$this->router ) {
+			$this->router = $this->createRouter(
+				$this->getServiceContainer(),
+				$context,
+				$this->request,
+				$textFormatters,
+				$showExceptionDetails,
+				$this->cors
+			);
+		}
+	}
+
+	/**
+	 * Get a TextFormatter array from MediaWikiServices
+	 *
+	 * @return ITextFormatter[]
+	 */
+	private function getTextFormatters() {
+		$services = $this->getServiceContainer();
+
+		$code = $services->getContentLanguageCode()->toString();
+		$langs = [];
+
+		$queryParams = $this->request->getQueryParams();
+		$requestedLang = $queryParams['lang'] ?? null;
+		if ( is_string( $requestedLang ) && $requestedLang !== '' ) {
+			$internalCode = \MediaWiki\Language\LanguageCode::bcp47ToInternal( $requestedLang );
+			if ( $services->getLanguageNameUtils()->isSupportedLanguage( $internalCode ) ) {
+				$langs = [ $internalCode ];
+			}
+		}
+
+		$langs = array_unique( array_merge( $langs, [ $code, 'en' ] ) );
+		$textFormatters = [];
+		$factory = $services->getMessageFormatterFactory();
+
+		foreach ( $langs as $lang ) {
+			// XXX: we could key on language here
+			$textFormatters[] = $factory->getTextFormatter( $lang );
+		}
+
+		return $textFormatters;
+	}
+
+	public function __construct(
+		private readonly RequestInterface $request,
+		RequestContext $context,
+		EntryPointEnvironment $environment,
+		MediaWikiServices $mediaWikiServices,
+	) {
+		parent::__construct( $context, $environment, $mediaWikiServices );
+	}
+
+	/**
+	 * Sets the router to use.
+	 * Intended for testing.
+	 */
+	public function setRouter( Router $router ): void {
+		$this->router = $router;
+	}
+
+	public function execute() {
+		$this->startOutputBuffer();
+
+		$response = $this->router->execute( $this->request );
+
+		$webResponse = $this->getResponse();
+
+		$webResponse->header(
+			'HTTP/' . $response->getProtocolVersion() . ' ' . $response->getStatusCode() . ' ' .
+			$response->getReasonPhrase()
+		);
+
+		foreach ( $response->getRawHeaderLines() as $line ) {
+			$webResponse->header( $line );
+		}
+
+		foreach ( $response->getCookies() as $cookie ) {
+			$webResponse->setCookie(
+				$cookie['name'],
+				$cookie['value'],
+				$cookie['expire'],
+				$cookie['options']
+			);
+		}
+
+		// Clear all errors that might have been displayed if display_errors=On
+		$this->discardOutputBuffer();
+
+		$stream = $response->getBody();
+		$stream->rewind();
+
+		$this->prepareForOutput();
+
+		if ( $stream instanceof CopyableStreamInterface ) {
+			$stream->copyToStream( fopen( 'php://output', 'w' ) );
+		} else {
+			while ( true ) {
+				$buffer = $stream->read( 65536 );
+				if ( $buffer === '' ) {
+					break;
+				}
+				$this->print( $buffer );
+			}
+		}
+	}
+
+}

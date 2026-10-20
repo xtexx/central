@@ -1,0 +1,96 @@
+<?php
+/**
+ * @license GPL-2.0-or-later
+ * @file
+ */
+
+namespace MediaWiki\Language\Dependency;
+
+/**
+ * Depend on a file.
+ *
+ * @newable
+ * @ingroup Language
+ */
+class FileDependency extends CacheDependency {
+	/**
+	 * @var string
+	 * @private Make private when FileDependency_compat.php is removed
+	 */
+	protected $filename;
+	/**
+	 * @var null|false|int
+	 * @private Make private when FileDependency_compat.php is removed
+	 */
+	protected $timestamp;
+
+	/**
+	 * Create a file dependency
+	 *
+	 * @stable to call
+	 *
+	 * @param string $filename The name of the file, preferably fully qualified
+	 * @param null|false|int $timestamp The unix last modified timestamp, or false if the
+	 *        file does not exist. If omitted, the timestamp will be loaded from
+	 *        the file.
+	 *
+	 * A dependency on a nonexistent file will be triggered when the file is
+	 * created. A dependency on an existing file will be triggered when the
+	 * file is changed.
+	 */
+	public function __construct( $filename, $timestamp = null ) {
+		$this->filename = $filename;
+		$this->timestamp = $timestamp;
+	}
+
+	/**
+	 * @return array
+	 */
+	public function __sleep() {
+		$this->loadDependencyValues();
+
+		return [ 'filename', 'timestamp' ];
+	}
+
+	public function loadDependencyValues() {
+		if ( $this->timestamp === null ) {
+			# Dependency on a non-existent file stores "false"
+			# This is a valid concept!
+			// phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+			$this->timestamp = @filemtime( $this->filename );
+		}
+	}
+
+	/** @inheritDoc */
+	public function isExpired( $callback = null ) {
+		// phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+		$lastmod = @filemtime( $this->filename );
+		if ( $lastmod === false ) {
+			if ( $this->timestamp === false ) {
+				# Still nonexistent
+				return false;
+			}
+
+			# Deleted
+			wfDebug( "Dependency triggered: {$this->filename} deleted." );
+
+			if ( is_callable( $callback ) ) {
+				$callback( "{$this->filename} was deleted" );
+			}
+			return true;
+		}
+
+		if ( $lastmod > $this->timestamp ) {
+			# Modified or created
+			wfDebug( "Dependency triggered: {$this->filename} changed." );
+
+			if ( is_callable( $callback ) ) {
+				$callback( "{$this->filename} mtime changed from {$this->timestamp} to $lastmod" );
+			}
+			return true;
+		}
+
+		# Not modified
+		return false;
+	}
+}

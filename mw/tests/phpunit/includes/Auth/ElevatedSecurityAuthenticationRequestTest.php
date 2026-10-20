@@ -1,0 +1,234 @@
+<?php
+
+namespace MediaWiki\Auth;
+
+use BadMethodCallException;
+use LogicException;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\Utils\MWTimestamp;
+use StatusValue;
+
+/**
+ * @group AuthManager
+ * @group Database
+ * @covers \MediaWiki\Auth\AuthenticationRequest
+ */
+class ElevatedSecurityAuthenticationRequestTest extends AuthenticationRequestTestCase {
+
+	public function tearDown(): void {
+		MWTimestamp::setFakeTime( false );
+		parent::tearDown();
+	}
+
+	protected function getInstance( array $args = [] ) {
+		[ $session, $securityLevel ] = $args;
+		return ElevatedSecurityAuthenticationRequest::create( $session, $securityLevel );
+	}
+
+	public function testCreate() {
+		$session = RequestContext::getMain()->getRequest()->getSession();
+		$user = $this->getTestUser()->getUser();
+		try {
+			$req = ElevatedSecurityAuthenticationRequest::create( $session, 'foo' );
+			$this->fail( 'Expected exception not thrown' );
+		} catch ( LogicException ) {
+		}
+
+		$session->setUser( $user );
+		$req = ElevatedSecurityAuthenticationRequest::create( $session, 'foo' );
+		$this->assertInstanceOf( ElevatedSecurityAuthenticationRequest::class, $req );
+		$this->assertSame( $user->getId(), $req->userId );
+		$this->assertSame( 'foo', $req->securityLevel );
+	}
+
+	/**
+	 * @dataProvider provideGetFieldInfoCallbacks
+	 * @covers \MediaWiki\Auth\ElevatedSecurityAuthenticationRequest::getFieldInfo
+	 * @param array $args
+	 */
+	public function testGetFieldInfo( array $args ) {
+		// HACK getTestUser() cannot be called in a data provider so we must generate the session here.
+		[ $session, $securityLevel ] = $args[0]( $this );
+		parent::testGetFieldInfo( [ $session, $securityLevel ] );
+	}
+
+	public static function provideGetFieldInfoCallbacks() {
+		yield [ [ static function ( $testCase ) {
+			$session = RequestContext::getMain()->getRequest()->getSession();
+			$user = $testCase->getTestUser()->getUser();
+			$session->setUser( $user );
+			return [ $session, 'foo' ];
+		} ] ];
+	}
+
+	/**
+	 * @dataProvider provideLoadFromSubmissionCallbacks
+	 * @covers \MediaWiki\Auth\ElevatedSecurityAuthenticationRequest::loadFromSubmission
+	 * @param array $args An array containing a single callable which should return the real
+	 *   $args, $data and $expectState in an array.
+	 * @param array|null $data Not used
+	 * @param null $expectState Not used
+	 */
+	public function testLoadFromSubmission( array $args, ?array $data = null, $expectState = null ) {
+		// HACK getTestUser() cannot be called in a data provider so we must generate the
+		// arguments here. To keep compatible with the parent method, pass a callback as $args[0]
+		[ $args, $data, $expectState ] = array_values( call_user_func( $args[0], $this ) );
+		parent::testLoadFromSubmission( $args, $data, $expectState );
+	}
+
+	public static function provideLoadFromSubmission() {
+		// Not used in this class, we override testLoadFromSubmission above to use
+		// provideLoadFromSubmissionCallbacks instead
+		throw new BadMethodCallException( 'Should not be called' );
+	}
+
+	private static function freezeClock(): void {
+		// The value of Token::toString() depends on the clock, so freeze it to make sure the
+		// expected and actual token are based on the same timestamp.
+		MWTimestamp::setFakeTime( time() );
+	}
+
+	public static function provideLoadFromSubmissionCallbacks() {
+		yield 'not present' => [ [ static function ( $testCase ) {
+			$session = RequestContext::getMain()->getRequest()->getSession();
+			$user = $testCase->getTestUser()->getUser();
+			$session->setUser( $user );
+			self::freezeClock();
+			$token = $session->getToken( [ $user->getId(), 'foo' ], 'reauth' )->toString();
+			return [
+				'getInstance args' => [ $session, 'foo' ],
+				'request data' => [],
+				'expected state' => [
+					'userId' => $user->getId(),
+					'securityLevel' => 'foo',
+					'token' => $token,
+					'validationStatus' => StatusValue::newFatal( 'authmanager-elevatedsecurity-missing-token' ),
+					'session' => $session,
+				],
+			];
+		} ] ];
+		yield 'normal' => [ [ static function ( $testCase ) {
+			$session = RequestContext::getMain()->getRequest()->getSession();
+			$user = $testCase->getTestUser()->getUser();
+			$session->setUser( $user );
+			self::freezeClock();
+			$token = $session->getToken( [ $user->getId(), 'foo' ], 'reauth' )->toString();
+			return [
+				'getInstance args' => [ $session, 'foo' ],
+				'request data' => [
+					'elevatedSecurityToken' => $token,
+				],
+				'expected state' => [
+					'userId' => $user->getId(),
+					'securityLevel' => 'foo',
+					'token' => $token,
+					'validationStatus' => StatusValue::newGood(),
+					'session' => $session,
+				],
+			];
+		} ] ];
+		yield 'fake level in object' => [ [ static function ( $testCase ) {
+			$session = RequestContext::getMain()->getRequest()->getSession();
+			$user = $testCase->getTestUser()->getUser();
+			$session->setUser( $user );
+			self::freezeClock();
+			$correctToken = $session->getToken( [ $user->getId(), 'foo' ], 'reauth' )->toString();
+			$objectToken = $session->getToken( [ $user->getId(), 'bar' ], 'reauth' )->toString();
+			return [
+				'getInstance args' => [ $session, 'bar' ],
+				'request data' => [
+					'elevatedSecurityToken' => $correctToken,
+				],
+				'expected state' => [
+					'userId' => $user->getId(),
+					'securityLevel' => 'bar',
+					'token' => $objectToken,
+					'validationStatus' => StatusValue::newFatal( 'authmanager-elevatedsecurity-invalid-token' ),
+					'session' => $session,
+				],
+			];
+		} ] ];
+		yield 'fake level in token' => [ [ static function ( $testCase ) {
+			$session = RequestContext::getMain()->getRequest()->getSession();
+			$user = $testCase->getTestUser()->getUser();
+			$session->setUser( $user );
+			self::freezeClock();
+			$correctToken = $session->getToken( [ $user->getId(), 'foo' ], 'reauth' )->toString();
+			$submittedToken = $session->getToken( [ $user->getId(), 'bar' ], 'reauth' )->toString();
+			return [
+				'getInstance args' => [ $session, 'foo' ],
+				'request data' => [
+					'elevatedSecurityToken' => $submittedToken,
+				],
+				'expected state' => [
+					'userId' => $user->getId(),
+					'securityLevel' => 'foo',
+					'token' => $correctToken,
+					'validationStatus' => StatusValue::newFatal( 'authmanager-elevatedsecurity-invalid-token' ),
+					'session' => $session,
+				],
+			];
+		} ] ];
+		yield 'wrong user' => [ [ static function ( $testCase ) {
+			$session = RequestContext::getMain()->getRequest()->getSession();
+			$user1 = $testCase->getTestUser()->getUser();
+			$user2 = $testCase->getTestUser( [ 'sysop' ] )->getUser();
+			$session->setUser( $user1 );
+			self::freezeClock();
+			$correctToken = $session->getToken( [ $user1->getId(), 'foo' ], 'reauth' )->toString();
+			$submittedToken = $session->getToken( [ $user2->getId(), 'foo' ], 'reauth' )->toString();
+			return [
+				'getInstance args' => [ $session, 'foo' ],
+				'request data' => [
+					'elevatedSecurityToken' => $submittedToken,
+				],
+				'expected state' => [
+					'userId' => $user1->getId(),
+					'securityLevel' => 'foo',
+					'token' => $correctToken,
+					'validationStatus' => StatusValue::newFatal( 'authmanager-elevatedsecurity-invalid-token' ),
+					'session' => $session,
+				],
+			];
+		} ] ];
+	}
+
+	public function testLoadFromSubmission_error() {
+		$session = RequestContext::getMain()->getRequest()->getSession();
+		$user = $this->getTestUser()->getUser();
+		$session->setUser( $user );
+		$req = ElevatedSecurityAuthenticationRequest::create( $session, 'foo' );
+
+		$req = unserialize( serialize( $req ) );
+		try {
+			$req->loadFromSubmission( [ 'elevatedSecurityToken' => 'fake' ] );
+			$this->fail( 'Expected exception not thrown' );
+		} catch ( LogicException ) {
+		}
+		$this->assertTrue( true );
+	}
+
+	public function testValidate() {
+		$session = RequestContext::getMain()->getRequest()->getSession();
+		$user = $this->getTestUser()->getUser();
+		$session->setUser( $user );
+
+		$req = ElevatedSecurityAuthenticationRequest::create( $session, 'foo' );
+		$status = $req->validate();
+		$this->assertEquals(
+			StatusValue::newFatal( 'authmanager-elevatedsecurity-not-validated' ), $status );
+
+		$req = ElevatedSecurityAuthenticationRequest::create( $session, 'foo' );
+		$req->loadFromSubmission( [ 'elevatedSecurityToken' => 'bad' ] );
+		$status = $req->validate();
+		$this->assertEquals(
+			StatusValue::newFatal( 'authmanager-elevatedsecurity-invalid-token' ), $status );
+
+		$req = ElevatedSecurityAuthenticationRequest::create( $session, 'foo' );
+		$token = $req->getFieldInfo()['elevatedSecurityToken']['value'];
+		$req->loadFromSubmission( [ 'elevatedSecurityToken' => $token ] );
+		$status = $req->validate();
+		$this->assertEquals( StatusValue::newGood(), $status );
+	}
+
+}

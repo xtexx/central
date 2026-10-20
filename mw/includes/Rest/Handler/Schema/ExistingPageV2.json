@@ -1,0 +1,87 @@
+{
+	"x-i18n-description": "rest-schema-desc-bare-page",
+	"required": [
+		"id",
+		"key",
+		"title",
+		"latest",
+		"content_model",
+		"license"
+	],
+	"properties": {
+		"id": {
+			"type": "integer",
+			"x-i18n-description": "rest-property-desc-page-id",
+			"example": 26903
+		},
+		"key": {
+			"type": "string",
+			"x-i18n-description": "rest-property-desc-page-key",
+			"example": "Solar_System"
+		},
+		"title": {
+			"type": "string",
+			"x-i18n-description": "rest-property-desc-page-title",
+			"example": "Solar System"
+		},
+		"latest": {
+			"type": "object",
+			"x-i18n-description": "rest-property-desc-page-latest",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"x-i18n-description": "rest-property-desc-page-latest-id",
+					"example": 1347490218
+				},
+				"timestamp": {
+					"type": "string",
+					"nullable": true,
+					"x-comment": "Nullable only to support the allowShadowHtml quirk in PageHandler: shadow pages (e.g. system messages) have no revision. It should not otherwise be nullable, and 'latest' ought not to be present at all for such pages. Tighten this when the quirk is removed. See T349677.",
+					"x-i18n-description": "rest-property-desc-page-timestamp",
+					"example": "2026-04-07T01:20:41Z"
+				}
+			}
+		},
+		"content_model": {
+			"type": "string",
+			"x-i18n-description": "rest-property-desc-page-contentmodel",
+			"example": "wikitext"
+		},
+		"license": {
+			"type": "object",
+			"x-i18n-description": "rest-property-desc-page-license",
+			"properties": {
+				"url": {
+					"type": "string",
+					"x-i18n-description": "rest-property-desc-page-license-url",
+					"example": "https://creativecommons.org/licenses/by-sa/4.0/deed.en"
+				},
+				"title": {
+					"type": "string",
+					"x-i18n-description": "rest-property-desc-page-license-title",
+					"example": "Creative Commons Attribution-Share Alike 4.0"
+				}
+			}
+		},
+		"html": {
+			"type": "string",
+			"x-i18n-description": "rest-property-desc-page-content-html",
+			"example": "<!DOCTYPE html>..."
+		},
+		"html_url": {
+			"type": "string",
+			"x-i18n-description": "rest-property-desc-html-url",
+			"example": "https://en.wikipedia.org/w/rest.php/v1/page/Solar_System/html"
+		},
+		"source": {
+			"type": "string",
+			"x-i18n-description": "rest-param-desc-latest-source",
+			"example": "{{Short description|Planetary system consisting of the Sun and..."
+		},
+		"redirect_url": {
+			"type": "string",
+			"x-i18n-description": "rest-property-desc-redirect-url",
+			"example": "https://en.wikipedia.org/w/rest.php/content/v2/page/Solar_System"
+		}
+	}
+}

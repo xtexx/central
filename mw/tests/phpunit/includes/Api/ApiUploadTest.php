@@ -1,0 +1,948 @@
+<?php
+
+namespace MediaWiki\Tests\Api;
+
+use MediaWiki\FileRepo\LocalRepo;
+use MediaWiki\FileRepo\RepoGroup;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Permissions\Authority;
+use MediaWiki\Title\Title;
+use MediaWiki\WikiMap\WikiMap;
+use MockHttpTrait;
+use Wikimedia\FileBackend\FSFileBackend;
+use Wikimedia\Mime\MimeAnalyzer;
+use Wikimedia\Timestamp\ConvertibleTimestamp;
+
+/**
+ * @group API
+ * @group Database
+ * @group medium
+ *
+ * @covers \MediaWiki\Api\ApiUpload
+ */
+class ApiUploadTest extends ApiUploadTestCase {
+	use MockHttpTrait;
+
+	private ?Authority $uploader = null;
+
+	private function filePath( $fileName ) {
+		return __DIR__ . '/../../data/media/' . $fileName;
+	}
+
+	protected function setUp(): void {
+		parent::setUp();
+
+		$this->setService( 'RepoGroup', new RepoGroup(
+			[
+				'class' => LocalRepo::class,
+				'name' => 'temp',
+				'backend' => new FSFileBackend( [
+					'name' => 'temp-backend',
+					'wikiId' => WikiMap::getCurrentWikiId(),
+					'basePath' => $this->getNewTempDirectory()
+				] )
+			],
+			[],
+			$this->getServiceContainer()->getMainWANObjectCache(),
+			$this->createMock( MimeAnalyzer::class )
+		) );
+
+		$this->overrideConfigValue( MainConfigNames::WatchlistExpiry, true );
+		$this->uploader = $this->getTestUser()->getAuthority();
+	}
+
+	public function testUploadRequiresToken() {
+		$this->expectApiErrorCode( 'missingparam' );
+		$this->doApiRequest( [
+			'action' => 'upload'
+		] );
+	}
+
+	public function testUploadMissingParams() {
+		$this->expectApiErrorCode( 'missingparam' );
+		$this->doApiRequestWithToken( [
+			'action' => 'upload',
+		], null, $this->uploader );
+	}
+
+	public function testUploadWithWatch() {
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+		$title = Title::makeTitle( NS_FILE, 'TestUpload.jpg' );
+		$user = $this->uploader;
+
+		$this->fakeUploadFile( 'file', $title->getText(), $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $title->getText(),
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for {$title->getText()}",
+			'watchlist' => 'watch',
+			'watchlistexpiry' => '99990123000000',
+		], null, $user );
+
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Success', $result['upload']['result'] );
+		$this->assertSame( filesize( $filePath ), (int)$result['upload']['imageinfo']['size'] );
+		$this->assertEquals( $mimeType, $result['upload']['imageinfo']['mime'] );
+		$this->assertTrue( $this->getServiceContainer()->getWatchlistManager()->isTempWatched( $user, $title ) );
+	}
+
+	public function testUploadNewFileUsesWatchcreationsExpiryPreference() {
+		// Fake current time to be 2019-06-05T19:50:42Z
+		ConvertibleTimestamp::setFakeTime( 1559764242 );
+
+		$title = Title::makeTitle( NS_FILE, 'TestUploadExpiryPref.jpg' );
+		$user = $this->getTestUser()->getUser();
+
+		$optionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$optionsManager->setOption( $user, 'watchcreations', 1 );
+		$optionsManager->setOption( $user, 'watchcreations-expiry', '1 week' );
+		// Must not be used for a file that doesn't exist yet (T432106).
+		$optionsManager->setOption( $user, 'watchdefault-expiry', '1 year' );
+		$optionsManager->saveOptions( $user );
+
+		$this->fakeUploadFile( 'file', $title->getText(), 'image/jpeg', $this->filePath( 'yuv420.jpg' ) );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $title->getText(),
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for {$title->getText()}",
+			'watchlist' => 'preferences',
+		], null, $user );
+
+		$this->assertSame( 'Success', $result['upload']['result'] );
+		$item = $this->getServiceContainer()->getWatchedItemStore()->getWatchedItem( $user, $title );
+		$this->assertNotNull( $item );
+		$this->assertSame( '20190612195042', $item->getExpiry() );
+	}
+
+	public function testUploadErrorZeroLength() {
+		$filePath = $this->getNewTempFile();
+		$mimeType = 'image/jpeg';
+		$fileName = "ApiTestUploadZeroLength.jpg";
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+
+		$this->expectApiErrorCode( 'empty-file' );
+		$this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+	}
+
+	public function testUploadErrorFileTooLarge() {
+		$this->overrideConfigValue( MainConfigNames::MaxUploadSize, 10 );
+		$filePath = $this->filePath( '1bit-png.png' );
+		$mimeType = 'image/png';
+		$fileName = 'ApiUploadFileTooLarge.png';
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+
+		$this->expectApiErrorCode( 'file-too-large' );
+		$this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+	}
+
+	public function testUploadErrorFiletypeMissing() {
+		$mimeAnalyzer = $this->createMock( MimeAnalyzer::class );
+		$mimeAnalyzer->method( 'guessMimeType' )->willReturn( 'unknown/unknown' );
+		$mimeAnalyzer->method( 'getMediaType' )->willReturn( MEDIATYPE_UNKNOWN );
+		$this->setService( 'MimeAnalyzer', $mimeAnalyzer );
+
+		$filePath = $this->filePath( '1bit-png.png' );
+		$mimeType = 'image/png';
+		$fileName = 'ApiUploadFileTypeMissing';
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+
+		$this->expectApiErrorCode( 'filetype-missing' );
+		$this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+	}
+
+	public function testUploadErrorFiletypeBadtype() {
+		$this->overrideConfigValue( MainConfigNames::ProhibitedFileExtensions, [ 'png' ] );
+		$filePath = $this->filePath( '1bit-png.png' );
+		$mimeType = 'image/png';
+		$fileName = 'ApiUploadFileBadType.png';
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+
+		$this->expectApiErrorCode( 'filetype-banned' );
+		$this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+	}
+
+	public function testUploadErrorFilenameTooShort() {
+		$filePath = $this->filePath( '1bit-png.png' );
+		$mimeType = 'image/png';
+		$fileName = '.png';
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+
+		$this->expectApiErrorCode( 'filename-tooshort' );
+		$this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+	}
+
+	public function testUploadErrorIllegalFilename() {
+		$filePath = $this->filePath( '1bit-png.png' );
+		$mimeType = 'image/png';
+		$fileName = '~~~.png';
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+
+		$this->expectApiErrorCode( 'illegal-filename' );
+		$this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+	}
+
+	public function testUploadErrorVerificationError() {
+		$filePath = $this->filePath( '1bit-png.png' );
+		$mimeType = 'image/png';
+		$fileName = 'ApiUploadFileMismatch.jpg';
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+
+		$this->expectApiErrorCode( 'verification-error' );
+		$this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+	}
+
+	public function testUploadErrorWindowsNonasciiFilename() {
+		$fileBackend = $this->getMockBuilder( FSFileBackend::class )
+			->setConstructorArgs( [ [
+				'name' => 'temp-backend',
+				'wikiId' => WikiMap::getCurrentWikiId(),
+				'basePath' => $this->getNewTempDirectory()
+			] ] )
+			->getMock();
+		$fileBackend->method( 'getFeatures' )->willReturn( 0 );
+		$this->setService( 'RepoGroup', new RepoGroup(
+			[
+				'class' => LocalRepo::class,
+				'name' => 'temp',
+				'backend' => $fileBackend,
+			],
+			[],
+			$this->getServiceContainer()->getMainWANObjectCache(),
+			$this->createMock( MimeAnalyzer::class )
+		) );
+
+		$filePath = $this->filePath( '1bit-png.png' );
+		$mimeType = 'image/png';
+		$fileName = 'ApiUploadFile🏳️‍🌈🏳️‍🌈.png';
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+
+		$this->expectApiErrorCode( 'windows-nonascii-filename' );
+		$this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+	}
+
+	public function testUploadErrorFilenameTooLong() {
+		$filePath = $this->filePath( '1bit-png.png' );
+		$mimeType = 'image/png';
+		$fileName = str_repeat( 'a', 240 ) . '.png';
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+
+		$this->expectApiErrorCode( 'filename-toolong' );
+		$this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+	}
+
+	public function testUploadSameFileName() {
+		$fileName = 'TestUploadSameFileName.jpg';
+		$mimeType = 'image/jpeg';
+		$filePaths = [
+			$this->filePath( 'yuv420.jpg' ),
+			$this->filePath( 'yuv444.jpg' )
+		];
+
+		// we reuse these params
+		$params = [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		];
+
+		// first upload .... should succeed
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePaths[0] );
+		[ $result ] = $this->doApiRequestWithToken( $params, null,
+			$this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Success', $result['upload']['result'] );
+
+		// second upload with the same name (but different content)
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePaths[1] );
+		[ $result ] = $this->doApiRequestWithToken( $params, null,
+			$this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Warning', $result['upload']['result'] );
+		$this->assertArrayHasKey( 'warnings', $result['upload'] );
+		$this->assertArrayHasKey( 'exists', $result['upload']['warnings'] );
+	}
+
+	public function testUploadSameContent() {
+		$fileNames = [ 'TestUploadSameContent_1.jpg', 'TestUploadSameContent_2.jpg' ];
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+
+		// first upload .... should succeed
+		$this->fakeUploadFile( 'file', $fileNames[0], $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileNames[0],
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for {$fileNames[0]}",
+		], null, $this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Success', $result['upload']['result'] );
+
+		// second upload with the same content (but different name)
+		$this->fakeUploadFile( 'file', $fileNames[1], $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileNames[1],
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for {$fileNames[1]}",
+		], null, $this->uploader );
+
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Warning', $result['upload']['result'] );
+		$this->assertArrayHasKey( 'warnings', $result['upload'] );
+		$this->assertArrayHasKey( 'duplicate', $result['upload']['warnings'] );
+		$this->assertArrayEquals( [ $fileNames[0] ], $result['upload']['warnings']['duplicate'] );
+		$this->assertArrayNotHasKey( 'exists', $result['upload']['warnings'] );
+	}
+
+	public function testUploadSameContentReupload() {
+		$fileName = 'TestUploadSameContentReupload.jpg';
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+
+		// first upload .... should succeed
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for {$fileName}",
+		], null, $this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Success', $result['upload']['result'] );
+
+		// expect empty api data, no stasherrors key should be there
+		$this->expectApiErrorCode( 'fileexists-no-change', [] );
+		// second upload with the same content and same name (reupload)
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+		$this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'ignorewarnings' => 1,
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for reupload $fileName",
+		], null, $this->uploader );
+	}
+
+	public function testUploadSizeWarning() {
+		$this->overrideConfigValues( [
+			MainConfigNames::MaxUploadSize => 500 * 1024,
+			MainConfigNames::UploadSizeWarning => 200 * 1024,
+		] );
+
+		// webp_animated.webp is 372 KB, so it should trigger the warning
+		$filePath = $this->filePath( 'webp_animated.webp' );
+
+		$this->fakeUploadFile( 'file', 'webp_animated.webp', 'image/webp', $filePath );
+
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => 'webp_animated.webp',
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text",
+		], null, $this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Warning', $result['upload']['result'] );
+		$this->assertArrayHasKey( 'warnings', $result['upload'] );
+		$this->assertArrayHasKey( 'large-file', $result['upload']['warnings'] );
+		$this->assertEquals(
+			[ [ "size" => 200 * 1024 ], [ "size" => filesize( $filePath ) ] ],
+			$result['upload']['warnings']['large-file']
+		);
+	}
+
+	public function testUploadStash() {
+		$fileName = 'TestUploadStash.jpg';
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'stash' => 1,
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Success', $result['upload']['result'] );
+		$this->assertSame( filesize( $filePath ), (int)$result['upload']['imageinfo']['size'] );
+		$this->assertEquals( $mimeType, $result['upload']['imageinfo']['mime'] );
+		$this->assertArrayHasKey( 'filekey', $result['upload'] );
+		$this->assertEquals( $result['upload']['sessionkey'], $result['upload']['filekey'] );
+		$filekey = $result['upload']['filekey'];
+
+		// it should be visible from Special:UploadStash
+		// XXX ...but how to test this, with a fake WebRequest with the session?
+
+		// now we should try to release the file from stash
+		$this->clearFakeUploads();
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filekey' => $filekey,
+			'filename' => $fileName,
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName, altered",
+		], null, $this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Success', $result['upload']['result'] );
+	}
+
+	public function testUploadAutotextGeneration() {
+		$this->overrideConfigValue( MainConfigNames::UseCopyrightUpload, true );
+		$this->setTemporaryHook( 'UploadForm:getInitialPageText',
+			static function ( &$pageText, $msg, $config ) {
+				$pageText .= "\n[[Category:Hook-added category]]";
+			}
+		);
+
+		$fileName = 'TestUploadAutotext.jpg';
+		$this->fakeUploadFile( 'file', $fileName, 'image/jpeg', $this->filePath( 'yuv420.jpg' ) );
+
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+			'comment' => 'A test file',
+			'text' => 'This client-supplied text should be overridden.',
+			'autotext' => 1,
+			'license' => 'self|cc-by-sa-4.0',
+			'copystatus' => 'Own work',
+			'source' => 'My camera',
+		], null, $this->uploader );
+
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Success', $result['upload']['result'] );
+
+		$title = Title::makeTitle( NS_FILE, $fileName );
+		$page = $this->getServiceContainer()->getWikiPageFactory()->newFromTitle( $title );
+		$text = $page->getContent()->getText();
+
+		$this->assertStringContainsString( 'A test file', $text );
+		$this->assertStringContainsString( '{{self|cc-by-sa-4.0}}', $text );
+		$this->assertStringContainsString( 'Own work', $text );
+		$this->assertStringContainsString( 'My camera', $text );
+		$this->assertStringContainsString( '[[Category:Hook-added category]]', $text );
+		$this->assertStringNotContainsString( 'This client-supplied text should be overridden.', $text );
+	}
+
+	public function testUploadStashPublishWithWarnings() {
+		$fileName = 'TestUploadStash.jpg';
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+
+		// Normal upload of a file
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+		], null, $this->uploader );
+
+		$this->assertArrayHasKey( 'upload', $result );
+
+		// Stashed upload of the same file to produce a warning on publish
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'stash' => 1,
+			'filename' => $fileName,
+			'file' => 'dummy content',
+		], null, $this->uploader );
+
+		$this->assertArrayHasKey( 'upload', $result );
+		$filekey = $result['upload']['filekey'];
+
+		// Publish with warning
+		$this->clearFakeUploads();
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filekey' => $filekey,
+			'filename' => $fileName,
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName, altered",
+		], null, $this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Warning', $result['upload']['result'] );
+		$this->assertArrayHasKey( 'warnings', $result['upload'] );
+		$this->assertArrayNotHasKey( 'stasherrors', $result['upload'] );
+		$this->assertArrayNotHasKey( 'filekey', $result['upload'] );
+	}
+
+	public function testUploadStashPublishWithIgnoreWarnings() {
+		$fileName = 'TestUploadStash.jpg';
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+
+		// Normal upload of a file
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+		], null, $this->uploader );
+
+		$this->assertArrayHasKey( 'upload', $result );
+
+		// Stashed upload of the same file to produce a warning on publish
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'stash' => 1,
+			'filename' => $fileName,
+			'file' => 'dummy content',
+		], null, $this->uploader );
+
+		$this->assertArrayHasKey( 'upload', $result );
+		$filekey = $result['upload']['filekey'];
+
+		// Publish with ignore warning
+		$this->clearFakeUploads();
+		$this->expectApiErrorCode( 'fileexists-no-change' );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filekey' => $filekey,
+			'filename' => $fileName,
+			'ignorewarnings' => 1,
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName, altered",
+		], null, $this->uploader );
+	}
+
+	public function testUploadStashAsyncPublishWithWarnings() {
+		$this->overrideConfigValue( MainConfigNames::EnableAsyncUploads, true );
+
+		$fileName = 'TestUploadStash.jpg';
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+
+		// Normal upload of a file
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filename' => $fileName,
+			'file' => 'dummy content',
+		], null, $this->uploader );
+
+		$this->assertArrayHasKey( 'upload', $result );
+
+		// Stashed upload of the same file to produce a warning on publish
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'stash' => 1,
+			'filename' => $fileName,
+			'file' => 'dummy content',
+		], null, $this->uploader );
+
+		$this->assertArrayHasKey( 'upload', $result );
+		$filekey = $result['upload']['filekey'];
+
+		// Publish with warning
+		$this->clearFakeUploads();
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filekey' => $filekey,
+			'filename' => $fileName,
+			'async' => 1,
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName, altered",
+		], null, $this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Warning', $result['upload']['result'] );
+		$this->assertArrayHasKey( 'warnings', $result['upload'] );
+		$this->assertArrayNotHasKey( 'stasherrors', $result['upload'] );
+		$this->assertArrayNotHasKey( 'filekey', $result['upload'] );
+	}
+
+	public function testUploadChunks() {
+		$fileName = 'TestUploadChunks.jpg';
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+		$fileSize = filesize( $filePath );
+		$chunkSize = 20 * 1024; // The file is ~60 KiB, use 20 KiB chunks
+
+		$this->overrideConfigValue( MainConfigNames::MinUploadChunkSize, $chunkSize );
+
+		// Base upload params:
+		$params = [
+			'action' => 'upload',
+			'stash' => 1,
+			'filename' => $fileName,
+			'filesize' => $fileSize,
+			'offset' => 0,
+		];
+
+		// Upload chunks
+		$handle = fopen( $filePath, "r" );
+		$resultOffset = 0;
+		$filekey = false;
+		while ( !feof( $handle ) ) {
+			$chunkData = fread( $handle, $chunkSize );
+
+			// Upload the current chunk into the $_FILE object:
+			$this->fakeUploadChunk( 'chunk', 'blob', $mimeType, $chunkData );
+			if ( !$filekey ) {
+				[ $result ] = $this->doApiRequestWithToken( $params, null,
+					$this->uploader );
+				// Make sure we got a valid chunk continue:
+				$this->assertArrayHasKey( 'upload', $result );
+				$this->assertArrayHasKey( 'filekey', $result['upload'] );
+				$this->assertEquals( 'Continue', $result['upload']['result'] );
+				$this->assertEquals( $chunkSize, $result['upload']['offset'] );
+
+				$filekey = $result['upload']['filekey'];
+				$resultOffset = $result['upload']['offset'];
+			} else {
+				// Filekey set to chunk session
+				$params['filekey'] = $filekey;
+				// Update the offset ( always add chunkSize for subquent chunks
+				// should be in-sync with $result['upload']['offset'] )
+				$params['offset'] += $chunkSize;
+				// Make sure param offset is insync with resultOffset:
+				$this->assertEquals( $resultOffset, $params['offset'] );
+				// Upload current chunk
+				[ $result ] = $this->doApiRequestWithToken( $params, null,
+					$this->uploader );
+				// Make sure we got a valid chunk continue:
+				$this->assertArrayHasKey( 'upload', $result );
+				$this->assertArrayHasKey( 'filekey', $result['upload'] );
+
+				// Check if we were on the last chunk:
+				if ( $params['offset'] + $chunkSize >= $fileSize ) {
+					$this->assertEquals( 'Success', $result['upload']['result'] );
+					break;
+				} else {
+					$this->assertEquals( 'Continue', $result['upload']['result'] );
+					$resultOffset = $result['upload']['offset'];
+				}
+			}
+		}
+		fclose( $handle );
+
+		// Check that we got a valid file result:
+		$this->assertEquals( $fileSize, $result['upload']['imageinfo']['size'] );
+		$this->assertEquals( $mimeType, $result['upload']['imageinfo']['mime'] );
+		$this->assertArrayHasKey( 'filekey', $result['upload'] );
+		$filekey = $result['upload']['filekey'];
+
+		// Now we should try to release the file from stash
+		$this->clearFakeUploads();
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filekey' => $filekey,
+			'filename' => $fileName,
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName, altered",
+		], null, $this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Success', $result['upload']['result'] );
+	}
+
+	public function testAsyncUploadWithChunks() {
+		$this->overrideConfigValue( MainConfigNames::EnableAsyncUploads, true );
+		// Set user for RequestContext::exportSession() used by the jobs
+		$this->apiContext->setAuthority( $this->uploader );
+
+		$fileName = 'TestUploadChunks.jpg';
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+		$fileSize = filesize( $filePath );
+		$chunkSize = 20 * 1024; // The file is ~60 KiB, use 20 KiB chunks
+
+		$this->overrideConfigValue( MainConfigNames::MinUploadChunkSize, $chunkSize );
+
+		// Base upload params:
+		$params = [
+			'action' => 'upload',
+			'stash' => 1,
+			'async' => 1,
+			'filename' => $fileName,
+			'filesize' => $fileSize,
+			'offset' => 0,
+		];
+
+		// Upload chunks
+		$handle = fopen( $filePath, "r" );
+		$resultOffset = 0;
+		$filekey = false;
+		while ( !feof( $handle ) ) {
+			$chunkData = fread( $handle, $chunkSize );
+
+			// Upload the current chunk into the $_FILE object:
+			$this->fakeUploadChunk( 'chunk', 'blob', $mimeType, $chunkData );
+			if ( !$filekey ) {
+				[ $result ] = $this->doApiRequestWithToken( $params, null,
+					$this->uploader );
+				// Make sure we got a valid chunk continue:
+				$this->assertArrayHasKey( 'upload', $result );
+				$this->assertArrayHasKey( 'filekey', $result['upload'] );
+				$this->assertEquals( 'Continue', $result['upload']['result'] );
+				$this->assertEquals( $chunkSize, $result['upload']['offset'] );
+
+				$filekey = $result['upload']['filekey'];
+				$resultOffset = $result['upload']['offset'];
+			} else {
+				// Filekey set to chunk session
+				$params['filekey'] = $filekey;
+				// Update the offset ( always add chunkSize for subquent chunks
+				// should be in-sync with $result['upload']['offset'] )
+				$params['offset'] += $chunkSize;
+				// Make sure param offset is insync with resultOffset:
+				$this->assertEquals( $resultOffset, $params['offset'] );
+				// Upload current chunk
+				[ $result ] = $this->doApiRequestWithToken( $params, null,
+					$this->uploader );
+				// Make sure we got a valid chunk continue:
+				$this->assertArrayHasKey( 'upload', $result );
+				$this->assertArrayHasKey( 'filekey', $result['upload'] );
+
+				// Check if we were on the last chunk:
+				if ( $params['offset'] + $chunkSize >= $fileSize ) {
+					$this->assertEquals( 'Poll', $result['upload']['result'] );
+					break;
+				} else {
+					$this->assertEquals( 'Continue', $result['upload']['result'] );
+					$resultOffset = $result['upload']['offset'];
+				}
+			}
+		}
+		fclose( $handle );
+
+		// Run the first async part
+		$this->runJobs( [ 'maxJobs' => 1 ], [ 'type' => 'AssembleUploadChunks' ] );
+
+		// Check that we got a valid file result:
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filekey' => $filekey,
+			'checkstatus' => 1,
+		], null, $this->uploader );
+		$this->assertEquals( $fileSize, $result['upload']['imageinfo']['size'] );
+		$this->assertEquals( $mimeType, $result['upload']['imageinfo']['mime'] );
+		$this->assertArrayHasKey( 'filekey', $result['upload'] );
+		$filekey = $result['upload']['filekey'];
+
+		// Now we should try to release the file from stash
+		$this->clearFakeUploads();
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filekey' => $filekey,
+			'filename' => $fileName,
+			'async' => 1,
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName, altered",
+		], null, $this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Poll', $result['upload']['result'] );
+
+		// Run the second async part
+		$this->runJobs( [ 'maxJobs' => 1 ], [ 'type' => 'PublishStashedFile' ] );
+
+		// Expect the publish result
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'filekey' => $filekey,
+			'checkstatus' => 1,
+		], null, $this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Success', $result['upload']['result'] );
+		$this->assertEquals( $fileSize, $result['upload']['imageinfo']['size'] );
+		$this->assertEquals( $mimeType, $result['upload']['imageinfo']['mime'] );
+	}
+
+	public function testUploadUrl() {
+		$this->overrideConfigValue( MainConfigNames::AllowCopyUploads, true );
+		$this->setGroupPermissions( '*', 'upload_by_url', true );
+
+		$fileName = 'TestUploadUrl.jpg';
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+
+		$this->installMockHttp( file_get_contents( $filePath ) );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'url' => 'https://example.com/' . $fileName,
+			'filename' => $fileName,
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Success', $result['upload']['result'] );
+		$this->assertSame( filesize( $filePath ), (int)$result['upload']['imageinfo']['size'] );
+		$this->assertEquals( $mimeType, $result['upload']['imageinfo']['mime'] );
+		$this->assertArrayNotHasKey( 'html', $result['upload']['imageinfo'] );
+	}
+
+	public function testAsyncUploadUrl() {
+		$this->overrideConfigValues( [
+			MainConfigNames::AllowCopyUploads => true,
+			MainConfigNames::EnableAsyncUploads => true,
+			MainConfigNames::EnableAsyncUploadsByURL => true,
+		] );
+		$this->setGroupPermissions( '*', 'upload_by_url', true );
+		// Set user for RequestContext::exportSession() used by the job
+		$this->apiContext->setAuthority( $this->uploader );
+
+		$fileName = 'TestUploadUrl.jpg';
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+
+		$this->installMockHttp( file_get_contents( $filePath ) );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'async' => 1,
+			'url' => 'https://example.com/' . $fileName,
+			'filename' => $fileName,
+			'comment' => 'dummy comment',
+			'text' => "This is the page text for $fileName",
+		], null, $this->uploader );
+
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Poll', $result['upload']['result'] );
+
+		// Run the second async part
+		$this->runJobs( [ 'maxJobs' => 1 ], [ 'type' => 'UploadFromUrl' ] );
+
+		// Expect the publish result
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'url' => 'https://example.com/' . $fileName,
+			'filename' => $fileName,
+			'checkstatus' => 1,
+		], null, $this->uploader );
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertEquals( 'Success', $result['upload']['result'] );
+		$this->assertSame( filesize( $filePath ), (int)$result['upload']['imageinfo']['size'] );
+		$this->assertEquals( $mimeType, $result['upload']['imageinfo']['mime'] );
+		$this->assertArrayNotHasKey( 'html', $result['upload']['imageinfo'] );
+	}
+
+	public function testTextIgnoredWhenStashing() {
+		$fileName = 'TestUploadTextIgnoredWhenStashing.jpg';
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'comment' => 'dummy comment',
+			'filename' => $fileName,
+			'stash' => 1,
+			'text' => 'This page text should not be set.',
+			'errorformat' => 'raw',
+		], null, $this->uploader );
+
+		// The 'upload-textwithstash' warning is informational and meant to
+		// curb parameter misuse, so the result should be 'Success'.
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertSame( 'Success', $result['upload']['result'] );
+		$this->assertArrayHasKey( 'warnings', $result );
+		$warnings = array_column( $result['warnings'], 'code' );
+		$this->assertContains( 'upload-textwithstash', $warnings );
+	}
+
+	public function testAutotextIgnoredWhenStashing() {
+		$fileName = 'TestUploadAutotextIgnoredWhenStashing.jpg';
+		$mimeType = 'image/jpeg';
+		$filePath = $this->filePath( 'yuv420.jpg' );
+
+		$this->fakeUploadFile( 'file', $fileName, $mimeType, $filePath );
+		[ $result ] = $this->doApiRequestWithToken( [
+			'action' => 'upload',
+			'comment' => 'dummy comment',
+			'filename' => $fileName,
+			'stash' => 1,
+			'autotext' => 1,
+			'errorformat' => 'raw',
+		], null, $this->uploader );
+
+		// The 'upload-autotextwithstash' warning is informational and meant to
+		// curb parameter misuse, so the result should be 'Success'.
+		$this->assertArrayHasKey( 'upload', $result );
+		$this->assertSame( 'Success', $result['upload']['result'] );
+		$this->assertArrayHasKey( 'warnings', $result );
+		$warnings = array_column( $result['warnings'], 'code' );
+		$this->assertContains( 'upload-autotextwithstash', $warnings );
+	}
+}
