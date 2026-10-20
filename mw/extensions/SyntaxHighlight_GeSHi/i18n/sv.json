@@ -1,0 +1,22 @@
+{
+	"@metadata": {
+		"authors": [
+			"Ainali",
+			"Lejonel",
+			"Lokal Profil",
+			"Nirmos (Wikimedia)",
+			"Stefan2255",
+			"WikiPhoenix"
+		]
+	},
+	"syntaxhighlight-desc": "Ger syntaxmarkering <code>&lt;syntaxhighlight&gt;</code> med [http://pygments.org/ Pygments - Python syntaxmarkerare]",
+	"syntaxhighlight-error-category": "Sidor med syntaxframhävningsfel",
+	"syntaxhighlight-enclose-category": "Sidor som använder föråldrade enclose-attribut",
+	"syntaxhighlight-source-category": "Sidor med föråldrade source-taggar",
+	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-code": "Kod",
+	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-language": "Språk",
+	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-none": "(Ingen)",
+	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-showlines": "Visa radnummer",
+	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-startingline": "Inledande radnummer",
+	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-title": "Kodblock"
+}
