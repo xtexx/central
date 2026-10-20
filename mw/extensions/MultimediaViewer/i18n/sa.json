@@ -1,0 +1,16 @@
+{
+	"@metadata": {
+		"authors": [
+			"Charunandan16",
+			"NehalDaveND"
+		]
+	},
+	"multimediaviewer-repository-local": "अधिकविवरणम्",
+	"multimediaviewer-multiple-authors-combine": "$1, $2 च",
+	"multimediaviewer-reuse-loading-placeholder": "आरोपयति...",
+	"multimediaviewer-share-tab": "वितरतु",
+	"multimediaviewer-embed-html": "एच् टि एम् एल्",
+	"multimediaviewer-embed-byline": "$1 द्वारा",
+	"multimediaviewer-embed-via": "$1 भूत्वा",
+	"multimediaviewer-title-popup-text": "वर्णनम्"
+}

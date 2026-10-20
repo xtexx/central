@@ -1,0 +1,868 @@
+/*
+ * This file is part of the MediaWiki extension MultimediaViewer.
+ *
+ * MultimediaViewer is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * MultimediaViewer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MultimediaViewer.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+const Config = require( './mmv.Config.js' );
+const LightboxImage = require( './mmv.lightboximage.js' );
+const { extensions } = require( './config.json' );
+const mwRouter = require( 'mediawiki.router' );
+
+// We pass this to history.pushState/replaceState to indicate that we're controlling the page URL.
+// Then we look for this marker on page load so that if the page is refreshed, we don't generate an
+// extra history entry.
+const MANAGED_STATE = 'MMV was here!';
+
+/**
+ * Bootstrap code listening to thumb clicks checking the initial location.hash
+ * Loads the mmv and opens it if necessary
+ */
+class MultimediaViewerBootstrap {
+	constructor() {
+		// Exposed for tests
+		this.hoverWaitDuration = 200;
+
+		/**
+		 * This flag is set to true when we were unable to load the viewer.
+		 *
+		 * @type {boolean}
+		 */
+		this.viewerIsBroken = false;
+
+		this.viewerPromise = null;
+
+		/**
+		 * @type {LightboxImage[]}
+		 */
+		this.thumbs = [];
+
+		/**
+		 * Per-file thumb count (by prefixed title), for duplicate positions
+		 *
+		 * NOTE: Must be kept in sync with LightboxImage#position in this.thumbs.
+		 *
+		 * @type {Map<string, number>}
+		 */
+		this.thumbCounts = new Map();
+		this.$legacyThumbs = null; // will be set by processThumbs
+		this.$thumbs = null; // will be set by processThumbs
+
+		/**
+		 * Canonical names of the special file-list pages whose auto-generated
+		 * gallery captions are unhelpful.
+		 *
+		 * @type {string[]}
+		 * @private
+		 */
+		this.specialFileRelatedPages = [
+			'Newimages', // Special:NewFiles
+			'Mostimages', // Special:MostLinkedFiles
+			'MostGloballyLinkedFiles', // Special:MostGloballyLinkedFiles
+			'Uncategorizedimages', // Special:UncategorizedFiles
+			'Unusedimages' // Special:UnusedFiles
+		];
+
+		// find and setup all thumbs on this page
+		// this will run initially and then every time the content changes,
+		// e.g. via a VE edit or pagination in a multipage file
+		mw.hook( 'wikipage.content' ).add( this.processThumbs.bind( this ) );
+
+		// Setup the router
+		this.setupRouter( mwRouter );
+	}
+
+	/**
+	 * Whether the Vue MMV UI should be used instead of the legacy viewer.
+	 * Enabled by the server for mobile views when $wgMediaViewerMobileBeta
+	 * is set (T428774).
+	 *
+	 * @return {boolean}
+	 */
+	useVueMultimediaViewer() {
+		// FIXME: Drop wgMediaViewerMobileBeta check 2 weeks after this change has been merged.
+		return mw.config.get( 'wgMediaViewerMobileBeta' ) === true ||
+			mw.config.get( 'wgMediaViewerDesktopVue' ) === true;
+	}
+
+	/**
+	 * Routes to a given file.
+	 *
+	 * @param {string} fileName
+	 */
+	route( fileName ) {
+		this.viewerPromise = this.loadViewer();
+		this.viewerPromise.then( ( viewer ) => {
+			let fileTitle;
+			viewer.comingFromHashChange = true;
+			try {
+				let position = fileName.match( Config.POSITION_REGEXP );
+				if ( position ) {
+					position = +position[ 1 ];
+					fileName = fileName.replace( Config.POSITION_REGEXP, '' );
+				} else {
+					position = undefined;
+				}
+				fileName = decodeURIComponent( fileName );
+				fileTitle = new mw.Title( fileName );
+				viewer.loadImageByTitle( fileTitle, position );
+			} catch ( err ) {
+				// ignore routes to invalid titles
+				mw.log.warn( err );
+			}
+			viewer.comingFromHashChange = false;
+		} );
+	}
+
+	/**
+	 * Sets up the route handlers
+	 *
+	 * @param {OO.Router} router
+	 */
+	setupRouter( router ) {
+		router.addRoute( Config.ROUTE_REGEXP, this.route.bind( this ) );
+		// Handle empty hashes, and anchor links (page sections)
+		router.on( 'route', ( ev ) => {
+			if ( ev.path.match( Config.ROUTE_REGEXP ) ) {
+				return;
+			}
+			if ( this.viewerPromise ) {
+				this.viewerPromise.then( ( viewer ) => {
+					if ( viewer.isOpen ) {
+						viewer.comingFromHashChange = true;
+						document.title = viewer.createDocumentTitle( null );
+						if ( viewer.ui ) {
+							// FIXME triggers mmv-close event, which calls viewer.close()
+							viewer.ui.unattach();
+						} else {
+							viewer.close();
+						}
+					}
+				} );
+			}
+		} );
+		this.router = router;
+	}
+
+	/**
+	 * Loads the mmv module asynchronously and passes the thumb data to it
+	 *
+	 * @return {jQuery.Promise}
+	 */
+	loadViewer() {
+		// Don't load if someone has specifically stopped us from doing so
+		if ( mw.config.get( 'wgMediaViewer' ) !== true ) {
+			return $.Deferred().reject();
+		}
+
+		if ( history.scrollRestoration ) {
+			history.scrollRestoration = 'manual';
+		}
+
+		// FIXME setupOverlay is a quick hack to avoid setting up and immediately
+		// removing the overlay on a not-MMV -> not-MMV hash change.
+		// loadViewer is called on every click and hash change and setting up
+		// the overlay is not needed on all of those; this logic really should
+		// not be here.
+		this.setupOverlay();
+
+		const moduleName = this.useVueMultimediaViewer() ? 'mmv.ui.vue' : 'mmv';
+
+		return mw.loader.using( moduleName )
+			.then( ( require ) => {
+				if ( !this.viewer ) {
+					if ( this.useVueMultimediaViewer() ) {
+						const { VueMultimediaViewer } = require( 'mmv.ui.vue' );
+						this.viewer = new VueMultimediaViewer();
+					} else {
+						const { MultimediaViewer } = require( 'mmv' );
+						this.viewer = new MultimediaViewer();
+					}
+					this.viewer.setupEventHandlers();
+				}
+
+				return this.viewer;
+			} )
+			.then(
+				( viewer ) => {
+					if ( !this.viewerInitialized ) {
+						if ( this.thumbs.length ) {
+							viewer.initWithThumbs( this.thumbs );
+						}
+
+						this.viewerInitialized = true;
+					}
+					return viewer;
+				},
+				( error ) => {
+					mw.log.warn( error );
+					this.cleanupOverlay();
+					this.viewerIsBroken = true;
+					mw.notify( `Error loading MediaViewer: ${ error.message }` );
+					throw error;
+				}
+			).always( () => {
+				if ( this.$loadBar ) {
+					this.$loadBar.remove();
+				}
+			} );
+	}
+
+	/**
+	 * Processes all thumbs found on the page
+	 *
+	 * @param {jQuery} $content Element to search for thumbs
+	 */
+	processThumbs( $content ) {
+		// MMVB.processThumbs() is a callback for `wikipage.content` hook (see constructor)
+		// which is documentated as fired when new content is added to the DOM
+		// https://doc.wikimedia.org/mediawiki-core/master/js/Hooks.html#~event:'wikipage.content'
+		//
+		// The content being added can contain thumbnails that MultimediaViewer may need to
+		// process and add the thumbs array, so it's necessary to invalidate the
+		// viewer initialization state if this happens to let the MMVB.loadViewer() to process
+		// new images correctly
+		this.viewerInitialized = false;
+
+		// only clear if the main content of the page has been changed (T385297)
+		if ( $content && $content.attr( 'id' ) === 'mw-content-text' ) {
+			// clear to avoid duplicates when wikipage.content is run multiple times (T382520)
+			this.thumbs = [];
+			this.thumbCounts.clear();
+		}
+
+		this.$thumbs = $content.find(
+			'[typeof*="mw:File"] > a > img'
+		);
+
+		this.$legacyThumbs = $content
+			.find(
+				// T427542: MobileFrontend legacy parser thumbs
+				'.lazy-image-placeholder, ' +
+				// T318433: Legacy styles
+				'.gallery .image img, ' +
+				'a.image img, ' +
+				// T348275: For Special:ListFiles
+				'a.mw-file-description img, ' +
+				// File page main thumb
+				'#file a img'
+			)
+			// Skip duplicates that are actually thumbs
+			// since mw-file-description will match both
+			.not( this.$thumbs );
+
+		// Ensure that thumbs remain in document order
+		// regardless of which type we are dealing with
+		this.$thumbs.add( this.$legacyThumbs ).each( ( i, thumb ) => {
+			if ( this.$legacyThumbs.is( thumb ) ) {
+				this.processLegacyThumb( thumb );
+			} else {
+				this.processThumb( thumb );
+			}
+		} );
+	}
+
+	/**
+	 * Check if this thumbnail should be handled by MediaViewer
+	 *
+	 * @param {jQuery} $thumb the thumbnail (an `<img>` element) in question
+	 * @return {boolean}
+	 */
+	isAllowedThumb( $thumb ) {
+		const selectors = [
+			'.metadata', // this is inside an informational template like {{refimprove}} on enwiki.
+			'.noviewer', // MediaViewer has been specifically disabled for this image
+			'.noarticletext', // we are on an error page for a non-existing article, the image is part of some template
+			'#siteNotice',
+			'ul.mw-gallery-slideshow li.gallerybox', // thumbnails of a slideshow gallery
+			'#mmv-carousel-root' // carousel items have their own click handlers
+		];
+		return $thumb.closest( selectors.join( ', ' ) ).length === 0;
+	}
+
+	/**
+	 * @param {mw.Title|null} title
+	 * @return {boolean}
+	 */
+	isValidExtension( title ) {
+		return title && title.getExtension() && ( title.getExtension().toLowerCase() in extensions );
+	}
+
+	/**
+	 * Checks whether a thumbnail depicts an old (archived) version of a file rather
+	 * than its current version, e.g. the entries on Special:ListFiles?ilshowall=1.
+	 *
+	 * Old versions live in the "/archive/" upload zone and encode the upload
+	 * timestamp in the path as "<timestamp>!<name>". Media Viewer can only display
+	 * the current version of a file (that is all the imageinfo API returns), and
+	 * mw.Title.newFromImg() cannot even parse these URLs correctly, so we leave such
+	 * thumbnails alone: the click is not hijacked and the link keeps its normal
+	 * behaviour (navigating to the old version) instead of showing the wrong image
+	 * or a misleading error.
+	 *
+	 * @param {string} src Thumbnail URL
+	 * @return {boolean}
+	 */
+	isOldFileVersionThumb( src ) {
+		return src.includes( '/archive/' );
+	}
+
+	/**
+	 * Preload JS/CSS when the mouse cursor hovers the thumb container
+	 * (thumb image + caption + border)
+	 *
+	 * @param {jQuery} $thumbContainer
+	 */
+	preloadAssets( $thumbContainer ) {
+		$thumbContainer.on( {
+			mouseenter: () => {
+				// There is no point preloading if clicking the thumb won't open Media Viewer
+				if ( !Config.isMediaViewerEnabledOnClick() ) {
+					return;
+				}
+				this.preloadOnHoverTimer = setTimeout( () => {
+					mw.loader.load( this.useVueMultimediaViewer() ? 'mmv.ui.vue' : 'mmv' );
+				}, this.hoverWaitDuration );
+			},
+			mouseleave: () => {
+				if ( this.preloadOnHoverTimer ) {
+					clearTimeout( this.preloadOnHoverTimer );
+				}
+			}
+		} );
+	}
+
+	/**
+	 * Processes a legacy thumb
+	 *
+	 * @param {Object} thumb
+	 */
+	processLegacyThumb( thumb ) {
+		let title;
+		let $thumb = $( thumb );
+		const $link = $thumb.closest( 'a.image, a.mw-file-description' );
+		const $thumbContainer = $link.closest( '.thumb' );
+		const $enlarge = $thumbContainer.find( '.magnify a' );
+		const isFilePageMainThumb = $thumb.closest( '#file' ).length > 0;
+
+		// If we encounter MobileFrontend's legacy parser map it to an img.
+		if ( $thumb.hasClass( 'lazy-image-placeholder' ) ) {
+			// Check if allowed first since this new element is detached from DOM.
+			if ( this.isAllowedThumb( $thumb ) ) {
+				$thumb = $( '<img>' ).attr( 'src', $thumb.data( 'mw-src' ) );
+			} else {
+				return;
+			}
+		}
+
+		if ( isFilePageMainThumb ) {
+			// main thumbnail (file preview area) of a file page
+			// if this is a PDF filetype thumbnail, it can trick us,
+			// so we short-circuit that logic and use the file page title
+			// instead of the thumbnail logic.
+			title = mw.Title.newFromText( mw.config.get( 'wgTitle' ), mw.config.get( 'wgNamespaceNumber' ) );
+		} else {
+			title = mw.Title.newFromImg( $thumb );
+		}
+
+		if ( !this.isValidExtension( title ) ) {
+			// Short-circuit event handler and interface setup, because
+			// we can't do anything for this filetype
+			return;
+		}
+
+		if ( !this.isAllowedThumb( $thumb ) ) {
+			return;
+		}
+
+		if ( !isFilePageMainThumb && this.isOldFileVersionThumb( $thumb.prop( 'currentSrc' ) || $thumb.prop( 'src' ) ) ) {
+			return;
+		}
+
+		if ( $thumbContainer.length ) {
+			this.preloadAssets( $thumbContainer );
+		}
+
+		if ( isFilePageMainThumb ) {
+			mw.loader.using( 'mmv.codex' ).then( () => {
+				this.processFilePageThumb( $thumb, title );
+			} );
+			return;
+		}
+
+		const image = new LightboxImage(
+			// T422586: If 2x srcset is used, pass that as the sample thumbnail URL
+			$thumb.prop( 'currentSrc' ) || $thumb.prop( 'src' ),
+			title,
+			this.thumbs.length,
+			this.nextDuplicatePosition( title ),
+			$thumb[ 0 ],
+			this.findLegacyCaption( $thumbContainer, $link )
+		);
+		this.thumbs.push( image );
+
+		$link.add( $enlarge ).on( 'click', ( e ) => this.click( e, image ) );
+	}
+
+	/**
+	 * Processes a thumb, making use of the specified structure,
+	 *   https://www.mediawiki.org/wiki/Specs/HTML#Media
+	 *
+	 * @param {Object} thumb
+	 */
+	processThumb( thumb ) {
+		const $thumb = $( thumb );
+		let $link = $thumb.parent();
+		const $thumbContainer = $link.parent();
+		const title = mw.Title.newFromImg( $thumb );
+
+		if ( !$link.hasClass( 'mw-file-description' ) ) {
+			if ( $link.next().hasClass( 'mw-file-magnify' ) ) {
+				$link = $link.next();
+			} else {
+				return;
+			}
+		}
+
+		if ( !this.isValidExtension( title ) ) {
+			// Short-circuit event handler and interface setup, because
+			// we can't do anything for this filetype
+			return;
+		}
+
+		if ( !this.isAllowedThumb( $thumb ) ) {
+			return;
+		}
+
+		if ( this.isOldFileVersionThumb( $thumb.prop( 'currentSrc' ) || $thumb.prop( 'src' ) ) ) {
+			return;
+		}
+
+		if ( $thumbContainer.length ) {
+			this.preloadAssets( $thumbContainer );
+		}
+
+		const image = new LightboxImage(
+			// T422586: If 2x srcset is used, pass that as the sample thumbnail URL
+			$thumb.prop( 'currentSrc' ) || $thumb.prop( 'src' ),
+			title,
+			this.thumbs.length,
+			this.nextDuplicatePosition( title ),
+			$thumb[ 0 ],
+			this.findCaption( $thumbContainer, $link )
+		);
+		this.thumbs.push( image );
+
+		$link.on( 'click', ( e ) => this.click( e, image ) );
+	}
+
+	/**
+	 * Processes the main thumbnail of a file page by adding some buttons
+	 * below to open MediaViewer.
+	 *
+	 * @param {jQuery} $thumb
+	 * @param {mw.Title} title
+	 */
+	processFilePageThumb( $thumb, title ) {
+		// remove the buttons (and the clearing element) if they are already there
+		// this should not happen (at least until we support paged media) but just in case
+		// eslint-disable-next-line no-jquery/no-global-selector
+		$( '.mw-mmv-view-expanded' ).remove();
+
+		const $mmvButton = $( '<button>' )
+			.addClass( 'mw-mmv-view-expanded cdx-button' )
+			.append( $( '<span>' ).addClass( 'cdx-button__icon' ) )
+			.append( ' ' )
+			.append( mw.message( 'multimediaviewer-view-expanded' ).escaped() );
+
+		// eslint-disable-next-line no-jquery/no-global-selector
+		$( '.fullMedia' ).append( $mmvButton );
+
+		const image = new LightboxImage(
+			$thumb.prop( 'src' ),
+			title,
+			this.thumbs.length,
+			this.nextDuplicatePosition( title ),
+			$thumb[ 0 ],
+			''
+		);
+		this.thumbs.push( image );
+
+		$mmvButton.on( 'click', () => this.openImage( image ) );
+	}
+
+	/**
+	 * 1-based position of a thumb among duplicates of the same file, incrementing the running count.
+	 *
+	 * @param {mw.Title} title
+	 * @return {number}
+	 * @private
+	 */
+	nextDuplicatePosition( title ) {
+		const key = title.getPrefixedText();
+		const position = ( this.thumbCounts.get( key ) || 0 ) + 1;
+		this.thumbCounts.set( key, position );
+		return position;
+	}
+
+	/**
+	 * Finds the caption for an image.
+	 *
+	 * @param {jQuery} $thumbContainer The container for the thumbnail.
+	 * @param {jQuery} $link The link that encompasses the thumbnail.
+	 * @return {string|undefined} Unsafe HTML may be present - caution
+	 */
+	findCaption( $thumbContainer, $link ) {
+		if ( ( $thumbContainer.prop( 'tagName' ) || '' ).toLowerCase() === 'figure' ) {
+			const figCaption = $thumbContainer.find( 'figcaption' ).html() || '';
+			if ( figCaption ) {
+				return figCaption;
+			}
+		}
+
+		// Span might be nested in gallery
+		const $galleryCaption = this.findGalleryCaption( $thumbContainer );
+		if ( $galleryCaption.length ) {
+			const galleryCaption = $galleryCaption.html() || '';
+			if ( galleryCaption ) {
+				return galleryCaption;
+			}
+		}
+
+		const infoboxCaption = this.findInfoboxCaption( $link );
+		if ( infoboxCaption ) {
+			return infoboxCaption;
+		}
+
+		const templateCaption = this.findTemplateCaption( $link );
+		if ( templateCaption !== undefined ) {
+			return templateCaption;
+		}
+
+		return $link.prop( 'title' ) || undefined;
+	}
+
+	/**
+	 * Finds the caption for an image.
+	 *
+	 * @param {jQuery} $thumbContainer The container for the thumbnail.
+	 * @param {jQuery} $link The link that encompasses the thumbnail.
+	 * @return {string|undefined} Unsafe HTML may be present - caution
+	 */
+	findLegacyCaption( $thumbContainer, $link ) {
+		if ( !$thumbContainer.length ) {
+			// T428648: MobileFrontend's legacy-parser lazy-load placeholders
+			// sit inside figure/figcaption markup, which has no .thumb
+			// container.
+			const $figcaption = $link.closest( 'figure' ).find( 'figcaption' );
+			if ( $figcaption.length ) {
+				const figCaption = $figcaption.html() || '';
+				if ( figCaption ) {
+					return figCaption;
+				}
+			}
+			// Infobox images are not wrapped in a .thumb container, so there is no
+			// thumbcaption to find; look for an infobox caption before giving up.
+			const infoboxCaption = this.findInfoboxCaption( $link );
+			if ( infoboxCaption ) {
+				return infoboxCaption;
+			}
+			return $link.prop( 'title' ) || undefined;
+		}
+
+		let $thumbCaption = $thumbContainer.find( '.thumbcaption' );
+		if ( $thumbCaption.length > 1 ) {
+			// Template:Multiple_image or some such; try to find closest caption to the image
+			// eslint-disable-next-line no-jquery/no-sizzle
+			$thumbCaption = $link.closest( ':has(> .thumbcaption)', $thumbContainer )
+				.find( '> .thumbcaption' );
+		}
+
+		if ( !$thumbCaption.length ) { // gallery, maybe
+			$thumbCaption = this.findGalleryCaption( $thumbContainer );
+		}
+
+		if ( $thumbCaption.find( '.magnify' ).length ) {
+			$thumbCaption = $thumbCaption.clone();
+			$thumbCaption.find( '.magnify' ).remove();
+		}
+
+		return $thumbCaption.html() || '';
+	}
+
+	/**
+	 * Finds the caption for an image that lives in an infobox (T429839).
+	 *
+	 * The lookup is deliberately scoped to the image's own cell and never to the
+	 * whole infobox: a caption belonging to a *different* image (a signature, a
+	 * secondary photo) must never be shown. For the same reason we only return a
+	 * caption when the cell holds exactly one image and one caption, so a shared
+	 * cell (e.g. light/dark logo variants) can't attach one caption to several
+	 * images. When in doubt, return nothing.
+	 *
+	 * @param {jQuery} $link The link (a.mw-file-description / a.image) around the image
+	 * @return {string|undefined} Unsafe HTML may be present - caution
+	 */
+	findInfoboxCaption( $link ) {
+		const $cell = $link.closest( '.infobox-image' );
+
+		// Bail unless the image sits in exactly one .infobox-image cell holding a
+		// single Media Viewer-eligible image; a cell with several images is
+		// ambiguous and we prefer no caption to a possibly-wrong one.
+		if ( $cell.length !== 1 ||
+			$cell.find( 'a.mw-file-description, a.image' ).length !== 1
+		) {
+			return undefined;
+		}
+
+		const $caption = $cell.find( '.infobox-caption' );
+		if ( $caption.length !== 1 ) {
+			return undefined;
+		}
+
+		return $caption.html() || undefined;
+	}
+
+	/**
+	 * Finds the caption for an image wrapped in legacy template markup:
+	 * .thumb/.tsingle/.thumbcaption divs around modern media DOM, as
+	 * emitted by e.g. {{Multiple image}} (T428648).
+	 *
+	 * As with findInfoboxCaption(), only return a caption when the nearest
+	 * caption-bearing scope (e.g. the image's own .tsingle block) holds
+	 * exactly one image and one caption; a shared scope is ambiguous and
+	 * we prefer no caption to a possibly-wrong one.
+	 *
+	 * @param {jQuery} $link The link (a.mw-file-description / a.image) around the image
+	 * @return {string|undefined} Unsafe HTML may be present - caution
+	 */
+	findTemplateCaption( $link ) {
+		const $thumb = $link.closest( '.thumb' );
+		if ( !$thumb.length ) {
+			return undefined;
+		}
+
+		let $scope = $link.parent();
+		while ( !$scope.children( '.thumbcaption' ).length && !$scope.is( $thumb ) ) {
+			$scope = $scope.parent();
+		}
+
+		const $caption = $scope.children( '.thumbcaption' );
+		if ( $caption.length !== 1 ||
+			$scope.find( 'a.mw-file-description, a.image' ).length !== 1
+		) {
+			return undefined;
+		}
+
+		return $caption.html() || undefined;
+	}
+
+	/**
+	 * Finds the caption of a gallery image
+	 *
+	 * @param {jQuery} $thumbContainer The container for the thumbnail.
+	 * @return {jQuery}
+	 */
+	findGalleryCaption( $thumbContainer ) {
+		// do not treat special file related pages as galleries
+		if ( this.specialFileRelatedPages.includes( mw.config.get( 'wgCanonicalSpecialPageName' ) ) ) {
+			return $();
+		}
+
+		return $thumbContainer
+			.closest( '.gallerybox' )
+			.not(
+				// do not treat categories as galleries - the autogenerated caption they have is not helpful
+				() => $thumbContainer.closest( '#mw-category-media' ).length
+			)
+			.find( '.gallerytext' );
+	}
+
+	/**
+	 * Opens MediaViewer and loads the given thumbnail. Requires processThumb() to be called first.
+	 *
+	 * @param {LightboxImage} image Image
+	 */
+	openImage( image ) {
+		this.ensureEventHandlersAreSetUp();
+		const hash = Config.getMediaHash( image.filePageTitle, image.position );
+		location.hash = hash;
+		history.replaceState( MANAGED_STATE, null, hash );
+	}
+
+	/**
+	 * Handles a click event on a link
+	 *
+	 * @param {jQuery.Event} e jQuery event object
+	 * @param {LightboxImage} image Image
+	 * @return {boolean} a value suitable for an event handler (ie. true if the click should be handled
+	 *  by the browser).
+	 */
+	click( e, image ) {
+		// Do not interfere with non-left clicks or if modifier keys are pressed.
+		if ( ( e.button !== 0 && e.which !== 1 ) || e.altKey || e.ctrlKey || e.shiftKey || e.metaKey ) {
+			return true;
+		}
+
+		// Don't load if someone has specifically stopped us from doing so
+		if ( !Config.isMediaViewerEnabledOnClick() ) {
+			return true;
+		}
+
+		// Don't load if we already tried loading and it failed
+		if ( this.viewerIsBroken ) {
+			return true;
+		}
+
+		// Mark the state so that if the page is refreshed, we don't generate an extra history entry
+		this.openImage( image );
+
+		// calling this late so that in case of errors users at least get to the file page
+		e.preventDefault();
+
+		return false;
+	}
+
+	/**
+	 * Returns true if the hash part of the current URL is one that's owned by MMV.
+	 *
+	 * @return {boolean}
+	 * @private
+	 */
+	isViewerHash() {
+		const path = location.hash.slice( 1 );
+		return path.match( Config.ROUTE_REGEXP );
+	}
+
+	/**
+	 * Handles the browser location hash on pageload or hash change
+	 */
+	hash() {
+		const isViewerHash = this.isViewerHash();
+
+		// There is no point loading the mmv if it isn't loaded yet for hash changes unrelated to the mmv
+		// Such as anchor links on the page
+		if ( !this.viewerInitialized && !isViewerHash ) {
+			return;
+		}
+
+		const hash = location.hash;
+		if ( window.history.state !== MANAGED_STATE ) {
+			// First replace the current URL with a URL with a hash.
+			history.replaceState( null, null, '#' );
+			history.pushState( MANAGED_STATE, null, hash );
+		}
+		this.router.checkRoute();
+	}
+
+	/**
+	 * Listens to events on the window/document
+	 */
+	setupEventHandlers() {
+		/**
+		 * tracks domready event handler state
+		 *
+		 * @type {boolean}
+		 */
+		this.eventHandlersHaveBeenSetUp = true;
+
+		// Interpret any hash that might already be in the url
+		this.hash( true );
+
+		$( document ).on( 'mmv-setup-overlay', () => {
+			this.setupOverlay();
+		} ).on( 'mmv-cleanup-overlay', () => {
+			this.cleanupOverlay();
+		} );
+	}
+
+	/**
+	 * Cleans up event handlers, used for tests
+	 */
+	cleanupEventHandlers() {
+		$( document ).off( 'mmv-setup-overlay mmv-cleanup-overlay' );
+		this.eventHandlersHaveBeenSetUp = false;
+	}
+
+	/**
+	 * Makes sure event handlers are set up properly via MultimediaViewerBootstrap.setupEventHandlers().
+	 * Called before loading the main mmv module. At this point, event handlers for MultimediaViewerBootstrap
+	 * should have been set up, but due to bug 70756 it cannot be guaranteed.
+	 */
+	ensureEventHandlersAreSetUp() {
+		if ( !this.eventHandlersHaveBeenSetUp ) {
+			this.setupEventHandlers();
+		}
+	}
+
+	/**
+	 * Sets up the overlay while the viewer loads
+	 */
+	setupOverlay() {
+		const $body = $( document.body );
+
+		// There are situations where we can call setupOverlay while the overlay is already there,
+		// such as inside this.hash(). In that case, do nothing
+		if ( $body.hasClass( 'mw-mmv-lightbox-open' ) ) {
+			return;
+		}
+
+		if ( !this.$overlay ) {
+			this.$overlay = $( '<div>' )
+				// Dark overlay should stay dark in dark mode
+				.addClass( 'mw-mmv-overlay mw-no-invert' );
+
+			if ( this.useVueMultimediaViewer() ) {
+				this.$overlay.addClass( 'mw-mmv-overlay--vue' );
+			}
+
+			this.$loadBar = $( '<div>' )
+				.addClass( 'cdx-progress-bar' )
+				.attr( {
+					role: 'progressbar',
+					'aria-label': mw.msg( 'multimediaviewer-loading' )
+				} )
+				.append(
+					$( '<div>' ).addClass( 'cdx-progress-bar__bar' )
+				);
+			this.$overlay.append( this.$loadBar );
+		}
+
+		this.savedScrollTop = $( window ).scrollTop();
+
+		$body.addClass( 'mw-mmv-lightbox-open' )
+			.append( this.$overlay );
+	}
+
+	/**
+	 * Cleans up the overlay
+	 */
+	cleanupOverlay() {
+		$( document.body ).removeClass( 'mw-mmv-lightbox-open' );
+
+		if ( this.$overlay ) {
+			this.$overlay.remove();
+		}
+
+		if ( this.savedScrollTop !== undefined ) {
+			// setTimeout because otherwise Chrome will scroll back to top after the popstate event handlers run
+			setTimeout( () => {
+				$( window ).scrollTop( this.savedScrollTop );
+				this.savedScrollTop = undefined;
+			} );
+		}
+	}
+}
+
+module.exports = MultimediaViewerBootstrap;

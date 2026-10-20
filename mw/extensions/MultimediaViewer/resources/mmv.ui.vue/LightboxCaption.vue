@@ -1,0 +1,137 @@
+<template>
+	<div
+		v-if="image"
+		class="mmv-lightbox-caption"
+		:class="{ 'mmv-lightbox-caption--loaded': captionReady }"
+	>
+		<div
+			v-if="captionHtml"
+			class="mmv-lightbox-caption__text"
+			@click="onCaptionClick"
+			v-html="captionHtml"
+		></div>
+		<a
+			class="mmv-lightbox-caption__link"
+			:href="filePageUrl"
+			:title="$i18n( 'multimediaviewer-file-page' ).text()"
+			@click="onFileLinkClick"
+		>
+			{{ licenseText }}
+		</a>
+	</div>
+</template>
+
+<script>
+const { defineComponent, inject, computed } = require( 'vue' );
+const { HtmlUtils } = require( 'mmv.common' );
+
+/** @typedef {import('./types').ViewerState} ViewerState */
+
+// @vue/component
+module.exports = exports = defineComponent( {
+	name: 'LightboxCaption',
+	setup() {
+		/** @type {ViewerState} */
+		const state = inject( 'state' );
+		const sendInteraction = inject( 'sendInteraction' );
+
+		const image = computed( () => state.image.value );
+		const imageInfo = computed( () => state.imageInfo.value );
+
+		// Image description uses the on-page/article caption (or the file
+		// description when the caption isn't available).
+		const captionHtml = computed( () => {
+			if ( image.value && image.value.caption ) {
+				return HtmlUtils.htmlToTextWithTags( image.value.caption );
+			}
+
+			if ( imageInfo.value && imageInfo.value.description ) {
+				return HtmlUtils.htmlToTextWithTags( imageInfo.value.description );
+			}
+
+			return '';
+		} );
+
+		const filePageUrl = computed( () => {
+			if ( image.value && image.value.filePageTitle ) {
+				return image.value.filePageTitle.getUrl();
+			}
+			return '';
+		} );
+
+		const licenseText = computed( () => {
+			if ( imageInfo.value && imageInfo.value.license ) {
+				return imageInfo.value.license.getShortName();
+			}
+			return mw.msg( 'multimediaviewer-description-page-button-text' );
+		} );
+
+		// Fade the description/license in once imageInfo arrives, rather than
+		// showing the generic file-page fallback first and swapping it for the
+		// real license. Prefetched images apply info before paint, so no fade.
+		const captionReady = computed( () => !!imageInfo.value );
+
+		function onFileLinkClick() {
+			// TODO(image-carousel-retest): Remove only this event bridge after the retest.
+			// Reuse the existing license/file-page link and preserve its destination.
+			// The subscriber gates retest events by readiness and treatment assignment.
+			mw.hook( 'mmv.carousel.action' ).fire( 'licenseInfo' );
+			sendInteraction( 'click', {
+				// eslint-disable-next-line camelcase
+				action_subtype: 'go_to_file'
+			} );
+		}
+
+		function onCaptionClick( event ) {
+			if ( event.target instanceof Element && event.target.closest( 'a' ) ) {
+				sendInteraction( 'click', {
+					// eslint-disable-next-line camelcase
+					action_subtype: 'go_to_wikilink'
+				} );
+			}
+		}
+
+		return {
+			image,
+			captionHtml,
+			filePageUrl,
+			licenseText,
+			captionReady,
+			onFileLinkClick,
+			onCaptionClick
+		};
+	}
+} );
+</script>
+
+<style lang="less">
+@import 'mediawiki.skin.variables.less';
+
+.mmv-lightbox-caption {
+	flex-shrink: 0;
+	padding: @spacing-75 @spacing-100;
+
+	// Fade in when metadata arrives late; instant on navigation (the transition
+	// lives on the loaded state). Height is reserved regardless of opacity.
+	opacity: 0;
+
+	&--loaded {
+		opacity: 1;
+		transition: opacity 0.2s ease;
+	}
+
+	&__text {
+		font-size: @font-size-small;
+		opacity: @opacity-icon-base;
+		margin-bottom: @spacing-50;
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	&__link {
+		font-size: @font-size-small;
+	}
+}
+</style>

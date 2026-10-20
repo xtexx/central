@@ -1,0 +1,49 @@
+@import 'mediawiki.mixins.less';
+
+.mw-mmv-image {
+	display: table-cell;
+	width: 100%;
+	height: 100%;
+	vertical-align: middle;
+	.user-select( none );
+
+	&.empty {
+		display: none;
+	}
+}
+
+.mw-mmv-image img {
+	display: block;
+	margin-right: auto;
+	margin-left: auto;
+	/* stylelint-disable-next-line plugin/no-unsupported-browser-features */
+	cursor: zoom-in;
+
+	/* Allowlist file types that are potentially transparent.
+	   We don't set it for other file types because Media Viewer plugins
+	   can find that undesirable (eg. 3d) */
+	&.gif,
+	&.png,
+	&.webp,
+	&.svg,
+	&.tiff,
+	&.tif {
+		background: url( checker.png ) repeat;
+	}
+
+	&.mw-mmv-dialog-is-open {
+		cursor: default;
+	}
+
+	.metadata-panel-is-open & {
+		cursor: pointer;
+	}
+}
+
+.mw-mmv-image.empty img {
+	display: none;
+}
+
+.metadata-panel-is-open .mw-mmv-image-wrapper {
+	cursor: pointer;
+}

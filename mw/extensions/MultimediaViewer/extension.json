@@ -1,0 +1,608 @@
+{
+	"name": "MultimediaViewer",
+	"author": [
+		"Gergő Tisza",
+		"Gilles Dubuc",
+		"Mark Holmquist",
+		"Simon Legner",
+		"Ed Sanders",
+		"Pau Giner",
+		"James D. Forrester",
+		"Željko Filipin",
+		"fomafix",
+		"Volker E",
+		"Kunal Mehta",
+		"Umherirrender",
+		"Timo Tijhof",
+		"Aaron Arcos",
+		"Thiemo Kreuz",
+		"Matthias Mullie",
+		"Jon Robson",
+		"Derk-Jan Hartman",
+		"Chris McMahon",
+		"Bartosz Dziewoński",
+		"Brooke Vibber",
+		"Eric Gardner",
+		"Kimberly Sarabia",
+		"Marco Fossati",
+		"Lauralyn Watson"
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:MultimediaViewer",
+	"descriptionmsg": "multimediaviewer-desc",
+	"license-name": "GPL-2.0-or-later",
+	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.47.0"
+	},
+	"MessagesDirs": {
+		"MultimediaViewer": [
+			"i18n"
+		]
+	},
+	"ExtensionMessagesFiles": {
+		"MultimediaViewerMagic": "MultimediaViewer.i18n.magic.php"
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\MultimediaViewer\\": "includes/"
+	},
+	"TestAutoloadNamespaces": {
+		"MediaWiki\\Extension\\MultimediaViewer\\Tests\\": "tests/phpunit/"
+	},
+	"ResourceModules": {
+		"mmv": {
+			"packageFiles": [
+				{
+					"name": "mmv/config.json",
+					"config": {
+						"thumbnailBucketSizes": "MediaViewerThumbnailBucketSizes",
+						"recordVirtualViewBeaconURI": "MediaViewerRecordVirtualViewBeaconURI",
+						"extensions": "MediaViewerExtensions"
+					}
+				},
+				"mmv/mmv.js",
+				"mmv/logging/mmv.logging.ViewLogger.js",
+				"mmv/ui/mmv.ui.js",
+				"mmv/ui/mmv.ui.dialog.js",
+				"mmv/ui/mmv.ui.description.js",
+				"mmv/ui/mmv.ui.canvas.js",
+				"mmv/ui/mmv.ui.canvasButtons.js",
+				"mmv/ui/mmv.ui.permission.js",
+				"mmv/ui/mmv.ui.stripeButtons.js",
+				"mmv/ui/mmv.ui.truncatableTextField.js",
+				"mmv/ui/mmv.ui.metadataPanel.js",
+				"mmv/ui/mmv.ui.metadataPanelScroller.js",
+				"mmv/mmv.lightboxinterface.js"
+			],
+			"styles": [
+				"mmv/ui/mmv.ui.dialog.less",
+				"mmv/ui/mmv.ui.canvas.less",
+				"mmv/ui/mmv.ui.canvasButtons.less",
+				"mmv/ui/mmv.ui.permission.less",
+				"mmv/ui/mmv.ui.stripeButtons.less",
+				"mmv/ui/mmv.ui.truncatableTextField.less",
+				"mmv/ui/mmv.ui.metadataPanel.less",
+				"mmv/ui/mmv.ui.metadataPanelScroller.less",
+				"mmv/mmv.lightboxinterface.less"
+			],
+			"dependencies": [
+				"mediawiki.api",
+				"mediawiki.Title",
+				"mediawiki.jqueryMsg",
+				"mediawiki.router",
+				"mediawiki.user",
+				"mediawiki.util",
+				"mmv.bootstrap",
+				"mmv.codex",
+				"mmv.common"
+			],
+			"messages": [
+				"license-header",
+				"multimediaviewer-current-image-number",
+				"multimediaviewer-file-page",
+				"multimediaviewer-file-not-found-error",
+				"multimediaviewer-download-link",
+				"multimediaviewer-reuse-link",
+				"multimediaviewer-close-popup-text",
+				"multimediaviewer-fullscreen-popup-text",
+				"multimediaviewer-defullscreen-popup-text",
+				"multimediaviewer-next-image-alt-text",
+				"multimediaviewer-prev-image-alt-text",
+				"multimediaviewer-commons-subtitle",
+				"multimediaviewer-credit",
+				"multimediaviewer-credit-fallback",
+				"multimediaviewer-multiple-authors",
+				"multimediaviewer-multiple-authors-combine",
+				"multimediaviewer-datetime-created",
+				"multimediaviewer-datetime-uploaded",
+				"multimediaviewer-permission-link",
+				"multimediaviewer-permission-link-hide",
+				"multimediaviewer-restriction-2257",
+				"multimediaviewer-restriction-aus-reserve",
+				"multimediaviewer-restriction-communist",
+				"multimediaviewer-restriction-costume",
+				"multimediaviewer-restriction-currency",
+				"multimediaviewer-restriction-design",
+				"multimediaviewer-restriction-fan-art",
+				"multimediaviewer-restriction-ihl",
+				"multimediaviewer-restriction-insignia",
+				"multimediaviewer-restriction-ita-mibac",
+				"multimediaviewer-restriction-nazi",
+				"multimediaviewer-restriction-personality",
+				"multimediaviewer-restriction-trademarked",
+				"multimediaviewer-restriction-default",
+				"multimediaviewer-restriction-default-and-others",
+				"multimediaviewer-reuse-warning-deletion",
+				"multimediaviewer-reuse-warning-nonfree",
+				"multimediaviewer-reuse-warning-noattribution",
+				"multimediaviewer-reuse-warning-generic",
+				"multimediaviewer-geoloc-north",
+				"multimediaviewer-geoloc-east",
+				"multimediaviewer-geoloc-south",
+				"multimediaviewer-geoloc-west",
+				"multimediaviewer-geoloc-coord",
+				"multimediaviewer-geoloc-coords",
+				"multimediaviewer-geolocation",
+				"mypreferences",
+				"multimediaviewer-metadata-error",
+				"multimediaviewer-title-popup-text",
+				"multimediaviewer-credit-popup-text",
+				"multimediaviewer-title-popup-text-more",
+				"multimediaviewer-credit-popup-text-more",
+				"multimediaviewer-permission-title",
+				"multimediaviewer-permission-viewmore",
+				"multimediaviewer-description-page-button-text",
+				"multimediaviewer-description-page-popup-text",
+				"multimediaviewer-repository-local",
+				"multimediaviewer-license-cc-by-1.0",
+				"multimediaviewer-license-cc-sa-1.0",
+				"multimediaviewer-license-cc-by-sa-1.0",
+				"multimediaviewer-license-cc-by-2.0",
+				"multimediaviewer-license-cc-by-sa-2.0",
+				"multimediaviewer-license-cc-by-2.1",
+				"multimediaviewer-license-cc-by-sa-2.1",
+				"multimediaviewer-license-cc-by-2.5",
+				"multimediaviewer-license-cc-by-sa-2.5",
+				"multimediaviewer-license-cc-by-3.0",
+				"multimediaviewer-license-cc-by-sa-3.0",
+				"multimediaviewer-license-cc-by-4.0",
+				"multimediaviewer-license-cc-by-sa-4.0",
+				"multimediaviewer-license-cc-pd",
+				"multimediaviewer-license-cc-zero",
+				"multimediaviewer-license-pd",
+				"multimediaviewer-license-default"
+			]
+		},
+		"mmv.codex": {
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
+			"codexStyleOnly": true,
+			"codexComponents": [
+				"CdxButton",
+				"CdxDialog",
+				"CdxSelect",
+				"CdxTabs",
+				"CdxTextInput",
+				"CdxToast"
+			]
+		},
+		"mmv.ui.reuse": {
+			"packageFiles": [
+				{
+					"name": "mmv.ui.reuse/config.json",
+					"callback": "MediaWiki\\Extension\\MultimediaViewer\\Hooks::getCommonConfig"
+				},
+				"mmv.ui.reuse/index.js",
+				"mmv.ui.reuse/mmv.ui.reuse.dialog.js",
+				"mmv.ui.reuse/mmv.ui.download.dialog.js",
+				"mmv.ui.reuse/mmv.ui.download.pane.js",
+				"mmv.ui.reuse/mmv.ui.reuse.share.js",
+				"mmv.ui.reuse/mmv.ui.reuse.embed.js",
+				"mmv.ui.reuse/mmv.EmbedFileFormatter.js",
+				"mmv.ui.reuse/mmv.ui.utils.js"
+			],
+			"styles": [
+				"mmv.ui.reuse/mmv.ui.reuse.dialog.less",
+				"mmv.ui.reuse/mmv.ui.download.dialog.less"
+			],
+			"dependencies": [
+				"mmv.codex",
+				"mediawiki.user",
+				"mediawiki.widgets"
+			],
+			"messages": [
+				"multimediaviewer-carousel-label",
+				"multimediaviewer-copy-button",
+				"multimediaviewer-default-embed-dimensions",
+				"multimediaviewer-original-embed-dimensions",
+				"multimediaviewer-xl-embed-dimensions",
+				"multimediaviewer-large-embed-dimensions",
+				"multimediaviewer-medium-embed-dimensions",
+				"multimediaviewer-small-embed-dimensions",
+				"multimediaviewer-embed-dimensions",
+				"multimediaviewer-embed-dimensions-separated",
+				"multimediaviewer-credit",
+				"multimediaviewer-text-embed-credit-text-bl",
+				"multimediaviewer-text-embed-credit-text-b",
+				"multimediaviewer-text-embed-credit-text-l",
+				"multimediaviewer-html-embed-credit-text-bl",
+				"multimediaviewer-html-embed-credit-text-b",
+				"multimediaviewer-html-embed-credit-text-l",
+				"multimediaviewer-html-embed-credit-link-text",
+				"mw-widgets-copytextlayout-copy-success",
+				"multimediaviewer-download",
+				"multimediaviewer-download-preview-link-title",
+				"multimediaviewer-download-attribution-cta-header",
+				"multimediaviewer-download-link",
+				"multimediaviewer-download-optional-attribution-cta-header",
+				"multimediaviewer-download-attribution-copy",
+				"multimediaviewer-download-attribution",
+				"multimediaviewer-attr-plain",
+				"multimediaviewer-attr-html",
+				"multimediaviewer-share-tab",
+				"multimediaviewer-share-explanation",
+				"multimediaviewer-link-to-file",
+				"multimediaviewer-link-to-page",
+				"multimediaviewer-reuse-loading-placeholder",
+				"multimediaviewer-reuse-copy-share",
+				"multimediaviewer-reuse-copy-embed",
+				"multimediaviewer-embed-tab",
+				"multimediaviewer-embed-html",
+				"multimediaviewer-embed-wt",
+				"multimediaviewer-embed-explanation",
+				"multimediaviewer-embed-byline",
+				"multimediaviewer-embed-license",
+				"multimediaviewer-embed-via"
+			]
+		},
+		"mmv.ui.restriction": {
+			"styles": [
+				"mmv.ui.restriction/mmv.ui.restriction.less"
+			]
+		},
+		"mmv.carousel": {
+			"localBasePath": "resources/mmv.carousel",
+			"remoteExtPath": "MultimediaViewer/resources/mmv.carousel",
+			"packageFiles": [
+				"carousel.js",
+				"instrument.js",
+				"App.vue",
+				"Detail.vue",
+				"FocusTrap.vue",
+				{
+					"name": "icons.json",
+					"callback": "MediaWiki\\ResourceLoader\\CodexModule::getIcons",
+					"callbackParam": [
+						"cdxIconClose",
+						"cdxIconArrowDown",
+						"cdxIconFullscreen"
+					]
+				}
+			],
+			"dependencies": [
+				"mediawiki.router",
+				"mediawiki.storage",
+				"mediawiki.Title",
+				"mmv.bootstrap",
+				"vue",
+				"@wikimedia/codex"
+			],
+			"messages": [
+				"multimediaviewer-carousel-dialog-close-button-label",
+				"multimediaviewer-carousel-dialog-scroll-button-label",
+				"multimediaviewer-carousel-dialog-view-button-label",
+				"multimediaviewer-carousel-dialog-scroll-error"
+			]
+		},
+		"mmv.carousel.styles": {
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
+			"codexStyleOnly": true,
+			"codexComponents": [
+				"CdxButton"
+			],
+			"localBasePath": "resources/mmv.carousel.styles",
+			"remoteExtPath": "MultimediaViewer/resources/mmv.carousel.styles",
+			"styles": [
+				"carousel.less"
+			]
+		},
+		"mmv.ui.vue": {
+			"packageFiles": [
+				"mmv.ui.vue/init.js",
+				"mmv.ui.vue/VueMultimediaViewer.js",
+				"mmv.ui.vue/App.vue",
+				"mmv.ui.vue/LightboxHeader.vue",
+				"mmv.ui.vue/LightboxImage.vue",
+				"mmv.ui.vue/LightboxCaption.vue",
+				"mmv.ui.vue/LightboxNav.vue",
+				"mmv.ui.vue/LightboxError.vue",
+				"mmv.ui.vue/thumbnailGuessing.js",
+				"mmv.ui.vue/useFocusTrap.js",
+				{
+					"name": "mmv.ui.vue/icons.json",
+					"callback": "MediaWiki\\ResourceLoader\\CodexModule::getIcons",
+					"callbackParam": [
+						"cdxIconClose",
+						"cdxIconPrevious",
+						"cdxIconNext"
+					]
+				}
+			],
+			"dependencies": [
+				"vue",
+				"@wikimedia/codex",
+				"mmv.bootstrap",
+				"mmv.common",
+				"mediawiki.router",
+				"mediawiki.Title",
+				"mediawiki.util",
+				"mediawiki.api"
+			],
+			"messages": [
+				"multimediaviewer-close-popup-text",
+				"multimediaviewer-next-image-alt-text",
+				"multimediaviewer-prev-image-alt-text",
+				"multimediaviewer-current-image-number",
+				"multimediaviewer-file-page",
+				"multimediaviewer-description-page-button-text",
+				"multimediaviewer-dialog-label"
+			]
+		},
+		"mmv.common": {
+			"packageFiles": [
+				"mmv.common/index.js",
+				{
+					"name": "mmv.common/config.json",
+					"callback": "MediaWiki\\Extension\\MultimediaViewer\\Hooks::getCommonConfig"
+				},
+				"mmv.common/mmv.HtmlUtils.js",
+				"mmv.common/mmv.notifyTitleNotFound.js",
+				"mmv.common/mmv.ThumbnailWidthCalculator.js",
+				"mmv.common/model/mmv.model.ThumbnailWidth.js",
+				"mmv.common/model/mmv.model.License.js",
+				"mmv.common/model/mmv.model.Image.js",
+				"mmv.common/provider/mmv.provider.ImageInfo.js"
+			],
+			"dependencies": [
+				"mediawiki.api",
+				"mediawiki.Title"
+			]
+		},
+		"mmv.bootstrap": {
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
+			"codexStyleOnly": true,
+			"codexComponents": [
+				"CdxProgressBar"
+			],
+			"packageFiles": [
+				{
+					"name": "mmv.bootstrap/config.json",
+					"config": {
+						"extensions": "MediaViewerExtensions"
+					}
+				},
+				"mmv.bootstrap/mmv.bootstrap.autostart.js",
+				"mmv.bootstrap/mmv.bootstrap.js",
+				"mmv.bootstrap/mmv.lightboximage.js",
+				"mmv.bootstrap/mmv.Config.js"
+			],
+			"styles": [
+				"mmv.bootstrap/mmv.bootstrap.less"
+			],
+			"dependencies": [
+				"mediawiki.api",
+				"mediawiki.router",
+				"mediawiki.Title",
+				"mediawiki.user"
+			],
+			"messages": [
+				"multimediaviewer-loading",
+				"multimediaviewer-view-expanded",
+				"multimediaviewer-view-config",
+				"multimediaviewer-file-not-found-error",
+				"multimediaviewer-thumbnail-error",
+				"multimediaviewer-thumbnail-error-refresh-button"
+			]
+		}
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "resources",
+		"remoteExtPath": "MultimediaViewer/resources"
+	},
+	"QUnitTestModule": {
+		"localBasePath": "tests/qunit",
+		"remoteExtPath": "MultimediaViewer/tests/qunit",
+		"packageFiles": [
+			"mmv/index.js",
+			"mmv/mmv.testhelpers.js",
+			"mmv/mmv.bootstrap.test.js",
+			"mmv/mmv.test.js",
+			"mmv/mmv.lightboxinterface.test.js",
+			"mmv/mmv.lightboximage.test.js",
+			"mmv/mmv.ThumbnailWidthCalculator.test.js",
+			"mmv/mmv.EmbedFileFormatter.test.js",
+			"mmv/mmv.Config.test.js",
+			"mmv/mmv.HtmlUtils.test.js",
+			"mmv/logging/mmv.logging.ViewLogger.test.js",
+			"mmv/model/mmv.model.test.js",
+			"mmv/model/mmv.model.License.test.js",
+			"mmv/model/mmv.model.Image.test.js",
+			"mmv/provider/mmv.provider.ImageInfo.test.js",
+			"mmv/ui/mmv.ui.test.js",
+			"mmv/ui/mmv.ui.canvas.test.js",
+			"mmv/ui/mmv.ui.canvasButtons.test.js",
+			"mmv/ui/mmv.ui.description.test.js",
+			"mmv/ui/mmv.ui.download.pane.test.js",
+			"mmv/ui/mmv.ui.metadataPanel.test.js",
+			"mmv/ui/mmv.ui.metadataPanelScroller.test.js",
+			"mmv/ui/mmv.ui.permission.test.js",
+			"mmv/ui/mmv.ui.stripeButtons.test.js",
+			"mmv/ui/mmv.ui.reuse.dialog.test.js",
+			"mmv/ui/mmv.ui.reuse.embed.test.js",
+			"mmv/ui/mmv.ui.reuse.share.test.js",
+			"mmv/ui/mmv.ui.reuse.utils.test.js",
+			"mmv/ui/mmv.ui.truncatableTextField.test.js"
+		],
+		"dependencies": [
+			"mmv.carousel",
+			"mmv.bootstrap",
+			"mmv.common",
+			"mmv",
+			"mmv.ui.reuse"
+		]
+	},
+	"Hooks": {
+		"UserGetDefaultOptions": "main",
+		"BeforePageDisplay": "main",
+		"CategoryPageView": "main",
+		"GetDoubleUnderscoreIDs": "main",
+		"ResourceLoaderGetConfigVars": "main",
+		"MakeGlobalVariablesScript": "main",
+		"GetPreferences": "main",
+		"ThumbnailBeforeProduceHTML": "main",
+		"OutputPageParserOutput": "main",
+		"GetBetaFeaturePreferences": "betafeatures"
+	},
+	"HookHandlers": {
+		"main": {
+			"class": "MediaWiki\\Extension\\MultimediaViewer\\Hooks",
+			"services": [
+				"MainConfig",
+				"SpecialPageFactory",
+				"UserOptionsLookup",
+				"ExtensionRegistry"
+			],
+			"optional_services": [
+				"MobileFrontend.Context"
+			]
+		},
+		"betafeatures": {
+			"class": "MediaWiki\\Extension\\MultimediaViewer\\BetaFeatureHookHandler",
+			"services": [
+				"MainConfig"
+			]
+		}
+	},
+	"config": {
+		"MediaViewerExtensions": {
+			"description": "File extension allowlist, based on https://commons.wikimedia.org/wiki/Special:MediaStatistics. Remove an entry to exclude all images with that extension.",
+			"value": {
+				"bmp": "default",
+				"djv": "default",
+				"djvu": "default",
+				"gif": "default",
+				"jpg": "default",
+				"jpeg": "default",
+				"jpe": "default",
+				"jps": "default",
+				"png": "default",
+				"apng": "default",
+				"svg": "default",
+				"tif": "default",
+				"tiff": "default",
+				"webp": "default",
+				"xcf": "default"
+			}
+		},
+		"MediaViewerThumbnailBucketSizes": {
+			"description": "Array of preselected widths used to generate thumbnail URLs to avoid arbitrary size requests (see also wgUploadThumbnailRenderMap).",
+			"value": [
+				500,
+				960,
+				1280,
+				1920,
+				3840
+			],
+			"merge_strategy": "provide_default"
+		},
+		"MediaViewerDownloadSizes": {
+			"description": "Array of preselected widths used to generate download URLs, widths need to be in $wgThumbnailSteps if used.",
+			"value": {
+				"small": 500,
+				"medium": 1280,
+				"large": 1920,
+				"xl": 3840
+			},
+			"merge_strategy": "provide_default"
+		},
+		"MediaViewerEnableByDefault": {
+			"description": "If true, Media Viewer will be turned on by default.",
+			"value": true
+		},
+		"MediaViewerEnableByDefaultForAnonymous": {
+			"description": "Overrides $wgMediaViewerEnableByDefault for anonymous users. If set to null, will fall back to value of $wgMediaViewerEnableByDefault",
+			"value": null
+		},
+		"MediaViewerRecordVirtualViewBeaconURI": {
+			"description": "If set, records a virtual view via the provided beacon URI.",
+			"value": false
+		},
+		"MediaViewerMobileCarousel": {
+			"description": "Enables the mobile image carousel sitewide for qualifying article pages in MobileFrontend (production rollout). Takes precedence over the opt-in beta feature (see MediaViewerBetaFeature): where this is on, the carousel is shown to everyone and the beta opt-in is suppressed.",
+			"value": false
+		},
+		"MediaViewerDesktopVue": {
+			"description": "If true, the Vue-based viewer is used on the desktop site.",
+			"value": false
+		},
+		"MediaViewerExcludedImageSelectors": {
+			"description": "CSS selectors for images that should be excluded. These selectors typically indicate template-generated images, placeholders, or images that don't make sense in a carousel or gallery context.",
+			"value": [
+				".clade",
+				".navbox",
+				".noprint",
+				".nomobile",
+				".infobox-signature",
+				".references",
+				".notpageimage",
+				"a.mw-file-description[href*=\":Status_iucn\"]",
+				"a.mw-file-description[href*=\":Status_TNC\"]",
+				"a.mw-file-description[href$=\":No_photo.svg\"]",
+				"a.mw-file-description[href$=\":No-photo.svg\"]",
+				"a.mw-file-description[href$=\":No-image.png\"]",
+				"a.mw-file-description[href$=\":Noimage.svg\"]",
+				"a.mw-file-description[href$=\":Noimage.png\"]",
+				"a.mw-file-description[href$=\":Noimage_2-1.png\"]",
+				"a.mw-file-description[href$=\":Noimage_MC.png\"]",
+				"a.mw-file-description[href$=\":Brak_obrazka.svg\"]",
+				"a.mw-file-description[href$=\":Brak_zdjęcia.svg\"]",
+				"a.mw-file-description[href$=\":Ensin_imaxe.svg\"]",
+				"a.mw-file-description[href$=\":Image_non_disponible_portrait.svg\"]",
+				"a.mw-file-description[href$=\":ImageNA.svg\"]",
+				"a.mw-file-description[href$=\":Noenzyimage.png\"]",
+				"a.mw-file-description[href$=\":Imagem_em_falta.svg\"]",
+				"a.mw-file-description[href$=\":Falta_imagem_aves.svg\"]",
+				"a.mw-file-description[href$=\":Man_silhouette.svg\"]",
+				"a.mw-file-description[href$=\":Replace_this_image_male.svg\"]",
+				"a.mw-file-description[href$=\":Replace_this_image_female.svg\"]",
+				"a.mw-file-description[href$=\":Placeholder_no_text.svg\"]",
+				"a.mw-file-description[href$=\":Blank_50px.png\"]",
+				"a.mw-file-description[href$=\":Blank1x1.svg\"]",
+				"a.mw-file-description[href$=\":Cross.svg\"]",
+				"a.mw-file-description[href$=\":Image_PlaceHolder.png\"]",
+				"a.mw-file-description[href$=\":No_image_available.svg\"]",
+				"a.mw-file-description[href$=\":Image_manquante.png\"]",
+				"a.mw-file-description[href$=\":No_free_image.png\"]",
+				"a.mw-file-description[href$=\":No_free_image.svg\"]",
+				"a.mw-file-description[href$=\":Noantimage.svg\"]",
+				"a.mw-file-description[href$=\":Nosnail.png\"]"
+			]
+		},
+		"MediaViewerBetaFeature": {
+			"description": "Offers the mobile image carousel as an opt-in Beta feature preference, for previewing it ahead of a sitewide rollout. Only takes effect where MediaViewerMobileCarousel is off; the sitewide flag takes precedence and suppresses the opt-in.",
+			"value": false
+		}
+	},
+	"ParsoidModules": [
+		{
+			"name": "MultimediaViewer",
+			"domProcessors": [
+				{
+					"class": "MediaWiki\\Extension\\MultimediaViewer\\CarouselDomProcessor",
+					"services": [
+						"MainConfig"
+					]
+				}
+			]
+		}
+	],
+	"manifest_version": 2
+}

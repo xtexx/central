@@ -1,0 +1,844 @@
+<?php
+/**
+ * This file is part of the MediaWiki extension MultimediaViewer.
+ *
+ * MultimediaViewer is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * MultimediaViewer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MultimediaViewer.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @file
+ * @ingroup extensions
+ * @author Mark Holmquist <mtraceur@member.fsf.org>
+ * @copyright Copyright © 2013, Mark Holmquist
+ */
+
+namespace MediaWiki\Extension\MultimediaViewer;
+
+use MediaWiki\Category\Category;
+use MediaWiki\Config\Config;
+use MediaWiki\Config\ConfigException;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\Extension\BetaFeatures\BetaFeatures;
+use MediaWiki\Hook\GetDoubleUnderscoreIDsHook;
+use MediaWiki\Html\Html;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Media\Hook\ThumbnailBeforeProduceHTMLHook;
+use MediaWiki\Media\ThumbnailImage;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Output\Hook\BeforePageDisplayHook;
+use MediaWiki\Output\Hook\MakeGlobalVariablesScriptHook;
+use MediaWiki\Output\Hook\OutputPageParserOutputHook;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Page\CategoryPage;
+use MediaWiki\Page\Hook\CategoryPageViewHook;
+use MediaWiki\Preferences\Hook\GetPreferencesHook;
+use MediaWiki\Registration\ExtensionRegistry;
+use MediaWiki\ResourceLoader\Context;
+use MediaWiki\ResourceLoader\Hook\ResourceLoaderGetConfigVarsHook;
+use MediaWiki\SpecialPage\SpecialPageFactory;
+use MediaWiki\Title\Title;
+use MediaWiki\User\Hook\UserGetDefaultOptionsHook;
+use MediaWiki\User\Options\UserOptionsLookup;
+use MediaWiki\User\User;
+use MobileContext;
+use Wikimedia\Parsoid\Core\DOMCompat;
+use Wikimedia\Parsoid\Utils\DOMUtils;
+
+class Hooks implements
+	MakeGlobalVariablesScriptHook,
+	UserGetDefaultOptionsHook,
+	GetPreferencesHook,
+	BeforePageDisplayHook,
+	CategoryPageViewHook,
+	ResourceLoaderGetConfigVarsHook,
+	GetDoubleUnderscoreIDsHook,
+	ThumbnailBeforeProduceHTMLHook,
+	OutputPageParserOutputHook
+{
+	// Minimum number of images in a wiki page to enable the carousel.
+	private const MIN_CAROUSEL_IMAGES = 3;
+	// Number of carousel items rendered with a real src attribute. The rest
+	// are deferred (data-src) and loaded by carousel.js as they approach the
+	// visible area; six fills the initial view even at desktop widths.
+	private const CAROUSEL_EAGER_IMAGES = 6;
+	// Width for carousel tile images (tiles render at ~172px CSS).
+	// Actual thumbnail size will be the next step up from this size,
+	// based on https://www.mediawiki.org/wiki/Manual:$wgThumbnailSteps
+	private const MIN_CAROUSEL_THUMB_SIZE = 172;
+	// Page property that represents the __NOMEDIAVIEWERCAROUSEL__ magic word / behavior switch.
+	// When `__NOMEDIAVIEWERCAROUSEL__` is in the page content,
+	// the `nomediaviewercarousel` page property is set during parse.
+	// Checking page props lets request-time carousel decisions reuse the
+	// parser output metadata without reparsing the page content.
+	private const DISABLE_MOBILE_CAROUSEL_PAGE_PROPERTY = 'nomediaviewercarousel';
+	// User preference key for the per-reader opt-out of the mobile image carousel.
+	private const ENABLE_IMAGE_CAROUSEL_PREFERENCE = 'enable_image_carousel';
+	// Beta features key, used to populate a checkbox in the user's beta preferences.
+	// Must be registered in the production allowlist (defined in mediawiki-config repo
+	// in wmf-config/InitialiseSettings.php as `wgBetaFeaturesAllowList` ).
+	public const BETA_FEATURES_KEY = 'multimediaviewer-beta';
+
+	public function __construct(
+		private readonly Config $config,
+		private readonly SpecialPageFactory $specialPageFactory,
+		private readonly UserOptionsLookup $userOptionsLookup,
+		private readonly ExtensionRegistry $extensionRegistry,
+		private readonly ?MobileContext $mobileContext,
+	) {
+	}
+
+	/**
+	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/UserGetDefaultOptions
+	 * @param array &$defaultOptions
+	 */
+	public function onUserGetDefaultOptions( &$defaultOptions ) {
+		if ( $this->config->get( 'MediaViewerEnableByDefault' ) ) {
+			$defaultOptions['multimediaviewer-enable'] = 1;
+		}
+
+		// The carousel is shown unless the reader explicitly opts out.
+		$defaultOptions[self::ENABLE_IMAGE_CAROUSEL_PREFERENCE] = 1;
+	}
+
+	/**
+	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/GetPreferences
+	 * Adds a default-enabled preference to gate the feature
+	 * @param User $user
+	 * @param array &$prefs
+	 */
+	public function onGetPreferences( $user, &$prefs ) {
+		$prefs['multimediaviewer-enable'] = [
+			'type' => 'toggle',
+			'label-message' => 'multimediaviewer-optin-pref',
+			'section' => 'rendering/files',
+		];
+
+		// Only offer the carousel opt-out where the carousel can actually appear.
+		if ( !$this->config->get( 'MediaViewerMobileCarousel' ) ) {
+			return;
+		}
+
+		// The carousel is a mobile feature, so the visible toggle is only shown
+		// on Minerva; on other skins the value is preserved but hidden.
+		$prefs[self::ENABLE_IMAGE_CAROUSEL_PREFERENCE] = [
+			'type' => $this->getCurrentRequestSkinName() === 'minerva' ? 'toggle' : 'hidden',
+			'label-message' => 'multimediaviewer-enable-image-carousel-pref',
+			'section' => 'rendering/files',
+		];
+	}
+
+	/**
+	 * Checks the context for whether to load the viewer.
+	 * @param User $performer
+	 * @return bool
+	 */
+	protected function shouldHandleClicks( User $performer ): bool {
+		if ( $performer->isNamed() ) {
+			return (bool)$this->userOptionsLookup->getOption( $performer, 'multimediaviewer-enable' );
+		}
+
+		return (bool)(
+			$this->config->get( 'MediaViewerEnableByDefaultForAnonymous' ) ??
+			$this->config->get( 'MediaViewerEnableByDefault' )
+		);
+	}
+
+	/**
+	 * Whether the current request is being served through MobileFrontend's mobile view.
+	 *
+	 * @return bool
+	 */
+	protected function isDesktopView(): bool {
+		return !$this->isMobileFrontendView();
+	}
+
+	/**
+	 * Whether the current request is being served through MobileFrontend's mobile view.
+	 *
+	 * @return bool
+	 */
+	protected function isMobileFrontendView(): bool {
+		return ExtensionRegistry::getInstance()->isLoaded( 'MobileFrontend' ) &&
+			$this->mobileContext &&
+			$this->mobileContext->shouldDisplayMobileView();
+	}
+
+	/**
+	 * Whether the WikimediaEvents extension is available to receive the
+	 * carousel A/A instrumentation module (T437076).
+	 *
+	 * @return bool
+	 */
+	protected function isWikimediaEventsLoaded(): bool {
+		return ExtensionRegistry::getInstance()->isLoaded( 'WikimediaEvents' );
+	}
+
+	/**
+	 * Handler for all places where we add the modules
+	 * Could be on article pages or on Category pages
+	 * @param OutputPage $out
+	 */
+	protected function getModules( OutputPage $out ) {
+		$out->addModules( 'mmv.bootstrap' );
+	}
+
+	/**
+	 * Whether the Vue multimedia viewer should replace the MobileFrontend
+	 * image viewer for this request (T428774).
+	 *
+	 * Conditions:
+	 *  - request is served through MobileFrontend's mobile view
+	 *  - MediaViewerDesktopBeta config flag is enabled
+	 *  - the user has not disabled MediaViewer in their preferences
+	 *
+	 * @param OutputPage $out
+	 * @return bool
+	 */
+	protected function shouldUseVueViewer( OutputPage $out ): bool {
+		return (
+			$this->isMobileFrontendView() ||
+			$this->config->get( 'MediaViewerDesktopVue' )
+		) &&
+			$this->shouldHandleClicks( $out->getUser() );
+	}
+
+	/**
+	 * Render the mobile carousel server-side and load its JS module.
+	 *
+	 * The carousel module is added only when carousel markup is actually rendered
+	 * (a qualifying request and enough thumbnails), so the client module
+	 * can assume carousel items exist in the DOM. The A/A instrument also loads
+	 * for eligible visits where rollout settings prevent carousel rendering.
+	 */
+	protected function maybeAddMobileCarousel( OutputPage $out ): void {
+		if ( !$this->isMobileCarouselEligible( $out ) ) {
+			return;
+		}
+
+		$carouselItems = $out->getMetadata()->getExtensionData( CarouselDomProcessor::EXTENSION_DATA_NAME );
+		if (
+			$carouselItems === null &&
+			$out->getRevisionId() === null &&
+			$this->extensionRegistry->isLoaded( 'MobileFrontendContentProvider' )
+		) {
+			// Dev convenience: pages served through
+			// MobileFrontendContentProvider will not have gone through
+			// the Parsoid DOM processor with the accurate (proxied)
+			// content - let's regenerate carousel items here
+			$doc = DOMCompat::newDocument( true );
+			$dom = DOMUtils::parseHTMLToFragment( $doc, $out->getHTML() );
+			$carouselDomProcessor = new CarouselDomProcessor( $this->config );
+			$carouselItems = $carouselDomProcessor->extractCarouselImages( $dom );
+		}
+
+		if ( !$carouselItems || count( $carouselItems ) < self::MIN_CAROUSEL_IMAGES ) {
+			return;
+		}
+
+		// T437076: Measure eligible visits independently of sitewide rollout or beta opt-in.
+		// Send events client-side so that cached page views are instrumented as well.
+		if ( $this->isWikimediaEventsLoaded() ) {
+			$out->addModules( 'ext.wikimediaEvents.preImageCarouselRetestAA' );
+		}
+
+		// TODO(image-carousel-retest): Remove this experiment override after the retest.
+		// Restore the direct rollout check; remove MediaWikiServices if unused and
+		// the attributes argument/plumbing in buildCarouselHtml once no consumers remain.
+		$render = $this->shouldUseMobileCarousel( $out );
+		$attributes = [];
+		// Experiments may override rollout after the same eligibility checks for
+		// every arm. Control can load its entry point without carousel markup.
+		MediaWikiServices::getInstance()->getHookContainer()->run(
+			'MultimediaViewerBeforeMobileCarousel',
+			[ $out, count( $carouselItems ), &$render, &$attributes ]
+		);
+		if ( !$render ) {
+			return;
+		}
+
+		$out->addModules( 'mmv.carousel' );
+		$out->addModuleStyles( 'mmv.carousel.styles' );
+		$out->prependHTML( $this->buildCarouselHtml( $carouselItems, $out->getTitle()->getText(), $attributes ) );
+	}
+
+	/**
+	 * Whether the request should use the mobile carousel entrypoint.
+	 *
+	 * Conditions:
+	 *  - request is served through MobileFrontend's mobile view
+	 *  - the carousel is enabled for this request, either sitewide via the
+	 *    MediaViewerMobileCarousel config flag (production rollout) or per-user
+	 *    via the beta feature opt-in. The sitewide flag takes precedence: where
+	 *    it is on, the carousel is shown to everyone and the beta opt-in is not
+	 *    offered as a separate control.
+	 *  - the reader has not opted out via the enable_image_carousel preference
+	 *  - page is a suitable candidate
+	 *
+	 * @param OutputPage $out
+	 * @return bool
+	 */
+	protected function shouldUseMobileCarousel( OutputPage $out ): bool {
+		return (
+			$this->config->get( 'MediaViewerMobileCarousel' ) ||
+			$this->isBetaFeatureEnabled( $out->getUser() )
+		) && $this->isMobileCarouselEligible( $out );
+	}
+
+	/**
+	 * Check reader and page eligibility independently of carousel rollout.
+	 * The minimum image count is checked separately after thumbnail extraction.
+	 *
+	 * @param OutputPage $out
+	 * @return bool
+	 */
+	protected function isMobileCarouselEligible( OutputPage $out ): bool {
+		return $this->isMobileFrontendView() &&
+			$this->userOptionsLookup->getBoolOption(
+				$out->getUser(), self::ENABLE_IMAGE_CAROUSEL_PREFERENCE
+			) &&
+			$this->shouldPageGetMobileCarousel( $out );
+	}
+
+	/**
+	 * Whether the page should get the mobile carousel.
+	 *
+	 * Conditions:
+	 * - plain view action: not a diff (which is still action=view), not an
+	 *   old revision, and not history/edit/etc. (T428701). Old revisions are
+	 *   excluded because thumbnails are extracted from the current revision's
+	 *   parser output and would not match the displayed content.
+	 * - article page
+	 * - not the main page
+	 * - real page, e.g., not special
+	 * - content does not have the __NOMEDIAVIEWERCAROUSEL__ magic word
+	 *
+	 * @param OutputPage $out
+	 * @return bool
+	 */
+	protected function shouldPageGetMobileCarousel( OutputPage $out ): bool {
+		$title = $out->getTitle();
+
+		return (
+			// Plain view: not history, edit, etc.
+			$out->getActionName() === 'view' &&
+			// Not a diff, which is served as part of the view action
+			!$out->getRequest()->getCheck( 'diff' ) &&
+			// Not an old revision (?oldid=) view
+			$out->isRevisionCurrent() &&
+			// Article
+			$title->getNamespace() === NS_MAIN &&
+			// Not the main page
+			!$title->isMainPage() &&
+			// Real page
+			$title->canExist() &&
+			// No __NOMEDIAVIEWERCAROUSEL__
+			// Behavior switch records an empty string value,
+			// so this must test for presence rather than truthiness
+			$out->getProperty( self::DISABLE_MOBILE_CAROUSEL_PAGE_PROPERTY ) === null
+		);
+	}
+
+	/**
+	 * Whether the beta feature opt-in applies to this user.
+	 *
+	 * Conditions:
+	 * - the carousel is not already enabled sitewide: the
+	 *   MediaViewerMobileCarousel flag takes precedence, so the opt-in is moot
+	 *   once the carousel is rolled out for everyone
+	 * - MediaViewerBetaFeature config flag is enabled
+	 * - BetaFeatures extension is loaded
+	 * - user has opted in
+	 *
+	 * The sitewide check is first so this short-circuits before reaching the
+	 * BetaFeatures extension when the carousel is already enabled sitewide.
+	 *
+	 * @param User $user
+	 * @return bool
+	 */
+	protected function isBetaFeatureEnabled( User $user ): bool {
+		return !$this->config->get( 'MediaViewerMobileCarousel' ) &&
+			$this->config->get( 'MediaViewerBetaFeature' ) &&
+			ExtensionRegistry::getInstance()->isLoaded( 'BetaFeatures' ) &&
+			BetaFeatures::isFeatureEnabled( $user, self::BETA_FEATURES_KEY );
+	}
+
+	/**
+	 * The current request skin name, including temporary `?useskin=` overrides.
+	 *
+	 * @return string
+	 */
+	protected function getCurrentRequestSkinName(): string {
+		return RequestContext::getMain()->getSkin()->getSkinName();
+	}
+
+	/**
+	 * Build the HTML for carousel thumbnail items.
+	 *
+	 * @param array{title: string, caption: ?string, thumb: array}[] $carouselItems
+	 * @return string
+	 */
+	private function buildCarouselItemsHtml( array $carouselItems ): string {
+		$thumbSteps = $this->config->get( MainConfigNames::ThumbnailSteps );
+
+		// Partially lifted from mw.util.parseImageUrl
+		$parseImageUrl = static function ( string $url ) {
+			// phpcs:disable Generic.Files.LineLength.TooLong
+			$regexes = [
+				// Thumbnails
+				// /<hash prefix>/<name>/[<options>-]<width>-<name*>[.<ext>]
+				// where <name*> could be the filename, 'thumbnail.<ext>' (for long filenames)
+				// or the base-36 SHA1 of the filename.
+				'/\\/[\\da-f]\\/[\\da-f]{2}\\/([^\\s\\/]+)\\/(?:[^\\s\\/]+-)?(\\d+)px-(?:\\1|thumbnail|[a-z\\d]{31})(?:\\.[^\\s\\/?]+)?(?:\\?[^\\s]+)?$/',
+
+				// Full size images
+				// /<hash prefix>/<name>
+				'/\\/[\\da-f]\\/[\\da-f]{2}\\/([^\\s\\/?]+)(?:\\?[^\\s]+)?$/',
+
+				// Thumbnails in non-hashed upload directories
+				// /<name>/[<options>-]<width>-<name*>[.<ext>]
+				'/\\/([^\\s\\/]+)\\/(?:[^\\s\\/]+-)?(\\d+)px-(?:\\1|thumbnail|[a-z\\d]{31})[^\\s\\/?]*(?:\\?[^\\s]+)?$/',
+
+				// Full-size images in non-hashed upload directories
+				// /<name>
+				'/\\/([^\\s\\/?]+)(?:\\?[^\\s]+)?$/',
+			];
+			// phpcs:enable Generic.Files.LineLength.TooLong
+
+			foreach ( $regexes as $regex ) {
+				if ( preg_match( $regex, $url, $match ) ) {
+					$name = $match[1];
+					$width = $match[2] ?? null;
+
+					$urlTemplate = null;
+					if ( $width ) {
+						$urlTemplate = str_replace( $name, '{name}', $url );
+						$urlTemplate = str_replace( $width . 'px-', '{width}px-', $urlTemplate );
+						$urlTemplate = str_replace( '{name}', $name, $urlTemplate );
+					}
+
+					return [
+						'name' => $name,
+						'width' => $width,
+						'resizeUrl' => static function ( int $newWidth ) use ( $urlTemplate ) {
+							return $urlTemplate ?
+								str_replace( '{width}px-', $newWidth . 'px-', $urlTemplate ) :
+								null;
+						},
+					];
+				}
+			}
+
+			return null;
+		};
+
+		$html = '';
+		foreach ( $carouselItems as $i => $item ) {
+			$title = Title::newFromDBkey( $item['title'] );
+
+			// Items beyond the first few defer their image loading to
+			// carousel.js (see the IntersectionObserver there for rationale).
+			$deferred = $i >= self::CAROUSEL_EAGER_IMAGES;
+
+			// Default to the original attributes from the DOM element
+			$src = $item['thumb']['src'];
+			$width = $item['thumb']['width'];
+			$height = $item['thumb']['height'];
+			$srcset = $item['thumb']['srcset'];
+
+			// Use thumbnail sizes suited to the carousel's own display size
+			// rather than whatever sizes the article happened to use.
+			$dataFileWidth = $item['thumb']['data-file-width'];
+			$dataFileHeight = $item['thumb']['data-file-height'];
+
+			$imageData = $src ? $parseImageUrl( $src ) : null;
+			if ( $dataFileWidth && $dataFileHeight && $imageData && $imageData['width'] ) {
+				// Given we may be stretching vertically (in the case of landscape
+				// photos), we might need to increase the thumbnail width to ensure
+				// the photo can accommodate the requisite height
+				$displayWidth = $dataFileWidth <= $dataFileHeight ?
+					self::MIN_CAROUSEL_THUMB_SIZE :
+					round( $dataFileWidth / $dataFileHeight * self::MIN_CAROUSEL_THUMB_SIZE );
+
+				// Cap strictly below the file's own width: at or above it core
+				// serves the original rather than generating a thumbnail, so a
+				// `{$dataFileWidth}px-` URL would not exist.
+				$relevantThumbSteps = array_filter(
+					$thumbSteps ?? [],
+					static fn ( $step ) => $step >= $displayWidth && $step < $dataFileWidth,
+				);
+			} else {
+				$relevantThumbSteps = [];
+			}
+
+			// With no larger step available there is nothing worth rewriting: the
+			// file is already at or below the size the carousel wants. Keep the
+			// item and fall back to the attributes the article's own thumbnail
+			// carries, so the rendered items stay in sync with the item count
+			// reported in buildCarouselHtml().
+			if ( $relevantThumbSteps ) {
+				$width = min( $relevantThumbSteps );
+				$height = (int)( $width * $dataFileHeight / $dataFileWidth );
+				$src = $imageData[ 'resizeUrl' ]( $width );
+
+				// Also get additional srcset sizes, both for retina screens, and for
+				// responsive images shown larger than the `self::MIN_CAROUSEL_THUMB_SIZE`
+				// minimum
+				$srcsetData = [];
+				foreach ( $relevantThumbSteps as $step ) {
+					$srcsetUrl = $imageData[ 'resizeUrl' ]( $step );
+					$srcsetData[] = "{$srcsetUrl} {$step}w";
+				}
+				$srcset = $srcsetData ? implode( ',', $srcsetData ) : $srcset;
+			}
+
+			$html .= Html::rawElement(
+				'li',
+				[
+					'class' => [ 'mmv-carousel__item', 'mmv-carousel__item--deferred' => $deferred ],
+				],
+				Html::rawElement(
+					'a',
+					[
+						'href' => $title->getLocalURL(),
+						'class' => 'mmv-carousel__item-link mw-file-description',
+						// Give each link an explicit accessible name. Reuse the
+						// image alt text when present, otherwise fall back to the
+						// cleaned-up filename.
+						'aria-label' => $item['thumb']['alt'] ?: preg_replace( '/\.[^.]+$/', '', $title->getText() ),
+					],
+					Html::element(
+						'img',
+						[
+							'src' => $deferred ? false : $src,
+							'srcset' => $deferred ? false : $srcset,
+							// Using "auto" to allow browser to pick a different src from srcset,
+							// given that these images are responsive and possibly displayed at
+							// sizes larger than the given minimum. This, however, depends on
+							// loading=lazy to work (browser support); if that is not the case,
+							// browsers will default to `src`, which is usually likely good enough
+							// given that carousel thumbs are fairly unlikely to grow much bigger
+							// than the thumbnail step above our minimum (the alternative would be
+							// settings explicit width conditions in `sizes`, but given that those
+							// would be based on viewport dimensions, that is also likely to often
+							// be wrong given that we have min/max height restrictions)
+							'sizes' => $deferred ? false : 'auto',
+							'data-src' => $deferred ? $src : false,
+							'data-srcset' => $deferred ? $srcset : false,
+							'data-sizes' => $deferred ? 'auto' : false,
+							'width' => $width,
+							'height' => $height,
+							'alt' => $item['thumb']['alt'],
+							// --pending renders a placeholder background until
+							// carousel.js has loaded the image.
+							'class' => [
+								'mmv-carousel__item-image',
+								'mmv-carousel__item-image--pending' => $deferred,
+							],
+							'loading' => 'lazy',
+							'data-file-width' => $dataFileWidth,
+							'data-file-height' => $dataFileHeight,
+						]
+					) .
+					( isset( $item['caption'] ) ? Html::element(
+						'p',
+						[ 'class' => [ 'mmv-carousel__item-caption' ] ],
+						$item['caption']
+					) : '' )
+				)
+			);
+		}
+		return $html;
+	}
+
+	/**
+	 * Build the server-rendered carousel shell so the client module can
+	 * progressively enhance it.
+	 * @param array{title: string, caption: ?string, thumb: array}[] $carouselItems carousel thumbnails
+	 * @param string $pageTitle display title of the page, used in the carousel's accessible label
+	 * @param array $attributes Additional root attributes supplied by the rendering hook
+	 * @return string
+	 */
+	private function buildCarouselHtml(
+		array $carouselItems, string $pageTitle, array $attributes = []
+	): string {
+		return Html::rawElement(
+			'div',
+			[
+				'id' => 'mmv-carousel-root',
+				'class' => 'mw-mmv-wrapper mmv-carousel'
+			] + $attributes,
+			Html::rawElement(
+				'div',
+				[ 'class' => 'mmv-carousel__controls' ],
+				Html::rawElement(
+					'span',
+					[ 'class' => 'mmv-carousel__count' ],
+					Html::element( 'span', [
+						'class' => 'mmv-carousel__count-icon',
+						'aria-hidden' => 'true'
+					] ) .
+					Html::element(
+						'span',
+						[ 'class' => 'mmv-carousel__count-text' ],
+						wfMessage( 'multimediaviewer-carousel-image-count' )
+							->numParams( count( $carouselItems ) )
+							->text()
+					)
+				) .
+				// Carousel visible = display "hide" button (= default). Either this button
+				// or the other one (below) will be displayed; one will always be hidden.
+				Html::rawElement(
+					'button',
+					[
+						'type' => 'button',
+						'class' => implode( ' ', [
+							'mmv-carousel__toggle',
+							'cdx-button',
+							'mmv-carousel__toggle--expanded',
+							'cdx-button--action-default',
+							'cdx-button--weight-quiet',
+							'cdx-button--size-small'
+						] ),
+						'aria-controls' => 'mmv-carousel-items',
+						'aria-expanded' => 'true',
+					],
+					Html::element( 'span', [
+						'class' => 'cdx-button__icon cdx-button__icon-eye-closed',
+						'aria-hidden' => 'true'
+					] ) .
+					wfMessage( 'multimediaviewer-carousel-hide' )->escaped()
+				) .
+				// Carousel invisible = display "show" button contents.
+				Html::rawElement(
+					'button',
+					[
+						'type' => 'button',
+						'class' => implode( ' ', [
+							'mmv-carousel__toggle',
+							'cdx-button',
+							'mmv-carousel__toggle--collapsed',
+							'cdx-button--action-default',
+							'cdx-button--weight-quiet',
+							'cdx-button--size-small'
+						] ),
+						'aria-controls' => 'mmv-carousel-items',
+						'aria-expanded' => 'false',
+					],
+					Html::element( 'span', [
+						'class' => 'cdx-button__icon cdx-button__icon-eye',
+						'aria-hidden' => 'true'
+					] ) .
+					wfMessage( 'multimediaviewer-carousel-show' )->escaped()
+				)
+			) .
+			Html::rawElement(
+				'div',
+				// Scrolls and clips the list. Separate from the root element, which
+				// is the containing block for the floating controls and so must not
+				// scroll them out of view along with the items.
+				[ 'class' => 'mmv-carousel__scroll' ],
+				Html::rawElement(
+					'ul',
+					[
+						'id' => 'mmv-carousel-items',
+						'class' => 'mmv-carousel__items',
+						'aria-label' => $this->getCarouselLabel( $pageTitle, count( $carouselItems ) ),
+						// Explicit role preserves list semantics when list-style:none
+						// causes some browsers to strip them.
+						'role' => 'list',
+					],
+					$this->buildCarouselItemsHtml( $carouselItems )
+				)
+			)
+		);
+	}
+
+	/**
+	 * Build the accessible label for the carousel's list container.
+	 *
+	 * Keep the article title when available, and only fall back to a generic
+	 * noun when the title is empty. The item count is already known and cheap
+	 * to include, so always expose it.
+	 *
+	 * @param string $pageTitle
+	 * @param int $itemCount
+	 * @return string
+	 */
+	private function getCarouselLabel( string $pageTitle, int $itemCount ): string {
+		$labelTitle = trim( $pageTitle ) !== ''
+			? $pageTitle
+			: wfMessage( 'multimediaviewer-carousel-label-article' )->text();
+
+		return wfMessage( 'multimediaviewer-carousel-label', $labelTitle )
+			->numParams( $itemCount )
+			->text();
+	}
+
+	/**
+	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/BeforePageDisplay
+	 * Add JavaScript to the page when an image is on it
+	 * and the user has enabled the feature
+	 *
+	 * @inheritDoc
+	 */
+	public function onBeforePageDisplay( $out, $skin ): void {
+		$pageIsSpecialPage = $out->getTitle()->inNamespace( NS_SPECIAL );
+		$fileRelatedSpecialPages = [ 'Newimages', 'Listfiles', 'Mostimages',
+			'MostGloballyLinkedFiles', 'Uncategorizedimages', 'Unusedimages', 'Search' ];
+		$pageIsFileRelatedSpecialPage = $out->getTitle()->inNamespace( NS_SPECIAL ) &&
+			in_array(
+				$this->specialPageFactory->resolveAlias( $out->getTitle()->getDBkey() )[0],
+				$fileRelatedSpecialPages
+			);
+
+		if ( !$pageIsSpecialPage || $pageIsFileRelatedSpecialPage ) {
+			$this->getModules( $out );
+			$this->maybeAddMobileCarousel( $out );
+		}
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function onOutputPageParserOutput( $outputPage, $parserOutput ): void {
+		// Ensure prop is carried over to OutputPage instance
+		$disable = $parserOutput->getPageProperty( self::DISABLE_MOBILE_CAROUSEL_PAGE_PROPERTY );
+		if ( $disable !== null ) {
+			$outputPage->setProperty( self::DISABLE_MOBILE_CAROUSEL_PAGE_PROPERTY, $disable );
+		}
+
+		// Copy over carousel data from the original ParserOutput
+		// object onto OutputPage's metadata ParserOutput object.
+		// That latter is a stripped-down version that does not
+		// otherwise carry over this extension data that we'll want
+		// to use in `maybeAddMobileCarousel` (called in
+		// onBeforePageDisplay hook)
+		// We could theoretically execute `maybeAddMobileCarousel`
+		// from this hook as well, except that in this hook,
+		// $outputPage does not yet contain content provided through
+		// MobileFrontendContentProvider, so we'd lose our dev
+		// convenience (or have to duplicate the code)
+		$carouselItems = $parserOutput->getExtensionData( CarouselDomProcessor::EXTENSION_DATA_NAME );
+		if ( $carouselItems !== null ) {
+			$outputPage->getMetadata()->setExtensionData( CarouselDomProcessor::EXTENSION_DATA_NAME, $carouselItems );
+		}
+	}
+
+	/**
+	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/CategoryPageView
+	 * Add JavaScript to the page if there are images in the category
+	 * @param CategoryPage $catPage
+	 */
+	public function onCategoryPageView( $catPage ) {
+		$title = $catPage->getTitle();
+		$cat = Category::newFromTitle( $title );
+		if ( $cat->getFileCount() > 0 ) {
+			$out = $catPage->getContext()->getOutput();
+			$this->getModules( $out );
+		}
+	}
+
+	/**
+	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/ResourceLoaderGetConfigVars
+	 * Export variables used in both PHP and JS to keep DRY
+	 * @param array &$vars
+	 * @param string $skin
+	 * @param Config $config
+	 */
+	public function onResourceLoaderGetConfigVars( array &$vars, $skin, Config $config ): void {
+		$vars['wgMediaViewer'] = true;
+	}
+
+	/**
+	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/GetDoubleUnderscoreIDs
+	 * @see https://www.mediawiki.org/wiki/Help:Magic_words#Behavior_switches
+	 *
+	 * Registers the __NOMEDIAVIEWERCAROUSEL__ behavior switch so MediaWiki
+	 * recognizes it during parse and records its presence as a page property.
+	 * That page property is later used to suppress the mobile carousel for
+	 * specific pages.
+	 *
+	 * @param string[] &$doubleUnderscoreIDs
+	 * @return void
+	 */
+	public function onGetDoubleUnderscoreIDs( &$doubleUnderscoreIDs ) {
+		$doubleUnderscoreIDs[] = self::DISABLE_MOBILE_CAROUSEL_PAGE_PROPERTY;
+	}
+
+	/**
+	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/MakeGlobalVariablesScript
+	 * Export variables which depend on the current user
+	 * @param array &$vars
+	 * @param OutputPage $out
+	 * @return void
+	 */
+	public function onMakeGlobalVariablesScript( &$vars, $out ): void {
+		$user = $out->getUser();
+		$isMultimediaViewerEnable = $this->userOptionsLookup->getDefaultOption(
+			'multimediaviewer-enable',
+			$user
+		);
+
+		$vars['wgMediaViewerOnClick'] = $this->shouldHandleClicks( $user );
+		// needed because of T71942; could be different for anon and logged-in
+		$vars['wgMediaViewerEnabledByDefault'] = (bool)$isMultimediaViewerEnable;
+		// Tells the bootstrap to use the mobile viewer instead of the
+		// legacy desktop viewer (T428774). Exported here rather than via
+		// ResourceLoaderGetConfigVars because it varies per request.
+		$vars['wgMediaViewerDesktopVue'] = $this->shouldUseVueViewer( $out );
+	}
+
+	/**
+	 * ResourceLoader callback to resolve thumbnail width buckets.
+	 * Uses $wgThumbnailSteps if configured, otherwise falls back to
+	 * $wgMediaViewerThumbnailBucketSizes.
+	 *
+	 * @param Context|null $context
+	 * @param Config $config
+	 * @return array
+	 */
+	public static function getCommonConfig( ?Context $context, Config $config ): array {
+		$steps = $config->get( MainConfigNames::ThumbnailSteps );
+		$downloadSizes = $config->get( 'MediaViewerDownloadSizes' );
+		if ( $steps && $downloadSizes ) {
+			foreach ( $downloadSizes as $k => $v ) {
+				if ( !in_array( $v, $steps ) ) {
+					throw new ConfigException( "MediaViewerThumbnailBucketSizes $k=$v not in ThumbnailSteps" );
+				}
+			}
+		}
+		return [
+			'downloadSizes' => $downloadSizes,
+			'thumbnailBucketSizes' => $steps ?: $config->get( 'MediaViewerThumbnailBucketSizes' ),
+		];
+	}
+
+	/**
+	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/ThumbnailBeforeProduceHTML
+	 * Modify thumbnail DOM
+	 * @param ThumbnailImage $thumbnail
+	 * @param array &$attribs Attributes of the <img> element
+	 * @param array|bool &$linkAttribs Attributes of the wrapping <a> element
+	 */
+	public function onThumbnailBeforeProduceHTML(
+		$thumbnail,
+		&$attribs,
+		&$linkAttribs
+	) {
+		$file = $thumbnail->getFile();
+
+		if ( $file ) {
+			$attribs['data-file-width'] = $file->getWidth();
+			$attribs['data-file-height'] = $file->getHeight();
+		}
+	}
+}

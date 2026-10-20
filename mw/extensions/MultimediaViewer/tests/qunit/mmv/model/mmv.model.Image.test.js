@@ -1,0 +1,283 @@
+/*
+ * This file is part of the MediaWiki extension MediaViewer.
+ *
+ * MediaViewer is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * MediaViewer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MediaViewer.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+const { ImageModel } = require( 'mmv' );
+const { fixtures, flattenGetters } = require( '../mmv.testhelpers.js' );
+
+QUnit.module( 'mmv.model.Image', QUnit.newMwEnvironment() );
+
+QUnit.test( 'constructor + getters', ( assert ) => {
+	const title = mw.Title.newFromText( 'File:Foo bar.jpg' );
+
+	const pageID = 42;
+	const repo = 'wikimediacommons';
+
+	const size = 100;
+	const width = 10;
+	const height = 15;
+	const url = 'https://upload.wikimedia.org/wikipedia/commons/3/3a/Foobar.jpg';
+	const descriptionurl = 'https://commons.wikimedia.org/wiki/File:Foobar.jpg';
+	const descriptionshorturl = '';
+	const datetime = '2011-07-04T23:31:14Z';
+	const origdatetime = '2010-07-04T23:31:14Z';
+	const description = 'This is a test file.';
+	const source = 'WMF';
+	const author = 'Ryan Kaldari';
+	const authorCount = 1;
+	const permission = 'only use for good, not evil';
+	const deletionReason = 'poor quality';
+	const attribution = 'Created by my cats on a winter morning';
+
+	const imageData = new ImageModel(
+		title,
+		{
+			...fixtures.imageinfoApi.makeBasic( {
+				size,
+				width,
+				height,
+				url,
+				descriptionurl,
+				descriptionshorturl,
+				extmetadata: {
+					DateTime: { value: datetime },
+					DateTimeOriginal: { value: origdatetime },
+					ImageDescription: { value: description },
+					Credit: { value: source },
+					Artist: { value: author },
+					AuthorCount: { value: authorCount },
+					LicenseShortName: { value: 'cc0' },
+					UsageTerms: { value: 'Creative Commons Zero' },
+					AttributionRequired: { value: 'false' },
+					Permission: { value: permission },
+					Attribution: { value: attribution },
+					DeletionReason: { value: deletionReason },
+					GPSLatitude: { value: '39.12381283' },
+					GPSLongitude: { value: '100.983829' },
+					Restrictions: { value: 'trademarked' }
+				}
+			} ),
+			pageid: pageID,
+			imagerepository: repo
+		}
+	);
+
+	assert.strictEqual( imageData.title, title, 'Title' );
+
+	assert.propContains( flattenGetters( imageData ), {
+		name: 'Foo bar',
+		size,
+		width,
+		height,
+		url,
+		descriptionUrl: descriptionurl,
+		descriptionShortUrl: descriptionshorturl,
+		pageID,
+		repo,
+		uploadDateTime: datetime,
+		anonymizedUploadDateTime: '20110704000000',
+		creationDateTime: origdatetime,
+		description,
+		source,
+		author,
+		authorCount,
+		permission,
+		attribution,
+		deletionReason,
+		latitude: 39.12381283,
+		longitude: 100.983829,
+		restrictions: [ 'trademarked' ]
+	}, 'ImageModel object' );
+
+	assert.propContains( imageData.license, {
+		shortName: 'cc0',
+		longName: 'Creative Commons Zero',
+		attributionRequired: false
+	}, 'License object' );
+} );
+
+QUnit.test( 'commonsTitle', ( assert ) => {
+	const makeImage = ( extmetadata, language ) => new ImageModel(
+		mw.Title.newFromText( 'File:Foo bar.jpg' ),
+		fixtures.imageinfoApi.makeBasic( { extmetadata } ),
+		language
+	);
+
+	assert.strictEqual(
+		makeImage( {
+			ObjectName: {
+				value: '<i>Frederick the Great Playing the Flute at Sanssouci</i>',
+				source: 'commons-desc-page'
+			}
+		} ).commonsTitle,
+		'Frederick the Great Playing the Flute at Sanssouci',
+		'title from the file page is returned, as plain text'
+	);
+
+	assert.strictEqual(
+		makeImage( {
+			ObjectName: {
+				value: '<i>Frederick the Great Playing the Flute at Sanssouci</i>' +
+					'<span style="display:none">label QS:Len,"Frederick the Great"</span>',
+				source: 'commons-desc-page'
+			}
+		} ).commonsTitle,
+		'Frederick the Great Playing the Flute at Sanssouci',
+		'hidden elements (e.g. Quick Statements data) are not included'
+	);
+
+	// Shaped like the ObjectName of an {{Artwork}} file with a title in several
+	// languages: one [lang]-tagged element per language, plus hidden Quick
+	// Statements data that must not be shown.
+	const multilingualExtmetadata = {
+		ObjectName: {
+			value: '<div class="fn">' +
+				'<div style="font-size:0.9em;display:inline-block;">German: ' +
+				'<div lang="de"><i>Flötenkonzert Friedrichs des Großen in Sanssouci</i></div></div>' +
+				'<div style="font-weight:bold;display:inline-block;">' +
+				'<div lang="en"><i>Frederick the Great Playing the Flute at Sanssouci</i></div></div>' +
+				'<div style="display: none;">label QS:Len,"Frederick the Great"</div>' +
+				'</div>',
+			source: 'commons-desc-page'
+		}
+	};
+	assert.strictEqual(
+		makeImage( multilingualExtmetadata, 'en' ).commonsTitle,
+		'Frederick the Great Playing the Flute at Sanssouci',
+		'the element matching the requested language is used, not a concatenation of all of them'
+	);
+	assert.strictEqual(
+		makeImage( multilingualExtmetadata, 'de' ).commonsTitle,
+		'Flötenkonzert Friedrichs des Großen in Sanssouci',
+		'a different requested language selects that language instead'
+	);
+	assert.strictEqual(
+		makeImage( multilingualExtmetadata, 'fr' ).commonsTitle,
+		undefined,
+		'an unavailable language shows no title, rather than an unrelated one'
+	);
+	assert.strictEqual(
+		makeImage( multilingualExtmetadata ).commonsTitle,
+		undefined,
+		'no requested language also shows no title'
+	);
+
+	// MediaWiki core always provides an ObjectName built from the file name
+	// (without the extension) when the file page has no title
+	const fallback = makeImage( {
+		ObjectName: { value: 'Foo bar', source: 'mediawiki-metadata' }
+	} );
+	assert.strictEqual(
+		fallback.commonsTitle,
+		undefined,
+		'file name derived by MediaWiki is not treated as a title'
+	);
+	assert.strictEqual(
+		fallback.name,
+		'Foo bar',
+		'name still returns the file name in that case'
+	);
+
+	assert.strictEqual(
+		makeImage( {} ).commonsTitle,
+		undefined,
+		'no title when ObjectName is missing'
+	);
+} );
+
+QUnit.test( 'getThumbnailUrl()', ( assert ) => {
+	const originalUrl = 'https://upload.wikimedia.org/original.jpg';
+	const imageData = new ImageModel(
+		mw.Title.newFromText( 'File:Foo.jpg' ),
+		fixtures.imageinfoApi.makeBasic( {
+			url: originalUrl,
+			thumburls: {
+				320: { url: 'https://upload.wikimedia.org/320.jpg', width: 320 },
+				800: { url: 'https://upload.wikimedia.org/800.jpg', width: 800 }
+			}
+		} )
+	);
+
+	assert.strictEqual( imageData.getThumbnailUrl( 300 ),
+		'https://upload.wikimedia.org/320.jpg', 'Smallest thumbnail at least as wide is returned' );
+	assert.strictEqual( imageData.getThumbnailUrl( 320 ),
+		'https://upload.wikimedia.org/320.jpg', 'Exact width match is returned' );
+	assert.strictEqual( imageData.getThumbnailUrl( 500 ),
+		'https://upload.wikimedia.org/800.jpg', 'Next larger thumbnail is returned' );
+	assert.strictEqual( imageData.getThumbnailUrl( 1000 ), originalUrl,
+		'Original URL is returned when no thumbnail is wide enough' );
+
+	const noThumbs = new ImageModel(
+		mw.Title.newFromText( 'File:Foo.jpg' ),
+		fixtures.imageinfoApi.makeBasic( { url: originalUrl } )
+	);
+	assert.strictEqual( noThumbs.getThumbnailUrl( 300 ), originalUrl,
+		'Original URL is returned when no thumbnails are available' );
+} );
+
+QUnit.test( 'parseExtmeta()', ( assert ) => {
+	const stringData = { value: 'foo' };
+	const plaintextData = { value: 'fo<b>o</b>' };
+	const integerData = { value: 3 };
+	const integerStringData = { value: '3' };
+	const zeroPrefixedIntegerStringData = { value: '03' };
+	const floatData = { value: 1.23 };
+	const floatStringData = { value: '1.23' };
+	const booleanData = { value: 'yes' };
+	const wrongBooleanData = { value: 'blah' };
+	const listDataEmpty = { value: '' };
+	const listDataSingle = { value: 'foo' };
+	const listDataMultiple = { value: 'foo|bar|baz' };
+	const missingData = undefined;
+
+	assert.strictEqual( ImageModel.parseExtmeta( stringData, 'string' ), 'foo',
+		'Extmeta string parsed correctly.' );
+	assert.strictEqual( ImageModel.parseExtmeta( plaintextData, 'plaintext' ), 'foo',
+		'Extmeta plaintext parsed correctly.' );
+	assert.strictEqual( ImageModel.parseExtmeta( floatData, 'float' ), 1.23,
+		'Extmeta float parsed correctly.' );
+	assert.strictEqual( ImageModel.parseExtmeta( floatStringData, 'float' ), 1.23,
+		'Extmeta float string parsed correctly.' );
+	assert.strictEqual( ImageModel.parseExtmeta( booleanData, 'boolean' ), true,
+		'Extmeta boolean string parsed correctly.' );
+	assert.strictEqual( ImageModel.parseExtmeta( wrongBooleanData, 'boolean' ), undefined,
+		'Extmeta boolean string with error ignored.' );
+	assert.strictEqual( ImageModel.parseExtmeta( integerData, 'integer' ), 3,
+		'Extmeta integer parsed correctly.' );
+	assert.strictEqual( ImageModel.parseExtmeta( integerStringData, 'integer' ), 3,
+		'Extmeta integer string parsed correctly.' );
+	assert.strictEqual( ImageModel.parseExtmeta( zeroPrefixedIntegerStringData, 'integer' ), 3,
+		'Extmeta zero-prefixed integer string parsed correctly.' );
+	assert.deepEqual( ImageModel.parseExtmeta( listDataEmpty, 'list' ), [],
+		'Extmeta empty list parsed correctly.' );
+	assert.deepEqual( ImageModel.parseExtmeta( listDataSingle, 'list' ), [ 'foo' ],
+		'Extmeta list with single element parsed correctly.' );
+	assert.deepEqual( ImageModel.parseExtmeta( listDataMultiple, 'list' ), [ 'foo', 'bar', 'baz' ],
+		'Extmeta list with multiple elements parsed correctly.' );
+	assert.strictEqual( ImageModel.parseExtmeta( missingData, 'string' ), undefined,
+		'Extmeta missing data parsed correctly.' );
+
+	assert.strictEqual( ImageModel.parseExtmeta( { value: '1960-03-14' }, 'datetime' ), '1960-03-14',
+		'Extmeta date is parsed correctly.' );
+	assert.strictEqual( ImageModel.parseExtmeta( { value: '1960' }, 'datetime' ), '1960',
+		'Extmeta year is parsed correctly.' );
+	assert.strictEqual( ImageModel.parseExtmeta( { value: '1926<div style="display: none;">date QS:P571,+1926-00-00T00:00:00Z/9</div>' }, 'datetime' ), '1926',
+		'Extmeta year is extracted from hidden div.' );
+
+	assert.throws( () => {
+		ImageModel.parseExtmeta( stringData, 'strong' );
+	}, 'Exception is thrown on invalid argument' );
+} );

@@ -1,0 +1,11 @@
+{
+	"@metadata": {
+		"authors": [
+			"Ajiniyaz Nurniyazov"
+		]
+	},
+	"multimediaviewer-metadata-error": "Súwret haqqındaǵı maǵlıwmatlardı júklep alıw sátsiz juwmaqlandı (qátelik:$ 1)",
+	"multimediaviewer-thumbnail-error": "Keshirińiz, fayldı kórsetiw múmkinshiligi joq",
+	"multimediaviewer-view-expanded": "Media Viewerde keń etip kóriw",
+	"multimediaviewer-optin-pref": "<span class=\"plainlinks\">[https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:Media_Viewer/About Media kóriwshi]</span>ni qosıw"
+}

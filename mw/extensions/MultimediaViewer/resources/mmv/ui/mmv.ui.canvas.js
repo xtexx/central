@@ -1,0 +1,325 @@
+/*
+ * This file is part of the MediaWiki extension MediaViewer.
+ *
+ * MediaViewer is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * MediaViewer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MediaViewer.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+const { ThumbnailWidthCalculator } = require( 'mmv.common' );
+const UiElement = require( './mmv.ui.js' );
+
+/**
+ * UI component that contains the multimedia element to be displayed.
+ * This first version assumes an image but it can be extended to other
+ * media types (video, sound, presentation, etc.).
+ */
+class Canvas extends UiElement {
+	/**
+	 * @param {jQuery} $container Canvas' container
+	 * @param {jQuery} $imageWrapper
+	 * @param {jQuery} $mainWrapper
+	 */
+	constructor( $container, $imageWrapper, $mainWrapper ) {
+		super( $container );
+
+		/**
+		 * @type {boolean}
+		 * @private
+		 */
+		this.dialogOpen = false;
+
+		/**
+		 * @type {ThumbnailWidthCalculator}
+		 * @private
+		 */
+		this.thumbnailWidthCalculator = new ThumbnailWidthCalculator();
+
+		/**
+		 * Contains image.
+		 *
+		 * @type {jQuery}
+		 */
+		this.$imageDiv = $( '<div>' )
+			.addClass( 'mw-mmv-image' );
+
+		this.$imageDiv.appendTo( this.$container );
+
+		/**
+		 * Container of canvas and controls, needed for canvas size calculations.
+		 *
+		 * @type {jQuery}
+		 * @private
+		 */
+		this.$imageWrapper = $imageWrapper;
+
+		/**
+		 * Main container of image and metadata, needed to propagate events.
+		 *
+		 * @type {jQuery}
+		 * @private
+		 */
+		this.$mainWrapper = $mainWrapper;
+
+		/**
+		 * Raw metadata of current image, needed for canvas size calculations.
+		 *
+		 * @type {LightboxImage}
+		 * @private
+		 */
+		this.imageRawMetadata = null;
+	}
+
+	/**
+	 * Clears everything.
+	 */
+	empty() {
+		this.$imageDiv.addClass( 'empty' );
+
+		this.$imageDiv.empty();
+	}
+
+	/**
+	 * Sets image on the canvas; does not resize it to fit. This is used to make the placeholder
+	 * image available; it will be resized and displayed by #maybeDisplayPlaceholder().
+	 * FIXME maybeDisplayPlaceholder() receives the placeholder so it is very unclear why this
+	 * is necessary at all (apart from setting the LightboxImage, which is used in size calculations).
+	 *
+	 * @param {LightboxImage} imageRawMetadata
+	 * @param {jQuery} $imageElement
+	 */
+	set( imageRawMetadata, $imageElement ) {
+		this.$imageDiv.removeClass( 'empty' );
+
+		this.imageRawMetadata = imageRawMetadata;
+		this.$image = $imageElement;
+		this.$imageDiv.html( this.$image );
+		// jQuery's .html(node) empties the container first via .empty(), which calls cleanData on descendants
+		// — stripping the event handlers — before re-appending the same node.
+		// Thus, setUpImageClick must be after .html(node).
+		this.setUpImageClick();
+	}
+
+	/**
+	 * Resizes image to the given dimensions and displays it on the canvas.
+	 * This is used to display the actual image; it assumes set function was already called before.
+	 *
+	 * @param {ImageModel} imageInfo thumbnail information
+	 */
+	setImageAndMaxDimensions( imageInfo ) {
+		const imageWidths = this.getCurrentImageWidths();
+		const srcset = Object.values( imageInfo.thumburls || {} )
+			.map( ( { url, width } ) => `${ url } ${ width }w` );
+
+		this.$image
+			.removeAttr( 'decoding' ) // unsetting decoding=async avoids flicker when swapping img.src
+			.attr( 'data-url', imageInfo.url )
+			.attr( 'sizes', `${ imageWidths.cssWidth }px` )
+			.attr( 'srcset', srcset.join() );
+		const imageLoaded = new Promise( ( resolve ) => {
+			if ( this.$image.prop( 'complete' ) ) {
+				resolve();
+			} else {
+				this.$image.one( 'load', resolve );
+			}
+		} );
+		imageLoaded.then( () => {
+			if ( this.$image.attr( 'data-url' ) === imageInfo.url ) {
+				this.$image.width( imageWidths.cssWidth );
+				this.$image.height( imageWidths.cssHeight );
+			}
+		} );
+	}
+
+	/**
+	 * Handles a "dialog open/close" event from dialogs on the page.
+	 *
+	 * @param {jQuery.Event} e
+	 */
+	handleDialogEvent( e ) {
+		switch ( e.type ) {
+			case 'mmv-download-opened':
+				this.downloadOpen = true;
+				break;
+			case 'mmv-download-closed':
+				this.downloadOpen = false;
+				break;
+			case 'mmv-reuse-opened':
+				this.reuseOpen = true;
+				break;
+			case 'mmv-reuse-closed':
+				this.reuseOpen = false;
+				break;
+		}
+
+		this.dialogOpen = this.reuseOpen || this.downloadOpen;
+		this.$image.toggleClass( 'mw-mmv-dialog-is-open', this.dialogOpen );
+	}
+
+	/**
+	 * Registers click listener on the image.
+	 *
+	 * @fires ReuseDialog#mmv-reuse-opened
+	 * @fires ReuseDialog#mmv-reuse-closed
+	 * @fires DownloadDialog#mmv-download-opened
+	 * @fires DownloadDialog#mmv-download-closed
+	 */
+	setUpImageClick() {
+		this.handleEvent( 'mmv-reuse-opened', this.handleDialogEvent.bind( this ) );
+		this.handleEvent( 'mmv-reuse-closed', this.handleDialogEvent.bind( this ) );
+		this.handleEvent( 'mmv-download-opened', this.handleDialogEvent.bind( this ) );
+		this.handleEvent( 'mmv-download-closed', this.handleDialogEvent.bind( this ) );
+
+		this.$image.on( 'click.mmv-canvas', ( e ) => {
+			// ignore clicks if the metadata panel or one of the dialogs is open - assume the intent is to
+			// close it in this case; that will be handled elsewhere
+			if ( !this.dialogOpen &&
+				// FIXME a UI component should not know about its parents
+				this.$container.closest( '.metadata-panel-is-open' ).length === 0 ) {
+				e.stopPropagation(); // don't let $imageWrapper handle this
+				$( document ).trigger( 'mmv-viewfile' );
+			}
+		} );
+
+		// open the download panel on right clicking the image
+		this.$image.on( 'mousedown.mmv-canvas', ( e ) => {
+			if ( e.which === 3 && !this.downloadOpen ) {
+				$( document ).trigger( 'mmv-download-open', e );
+				e.stopPropagation();
+			}
+		} );
+	}
+
+	/**
+	 * Registers listeners.
+	 *
+	 * @fires MultimediaViewer#mmv-resize-end
+	 */
+	attach() {
+		/**
+		 * Fired when the screen size changes. Debounced to avoid continuous triggering while resizing with a mouse.
+		 *
+		 * @event MultimediaViewer#mmv-resize-end
+		 */
+		$( window ).on( 'resize.mmv-canvas', mw.util.debounce( () => {
+			this.$mainWrapper.trigger( $.Event( 'mmv-resize-end' ) );
+		}, 100 ) );
+
+		this.$imageWrapper.on( 'click.mmv-canvas', () => {
+			if ( this.$container.closest( '.metadata-panel-is-open' ).length > 0 ) {
+				this.$mainWrapper.trigger( 'mmv-panel-close-area-click' );
+			}
+		} );
+	}
+
+	/**
+	 * Clears listeners.
+	 */
+	unattach() {
+		this.clearEvents();
+
+		$( window ).off( 'resize.mmv-canvas' );
+
+		this.$imageWrapper.off( 'click.mmv-canvas' );
+	}
+
+	/**
+	 * Sets page thumbnail for display.
+	 * We set SVG files to the maximum screen size available.
+	 * Assumes set function called before.
+	 *
+	 * @param {{width: number, height: number}} size
+	 * @param {jQuery} $imagePlaceholder Image placeholder to be displayed while the real image loads.
+	 */
+	maybeDisplayPlaceholder( size, $imagePlaceholder ) {
+		// Assume natural thumbnail size
+		let targetWidth = size.width;
+		let targetHeight = size.height;
+
+		// If the image is bigger than the screen we need to resize it
+		const imageWidths = this.getCurrentImageWidths();
+		if ( size.width > imageWidths.cssWidth ) { // This assumes imageInfo.width in CSS units
+			targetWidth = imageWidths.cssWidth;
+			targetHeight = imageWidths.cssHeight;
+		}
+
+		$imagePlaceholder.width( targetWidth );
+		$imagePlaceholder.height( targetHeight );
+		this.set( this.imageRawMetadata, $imagePlaceholder );
+	}
+
+	/**
+	 * Returns width and height of the canvas area (i.e. the space available for the image).
+	 *
+	 * @return {Object} Width and height in CSS pixels
+	 */
+	getDimensions() {
+		const $window = $( window );
+		// eslint-disable-next-line no-jquery/no-global-selector
+		const $aboveFold = $( '.mw-mmv-above-fold' );
+		const isFullscreened = !!$aboveFold.closest( '.jq-fullscreened' ).length;
+		// Don't rely on this.$imageWrapper's sizing because it's fragile.
+		// Depending on what the wrapper contains, its size can be 0 on some browsers.
+		// Therefore, we calculate the available space manually
+		const availableWidth = $window.width();
+		const availableHeight = $window.height() - ( isFullscreened ? 0 : $aboveFold.outerHeight() );
+
+		return {
+			width: availableWidth,
+			height: availableHeight
+		};
+	}
+
+	/**
+	 * Gets the widths for a given lightbox image.
+	 *
+	 * @param {LightboxImage} image
+	 * @return {ThumbnailWidth}
+	 */
+	getLightboxImageWidths( image ) {
+		const thumb = image.thumbnail;
+		const canvasDimensions = this.getDimensions();
+		const originalWidth = image.originalWidth || thumb.width;
+		const originalHeight = image.originalHeight || thumb.height;
+		// SVG scales losslessly and should fill the available space. Raster images should
+		// be shown at their natural size to preserve original quality.
+		// We also have to account for WP:NFCC, where we intentionally reduce quality
+		const isVector = image.filePageTitle.getExtension().toLowerCase() === 'svg';
+		const boundingWidth = isVector ? canvasDimensions.width : Math.min( canvasDimensions.width, originalWidth );
+
+		return this.thumbnailWidthCalculator.calculateWidths(
+			boundingWidth,
+			canvasDimensions.height,
+			originalWidth,
+			originalHeight
+		);
+	}
+
+	/**
+	 * Gets the widths for the current lightbox image.
+	 *
+	 * @return {ThumbnailWidth}
+	 */
+	getCurrentImageWidths() {
+		return this.getLightboxImageWidths( this.imageRawMetadata );
+	}
+}
+
+/**
+ * Maximum blowup factor tolerated
+ *
+ * @type {number}
+ * @static
+ */
+Canvas.MAX_BLOWUP_FACTOR = 11;
+
+module.exports = Canvas;

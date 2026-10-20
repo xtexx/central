@@ -1,0 +1,34 @@
+@import 'mediawiki.skin.variables.less';
+@import '../mmv.variables.less';
+
+.mw-mmv-post-image {
+	animation: mw-mmv-appear-animation 0.5s ease 0s 1 normal forwards;
+	transition: box-shadow 0.25s;
+
+	.jq-fullscreened & {
+		animation: none;
+	}
+
+	&.mw-mmv-untruncated,
+	.jq-fullscreened & {
+		box-shadow: 0 -4px 0 rgba( 0, 0, 0, 0.2 );
+	}
+}
+
+.mw-mmv-appear-animation() {
+	0% {
+		opacity: 0.6;
+	}
+
+	50% {
+		opacity: 0.9;
+	}
+
+	100% {
+		opacity: 1;
+	}
+}
+
+@keyframes mw-mmv-appear-animation {
+	.mw-mmv-appear-animation;
+}

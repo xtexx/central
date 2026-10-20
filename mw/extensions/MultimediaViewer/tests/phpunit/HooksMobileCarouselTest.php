@@ -1,0 +1,924 @@
+<?php
+
+namespace MediaWiki\Extension\MultimediaViewer\Tests;
+
+use MediaWiki\Extension\MultimediaViewer\CarouselDomProcessor;
+use MediaWiki\Extension\MultimediaViewer\Hooks;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Request\FauxRequest;
+use MediaWiki\Skin\SkinTemplate;
+use MediaWiki\Title\Title;
+use MediaWiki\User\User;
+use MediaWiki\User\UserRigorOptions;
+use Wikimedia\Parsoid\Core\DOMCompat;
+use Wikimedia\Parsoid\Utils\DOMUtils;
+
+/**
+ * @covers \MediaWiki\Extension\MultimediaViewer\Hooks
+ * @group Database
+ */
+class HooksMobileCarouselTest extends HooksTestCase {
+	// $wgThumbnailSteps has no core default, so any test asserting a
+	// rewritten thumbnail size must pin it rather than inherit whatever the
+	// running wiki happens to configure; CI runs without it.
+	// Mirrors Hooks::DISABLE_MOBILE_CAROUSEL_PAGE_PROPERTY, which is private.
+	private const DISABLE_PAGE_PROPERTY = 'nomediaviewercarousel';
+
+	private const THUMBNAIL_STEPS = [ 20, 40, 60, 120, 250, 330, 500, 960, 1280, 1920, 3840 ];
+
+	public function newHooksInstance(
+		array $carouselItems = [],
+		?bool $useCarousel = true,
+		string $currentRequestSkinName = 'minerva',
+		bool $wikimediaEventsLoaded = false,
+		bool $mobileView = true,
+		bool $pageQualifies = true
+	): Hooks {
+		$hooks = new class(
+			$this->getServiceContainer()->getMainConfig(),
+			$this->getServiceContainer()->getSpecialPageFactory(),
+			$this->getServiceContainer()->getUserOptionsLookup(),
+			$this->getServiceContainer()->getExtensionRegistry(),
+			null
+		) extends Hooks {
+			public array $stubCarouselItems;
+			public ?bool $useCarousel;
+			public bool $mobileView;
+			public bool $pageQualifies;
+			public string $currentRequestSkinName;
+			public bool $wikimediaEventsLoaded;
+
+			protected function isMobileFrontendView(): bool {
+				return $this->mobileView;
+			}
+
+			protected function isDesktopView(): bool {
+				return !$this->mobileView;
+			}
+
+			protected function shouldPageGetMobileCarousel( OutputPage $out ): bool {
+				return $this->pageQualifies;
+			}
+
+			protected function getCurrentRequestSkinName(): string {
+				return $this->currentRequestSkinName;
+			}
+
+			protected function shouldUseMobileCarousel( OutputPage $out ): bool {
+				return $this->useCarousel ?? parent::shouldUseMobileCarousel( $out );
+			}
+
+			// Stub the WikimediaEvents gate so these tests don't depend on
+			// that extension being installed in the test run.
+			protected function isWikimediaEventsLoaded(): bool {
+				return $this->wikimediaEventsLoaded;
+			}
+
+			// Seed OutputPage with the stub carousel items the same way it
+			// would already have them when parsed externally
+			protected function maybeAddMobileCarousel( OutputPage $out ): void {
+				$out->getMetadata()->setExtensionData(
+					CarouselDomProcessor::EXTENSION_DATA_NAME,
+					$this->stubCarouselItems
+				);
+				parent::maybeAddMobileCarousel( $out );
+			}
+		};
+		$hooks->mobileView = $mobileView;
+		$hooks->pageQualifies = $pageQualifies;
+		$hooks->stubCarouselItems = $carouselItems;
+		$hooks->useCarousel = $useCarousel;
+		$hooks->currentRequestSkinName = $currentRequestSkinName;
+		$hooks->wikimediaEventsLoaded = $wikimediaEventsLoaded;
+		return $hooks;
+	}
+
+	private function getCarouselModules(): array {
+		return [ 'mmv.carousel' ];
+	}
+
+	protected function shouldPageGetMobileCarousel( OutputPage $output ): bool {
+		$method = new \ReflectionMethod( Hooks::class, 'shouldPageGetMobileCarousel' );
+		return $method->invoke( $this->newHooksInstance(), $output );
+	}
+
+	protected function shouldUseMobileCarousel(
+		OutputPage $output,
+		bool $pageQualifies = true,
+		bool $betaOptIn = false
+	): bool {
+		$method = new \ReflectionMethod( Hooks::class, 'shouldUseMobileCarousel' );
+		$hooks = new class(
+			$this->getServiceContainer()->getMainConfig(),
+			$this->getServiceContainer()->getSpecialPageFactory(),
+			$this->getServiceContainer()->getUserOptionsLookup(),
+			$this->getServiceContainer()->getExtensionRegistry(),
+			null
+		) extends Hooks {
+			public bool $pageQualifies;
+			public bool $betaOptIn;
+
+			protected function isMobileFrontendView(): bool {
+				return true;
+			}
+
+			protected function shouldPageGetMobileCarousel( OutputPage $out ): bool {
+				return $this->pageQualifies;
+			}
+
+			// Stub the beta gate so these tests don't depend on the
+			// BetaFeatures extension being installed in the test run.
+			protected function isBetaFeatureEnabled( User $user ): bool {
+				return $this->betaOptIn;
+			}
+		};
+		$hooks->pageQualifies = $pageQualifies;
+		$hooks->betaOptIn = $betaOptIn;
+
+		return $method->invoke( $hooks, $output );
+	}
+
+	protected function buildCarouselItemsHtml( array $thumbData ): string {
+		$method = new \ReflectionMethod( Hooks::class, 'buildCarouselItemsHtml' );
+		return $method->invoke( $this->newHooksInstance(), $thumbData );
+	}
+
+	protected function buildCarouselHtml( array $thumbData, string $pageTitle ): string {
+		$method = new \ReflectionMethod( Hooks::class, 'buildCarouselHtml' );
+		return $method->invoke( $this->newHooksInstance(), $thumbData, $pageTitle );
+	}
+
+	protected static function makeFakeThumbData(
+		string $filename,
+		?string $alt = null,
+		int $fileWidth = 2400,
+		int $fileHeight = 1800
+	): array {
+		return [
+			'title' => Title::makeTitle( NS_FILE, $filename ),
+			'caption' => null,
+			'thumb' => [
+				'src' => "//upload.wikimedia.org/wikipedia/commons/thumb/1/10/$filename/120px-$filename",
+				'width' => 120,
+				'height' => 90,
+				'srcset' => "//upload.wikimedia.org/wikipedia/commons/thumb/1/10/$filename/240px-$filename 2x",
+				'alt' => $alt,
+				'data-file-width' => $fileWidth,
+				'data-file-height' => $fileHeight,
+			],
+		];
+	}
+
+	public function testShouldPageGetMobileCarouselOnPlainView(): void {
+		$output = $this->makeOutputPage();
+
+		$this->assertTrue( $this->shouldPageGetMobileCarousel( $output ) );
+	}
+
+	public function testShouldPageGetMobileCarouselRejectsNonViewActions(): void {
+		foreach ( [ 'history', 'edit', 'info' ] as $action ) {
+			$output = $this->makeOutputPage( actionName: $action );
+			$output->method( 'getActionName' )->willReturn( $action );
+			$this->assertFalse(
+				$this->shouldPageGetMobileCarousel( $output ),
+				"carousel should not show for action=$action"
+			);
+		}
+	}
+
+	public function testShouldPageGetMobileCarouselRejectsDiffs(): void {
+		// Diffs are served as part of the view action (T428701)
+		$output = $this->makeOutputPage(
+			request: new FauxRequest( [ 'diff' => '12345' ] )
+		);
+		$this->assertFalse( $this->shouldPageGetMobileCarousel( $output ) );
+
+		$output = $this->makeOutputPage(
+			request: new FauxRequest( [ 'diff' => 'prev', 'oldid' => '12345' ] )
+		);
+		$this->assertFalse( $this->shouldPageGetMobileCarousel( $output ) );
+	}
+
+	public function testShouldPageGetMobileCarouselRejectsOldRevisions(): void {
+		$output = $this->makeOutputPage( isRevisionCurrent: false );
+		$this->assertFalse( $this->shouldPageGetMobileCarousel( $output ) );
+	}
+
+	public function testShouldPageGetMobileCarouselRejectsOptedOutPages(): void {
+		// __NOMEDIAVIEWERCAROUSEL__ is a behavior switch, and both the legacy
+		// parser and Parsoid record those via setUnsortedPageProperty(), whose
+		// default value is an empty string. A truthiness check on the property
+		// therefore reads "disabled" as "not disabled".
+		$parserOutput = new ParserOutput();
+		$parserOutput->setUnsortedPageProperty( self::DISABLE_PAGE_PROPERTY );
+		$this->assertSame(
+			'',
+			$parserOutput->getPageProperty( self::DISABLE_PAGE_PROPERTY ),
+			'behavior switches are expected to store an empty string'
+		);
+
+		$output = $this->makeOutputPage();
+		$this->newHooksInstance()->onOutputPageParserOutput( $output, $parserOutput );
+
+		$this->assertSame( '', $output->getProperty( self::DISABLE_PAGE_PROPERTY ) );
+		$this->assertFalse(
+			$this->shouldPageGetMobileCarousel( $output ),
+			'__NOMEDIAVIEWERCAROUSEL__ must suppress the carousel'
+		);
+	}
+
+	public function testShouldPageGetMobileCarouselAllowsPagesWithoutOptOut(): void {
+		$output = $this->makeOutputPage();
+		$this->newHooksInstance()->onOutputPageParserOutput( $output, new ParserOutput() );
+
+		$this->assertNull( $output->getProperty( self::DISABLE_PAGE_PROPERTY ) );
+		$this->assertTrue( $this->shouldPageGetMobileCarousel( $output ) );
+	}
+
+	public function testOnOutputPageParserOutputKeepsOptOutAcrossLaterParserOutputs(): void {
+		// The hook fires once per ParserOutput added to the page. Supplementary
+		// ones (e.g. from OutputPage::addTOCPlaceholder()) carry no page
+		// property, and must not wipe the article's opt-out.
+		$output = $this->makeOutputPage();
+		$hooks = $this->newHooksInstance();
+
+		$articleOutput = new ParserOutput();
+		$articleOutput->setUnsortedPageProperty( self::DISABLE_PAGE_PROPERTY );
+		$hooks->onOutputPageParserOutput( $output, $articleOutput );
+
+		// A bare, supplementary ParserOutput arrives afterwards.
+		$hooks->onOutputPageParserOutput( $output, new ParserOutput() );
+
+		$this->assertSame(
+			'',
+			$output->getProperty( self::DISABLE_PAGE_PROPERTY ),
+			'a later bare ParserOutput must not wipe the opt-out'
+		);
+		$this->assertFalse( $this->shouldPageGetMobileCarousel( $output ) );
+	}
+
+	public function testShouldUseMobileCarouselRequiresConfigOrBetaOptIn(): void {
+		// Neither the production config flag nor the beta opt-in: no carousel.
+		$this->overrideConfigValue( 'MediaViewerMobileCarousel', false );
+		$output = $this->makeOutputPage();
+
+		$this->assertFalse(
+			$this->shouldUseMobileCarousel( $output, true, false )
+		);
+	}
+
+	public function testShouldUseMobileCarouselUsesConfigFlagForProductionRollout(): void {
+		// Sitewide production rollout: enabled for everyone, no beta opt-in.
+		$this->overrideConfigValue( 'MediaViewerMobileCarousel', true );
+		$output = $this->makeOutputPage();
+
+		$this->assertTrue(
+			$this->shouldUseMobileCarousel( $output, true, false )
+		);
+	}
+
+	public function testShouldUseMobileCarouselEnabledViaBetaOptIn(): void {
+		// Production flag off, but the user opted in via the beta feature.
+		$this->overrideConfigValue( 'MediaViewerMobileCarousel', false );
+		$output = $this->makeOutputPage();
+
+		$this->assertTrue(
+			$this->shouldUseMobileCarousel( $output, true, true )
+		);
+	}
+
+	public function testShouldUseMobileCarouselStillRequiresCandidatePage(): void {
+		// Enabled via either gate, the page must still be a valid candidate.
+		$this->overrideConfigValue( 'MediaViewerMobileCarousel', true );
+		$output = $this->makeOutputPage();
+
+		$this->assertFalse(
+			$this->shouldUseMobileCarousel( $output, false, false )
+		);
+		$this->assertFalse(
+			$this->shouldUseMobileCarousel( $output, false, true )
+		);
+	}
+
+	public function testShouldUseMobileCarouselRespectsReaderOptOut(): void {
+		// Carousel enabled sitewide, but the reader opted out via preferences.
+		$user = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption( $user, 'enable_image_carousel', 0 );
+		$user->saveSettings();
+
+		$this->overrideConfigValue( 'MediaViewerMobileCarousel', true );
+		$output = $this->makeOutputPage( user: $user );
+
+		$this->assertFalse( $this->shouldUseMobileCarousel( $output ) );
+	}
+
+	public function testShouldUseMobileCarouselOptOutOverridesBetaOptIn(): void {
+		// A reader who opted into the beta but turned the carousel off in
+		// preferences should not see it, even with the sitewide flag off.
+		$user = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption( $user, 'enable_image_carousel', 0 );
+		$user->saveSettings();
+
+		$this->overrideConfigValue( 'MediaViewerMobileCarousel', false );
+		$output = $this->makeOutputPage( user: $user );
+
+		$this->assertFalse( $this->shouldUseMobileCarousel( $output, true, true ) );
+	}
+
+	public function testBetaOptInSuppressedWhenEnabledSitewide(): void {
+		// The sitewide rollout flag takes precedence over the beta opt-in:
+		// when the carousel is enabled for everyone, isBetaFeatureEnabled()
+		// returns false and short-circuits before reaching the BetaFeatures
+		// extension, so the opt-in is not applied as a redundant control.
+		$this->overrideConfigValue( 'MediaViewerMobileCarousel', true );
+		$this->overrideConfigValue( 'MediaViewerBetaFeature', true );
+
+		$user = $this->getTestUser()->getUser();
+		$method = new \ReflectionMethod( Hooks::class, 'isBetaFeatureEnabled' );
+
+		$this->assertFalse( $method->invoke( $this->newHooksInstance(), $user ) );
+	}
+
+	public function testOnBeforePageDisplayInjectsCarouselMarkupWhenEnabled(): void {
+		$this->overrideConfigValue( 'MediaViewerDesktopVue', false );
+		$output = $this->makeOutputPage();
+		$skin = new SkinTemplate();
+
+		$hooks = $this->newHooksInstance( [
+			self::makeFakeThumbData( 'A.jpg' ),
+			self::makeFakeThumbData( 'B.jpg' ),
+			self::makeFakeThumbData( 'C.jpg' ),
+		] );
+
+		$expectedModules = array_merge(
+			[ 'mmv.bootstrap' ],
+			$this->getCarouselModules()
+		);
+		$output->expects( $this->exactly( count( $expectedModules ) ) )
+			->method( 'addModules' )
+			->with( $this->callback( static function ( string $module ) use ( &$expectedModules ): bool {
+				return $module === array_shift( $expectedModules );
+			} ) );
+		$output->expects( $this->once() )
+			->method( 'prependHTML' )
+			->with( $this->callback( static function ( string $html ): bool {
+				return str_contains( $html, 'id="mmv-carousel-root"' ) &&
+					str_contains( $html, 'class="mw-mmv-wrapper mmv-carousel"' ) &&
+					str_contains( $html, 'class="mmv-carousel__items"' );
+			} ) );
+		$hooks->onBeforePageDisplay( $output, $skin );
+	}
+
+	public function testOnBeforePageDisplayInjectsCarouselMarkupForAnonymousReaders(): void {
+		$output = $this->makeOutputPage(
+			user: $this->getServiceContainer()->getUserFactory()
+				->newFromName( '127.0.0.1', UserRigorOptions::RIGOR_NONE )
+		);
+		$skin = new SkinTemplate();
+
+		$hooks = $this->newHooksInstance( [
+			self::makeFakeThumbData( 'A.jpg' ),
+			self::makeFakeThumbData( 'B.jpg' ),
+			self::makeFakeThumbData( 'C.jpg' ),
+		] );
+
+		$expectedModules = array_merge(
+			[ 'mmv.bootstrap' ],
+			$this->getCarouselModules()
+		);
+		$output->expects( $this->exactly( count( $expectedModules ) ) )
+			->method( 'addModules' )
+			->with( $this->callback( static function ( string $module ) use ( &$expectedModules ): bool {
+				return $module === array_shift( $expectedModules );
+			} ) );
+		$output->expects( $this->once() )
+			->method( 'prependHTML' )
+			->with( $this->stringContains( 'id="mmv-carousel-root"' ) );
+		$hooks->onBeforePageDisplay( $output, $skin );
+	}
+
+	public function testOnBeforePageDisplayLoadsWikimediaEventsAAInstrumentWhenAvailable(): void {
+		$output = $this->makeOutputPage();
+		$skin = new SkinTemplate();
+
+		$hooks = $this->newHooksInstance( [
+			self::makeFakeThumbData( 'A.jpg' ),
+			self::makeFakeThumbData( 'B.jpg' ),
+			self::makeFakeThumbData( 'C.jpg' ),
+		], true, 'minerva', true );
+
+		// T437076: when WikimediaEvents is installed, the A/A instrument module
+		// loads before the carousel module.
+		$addedModules = [];
+		$output->method( 'addModules' )
+			->willReturnCallback( static function ( $modules ) use ( &$addedModules ) {
+				$addedModules[] = $modules;
+			} );
+
+		$hooks->onBeforePageDisplay( $output, $skin );
+
+		$this->assertSame(
+			[ 'mmv.bootstrap',
+				'ext.wikimediaEvents.preImageCarouselRetestAA', 'mmv.carousel' ],
+			$addedModules
+		);
+	}
+
+	/**
+	 * @dataProvider provideAAEligibility
+	 */
+	public function testAAEligibilityWithoutCarouselRollout(
+		bool $mobileView,
+		bool $pageQualifies,
+		bool $optOut,
+		int $imageCount,
+		bool $wikimediaEventsLoaded,
+		bool $expectInstrument
+	): void {
+		$this->overrideConfigValue( 'MediaViewerDesktopVue', false );
+		$this->overrideConfigValue( 'MediaViewerMobileCarousel', false );
+		$this->overrideConfigValue( 'MediaViewerBetaFeature', false );
+		$user = $this->getServiceContainer()->getUserFactory()
+			->newFromName( '127.0.0.1', UserRigorOptions::RIGOR_NONE );
+		$this->getServiceContainer()->getUserOptionsManager()
+			->setOption( $user, 'enable_image_carousel', $optOut ? 0 : 1 );
+		$output = $this->makeOutputPage( user: $user );
+		$items = array_fill( 0, $imageCount, self::makeFakeThumbData( 'A.jpg' ) );
+		$hooks = $this->newHooksInstance(
+			$items, null, 'minerva', $wikimediaEventsLoaded, $mobileView, $pageQualifies
+		);
+
+		if ( $expectInstrument ) {
+			$expectedModules = [
+				'mmv.bootstrap',
+				'ext.wikimediaEvents.preImageCarouselRetestAA'
+			];
+			$output->expects( $this->exactly( 2 ) )->method( 'addModules' )
+				->with( $this->callback( static function ( string $module ) use ( &$expectedModules ): bool {
+					return $module === array_shift( $expectedModules );
+				} ) );
+		} else {
+			// Desktop still loads the existing viewer, but no A/A instrument.
+			$output->expects( $this->once() )->method( 'addModules' )
+				->with( 'mmv.bootstrap' );
+		}
+		$output->expects( $this->never() )->method( 'addModuleStyles' );
+		$output->expects( $this->never() )->method( 'prependHTML' );
+
+		$hooks->onBeforePageDisplay( $output, new SkinTemplate() );
+	}
+
+	public static function provideAAEligibility(): array {
+		return [
+			'eligible without rollout or beta' => [ true, true, false, 3, true, true ],
+			'desktop' => [ false, true, false, 3, true, false ],
+			'unsuitable article' => [ true, false, false, 3, true, false ],
+			'reader opt-out' => [ true, true, true, 3, true, false ],
+			'too few images' => [ true, true, false, 2, true, false ],
+			'WikimediaEvents unavailable' => [ true, true, false, 3, false, false ],
+		];
+	}
+
+	public function testOnBeforePageDisplaySkipsCarouselWhenNotApplicable(): void {
+		$this->overrideConfigValue( 'MediaViewerDesktopVue', false );
+		$output = $this->makeOutputPage();
+		$skin = new SkinTemplate();
+
+		$hooks = $this->newHooksInstance(
+			[
+				self::makeFakeThumbData( 'A.jpg' ),
+				self::makeFakeThumbData( 'B.jpg' ),
+				self::makeFakeThumbData( 'C.jpg' ),
+			],
+			false
+		);
+
+		// No carousel request, but mmv.bootstrap still requested
+		$output->expects( $this->once() )
+			->method( 'addModules' )
+			->with( 'mmv.bootstrap' );
+		$output->expects( $this->never() )
+			->method( 'prependHTML' );
+		$hooks->onBeforePageDisplay( $output, $skin );
+	}
+
+	public function testOnBeforePageDisplaySkipsCarouselWhenFewerThanMinImages(): void {
+		$this->overrideConfigValue( 'MediaViewerDesktopVue', false );
+		$output = $this->makeOutputPage();
+		$skin = new SkinTemplate();
+
+		$hooks = $this->newHooksInstance( [
+			// 2 images: below the MIN_CAROUSEL_IMAGES threshold of 3
+			self::makeFakeThumbData( 'A.jpg' ),
+			self::makeFakeThumbData( 'B.jpg' ),
+		] );
+
+		// Below the threshold no carousel is rendered, so the carousel module
+		// must not be loaded either (T428627).
+		$output->expects( $this->once() )
+			->method( 'addModules' )
+			->with( 'mmv.bootstrap' );
+		$output->expects( $this->never() )
+			->method( 'prependHTML' );
+		$hooks->onBeforePageDisplay( $output, $skin );
+	}
+
+	public function testOnBeforePageDisplayLoadsVueViewerAlongsideCarousel(): void {
+		$output = $this->makeOutputPage();
+		$skin = new SkinTemplate();
+
+		$hooks = $this->newHooksInstance( [
+			self::makeFakeThumbData( 'A.jpg' ),
+			self::makeFakeThumbData( 'B.jpg' ),
+			self::makeFakeThumbData( 'C.jpg' ),
+		] );
+
+		// Loads the bootstrap alongside the carousel so it can
+		// intercept the shared #/media/ route
+		$addedModules = [];
+		$output->method( 'addModules' )
+			->willReturnCallback( static function ( $modules ) use ( &$addedModules ) {
+				$addedModules[] = $modules;
+			} );
+
+		$hooks->onBeforePageDisplay( $output, $skin );
+
+		$this->assertSame( array_merge( [ 'mmv.bootstrap' ], $this->getCarouselModules() ), $addedModules );
+	}
+
+	public function testOnBeforePageDisplayLoadsVueViewerWithoutCarousel(): void {
+		$output = $this->makeOutputPage();
+		$skin = new SkinTemplate();
+
+		$hooks = $this->newHooksInstance( [], false );
+
+		// No carousel on this page
+		$output->expects( $this->once() )
+			->method( 'addModules' )
+			->with( 'mmv.bootstrap' );
+		$output->expects( $this->never() )
+			->method( 'prependHTML' );
+		$hooks->onBeforePageDisplay( $output, $skin );
+	}
+
+	public function testOnBeforePageDisplaySkipsVueViewerWithoutMmvBetaParam(): void {
+		$this->overrideConfigValue( 'MediaViewerDesktopVue', false );
+		$output = $this->makeOutputPage();
+		$skin = new SkinTemplate();
+
+		$hooks = $this->newHooksInstance( [
+			self::makeFakeThumbData( 'A.jpg' ),
+			self::makeFakeThumbData( 'B.jpg' ),
+			self::makeFakeThumbData( 'C.jpg' ),
+		] );
+
+		$expectedModules = array_merge(
+			[ 'mmv.bootstrap' ],
+			$this->getCarouselModules()
+		);
+		$output->expects( $this->exactly( count( $expectedModules ) ) )
+			->method( 'addModules' )
+			->with( $this->callback( static function ( string $module ) use ( &$expectedModules ): bool {
+				return $module === array_shift( $expectedModules );
+			} ) );
+		$hooks->onBeforePageDisplay( $output, $skin );
+	}
+
+	public function testOnBeforePageDisplayLoadsVueViewerWhenVueViewerEnabled(): void {
+		$this->overrideConfigValue( 'MediaViewerDesktopVue', true );
+		// A registered user who has not disabled MediaViewer
+		// ($wgMediaViewerEnableByDefault is on).
+		$output = $this->makeOutputPage( user: $this->getTestUser()->getUser() );
+		$skin = new SkinTemplate();
+
+		$hooks = $this->newHooksInstance( [
+			self::makeFakeThumbData( 'A.jpg' ),
+			self::makeFakeThumbData( 'B.jpg' ),
+			self::makeFakeThumbData( 'C.jpg' ),
+		] );
+
+		// With $wgMediaViewerDesktopVue enabled the bootstrap loads for all
+		// mobile views.
+		$addedModules = [];
+		$output->method( 'addModules' )
+			->willReturnCallback( static function ( $modules ) use ( &$addedModules ) {
+				$addedModules[] = $modules;
+			} );
+
+		$hooks->onBeforePageDisplay( $output, $skin );
+
+		$this->assertSame( array_merge( [ 'mmv.bootstrap' ], $this->getCarouselModules() ), $addedModules );
+	}
+
+	public function testOnBeforePageDisplaySkipsVueViewerWhenUserOptedOut(): void {
+		$user = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption( $user, 'multimediaviewer-enable', 0 );
+		$user->saveSettings();
+
+		$this->overrideConfigValue( 'MediaViewerDesktopVue', true );
+		$output = $this->makeOutputPage( user: $user );
+		$skin = new SkinTemplate();
+
+		$hooks = $this->newHooksInstance( [
+			self::makeFakeThumbData( 'A.jpg' ),
+			self::makeFakeThumbData( 'B.jpg' ),
+			self::makeFakeThumbData( 'C.jpg' ),
+		] );
+
+		// Logged-in users who have disabled MediaViewer load the mmv.bootstrap module
+		// (disabled via $wgMediaViewerOnClick)
+		$expectedModules = array_merge(
+			[ 'mmv.bootstrap' ], $this->getCarouselModules()
+		);
+		$output->expects( $this->exactly( count( $expectedModules ) ) )
+			->method( 'addModules' )
+			->with( $this->callback( static function ( string $module ) use ( &$expectedModules ): bool {
+				return $module === array_shift( $expectedModules );
+			} ) );
+		$hooks->onBeforePageDisplay( $output, $skin );
+	}
+
+	public function testOnMakeGlobalVariablesScriptExportsVueViewerWhenEnabled(): void {
+		$this->overrideConfigValue( 'MediaViewerDesktopVue', true );
+		$user = $this->getTestUser()->getUser();
+
+		$output = $this->createMock( OutputPage::class );
+		$output->method( 'getUser' )->willReturn( $user );
+
+		$vars = [];
+		$this->newHooksInstance(
+			[],
+			true,
+			'vector-2022',
+			false,
+			false
+		)->onMakeGlobalVariablesScript( $vars, $output );
+
+		$this->assertTrue( $vars['wgMediaViewerDesktopVue'] );
+	}
+
+	public function testOnMakeGlobalVariablesScriptExportsVueViewerDisabled(): void {
+		$this->overrideConfigValue( 'MediaViewerDesktopVue', false );
+		$user = $this->getTestUser()->getUser();
+
+		$output = $this->createMock( OutputPage::class );
+		$output->method( 'getUser' )->willReturn( $user );
+
+		$vars = [];
+		$this->newHooksInstance(
+			[],
+			true,
+			'vector-2022',
+			false,
+			false
+		)->onMakeGlobalVariablesScript( $vars, $output );
+
+		$this->assertFalse( $vars['wgMediaViewerDesktopVue'] );
+	}
+
+	public function testOnMakeGlobalVariablesScriptSetsOnClickFalseWhenViewerDisabled(): void {
+		$user = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		// Explicitly disable the viewer so shouldHandleClicks() returns false
+		$userOptionsManager->setOption( $user, 'multimediaviewer-enable', 0 );
+		$user->saveSettings();
+
+		$output = $this->createMock( OutputPage::class );
+		$output->method( 'getUser' )->willReturn( $user );
+
+		$vars = [];
+		$this->newHooksInstance()->onMakeGlobalVariablesScript( $vars, $output );
+
+		$this->assertFalse( $vars['wgMediaViewerOnClick'] );
+	}
+
+	public function testOnMakeGlobalVariablesScriptSetsOnClickTrueWhenViewerEnabled(): void {
+		$user = $this->getTestUser()->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption( $user, 'multimediaviewer-enable', 1 );
+		$user->saveSettings();
+
+		$output = $this->createMock( OutputPage::class );
+		$output->method( 'getUser' )->willReturn( $user );
+
+		$vars = [];
+		$this->newHooksInstance()->onMakeGlobalVariablesScript( $vars, $output );
+
+		$this->assertTrue( $vars['wgMediaViewerOnClick'] );
+	}
+
+	public function testBuildCarouselItemsEmpty(): void {
+		$this->assertSame( '', $this->buildCarouselItemsHtml( [] ) );
+	}
+
+	public function testBuildCarouselItemsRendersItem(): void {
+		$this->overrideConfigValue( MainConfigNames::ThumbnailSteps, self::THUMBNAIL_STEPS );
+
+		$html = $this->buildCarouselItemsHtml( [
+			self::makeFakeThumbData( 'Cat.jpg', 'A cat' ),
+		] );
+
+		$this->assertStringContainsString( 'class="mmv-carousel__item"', $html );
+		$this->assertStringContainsString( 'href="/wiki/File:Cat.jpg"', $html );
+		$this->assertStringContainsString( 'class="mmv-carousel__item-link mw-file-description"', $html );
+		$this->assertStringContainsString( 'aria-label="A cat"', $html );
+		$this->assertStringContainsString(
+			'src="//upload.wikimedia.org/wikipedia/commons/thumb/1/10/Cat.jpg/250px-Cat.jpg"',
+			$html
+		);
+		$this->assertStringContainsString( 'width="250"', $html );
+		$this->assertStringContainsString( 'height="187"', $html );
+		$this->assertStringContainsString( 'alt="A cat"', $html );
+		$this->assertStringContainsString( 'class="mmv-carousel__item-image"', $html );
+		$this->assertStringContainsString( 'loading="lazy"', $html );
+	}
+
+	public function testBuildCarouselItemsNeverRequestsTheFilesOwnWidth(): void {
+		$this->overrideConfigValue( MainConfigNames::ThumbnailSteps, self::THUMBNAIL_STEPS );
+
+		// A file exactly as wide as a thumbnail step (250) must not have that
+		// step requested: core's ImageHandler serves the original at or above the
+		// source width rather than generating a thumbnail, so `250px-Exact.jpg`
+		// would not exist. Fall back to the article's own thumbnail instead.
+		$html = $this->buildCarouselItemsHtml( [
+			self::makeFakeThumbData( 'Exact.jpg', 'Exactly one step wide', 250, 250 ),
+		] );
+
+		$this->assertStringContainsString( 'class="mmv-carousel__item"', $html );
+		$this->assertStringNotContainsString( '250px-Exact.jpg', $html );
+		$this->assertStringContainsString( '120px-Exact.jpg', $html );
+	}
+
+	public function testBuildCarouselItemsSurvivesThumbWithoutSrc(): void {
+		$this->overrideConfigValue( MainConfigNames::ThumbnailSteps, self::THUMBNAIL_STEPS );
+
+		// A thumb carrying neither src nor data-mw-src must not produce a fatal
+		// error page. The closure that rewrites thumbnail URLs takes a string,
+		// and passing it null would throw a TypeError. The item should still
+		// render, falling back to the article's srcset without a src.
+		$thumbData = self::makeFakeThumbData( 'Cat.jpg', 'A cat' );
+		$thumbData['thumb']['src'] = null;
+
+		$html = $this->buildCarouselItemsHtml( [ $thumbData ] );
+
+		$this->assertStringContainsString( 'class="mmv-carousel__item"', $html );
+		$this->assertStringContainsString( 'href="/wiki/File:Cat.jpg"', $html );
+	}
+
+	public function testBuildCarouselItemsKeepsItemWhenNoLargerThumbnailStepFits(): void {
+		$this->overrideConfigValue( MainConfigNames::ThumbnailSteps, self::THUMBNAIL_STEPS );
+
+		// A 200x200 file is smaller than MIN_CAROUSEL_THUMB_SIZE's smallest
+		// qualifying step (250), so there is nothing to resize to. The item
+		// must still be rendered, using its original src.
+		$html = $this->buildCarouselItemsHtml( [
+			self::makeFakeThumbData( 'Small.jpg', 'A small image', 200, 200 ),
+		] );
+
+		$this->assertStringContainsString( 'class="mmv-carousel__item"', $html );
+		$this->assertStringContainsString( 'href="/wiki/File:Small.jpg"', $html );
+		$this->assertStringContainsString( '120px-Small.jpg', $html );
+	}
+
+	public function testBuildCarouselItemsKeepsItemWhenThumbnailStepsUnconfigured(): void {
+		// Core's default for ThumbnailSteps is null, so no step can ever
+		// qualify; items must still render rather than the carousel coming
+		// out empty.
+		$this->overrideConfigValue( MainConfigNames::ThumbnailSteps, null );
+
+		$html = $this->buildCarouselItemsHtml( [
+			self::makeFakeThumbData( 'Cat.jpg', 'A cat' ),
+		] );
+
+		$this->assertStringContainsString( 'class="mmv-carousel__item"', $html );
+		$this->assertStringContainsString( '120px-Cat.jpg', $html );
+	}
+
+	public function testBuildCarouselRenderedItemsMatchReportedCount(): void {
+		$this->overrideConfigValue( MainConfigNames::ThumbnailSteps, self::THUMBNAIL_STEPS );
+
+		// Two of these three files are too small for any thumbnail step to
+		// apply. The count badge and the aria-label are derived from the item
+		// array, so every item must render or they disagree with the list.
+		$html = $this->buildCarouselHtml( [
+			self::makeFakeThumbData( 'Small1.jpg', 'a', 200, 200 ),
+			self::makeFakeThumbData( 'Small2.jpg', 'b', 200, 200 ),
+			self::makeFakeThumbData( 'Big.jpg', 'c' ),
+		], 'Test Page' );
+
+		$this->assertSame( 3, substr_count( $html, 'class="mmv-carousel__item"' ) );
+		$this->assertStringContainsString( '3 images', $html );
+	}
+
+	public function testBuildCarouselItemsDefersImagesBeyondEagerCount(): void {
+		$this->overrideConfigValue( MainConfigNames::ThumbnailSteps, self::THUMBNAIL_STEPS );
+
+		$items = [];
+		foreach ( [ 'A.jpg', 'B.jpg', 'C.jpg', 'D.jpg', 'E.jpg', 'F.jpg', 'G.jpg', 'H.jpg' ] as $name ) {
+			$items[] = self::makeFakeThumbData( $name );
+		}
+		$html = $this->buildCarouselItemsHtml( $items );
+
+		$doc = DOMCompat::newDocument( true );
+		$fragment = DOMUtils::parseHTMLToFragment( $doc, $html );
+		$images = DOMCompat::querySelectorAll( $fragment, 'img' );
+		$this->assertCount( 8, $images );
+
+		// The first CAROUSEL_EAGER_IMAGES items load normally.
+		foreach ( array_slice( $images, 0, 6 ) as $img ) {
+			$this->assertTrue( $img->hasAttribute( 'src' ) );
+			$this->assertFalse( $img->hasAttribute( 'data-src' ) );
+		}
+
+		// The rest carry data-src for carousel.js to load,
+		// keep their dimensions so the tile box stays stable, and start
+		// out in the pending (placeholder) state.
+		foreach ( array_slice( $images, 6 ) as $img ) {
+			$this->assertFalse( $img->hasAttribute( 'src' ) );
+			$this->assertFalse( $img->hasAttribute( 'srcset' ) );
+			$this->assertTrue( $img->hasAttribute( 'data-src' ) );
+			$this->assertTrue( $img->hasAttribute( 'data-srcset' ) );
+			$this->assertSame( '250', DOMCompat::getAttribute( $img, 'width' ) );
+			$this->assertStringContainsString( '--pending', DOMCompat::getAttribute( $img, 'class' ) );
+		}
+
+		$this->assertSame(
+			'//upload.wikimedia.org/wikipedia/commons/thumb/1/10/G.jpg/250px-G.jpg',
+			DOMCompat::getAttribute( $images[6], 'data-src' )
+		);
+		$this->assertCount( 2, DOMCompat::querySelectorAll( $fragment, 'li.mmv-carousel__item--deferred' ) );
+	}
+
+	public function testBuildCarouselItemsFallsBackToFilenameForAriaLabel(): void {
+		$html = $this->buildCarouselItemsHtml( [
+			self::makeFakeThumbData( 'Cat.jpg', '' ),
+		] );
+
+		$this->assertStringContainsString( 'class="mmv-carousel__item"', $html );
+		$this->assertStringContainsString( 'alt=""', $html );
+		$this->assertStringContainsString( 'aria-label="Cat"', $html );
+	}
+
+	public function testBuildCarouselHtmlIncludesLabelWithCount(): void {
+		$html = $this->buildCarouselHtml(
+			[
+				self::makeFakeThumbData( 'A.jpg' ),
+				self::makeFakeThumbData( 'B.jpg' ),
+				self::makeFakeThumbData( 'C.jpg' ),
+			],
+			'Main Page'
+		);
+
+		$this->assertStringContainsString(
+			'aria-label="Images in Main Page, 3 items"',
+			$html
+		);
+		$this->assertStringContainsString( 'class="mmv-carousel__controls"', $html );
+		$this->assertStringContainsString( 'class="mmv-carousel__toggle cdx-button', $html );
+		$this->assertStringContainsString( 'aria-controls="mmv-carousel-items"', $html );
+		$this->assertStringContainsString( 'aria-expanded="true"', $html );
+	}
+
+	public function testBuildCarouselHtmlFallsBackToGenericArticleLabelWhenTitleMissing(): void {
+		$html = $this->buildCarouselHtml(
+			[
+				self::makeFakeThumbData( 'A.jpg' ),
+			],
+			''
+		);
+
+		$this->assertStringContainsString(
+			'aria-label="Images in article, 1 item"',
+			$html
+		);
+	}
+
+	public function testCarouselExclusionBehaviorSwitchIsRegistered(): void {
+		$doubleUnderscoreIDs = $this->getServiceContainer()
+			->getMagicWordFactory()
+			->getDoubleUnderscoreArray()
+			->getNames();
+
+		$this->assertContains( 'nomediaviewercarousel', $doubleUnderscoreIDs );
+		$this->assertTrue(
+			$this->getServiceContainer()
+				->getMagicWordFactory()
+				->get( 'nomediaviewercarousel' )
+				->matchStartToEnd( '__NOMEDIAVIEWERCAROUSEL__' )
+		);
+	}
+
+	public function testShouldPageGetMobileCarouselSkipsMainPage(): void {
+		$this->overrideConfigValue( 'MainPage', 'Main Page' );
+
+		$output = $this->createMock( OutputPage::class );
+		$output->method( 'getTitle' )->willReturn( Title::makeTitle( NS_MAIN, 'Main Page' ) );
+
+		$this->assertFalse( $this->shouldPageGetMobileCarousel( $output ) );
+	}
+}

@@ -1,0 +1,481 @@
+<?php
+declare( strict_types = 1 );
+
+namespace MediaWiki\Extension\MultimediaViewer;
+
+use MediaWiki\FileRepo\File\File;
+use MediaWiki\Title\Title;
+use Wikimedia\Parsoid\Core\DOMCompat;
+use Wikimedia\Parsoid\DOM\Document;
+use Wikimedia\Parsoid\DOM\DocumentFragment;
+use Wikimedia\Parsoid\DOM\Element;
+use Wikimedia\Parsoid\Utils\DOMUtils;
+use Wikimedia\Zest\Zest;
+
+/**
+ * Extract thumbnail image data from a wiki page.
+ *
+ * Applies the following set of filters:
+ *   - CSS selectors that indicate navigational icons and SVG infobox images
+ *   - CSS selectors as passed by a config variable via the constructor
+ *   - CSS selectors that exclude lead infoboxes (infoboxes within section 0)
+ *   - file extension allowlist
+ *   - minimum image size
+ */
+class ThumbExtractor {
+	/**
+	 * Exclusions of thumbnails in known non-content areas.
+	 *
+	 * @const string[]
+	 */
+	private const DISALLOWED_SELECTORS = [
+		// Selectors below this line should be kept in sync with MultimediaViewer's
+		// isAllowedThumb implementation. They apply equally to MultimediaViewer
+		// and the carousel.
+		//
+		// This is inside an informational template like {{refimprove}} on enwiki
+		'.metadata',
+		// MediaViewer has been specifically disabled for this image
+		'.noviewer',
+		// We are on an error page for a non-existing article, the image is part of some template
+		'.noarticletext',
+		'#siteNotice',
+		// Thumbnails of a slideshow gallery
+		'ul.mw-gallery-slideshow li.gallerybox',
+
+		// Selectors below this line are carousel-only. They must not be added
+		// to MultimediaViewer's isAllowedThumb, since they should not affect
+		// the viewer itself.
+		//
+		// Image is excluded from the carousel only; still shown in the viewer
+		'.nocarousel',
+
+		// Exclude infoboxes moved to quick facts.
+		// This should not be relevant in production (because extraction happens
+		// in an earlier post-parsing stage, prior to infoboxes having been moved),
+		// but is purely intended for local development parity when dealing with
+		// external content provided by MobileFrontendContentProvider
+		'.mf-quick-facts .infobox',
+	];
+
+	/**
+	 * @param string[] $allowedExtensions A file extension allowlist,
+	 * typically based on https://commons.wikimedia.org/wiki/Special:MediaStatistics
+	 * @param string[] $excludedImageSelectors CSS selectors whose ancestor presence causes an image to be excluded
+	 * @param int $minWidth Minimum image width in pixels
+	 * @param int $minHeight Minimum image height in pixels
+	 * @param string $articlePath ArticlePath config value
+	 */
+	public function __construct(
+		private array $allowedExtensions,
+		private array $excludedImageSelectors,
+		private int $minWidth,
+		private int $minHeight,
+		private string $articlePath,
+	) {
+	}
+
+	/**
+	 * Select and filter thumbnail elements from a DOM body.
+	 *
+	 * Applies CSS selector-based selection and exclusion filtering, but does
+	 * not match against files. Useful when file metadata is unavailable (e.g.
+	 * when working with proxied HTML from MobileFrontendContentProvider).
+	 *
+	 * @param Document|DocumentFragment|Element $body A wiki page's DOM body
+	 * @return Element[] The filtered thumbnail elements
+	 */
+	public function findThumbs( Document|DocumentFragment|Element $body ): array {
+		$thumbs = $this->select( $body );
+		$thumbs = $this->sort( $body, $thumbs );
+		$thumbs = $this->filter( $body, $thumbs );
+		return $thumbs;
+	}
+
+	/**
+	 * Select image thumbnails from a DOM body via CSS selectors.
+	 *
+	 * @param Document|DocumentFragment|Element $body A wiki page's DOM body
+	 * @return Element[] The extracted elements
+	 */
+	public function select( Document|DocumentFragment|Element $body ): array {
+		$selectors = implode( ', ', [
+			// Parsoid thumbs
+			'[typeof~="mw:File"] a.mw-file-description img',
+			'[typeof~="mw:File"] a.mw-file-description .lazy-image-placeholder',
+			// Legacy parser thumbs
+			'.gallery .image img',
+			'.gallery .image .lazy-image-placeholder',
+			'a.image img',
+			'a.image .lazy-image-placeholder',
+			'a.mw-file-description img',
+			'a.mw-file-description .lazy-image-placeholder',
+			'#file a img',
+		] );
+
+		return iterator_to_array( DOMCompat::querySelectorAll( $body, $selectors ) );
+	}
+
+	/**
+	 * @param Document|DocumentFragment|Element $body A wiki page's DOM body
+	 * @param Element[] $thumbs
+	 * @return Element[]
+	 */
+	private function sort( Document|DocumentFragment|Element $body, array $thumbs ): array {
+		// $thumbs is not guaranteed to be in the correct order in
+		// which the nodes appear in the document
+		if ( $thumbs && method_exists( $thumbs[ 0 ], 'compareDocumentPosition' ) ) {
+			// PHP 8.4+ has built-in position comparison
+			usort(
+				$thumbs,
+				static fn ( $a, $b ) => $a->compareDocumentPosition( $b ) & 2 ? 1 : -1,
+			);
+		} elseif ( count( $thumbs ) > 1 ) {
+			// Older versions don't; we'll determine the relative
+			// position of thumbs in the document by locating it
+			// in the HTML and sort accordingly
+			$doc = $body->ownerDocument;
+			$bodyHtml = $doc->saveHTML( $body );
+			$positions = array_map(
+				static fn ( $thumb ) => strpos( $bodyHtml, $doc->saveHTML( $thumb ) ),
+				$thumbs,
+			);
+			uksort(
+				$thumbs,
+				static fn ( $a, $b ) => $positions[ $a ] <=> $positions[ $b ],
+			);
+		}
+
+		return $thumbs;
+	}
+
+	/**
+	 * Filter files that don't match the given constraints
+	 * (e.g. don't have an allowed extension or whose size, is too small, or match
+	 * disallowed selectors)
+	 *
+	 * @param Document|DocumentFragment|Element $body A wiki page's DOM body
+	 * @param Element[] $thumbs
+	 * @return Element[]
+	 */
+	private function filter( Document|DocumentFragment|Element $body, array $thumbs ): array {
+		$leadSectionThumbs = $this->getLeadSectionThumbs( $body, $thumbs );
+
+		return array_values( array_filter(
+			$thumbs,
+			function ( $thumb ) use ( $leadSectionThumbs ): bool {
+				// Find the parent <a> to get the file name. Rely on
+				// DOMUtils::nodeName() to abstract over differences in
+				// PHP versions (which may use uppercase or lowercase tag names).
+				$anchor = DOMCompat::getParentElement( $thumb );
+				$title = $this->extractTitleFromAnchorElement( $anchor );
+				if ( !$title || $title->getNamespace() !== NS_FILE ) {
+					return false;
+				}
+
+				$filename = $title->getDBkey();
+				$n = strrpos( $filename, '.' );
+				$extension = File::normalizeExtension( $n ? substr( $filename, $n + 1 ) : '' );
+				if ( !in_array( $extension, $this->allowedExtensions ) ) {
+					return false;
+				}
+
+				// if width/height is set, ensure it matches the minima defined
+				$width = DOMCompat::getAttribute( $thumb, 'width' ) ??
+					DOMCompat::getAttribute( $thumb, 'data-width' );
+				$height = DOMCompat::getAttribute( $thumb, 'height' ) ??
+					DOMCompat::getAttribute( $thumb, 'data-height' );
+				if (
+					( $width !== null && ( (int)$width ) < $this->minWidth ) ||
+					( $height !== null && ( (int)$height ) < $this->minHeight )
+				) {
+					return false;
+				}
+
+				$disallowedSelectors = array_merge(
+					self::DISALLOWED_SELECTORS,
+					$this->excludedImageSelectors
+				);
+				if ( $this->matchesSelectors( $thumb, $disallowedSelectors ) ) {
+					return false;
+				}
+
+				// Exclude lead section infobox images
+				if (
+					$this->matchesSelectors( $thumb, [ '.infobox' ] ) &&
+					in_array( $thumb, $leadSectionThumbs, true )
+				) {
+					return false;
+				}
+
+				return true;
+			}
+		) );
+	}
+
+	/**
+	 * Collect an array of all lead section thumbs, where
+	 * "lead section" is defined by every node that is
+	 * encountered before the first heading (h1, h2, ...)
+	 *
+	 * @param Document|DocumentFragment|Element $body
+	 * @param Element[] $thumbs
+	 * @return Element[]
+	 */
+	public function getLeadSectionThumbs( Document|DocumentFragment|Element $body, array $thumbs ): array {
+		$result = [];
+		$node = $body->firstChild;
+		while ( $node && $node !== $body ) {
+			// Break off when first header found
+			if ( in_array( DOMUtils::nodeName( $node ), [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6' ] ) ) {
+				break;
+			}
+
+			// Have not yet encountered a header thus far; keep track of node
+			if ( in_array( $node, $thumbs, true ) ) {
+				$result[] = $node;
+			}
+
+			// First descend into children, then siblings
+			if ( $node->firstChild ) {
+				$node = $node->firstChild;
+				continue;
+			}
+			if ( $node->nextSibling ) {
+				$node = $node->nextSibling;
+				continue;
+			}
+			// Children exhausted; back up to the next parent sibling
+			do {
+				$node = $node->parentNode;
+			} while ( $node && !$node->nextSibling );
+			if ( $node && $node !== $body ) {
+				$node = $node->nextSibling;
+			}
+		}
+
+		return $result;
+	}
+
+	public function extractTitleFromAnchorElement( ?Element $anchor ): ?Title {
+		if ( !$anchor || DOMUtils::nodeName( $anchor ) !== 'a' ) {
+			return null;
+		}
+
+		// Decode percent-encoded characters in the src URL so that
+		// links containing special characters (commas, Unicode,
+		// parentheses, etc.) can match. The href attribute can contain
+		// contains encoded forms like %2C or %C3%A2 (although the
+		// legacy parser and Parsoid handle them differently), whereas
+		// titles are in decoded form.
+		// See T428610.
+		$hrefAttribute = DOMCompat::getAttribute( $anchor, 'href' );
+		if ( $hrefAttribute === null || $hrefAttribute === '' ) {
+			return null;
+		}
+
+		$href = rawurldecode( $hrefAttribute );
+
+		// Extract file name from href
+		// Parsoid: href="//en.wikipedia.org/wiki/File:Example.jpg"
+		// Legacy: href="/wiki/File:Example.jpg"
+		$path = parse_url( $href, PHP_URL_PATH );
+		$articlePathRegex = '/' . str_replace( '\\$1', '(.+)', preg_quote( $this->articlePath, '/' ) ) . '/';
+
+		if (
+			!preg_match( $articlePathRegex, $path, $match ) &&
+			// Fallback for content this wiki did not render: pages proxied
+			// from a foreign wiki (MobileFrontendContentProvider) carry the
+			// *source* wiki's article path ("/wiki/$1" on Wikimedia sites),
+			// and Parsoid emits relative "./Title" hrefs.
+			!preg_match( '#(?:^\./|/wiki/)(.+)$#', $path, $match )
+		) {
+			return null;
+		}
+
+		return Title::newFromText( $match[1] );
+	}
+
+	public function extractCaptionFromAnchorElement(
+		?Element $anchor,
+		// $body is not actively used, but makes it clear that this should be
+		// called from a place where it is still available, lest the $anchor not
+		// be orphaned as the upward nodes (which this method will access) have
+		// been garbage collected away
+		Document|DocumentFragment|Element $body,
+	): ?string {
+		if ( !$anchor || DOMUtils::nodeName( $anchor ) !== 'a' ) {
+			return null;
+		}
+
+		$container = $this->closest( $anchor, '.thumb' ) ?? DOMCompat::getParentElement( $anchor );
+		if ( !$container ) {
+			return null;
+		}
+
+		$findFigcaption = static function ( Element $container ): ?Element {
+			if ( DOMUtils::nodeName( $container ) !== 'figure' ) {
+				return null;
+			}
+			return DOMCompat::querySelector( $container, 'figcaption' );
+		};
+
+		$findThumbCaption = static function ( Element $container, Element $anchor ): ?Element {
+			$thumbCaptions = DOMCompat::querySelectorAll( $container, '.thumbcaption' );
+
+			if ( iterator_count( $thumbCaptions ) <= 1 ) {
+				return $thumbCaptions[0] ?? null;
+			}
+
+			// Template:Multiple_image or some such; try to find closest caption to the image
+			$parent = DOMCompat::getParentElement( $anchor );
+			while (
+				$parent !== null &&
+				( $container->contains( $parent ) || $container->isSameNode( $parent ) )
+			) {
+				$thumbCaptions = array_values( array_filter(
+					iterator_to_array( $parent->childNodes ),
+					static fn ( $childNode ) => Zest::matches( $childNode, '.thumbcaption' )
+				) );
+				if ( $thumbCaptions ) {
+					return $thumbCaptions[0] ?? null;
+				}
+				$parent = DOMCompat::getParentElement( $parent );
+			}
+
+			return null;
+		};
+
+		$findGalleryCaption = function ( Element $anchor ): ?Element {
+			$galleryItem = $this->closest( $anchor, '.gallerybox' );
+			if (
+				!$galleryItem ||
+				// do not treat categories as galleries - the autogenerated caption they have is not helpful
+				$this->closest( $galleryItem, '#mw-category-media' ) !== null ||
+				// do not treat special file related pages as galleries
+				$this->closest(
+					$galleryItem,
+					implode( ', ', [
+						'.page-Special_NewFiles',
+						'.page-Special_MostLinkedFiles',
+						'.page-Special_MostGloballyLinkedFiles',
+						'.page-Special_UncategorizedFiles',
+						'.page-Special_UnusedFiles',
+					] )
+				) !== null
+			) {
+				return null;
+			}
+			return DOMCompat::querySelector( $galleryItem, '.gallerytext' );
+		};
+
+		$findInfoboxCaption = function ( Element $anchor ): ?Element {
+			$infoboxImage = $this->closest( $anchor, '.infobox-image' );
+			if (
+				!$infoboxImage ||
+				iterator_count(
+					DOMCompat::querySelectorAll( $infoboxImage, 'a.mw-file-description, a.image' )
+				) !== 1
+			) {
+				return null;
+			}
+			return DOMCompat::querySelector( $infoboxImage, '.infobox-caption' );
+		};
+
+		$findAnchorCaption = static function ( Element $anchor ): ?Element {
+			if ( !$anchor->hasAttribute( 'title' ) ) {
+				return null;
+			}
+
+			$title = $anchor->getAttribute( 'title' );
+
+			// Convert to a node for convenience, so we can process the
+			// content in the exact same way all other "caption" content
+			// (which tends to live within nodes) is processed
+			$doc = DOMCompat::newDocument( true );
+			return DOMCompat::getFirstElementChild(
+				DOMUtils::parseHTMLToFragment(
+					$doc,
+					'<div>' . htmlspecialchars( $title ) . '</div>'
+				)
+			);
+		};
+
+		$caption = $findFigcaption( $container ) ?:
+			$findThumbCaption( $container, $anchor ) ?:
+			$findGalleryCaption( $anchor ) ?:
+			$findInfoboxCaption( $anchor ) ?:
+			$findAnchorCaption( $anchor );
+
+		if ( !$caption ) {
+			return null;
+		}
+
+		// Further sanitize captions output.
+		$caption = $caption->cloneNode( true );
+		'@phan-var Element $caption';
+		$selectorsToRemove = implode( ', ', [
+			'.magnify',
+			'.reference',
+			'.legend',
+			'.mw-empty-elt',
+			'style',
+			'link',
+		] );
+		foreach ( DOMCompat::querySelectorAll( $caption, $selectorsToRemove ) as $nodeToRemove ) {
+			$nodeToRemove->remove();
+		}
+
+		// Trim (including non-breaking spaces), then drop a dangling colon. For
+		// edge cases like "1859: {{legend|...}}" caption text.
+		$caption = preg_replace( '/^\s+|[\s:]+$/u', '', $caption->textContent );
+		return $caption ?: null;
+	}
+
+	/**
+	 * Check if the thumbnail matches any of the given CSS selectors.
+	 *
+	 * @param Element $thumb An image thumbnail element
+	 * @param string[] $selectors CSS selectors whose ancestor presence causes an image to be excluded
+	 * @return bool
+	 */
+	private function matchesSelectors( Element $thumb, array $selectors ): bool {
+		foreach ( $selectors as $selector ) {
+			if ( $this->closest( $thumb, $selector ) !== null ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Find the closest parent of a DOM element (including itself)
+	 * that matches a CSS selector.
+	 *
+	 * @param Element|null $element A DOM element
+	 * @param string $selector A CSS selector to match
+	 * @return Element|null The matching element, or null if none
+	 */
+	private function closest( ?Element $element, string $selector ): ?Element {
+		if ( $element === null ) {
+			return null;
+		}
+
+		// Check the element itself first
+		if ( Zest::matches( $element, $selector ) ) {
+			return $element;
+		}
+
+		// Traverse up through parents
+		$parent = DOMCompat::getParentElement( $element );
+		while ( $parent !== null ) {
+			if ( Zest::matches( $parent, $selector ) ) {
+				return $parent;
+			}
+			$parent = DOMCompat::getParentElement( $parent );
+		}
+
+		return null;
+	}
+}

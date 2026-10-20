@@ -1,0 +1,35 @@
+/*
+ * This file is part of the MediaWiki extension MultimediaViewer.
+ *
+ * MultimediaViewer is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * MultimediaViewer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MultimediaViewer.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+const { ThumbnailWidth } = require( 'mmv' );
+
+QUnit.module( 'mmv.model', QUnit.newMwEnvironment() );
+
+QUnit.test( 'ThumbnailWidth constructor sense check', ( assert ) => {
+	const cssWidth = 23;
+	const cssHeight = 29;
+	const realWidth = 123;
+	let thumbnailWidth = new ThumbnailWidth( cssWidth, cssHeight, realWidth );
+
+	assert.strictEqual( thumbnailWidth.cssWidth, cssWidth, 'Width is set correctly' );
+	assert.strictEqual( thumbnailWidth.cssHeight, cssHeight, 'Height is set correctly' );
+	assert.strictEqual( thumbnailWidth.real, realWidth, 'Real width is set correctly' );
+
+	assert.throws( () => {
+		thumbnailWidth = new ThumbnailWidth( cssWidth, cssHeight );
+	}, 'Exception is thrown when parameters are missing' );
+} );
