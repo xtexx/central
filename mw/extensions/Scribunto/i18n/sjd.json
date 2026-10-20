@@ -1,0 +1,12 @@
+{
+	"@metadata": {
+		"authors": [
+			"Meerrahtar",
+			"Merrahtar"
+		]
+	},
+	"scribunto-doc-page-header": "''Тэдта лӣ [[$1]] мо̄дуль докуменнтлаһтҍмуж лысст.''",
+	"scribunto-lua-error": "Lua ся̄гкнэгк: $2.",
+	"nstab-module": "Мо̄дуль",
+	"tooltip-ca-nstab-module": "Кӣһче мо̄дуль лыст"
+}
