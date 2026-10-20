@@ -1,0 +1,11 @@
+{
+	"@metadata": {
+		"authors": [
+			"Bennylin",
+			"Presidenvolksraad",
+			"Rachmat04"
+		]
+	},
+	"apihelp-jsonconfig-param-namespace": "Nomor ruang nama judul akan diproses.",
+	"apihelp-jsonconfig-param-title": "Judul untuk diproses tanpa awalan ruang nama."
+}

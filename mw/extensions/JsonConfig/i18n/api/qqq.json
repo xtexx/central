@@ -1,0 +1,40 @@
+{
+	"@metadata": {
+		"authors": [
+			"Amire80",
+			"Liuxinyu970226",
+			"Lloffiwr",
+			"McDutchie",
+			"Purodha",
+			"Raymond",
+			"Robby",
+			"Shirayuki",
+			"Siebrand",
+			"Umherirrender",
+			"Yuri Astrakhan"
+		]
+	},
+	"apihelp-jsonconfig-summary": "{{doc-apihelp-summary|jsonconfig}}",
+	"apihelp-jsonconfig-param-command": "{{doc-apihelp-param|jsonconfig|command}}",
+	"apihelp-jsonconfig-paramvalue-command-status": "{{doc-apihelp-paramvalue|jsonconfig|command|status}}",
+	"apihelp-jsonconfig-paramvalue-command-reset": "{{doc-apihelp-paramvalue|jsonconfig|command|reset}}",
+	"apihelp-jsonconfig-paramvalue-command-reload": "The \"config store\" is the new way to store the MediaWiki configuration outside <code>LocalSettings.php</code>, namely in JSON files. \n----\n{{doc-apihelp-paramvalue|jsonconfig|command|reload}}",
+	"apihelp-jsonconfig-param-namespace": "{{doc-apihelp-param|jsonconfig|namespace}}",
+	"apihelp-jsonconfig-param-title": "{{doc-apihelp-param|jsonconfig|title}}",
+	"apihelp-jsonconfig-param-content": "{{doc-apihelp-param|jsonconfig|content}}",
+	"apihelp-jsonconfig-example-1": "{{doc-apihelp-example|jsonconfig}}",
+	"apihelp-jsonconfig-example-2": "{{doc-apihelp-example|jsonconfig}}",
+	"apihelp-jsonconfig-example-3": "{{doc-apihelp-example|jsonconfig}}",
+	"apihelp-jsondata-summary": "{{doc-apihelp-summary|jsondata}}",
+	"apihelp-jsondata-param-title": "{{doc-apihelp-param|jsondata|title}}",
+	"apihelp-jsondata-example-1": "{{doc-apihelp-example|jsondata}}",
+	"apihelp-jsondata-example-2": "{{doc-apihelp-example|jsondata}}",
+	"apihelp-jsontransform-summary": "{{doc-apihelp-summary|jsontransform}}",
+	"apihelp-jsontransform-param-title": "{{doc-apihelp-param|jsontransform|title}}",
+	"apihelp-jsontransform-param-jtmodule": "The phrase '''“Defaults to Module: namespace”''' should be read as: '''The default namespace is Module:.''' (Note that the ''':''' is part of the namespace prefix.)\n\n{{doc-apihelp-param|jsontransform|jtmodule}}",
+	"apihelp-jsontransform-param-jtfunction": "{{doc-apihelp-param|jsontransform|jtfunction}}",
+	"apihelp-jsontransform-param-jtargs": "{{doc-apihelp-param|jsontransform|jtargs}}\nSequence of strings passed as key=value pairs.",
+	"apihelp-jsontransform-example-1": "{{doc-apihelp-example|jsontransform}}",
+	"apierror-jsonconfig-paramrequired": "{{doc-apierror}}\n\nParameters:\n* $1 - Parameter name",
+	"apierror-jsonconfig-badtitle": "{{doc-apierror}}"
+}
