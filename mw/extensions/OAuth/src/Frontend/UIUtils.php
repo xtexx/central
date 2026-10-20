@@ -1,0 +1,42 @@
+<?php
+
+namespace MediaWiki\Extension\OAuth\Frontend;
+
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Message\Message;
+use OOUI\Tag;
+
+/**
+ * Static utility class for the special pages
+ */
+class UIUtils {
+	/** Request parameter that opts in to listing owner-only consumers */
+	public const SHOW_OWNER_ONLY_PARAM = 'showowneronly';
+
+	/**
+	 * Generate an information table for a consumer. The result will be suitable for use as a
+	 * HTMLForm field with no label.
+	 * @param array $info fieldname-message => description; description will be escaped (use
+	 *   HtmlSnippet to avoid); fields with null value will be ignored; messages will be interpreted
+	 *   as plaintext
+	 * @param IContextSource $context
+	 * @return string
+	 */
+	public static function generateInfoTable( $info, $context ) {
+		$dl = new Tag( 'dl' );
+		$dl->addClasses( [ 'mw-mwoauth-infotable' ] );
+		foreach ( $info as $fieldname => $description ) {
+			if ( $description === null ) {
+				continue;
+			} elseif ( $description instanceof Message ) {
+				$description = $description->plain();
+			}
+			$dt = new Tag( 'dt' );
+			$dd = new Tag( 'dd' );
+			$dt->appendContent( $context->msg( $fieldname )->text() );
+			$dd->appendContent( $description );
+			$dl->appendContent( $dt, $dd );
+		}
+		return $dl->toString();
+	}
+}

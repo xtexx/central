@@ -1,0 +1,232 @@
+<?php
+
+namespace MediaWiki\Extension\OAuth;
+
+use League\OAuth2\Server\Entities\ScopeEntityInterface;
+use League\OAuth2\Server\Middleware\ResourceServerMiddleware;
+use League\OAuth2\Server\ResourceServer as LeagueResourceServer;
+use MediaWiki\Extension\OAuth\Backend\MWOAuthException;
+use MediaWiki\Extension\OAuth\Backend\Utils;
+use MediaWiki\Extension\OAuth\Entity\ClientEntity;
+use MediaWiki\Extension\OAuth\Repository\ScopeRepository;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Request\WebRequest;
+use MediaWiki\Rest\HttpException;
+use MediaWiki\User\CentralId\CentralIdLookup;
+use MediaWiki\User\User;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Wikimedia\Message\MessageValue;
+
+class ResourceServer {
+	/** @var ResourceServerMiddleware */
+	protected $middleware;
+	/** @var User */
+	protected $user;
+	/** @var ClientEntity */
+	protected $client;
+	/** @var array<string,ScopeEntityInterface> */
+	protected $scopes;
+	/** @var string */
+	protected $accessTokenId;
+	/** @var bool */
+	protected $verified = false;
+
+	public static function factory(): self {
+		$config = MediaWikiServices::getInstance()->getConfigFactory()->makeConfig( 'mwoauth' );
+		return new static( $config->get( 'OAuth2PublicKey' ) );
+	}
+
+	/**
+	 * @param string $publicKey
+	 */
+	protected function __construct( string $publicKey ) {
+		$accessTokenRepository = OAuthServices::wrap( MediaWikiServices::getInstance() )
+			->getAccessTokenRepository();
+
+		$server = new LeagueResourceServer(
+			$accessTokenRepository,
+			$publicKey,
+			new BearerTokenValidator( $accessTokenRepository ),
+		);
+		$this->middleware = new ResourceServerMiddleware( $server );
+	}
+
+	/**
+	 * Check if the request is an OAuth2 request
+	 *
+	 * @param WebRequest|ServerRequestInterface $request
+	 * @return bool
+	 */
+	public static function isOAuth2Request( $request ): bool {
+		$authHeader = $request->getHeader( 'authorization' );
+
+		// Normalize to array
+		if ( is_string( $authHeader ) ) {
+			$authHeader = [ $authHeader ];
+		}
+
+		return $authHeader && str_starts_with( $authHeader[0], 'Bearer' );
+	}
+
+	/**
+	 * @param ServerRequestInterface $request
+	 * @param ResponseInterface $response
+	 * @param callable $callback
+	 * @return ResponseInterface
+	 */
+	public function verify( $request, $response, $callback ) {
+		$this->verified = false;
+
+		return $this->middleware->__invoke(
+			$request,
+			$response,
+			function ( $request, $response ) use ( $callback ) {
+				$this->setVerifiedInfo( $request );
+				return $callback( $response );
+			}
+		);
+	}
+
+	/**
+	 * @throws MWOAuthException
+	 */
+	public function getUser(): User {
+		$this->assertVerified();
+		return $this->user;
+	}
+
+	/**
+	 * @throws MWOAuthException
+	 */
+	public function getClient(): ClientEntity {
+		$this->assertVerified();
+		return $this->client;
+	}
+
+	/**
+	 * @return array<string,ScopeEntityInterface>
+	 * @throws MWOAuthException
+	 */
+	public function getScopes(): array {
+		$this->assertVerified();
+		return $this->scopes;
+	}
+
+	/**
+	 * Get access token this request was made with
+	 *
+	 * @throws MWOAuthException
+	 */
+	public function getAccessTokenId(): string {
+		$this->assertVerified();
+		return $this->accessTokenId;
+	}
+
+	/**
+	 * Check if the scope is allowed
+	 *
+	 * @param string|ScopeEntityInterface $scope
+	 * @return bool
+	 * @throws MWOAuthException
+	 */
+	public function isScopeAllowed( $scope ): bool {
+		$this->assertVerified();
+
+		if ( $scope instanceof ScopeEntityInterface ) {
+			$scope = $scope->getIdentifier();
+		}
+
+		return isset( $this->scopes[$scope] );
+	}
+
+	/**
+	 * Read out the verified request and get relevant information
+	 *
+	 * @throws HttpException
+	 */
+	public function setVerifiedInfo( ServerRequestInterface $request ) {
+		$this->setUser( $request );
+		$this->setClient( $request );
+		$this->setScopes( $request );
+		$this->setAccessTokenId( $request );
+
+		$this->verified = true;
+	}
+
+	/**
+	 * Set the authorized user to the global context
+	 *
+	 * @throws HttpException
+	 */
+	private function setUser( ServerRequestInterface $request ) {
+		$userId = $request->getAttribute( 'oauth_user_id', 0 );
+		if ( !$userId ) {
+			// Set anon user when no user id is present in the AT (machine grant)
+			$this->user = User::newFromId( 0 );
+			return;
+		}
+
+		$lookup = Utils::getCentralIdLookup();
+		$userName = $lookup->nameFromCentralId( $userId, CentralIdLookup::AUDIENCE_RAW );
+		if ( !$userName ) {
+			// This should be unreachable
+			throw new HttpException( 'User represented by given access token is invalid', 403 );
+		}
+		// Local user account may be unregistered if account autocreation failed
+		$this->user = User::newFromName( $userName );
+		if ( !$lookup->isOwned( $this->user ) ) {
+			// This should be unreachable
+			throw new HttpException( 'User represented by given access token is invalid', 403 );
+		}
+	}
+
+	/**
+	 * Set the ClientEntity from a validated request
+	 *
+	 * @throws HttpException
+	 */
+	private function setClient( ServerRequestInterface $request ) {
+		$consumerRepository = OAuthServices::wrap( MediaWikiServices::getInstance() )->getConsumerRepository();
+		$client = $consumerRepository->getByKey( $request->getAttribute( 'oauth_client_id' ) );
+		if ( !$client || !( $client instanceof ClientEntity ) ) {
+			throw new HttpException( 'Client represented by given access token is invalid', 403 );
+		}
+		$this->client = $client;
+	}
+
+	/**
+	 * Set validated scopes
+	 */
+	private function setScopes( ServerRequestInterface $request ) {
+		$scopeNames = $request->getAttribute( 'oauth_scopes', [] );
+		$scopeRepo = new ScopeRepository();
+		$this->scopes = [];
+		foreach ( $scopeNames as $scopeName ) {
+			$scope = $scopeRepo->getScopeEntityByIdentifier( $scopeName );
+			if ( !$scope ) {
+				continue;
+			}
+			$this->scopes[$scope->getIdentifier()] = $scope;
+		}
+	}
+
+	/**
+	 * Set the access token this request was made with
+	 */
+	private function setAccessTokenId( ServerRequestInterface $request ) {
+		$this->accessTokenId = $request->getAttribute( 'oauth_access_token_id' );
+	}
+
+	/**
+	 * @throws MWOAuthException
+	 */
+	private function assertVerified() {
+		if ( !$this->verified ) {
+			throw new MWOAuthException(
+				MessageValue::new( 'mwoauth-oauth2-error-request-not-verified' ),
+				$this->getClient()->getLogContext()
+			);
+		}
+	}
+}

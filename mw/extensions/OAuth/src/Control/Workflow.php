@@ -1,0 +1,70 @@
+<?php
+
+namespace MediaWiki\Extension\OAuth\Control;
+
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\Extension\OAuth\Backend\Consumer;
+use MediaWiki\Utils\UrlUtils;
+
+/** Service class for OAuth workflow-related business logic. */
+class Workflow {
+
+	/** @internal For use by ServiceWiring */
+	public const CONSTRUCTOR_OPTIONS = [
+		'OAuthAutoApprove',
+	];
+
+	public const AUTOAPPROVE_RULE_GRANTS = 'grants';
+	public const AUTOAPPROVE_RULE_PROTOCOLS = 'protocols';
+
+	public function __construct(
+		private readonly ServiceOptions $options,
+		private readonly UrlUtils $oauthUrlUtils,
+	) {
+		$options->assertRequiredOptions( self::CONSTRUCTOR_OPTIONS );
+	}
+
+	/**
+	 * True if this is a low-risk consumer that does not require manual approval from an
+	 * OAuth admin, and can go straight to the 'approved' stage after creation.
+	 * @param Consumer $consumer
+	 * @return bool
+	 */
+	public function consumerCanBeAutoApproved( Consumer $consumer ): bool {
+		$urlParts = $this->oauthUrlUtils->parse( $consumer->getCallbackUrl() );
+		if ( ( ( $urlParts['port'] ?? null ) === 1 ) && $consumer->getCallbackIsPrefix() ) {
+			// wildcard port
+			return false;
+		}
+
+		foreach ( $this->options->get( 'OAuthAutoApprove' ) as $condition ) {
+			// check 'grants' rule
+			if ( array_key_exists( self::AUTOAPPROVE_RULE_GRANTS, $condition ) ) {
+				$allowedGrants = $condition[self::AUTOAPPROVE_RULE_GRANTS];
+				if ( array_diff( $consumer->getGrants(), $allowedGrants ) !== [] ) {
+					continue;
+				}
+				unset( $condition[self::AUTOAPPROVE_RULE_GRANTS] );
+			}
+
+			// check 'protocols' rule
+			if ( array_key_exists( self::AUTOAPPROVE_RULE_PROTOCOLS, $condition ) ) {
+				$allowedProtocols = $condition[self::AUTOAPPROVE_RULE_PROTOCOLS];
+				if ( !in_array( $urlParts['scheme'] ?? null, $allowedProtocols, true ) ) {
+					continue;
+				}
+				unset( $condition[self::AUTOAPPROVE_RULE_PROTOCOLS] );
+			}
+
+			// check for unsupported rules
+			if ( $condition ) {
+				continue;
+			}
+
+			return true;
+		}
+		// some of the conditions didn't match
+		return false;
+	}
+
+}

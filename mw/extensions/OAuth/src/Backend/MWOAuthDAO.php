@@ -1,0 +1,536 @@
+<?php
+
+namespace MediaWiki\Extension\OAuth\Backend;
+
+use LogicException;
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Logger\LoggerFactory;
+use MediaWiki\Message\Message;
+use Psr\Log\LoggerInterface;
+use stdClass;
+use Wikimedia\Rdbms\DBReadOnlyError;
+use Wikimedia\Rdbms\IDatabase;
+use Wikimedia\Rdbms\IDBAccessObject;
+use Wikimedia\Rdbms\IReadableDatabase;
+
+/**
+ * (c) Aaron Schulz 2013, GPL
+ *
+ * @license GPL-2.0-or-later
+ */
+
+/**
+ * Representation of a Data Access Object
+ */
+abstract class MWOAuthDAO {
+	/** New consumer, needs to be inserted to the DB */
+	public const ORIGIN_NEW = 'new';
+	/** Consumer already present in the DB */
+	public const ORIGIN_DB = 'db';
+	/** Managed via configuration, not the DB */
+	public const ORIGIN_CONFIG = 'config';
+
+	/** @var string object construction origin */
+	private $daoOrigin = self::ORIGIN_NEW;
+	/** @var bool whether fields changed or the field is new */
+	private $daoPending = true;
+
+	/** @var LoggerInterface */
+	protected $logger;
+
+	final protected function __construct() {
+		$fields = array_keys( static::getFieldPermissionChecks() );
+		if ( array_diff( $fields, $this->getFieldNames() ) ) {
+			throw new LogicException( "Invalid field(s) defined in access check methods." );
+		}
+		$this->logger = LoggerFactory::getInstance( 'OAuth' );
+	}
+
+	/**
+	 * @param array $values (field => value) map
+	 * @return static
+	 */
+	final public static function newFromArray( array $values ) {
+		$class = static::getDaoClass( $values );
+		/** @var self $dao */
+		$dao = new $class();
+
+		// Make sure oauth_version is set - for backwards compat
+		$values['oauth_version'] ??= Consumer::OAUTH_VERSION_1;
+		$dao->loadFromValues( $values );
+		return $dao;
+	}
+
+	/**
+	 * Determine and return the correct consumer class
+	 *
+	 * @param array $data
+	 * @return string
+	 */
+	protected static function getDaoClass( array $data ) {
+		return static::class;
+	}
+
+	/**
+	 * @param IReadableDatabase $db
+	 * @param array|stdClass $row
+	 * @return static
+	 */
+	final public static function newFromRow( IReadableDatabase $db, $row ) {
+		$class = static::getDaoClass( (array)$row );
+		$dao = new $class();
+		$dao->loadFromRow( $db, $row );
+		return $dao;
+	}
+
+	/**
+	 * @param IReadableDatabase $db
+	 * @param int $id
+	 * @param int $flags IDBAccessObject::READ_* bitfield
+	 * @return stdClass|false
+	 */
+	public static function fetchRowFromId( IReadableDatabase $db, $id, $flags = 0 ): stdClass|false {
+		$queryBuilder = $db->newSelectQueryBuilder()
+			->select( array_values( static::getFieldColumnMap() ) )
+			->from( static::getTable() )
+			->where( [ static::getIdColumn() => (int)$id ] )
+			->caller( static::class . '::' . __FUNCTION__ );
+		if ( $flags & IDBAccessObject::READ_LOCKING ) {
+			$queryBuilder->forUpdate();
+		}
+		return $queryBuilder->fetchRow();
+	}
+
+	/**
+	 * @param IReadableDatabase $db
+	 * @param int $id
+	 * @param int $flags IDBAccessObject::READ_* bitfield
+	 * @return static|false
+	 */
+	final public static function newFromId( IReadableDatabase $db, $id, $flags = 0 ) {
+		$row = self::fetchRowFromId( $db, $id, $flags );
+		if ( !$row ) {
+			return false;
+		}
+		return static::newFromRow( $db, $row );
+	}
+
+	/**
+	 * Get the value of a field
+	 *
+	 * @param string $name
+	 * @return mixed
+	 */
+	final public function get( $name ) {
+		if ( !static::hasField( $name ) ) {
+			throw new LogicException( "Object has no '$name' field." );
+		}
+		return $this->$name;
+	}
+
+	/**
+	 * Set the value of a field
+	 *
+	 * @param string $name
+	 * @param mixed $value
+	 * @return mixed The old value
+	 */
+	final public function setField( $name, $value ) {
+		$old = $this->setFields( [ $name => $value ] );
+		return $old[$name];
+	}
+
+	/**
+	 * Set the values for a set of fields
+	 *
+	 * @param array $values (field => value) map
+	 * @return array Map of old values
+	 */
+	final public function setFields( array $values ) {
+		$old = [];
+		foreach ( $values as $name => $value ) {
+			if ( !static::hasField( $name ) ) {
+				throw new LogicException( "Object has no '$name' field." );
+			}
+			$old[$name] = $this->$name;
+			$this->$name = $value;
+			if ( $old[$name] !== $value ) {
+				$this->daoPending = true;
+			}
+		}
+		$this->normalizeValues();
+		return $old;
+	}
+
+	/**
+	 * @return string[]
+	 */
+	final public function getFieldNames() {
+		return array_keys( static::getFieldColumnMap() );
+	}
+
+	/**
+	 * @param IDatabase $dbw
+	 * @return bool
+	 * @throws DBReadOnlyError
+	 */
+	public function save( IDatabase $dbw ) {
+		global $wgMWOAuthReadOnly;
+
+		$uniqueId = $this->getIdValue();
+		$idColumn = static::getIdColumn();
+		if ( $wgMWOAuthReadOnly ) {
+			throw new DBReadOnlyError( $dbw, __CLASS__ . ": tried to save while db is read-only" );
+		}
+		if ( $this->daoOrigin === self::ORIGIN_DB ) {
+			if ( !$this->daoPending ) {
+				$this->logger->debug( get_class( $this ) . ': skipping DB update; object unchanged.' );
+				return false;
+			}
+			$this->logger->debug( get_class( $this ) . ': performing DB update; object changed.' );
+			$dbw->newUpdateQueryBuilder()
+				->update( static::getTable() )
+				->set( $this->getRowArray( $dbw ) )
+				->where( [ $idColumn => $uniqueId ] )
+				->caller( static::class . '::' . __FUNCTION__ )
+				->execute();
+			$this->daoPending = false;
+			return $dbw->affectedRows() > 0;
+		} elseif ( $this->daoOrigin === self::ORIGIN_NEW ) {
+			$this->logger->debug( get_class( $this ) . ': performing DB update; new object.' );
+			$afield = static::getAutoIncrField();
+			$acolumn = $afield !== null ? static::getColumn( $afield ) : null;
+			$row = $this->getRowArray( $dbw );
+			if ( $acolumn !== null && $row[$acolumn] === null ) {
+				// auto-increment field should be omitted, not set null, for
+				// auto-incrementing behavior
+				unset( $row[$acolumn] );
+			}
+			$dbw->newInsertQueryBuilder()
+				->insertInto( static::getTable() )
+				->row( $row )
+				->caller( static::class . '::' . __FUNCTION__ )
+				->execute();
+			if ( $afield !== null ) {
+				// update field for auto-increment field
+				$this->$afield = $dbw->insertId();
+			}
+			$this->daoPending = false;
+			return true;
+		} else {
+			throw new LogicException( __METHOD__ . ' called on a consumer not managed via the DB' );
+		}
+	}
+
+	/**
+	 * @param IDatabase $dbw
+	 * @return bool
+	 * @throws DBReadOnlyError
+	 */
+	public function delete( IDatabase $dbw ) {
+		global $wgMWOAuthReadOnly;
+
+		$uniqueId = $this->getIdValue();
+		$idColumn = static::getIdColumn();
+		if ( $wgMWOAuthReadOnly ) {
+			throw new DBReadOnlyError( $dbw, __CLASS__ . ": tried to delete while db is read-only" );
+		}
+		if ( $this->daoOrigin === self::ORIGIN_DB ) {
+			$dbw->newDeleteQueryBuilder()
+				->deleteFrom( static::getTable() )
+				->where( [ $idColumn => $uniqueId ] )
+				->caller( static::class . '::' . __FUNCTION__ )
+				->execute();
+			$this->daoPending = true;
+			return $dbw->affectedRows() > 0;
+		} elseif ( $this->daoOrigin === self::ORIGIN_NEW ) {
+			return false;
+		} else {
+			throw new LogicException( __METHOD__ . ' called on a consumer not managed via the DB' );
+		}
+	}
+
+	/**
+	 * Get the schema information for this object type
+	 *
+	 * This should return an associative array with:
+	 *   - idField        : a field with an int/hex UNIQUE identifier
+	 *   - autoIncrField  : a field that auto-increments in the DB (or NULL if none)
+	 *   - table          : a table name
+	 *   - fieldColumnMap : a map of field names to column names
+	 *   - extraFields    : a list of field names which don't map to column names but are
+	 *                      nevertheless part of the entity's persistent state. Used by entities
+	 *                      which aren't stored in the database.
+	 *
+	 * @return array
+	 */
+	abstract protected static function getSchema(): array;
+
+	/**
+	 * Get the access control check methods for this object type
+	 *
+	 * This returns a map of field names to method names.
+	 * The methods check if a context user has access to the field,
+	 * returning true if they do and a Message object otherwise.
+	 * The methods take (field name, IContextSource) as arguments.
+	 *
+	 * @see MWOAuthDAO::userCanAccess()
+	 * @see MWOAuthDAOAccessControl
+	 *
+	 * @return array<string,string> Map of (field name => name of method that checks access)
+	 */
+	abstract protected static function getFieldPermissionChecks(): array;
+
+	/**
+	 * @return string
+	 * @internal for use by ConsumerRepository and ConsumerAcceptanceRepository classes only
+	 */
+	final public static function getTable() {
+		// @phan-suppress-next-line PhanAbstractStaticMethodCallInStatic
+		$schema = static::getSchema();
+		return $schema['table'];
+	}
+
+	/**
+	 * Returns a mapping of field names (object properties) to DB column names.
+	 * @return array<string,string>
+	 * @internal for use by ConsumerRepository and ConsumerAcceptanceRepository classes only
+	 */
+	final public static function getFieldColumnMap() {
+		// @phan-suppress-next-line PhanAbstractStaticMethodCallInStatic
+		$schema = static::getSchema();
+		return $schema['fieldColumnMap'];
+	}
+
+	/**
+	 * Returns a list of field names which don't map to column names but are nevertheless
+	 * part of the entity's persistent state. Used by entities which aren't stored in the database.
+	 * @return string[]
+	 * @phan-return list<string>
+	 */
+	final protected static function getExtraFields(): array {
+		// @phan-suppress-next-line PhanAbstractStaticMethodCallInStatic
+		$schema = static::getSchema();
+		return $schema['extraFields'];
+	}
+
+	/**
+	 * @param string $field
+	 * @return string
+	 */
+	final protected static function getColumn( $field ) {
+		// @phan-suppress-next-line PhanAbstractStaticMethodCallInStatic
+		$schema = static::getSchema();
+		return $schema['fieldColumnMap'][$field];
+	}
+
+	/**
+	 * @param string $field
+	 * @return bool
+	 */
+	final protected static function hasField( $field ) {
+		// @phan-suppress-next-line PhanAbstractStaticMethodCallInStatic
+		$schema = static::getSchema();
+		return isset( $schema['fieldColumnMap'][$field] )
+			|| in_array( $field, $schema['extraFields'], true );
+	}
+
+	/**
+	 * @return string|null
+	 */
+	final protected static function getAutoIncrField() {
+		// @phan-suppress-next-line PhanAbstractStaticMethodCallInStatic
+		$schema = static::getSchema();
+		return $schema['autoIncrField'] ?? null;
+	}
+
+	/**
+	 * @return string
+	 * @internal for use by ConsumerRepository and ConsumerAcceptanceRepository classes only
+	 */
+	final public static function getIdColumn() {
+		// @phan-suppress-next-line PhanAbstractStaticMethodCallInStatic
+		$schema = static::getSchema();
+		return $schema['fieldColumnMap'][$schema['idField']];
+	}
+
+	/**
+	 * @return int|string
+	 */
+	final protected function getIdValue() {
+		$schema = static::getSchema();
+		$field = $schema['idField'];
+		return $this->$field;
+	}
+
+	final public function toArray(): array {
+		$values = [];
+		foreach ( static::getFieldColumnMap() as $field => $column ) {
+			$values[$field] = $this->$field;
+		}
+		foreach ( static::getExtraFields() as $field ) {
+			$values[$field] = $this->$field;
+		}
+		return $values;
+	}
+
+	/**
+	 * @param array $values
+	 */
+	final protected function loadFromValues( array $values ) {
+		foreach ( static::getFieldColumnMap() as $field => $column ) {
+			if ( !array_key_exists( $field, $values ) ) {
+				throw new LogicException( get_class( $this ) . " requires '$field' field." );
+			}
+			$this->$field = $values[$field];
+		}
+		foreach ( static::getExtraFields() as $field ) {
+			if ( array_key_exists( $field, $values ) ) {
+				$this->$field = $values[$field];
+			}
+		}
+		$this->normalizeValues();
+		$this->daoOrigin = self::ORIGIN_NEW;
+		$this->daoPending = true;
+	}
+
+	/**
+	 * Subclasses should make this normalize fields (e.g. timestamps)
+	 *
+	 * @return void
+	 */
+	abstract protected function normalizeValues();
+
+	/**
+	 * @param IReadableDatabase $db
+	 * @param stdClass|array $row
+	 * @return void
+	 */
+	final protected function loadFromRow( IReadableDatabase $db, $row ) {
+		$row = $this->decodeRow( $db, (array)$row );
+		$values = [];
+		foreach ( static::getFieldColumnMap() as $field => $column ) {
+			$values[$field] = $row[$column];
+		}
+		$this->loadFromValues( $values );
+		$this->daoOrigin = self::ORIGIN_DB;
+		$this->daoPending = false;
+	}
+
+	/**
+	 * Subclasses should make this to encode DB fields (e.g. timestamps).
+	 * This must also flatten any PHP data structures into flat values.
+	 *
+	 * @param IReadableDatabase $db
+	 * @param array $row
+	 * @return array
+	 */
+	abstract protected function encodeRow( IReadableDatabase $db, $row );
+
+	/**
+	 * Subclasses should make this to decode DB fields (e.g. timestamps).
+	 * This can also expand some flat values (e.g. JSON) into PHP data structures.
+	 * Note: this does not need to handle what normalizeValues() already does.
+	 *
+	 * @param IReadableDatabase $db
+	 * @param array $row
+	 * @return array
+	 */
+	abstract protected function decodeRow( IReadableDatabase $db, $row );
+
+	/**
+	 * @param IReadableDatabase $db
+	 * @return array
+	 */
+	final protected function getRowArray( IReadableDatabase $db ) {
+		$row = [];
+		foreach ( static::getFieldColumnMap() as $field => $column ) {
+			$row[$column] = $this->$field;
+		}
+		return $this->encodeRow( $db, $row );
+	}
+
+	/**
+	 * Check if a user (from the context) can view a field
+	 *
+	 * @see MWOAuthDAO::userCanAccess()
+	 * @see MWOAuthDAOAccessControl
+	 *
+	 * @param string $name
+	 * @param IContextSource $context
+	 * @return Message|true Returns on success or a Message if the user lacks access
+	 */
+	final public function userCanAccess( $name, IContextSource $context ) {
+		$map = static::getFieldPermissionChecks();
+		if ( isset( $map[$name] ) ) {
+			$method = $map[$name];
+			return $this->$method( $name, $context );
+		} else {
+			return true;
+		}
+	}
+
+	/**
+	 * Get the current conflict token value for a user
+	 *
+	 * @param IContextSource $context
+	 * @return string Hex token
+	 */
+	final public function getChangeToken( IContextSource $context ) {
+		$map = [];
+		foreach ( $this->getFieldNames() as $field ) {
+			if ( $this->userCanAccess( $field, $context ) ) {
+				$map[$field] = $this->$field;
+			} else {
+				// don't convey this information
+				$map[$field] = null;
+			}
+		}
+		return hash_hmac(
+			'sha1',
+			serialize( $map ),
+			$context->getUser()->getId() . '#' . $this->getIdValue()
+		);
+	}
+
+	/**
+	 * Compare an old change token to the current one
+	 *
+	 * @param IContextSource $context
+	 * @param string $oldToken
+	 * @return bool Whether the current is unchanged
+	 */
+	final public function checkChangeToken( IContextSource $context, $oldToken ) {
+		return ( $this->getChangeToken( $context ) === $oldToken );
+	}
+
+	/**
+	 * Update whether this object should be written to the data store
+	 * @param bool $pending set to true to mark this object as needing to write its data
+	 */
+	public function setPending( $pending ) {
+		$this->daoPending = $pending;
+	}
+
+	/**
+	 * Update the origin of this object
+	 * @param string $source source of the object, one of the self::ORIGIN_* constants:
+	 *   - ORIGIN_NEW: Treat this as a new object to the datastore (insert on save)
+	 *   - ORIGIN_DB: Treat this as already in the datastore (update on save)
+	 *   - ORIGIN_CONFIG: Managed via configuration, save()/delete() is not expected to be called
+	 */
+	public function updateOrigin( $source ) {
+		$this->daoOrigin = $source;
+	}
+
+	/**
+	 * True when the consumer has been loaded from a configuration file, rather than the database.
+	 *
+	 * Configuration-based consumers cannot use the save() and delete() methods, and cannot be
+	 * updated via the usual special pages; they are updated via whatever configuration mechanism
+	 * the wiki has, typically by changing the value of the $wgOAuthStaticApps configuration variable.
+	 */
+	public function isConfigurationBased(): bool {
+		return $this->daoOrigin === self::ORIGIN_CONFIG;
+	}
+}

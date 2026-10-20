@@ -1,0 +1,391 @@
+{
+	"name": "OAuth",
+	"version": "1.1.0",
+	"author": [
+		"Aaron Schulz",
+		"Chris Steipp",
+		"Brad Jorsch",
+		"Robert Vogel",
+		"Dejan Savuljesku"
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:OAuth",
+	"descriptionmsg": "mwoauth-desc",
+	"license-name": "GPL-2.0-or-later",
+	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.47.0"
+	},
+	"ExtensionFunctions": [
+		"MediaWiki\\Extension\\OAuth\\Backend\\Hooks::onExtensionFunctions"
+	],
+	"ServiceWiringFiles": [
+		"src/ServiceWiring.php"
+	],
+	"DefaultUserOptions": {
+		"echo-subscriptions-web-oauth-owner": true,
+		"echo-subscriptions-email-oauth-owner": true,
+		"echo-subscriptions-web-oauth-admin": true,
+		"echo-subscriptions-email-oauth-admin": true
+	},
+	"GroupPermissions": {
+		"user": {
+			"mwoauthmanagemygrants": true
+		}
+	},
+	"AvailableRights": [
+		"mwoauthproposeconsumer",
+		"mwoauthupdateownconsumer",
+		"mwoauthmanageconsumer",
+		"mwoauthsuppress",
+		"mwoauthviewsuppressed",
+		"mwoauthviewprivate",
+		"mwoauthmanagemygrants"
+	],
+	"SessionProviders": {
+		"MediaWiki\\Extension\\OAuth\\SessionProvider": {
+			"class": "MediaWiki\\Extension\\OAuth\\SessionProvider",
+			"args": [],
+			"services": [
+				"BlockManager",
+				"GrantsInfo"
+			]
+		}
+	},
+	"SpecialPages": {
+		"OAuth": {
+			"class": "MediaWiki\\Extension\\OAuth\\Frontend\\SpecialPages\\SpecialMWOAuth",
+			"services": [
+				"GrantsLocalization",
+				"SkinFactory",
+				"UrlUtils"
+			],
+			"optional_services": [
+				"CheckUserInsert"
+			]
+		},
+		"OAuthManageMyGrants": {
+			"class": "MediaWiki\\Extension\\OAuth\\Frontend\\SpecialPages\\SpecialMWOAuthManageMyGrants",
+			"services": [
+				"GrantsInfo",
+				"GrantsLocalization",
+				"PermissionManager"
+			]
+		},
+		"OAuthListConsumers": {
+			"class": "MediaWiki\\Extension\\OAuth\\Frontend\\SpecialPages\\SpecialMWOAuthListConsumers",
+			"services": [
+				"GrantsLocalization",
+				"PermissionManager"
+			]
+		},
+		"OAuthConsumerRegistration": {
+			"class": "MediaWiki\\Extension\\OAuth\\Frontend\\SpecialPages\\SpecialMWOAuthConsumerRegistration",
+			"services": [
+				"PermissionManager",
+				"GrantsInfo",
+				"GrantsLocalization",
+				"UrlUtils"
+			]
+		},
+		"OAuthManageConsumers": {
+			"class": "MediaWiki\\Extension\\OAuth\\Frontend\\SpecialPages\\SpecialMWOAuthManageConsumers",
+			"services": [
+				"GrantsLocalization",
+				"PermissionManager",
+				"UrlUtils"
+			]
+		}
+	},
+	"MessagesDirs": {
+		"MWOAuth": [
+			"i18n",
+			"i18n/rest"
+		]
+	},
+	"ExtensionMessagesFiles": {
+		"MWOAuthAliases": "MWOAuth.alias.php"
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\OAuth\\": "src/"
+	},
+	"AutoloadClasses": {
+		"MWOA": "src/MWOA.php"
+	},
+	"TestAutoloadNamespaces": {
+		"MediaWiki\\Extension\\OAuth\\Tests\\": "tests/phpunit/"
+	},
+	"TestAutoloadClasses": {
+		"MediaWiki\\Extension\\OAuth\\Tests\\Unit\\Lib\\MockOAuthBaseStringRequest": "tests/phpunit/unit/Lib/MockOAuthBaseStringRequest.php",
+		"MediaWiki\\Extension\\OAuth\\Tests\\Unit\\Lib\\MockOAuthDataStore": "tests/phpunit/unit/Lib/MockOAuthDataStore.php",
+		"MediaWiki\\Extension\\OAuth\\Tests\\Integration\\Entity\\MockClientEntity": "tests/phpunit/integration/Entity/MockClientEntity.php",
+		"MediaWiki\\Extension\\OAuth\\Tests\\Integration\\Rest\\EndpointTestBase": "tests/phpunit/integration/Rest/EndpointTestBase.php"
+	},
+	"ResourceModules": {
+		"ext.MWOAuth.styles": {
+			"styles": [
+				"ext.MWOAuth.BasicStyles.less",
+				"ext.MWOAuth.AuthorizeForm.less"
+			]
+		},
+		"ext.MWOAuth.AuthorizeDialog": {
+			"scripts": [
+				"ext.MWOAuth.AuthorizeDialog.js"
+			],
+			"dependencies": [
+				"oojs-ui-core",
+				"oojs-ui-windows"
+			],
+			"messages": [
+				"mwoauth-desc"
+			]
+		}
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "resources/modules",
+		"remoteExtPath": "OAuth/resources/modules"
+	},
+	"callback": "MediaWiki\\Extension\\OAuth\\Backend\\Hooks::onRegistration",
+	"HookHandlers": {
+		"abusefilter": {
+			"class": "MediaWiki\\Extension\\OAuth\\Backend\\AbuseFilterHookHandler",
+			"services": [
+				"ChangeTagsStore",
+				"ConnectionProvider"
+			]
+		},
+		"backend": {
+			"class": "MediaWiki\\Extension\\OAuth\\Backend\\Hooks",
+			"services": [
+				"ChangeTagDefStore"
+			]
+		},
+		"echo": {
+			"class": "MediaWiki\\Extension\\OAuth\\Frontend\\EchoHooks"
+		},
+		"frontend": {
+			"class": "MediaWiki\\Extension\\OAuth\\Frontend\\UIHooks",
+			"services": [
+				"PermissionManager"
+			]
+		},
+		"logfilter": {
+			"class": "MediaWiki\\Extension\\OAuth\\Frontend\\LogFilterHooks",
+			"services": [
+				"ConnectionProvider"
+			]
+		},
+		"mwservices": {
+			"class": "MediaWiki\\Extension\\OAuth\\MWServicesHookHandler"
+		},
+		"setup": {
+			"class": "MediaWiki\\Extension\\OAuth\\Setup"
+		},
+		"schema": {
+			"class": "MediaWiki\\Extension\\OAuth\\Backend\\UpdaterHooks"
+		},
+		"usermerge": {
+			"class": "MediaWiki\\Extension\\OAuth\\Backend\\UserMergeHook"
+		}
+	},
+	"Hooks": {
+		"AbuseFilter-builder": "abusefilter",
+		"AbuseFilter-computeVariable": "abusefilter",
+		"AbuseFilter-generateUserVars": "abusefilter",
+		"ChangeTagCanCreate": "backend",
+		"MergeAccountFromTo": "usermerge",
+		"LoadExtensionSchemaUpdates": "schema",
+		"GetPreferences": "frontend",
+		"MessagesPreLoad": "frontend",
+		"SpecialPageAfterExecute": "frontend",
+		"SpecialPageBeforeFormDisplay": "frontend",
+		"BeforeCreateEchoEvent": "echo",
+		"TestCanonicalRedirect": "setup",
+		"SetupAfterCache": "backend",
+		"ApiRsdServiceApis": "backend",
+		"ListDefinedTags": "backend",
+		"ChangeTagsListActive": "backend",
+		"LoginFormValidErrorMessages": "frontend",
+		"MediaWikiServices": "mwservices",
+		"LogEventsListGetExtraInputs": "logfilter",
+		"SpecialLogAddLogSearchRelations": "logfilter"
+	},
+	"ConfigRegistry": {
+		"mwoauth": "MediaWiki\\Config\\GlobalVarConfig::newInstance"
+	},
+	"config": {
+		"MWOAuthCentralWiki": {
+			"value": false,
+			"description": "Wiki ID of OAuth management wiki. On wiki farms, it makes sense to set this to a wiki that acts as a portal site, is dedicated to management, or just handles login/authentication. It can, however, be set to any wiki if the farm. For single-wiki sites or farms where each wiki manages consumers separately, it should be left as false."
+		},
+		"MWOAuthSharedUserIDs": {
+			"value": false,
+			"description": "Deprecated, will be dropped in a future release with default behavior becoming the same as $wgMWOAuthSharedUserIDs=true. If you have set this to false and are getting deprecation warnings, you need to set $wgMWOAuthSharedUserIDs=true, $wgMWOAuthSharedUserSource='local'.\n\n(On wikis which are not part of a wiki farm or don't use a central user system, the value of this configuration variable is inconsequential, and $wgMWOAuthSharedUserIDs=true,$wgMWOAuthSharedUserSource=null also works. If you aren't sure, just set 'local'.)\n\nDetermines whether OAuth stores local user IDs or central IDs."
+		},
+		"MWOAuthSharedUserSource": {
+			"value": null,
+			"description": "Source of shared user IDs. Used as the $providerId parameter for CentralIdLookupFactory::getLookup(). Generally null would be what you want, to use the default provider.\n\nThis value should not be changed after the fact to avoid ambiguous IDs. Proper user ID migration should be done before any such changes."
+		},
+		"MWOAuthRequestExpirationAge": {
+			"value": 2592000,
+			"description": "Seconds after which an idle consumer request is marked as \"expired\""
+		},
+		"MWOAuthSecureTokenTransfer": {
+			"value": true,
+			"description": "Require HTTPs for user transactions that might send out secret tokens"
+		},
+		"MWOauthDisabledApiModules": {
+			"value": [],
+			"description": "List of API module classes to disable when OAuth is used for the request"
+		},
+		"MWOAuthReadOnly": {
+			"value": false,
+			"description": "Prevent write activity to the database. When this is true, consumers cannot be added or updated, and new authorizations are prohibited. Authorization headers for existing authorizations will continue to work. Useful for migrating database tables"
+		},
+		"OAuthAutoApprove": {
+			"value": [],
+			"description": "Rules for automatically approving new consumers (instead of requiring manual review by an OAuth admin before they are usable). Takes a list of conditions; meeting any one of the conditions results in auto-approval. Conditions are an associative array of <rule name> => <rule value>; the condition is met if every one of its rules is satisfied. Supported rules are: 'grants', which takes a list of grant names, and is satisfied when all the grants requested for the consumer are within that list; 'protocols', which takes an array of protocol names like 'https', and is satisfied when the callback URL's protocol is within that list."
+		},
+		"OAuthGroupsToNotify": {
+			"value": [],
+			"description": "User groups to notify about new consumers that need to be reviewed"
+		},
+		"MWOAuthSessionCacheType": {
+			"value": null,
+			"description": "The cache type used for most temporary data storage. An index into $wgObjectCaches. The default is $wgSessionCacheType."
+		},
+		"MWOAuthNonceCacheType": {
+			"value": null,
+			"description": "The cache type used for OAuth 1.0 nonces. An index into $wgObjectCaches. The default is $wgMWOAuthSessionCacheType."
+		},
+		"OAuthSecretKey": {
+			"value": null,
+			"description": "Random 32-bit string used to encrypt OAuth requests. Generate using \"base64_encode(random_bytes(32))\""
+		},
+		"OAuth2EnabledGrantTypes": {
+			"value": [
+				"authorization_code",
+				"refresh_token",
+				"client_credentials"
+			],
+			"description": "List of OAuth2 grants that client applications can use"
+		},
+		"OAuth2ClientCredentialsOwnerAuthCutover": {
+			"value": false,
+			"description": "Timestamp after which newly registered OAuth 2 client-credentials clients authenticate as their owner. Clients registered before this timestamp retain the legacy anonymous client-credentials behavior. Set to false to keep all client-credentials clients in legacy mode."
+		},
+		"OAuth2PrivateKey": {
+			"value": "",
+			"description": "Private key or a path to the private key used to sign OAuth2 JWT being transmitted. Key needs to be >= 2048 bits"
+		},
+		"OAuth2Passphrase": {
+			"value": "",
+			"description": "Passphrase used to decrypt OAuth2 private key. Leave empty if the key is not encrypted"
+		},
+		"OAuth2PublicKey": {
+			"value": "",
+			"description": "Public key or a path to the public key used to verify OAuth2 resource requests"
+		},
+		"OAuth2GrantExpirationInterval": {
+			"description": "Controls validity period for access tokens (stored in the cache configured in MWOAuthSessionCacheType). Does not apply to owner-only clients, whose access tokens are always non-expiring. Accepts ISO 8601 durations or can be set to \"infinity\" or false for non-expiring tokens. Defaults to one hour.",
+			"value": "PT1H"
+		},
+		"OAuth2RefreshTokenTTL": {
+			"description": "Controls validity period for refresh tokens (stored in the cache configured in MWOAuthSessionCacheType). Accepts ISO 8601 durations or can be set to \"infinity\" or false for non-expiring tokens. Defaults to one month.",
+			"value": "P1M"
+		},
+		"OAuth2RefreshTokenGracePeriod": {
+			"description": "Grace period in seconds after using a refresh token. During the grace period the token can be used again (to account for the client not receiving the new refresh token e.g. because of network errors, and having to retry the request).",
+			"value": 600
+		},
+		"OAuthUseJwtCookie": {
+			"description": "Whether to emit a JWT cookie when responding to an OAuth request which has no short-lived JWT (ie. it is either an OAuth 1 request or uses an owner-only consumer).",
+			"value": false
+		},
+		"OAuthAllowInsecurePlaintextSignature": {
+			"description": "Allows clients to use the PLAINTEXT signature method. Meant for debugging signature errors. Never enable this in production!",
+			"value": false
+		},
+		"OAuthStaticApps": {
+			"description": "A list of apps which are managed via configuration rather than via the DB. Intended for first-party apps. See examples/configurationBasedClient.php for documentation of the format and further details.",
+			"value": []
+		}
+	},
+	"GrantPermissions": {
+		"oauthmanageownclient": {
+			"mwoauthproposeconsumer": true,
+			"mwoauthupdateownconsumer": true,
+			"mwoauthmanagemygrants": true
+		}
+	},
+	"GrantPermissionGroups": {
+		"oauthmanageownclient": "administration"
+	},
+	"GrantRiskGroups": {
+		"oauthmanageownclient": "internal"
+	},
+	"RestRoutes": [
+		{
+			"path": "/oauth2/authorize",
+			"factory": "MediaWiki\\Extension\\OAuth\\Rest\\Handler\\Authorize::factory",
+			"openApiSpec": {
+				"x-i18n-description": "mwoauth-rest-description-authorize",
+				"x-i18n-summary": "mwoauth-rest-summary-authorize"
+			}
+		},
+		{
+			"path": "/oauth2/access_token",
+			"factory": "MediaWiki\\Extension\\OAuth\\Rest\\Handler\\AccessToken::factory",
+			"method": "POST",
+			"openApiSpec": {
+				"x-i18n-description": "mwoauth-rest-description-access_token",
+				"x-i18n-summary": "mwoauth-rest-summary-access_token"
+			}
+		},
+		{
+			"path": "/oauth2/resource/{type}",
+			"factory": "MediaWiki\\Extension\\OAuth\\Rest\\Handler\\Resource::factory",
+			"openApiSpec": {
+				"x-i18n-description": "mwoauth-rest-description-resource",
+				"x-i18n-summary": "mwoauth-rest-summary-resource"
+			}
+		},
+		{
+			"path": "/oauth2/client",
+			"class": "MediaWiki\\Extension\\OAuth\\Rest\\Handler\\RequestClient",
+			"method": "POST",
+			"openApiSpec": {
+				"x-i18n-description": "mwoauth-rest-description-post-client",
+				"x-i18n-summary": "mwoauth-rest-summary-post-client"
+			}
+		},
+		{
+			"path": "/oauth2/client/{client_key}/reset_secret",
+			"class": "MediaWiki\\Extension\\OAuth\\Rest\\Handler\\ResetClientSecret",
+			"method": "POST",
+			"openApiSpec": {
+				"x-i18n-description": "mwoauth-rest-description-client-reset_secret",
+				"x-i18n-summary": "mwoauth-rest-summary-client-reset_secret"
+			}
+		},
+		{
+			"path": "/oauth2/client",
+			"class": "MediaWiki\\Extension\\OAuth\\Rest\\Handler\\ListClients",
+			"services": [
+				"ConnectionProvider"
+			],
+			"method": "GET",
+			"openApiSpec": {
+				"x-i18n-description": "mwoauth-rest-description-get-client",
+				"x-i18n-summary": "mwoauth-rest-summary-get-client"
+			}
+		}
+	],
+	"LogActionsHandlers": {
+		"mwoauthconsumer/authorize": "MediaWiki\\Logging\\LogFormatter"
+	},
+	"DatabaseVirtualDomains": [
+		"virtual-oauth"
+	],
+	"load_composer_autoloader": true,
+	"manifest_version": 2
+}

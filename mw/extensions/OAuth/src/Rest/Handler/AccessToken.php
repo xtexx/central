@@ -1,0 +1,141 @@
+<?php
+
+namespace MediaWiki\Extension\OAuth\Rest\Handler;
+
+use GuzzleHttp\Psr7\ServerRequest;
+use League\OAuth2\Server\Exception\OAuthServerException;
+use MediaWiki\Exception\MWExceptionHandler;
+use MediaWiki\Extension\OAuth\AuthorizationProvider\Grant\AuthorizationCodeAccessTokenProvider;
+use MediaWiki\Extension\OAuth\AuthorizationProvider\Grant\ClientCredentialsAccessTokenProvider;
+use MediaWiki\Extension\OAuth\AuthorizationProvider\Grant\RefreshTokenAccessTokenProvider;
+use MediaWiki\Extension\OAuth\Entity\ClientEntity;
+use MediaWiki\Extension\OAuth\Response;
+use Throwable;
+use Wikimedia\Message\MessageValue;
+use Wikimedia\ParamValidator\ParamValidator;
+
+/**
+ * Handles the oauth2/access_token endpoint, which can be used after the user has returned from
+ * the authorization dialog to trade the off the received authorization code for an access token.
+ */
+class AccessToken extends AuthenticationHandler {
+
+	/**
+	 * Support x-www-form-urlencoded (and nothing else), as required by RFC 6749.
+	 * @return string[]
+	 */
+	public function getSupportedRequestTypes(): array {
+		return [
+			'application/x-www-form-urlencoded',
+		];
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function execute() {
+		$response = new Response();
+
+		try {
+			if ( $this->queuedError ) {
+				throw $this->queuedError;
+			}
+			$request = ServerRequest::fromGlobals()->withParsedBody(
+				$this->getValidatedBody()
+			);
+
+			$authProvider = $this->getAuthorizationProvider();
+			return $authProvider->getAccessTokens( $request, $response );
+		} catch ( OAuthServerException $exception ) {
+			return $this->errorResponse( $exception, $response );
+		} catch ( Throwable $exception ) {
+			MWExceptionHandler::logException( $exception );
+			return $this->errorResponse(
+				OAuthServerException::serverError( $exception->getMessage(), $exception ),
+				$response
+			);
+		}
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function getBodyParamSettings(): array {
+		return [
+			'grant_type' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => [
+					ClientEntity::GRANT_TYPE_CLIENT_CREDENTIALS,
+					ClientEntity::GRANT_TYPE_AUTHORIZATION_CODE,
+					ClientEntity::GRANT_TYPE_REFRESH_TOKEN,
+				],
+				ParamValidator::PARAM_REQUIRED => true,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-grant_type' ),
+			],
+			'client_id' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-client_id' ),
+			],
+			'client_secret' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-client_secret' ),
+			],
+			'redirect_uri' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-redirect_uri' ),
+			],
+			'scope' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-scope' ),
+			],
+			'code' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-code' ),
+			],
+			'refresh_token' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-refresh_token' ),
+			],
+			'code_verifier' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-code_verifier' ),
+			]
+		];
+	}
+
+	/**
+	 * @return string
+	 */
+	protected function getGrantType() {
+		$body = $this->getValidatedBody();
+		'@phan-var array $body';
+		return $body['grant_type'];
+	}
+
+	/**
+	 * @param string $grantType
+	 * @return string|false
+	 */
+	protected function getGrantClass( $grantType ) {
+		return match ( $grantType ) {
+			ClientEntity::GRANT_TYPE_AUTHORIZATION_CODE => AuthorizationCodeAccessTokenProvider::class,
+			ClientEntity::GRANT_TYPE_CLIENT_CREDENTIALS => ClientCredentialsAccessTokenProvider::class,
+			ClientEntity::GRANT_TYPE_REFRESH_TOKEN => RefreshTokenAccessTokenProvider::class,
+			default => false,
+		};
+	}
+}

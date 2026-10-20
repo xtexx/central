@@ -1,0 +1,211 @@
+<?php
+
+/**
+ * (c) Aaron Schulz 2013, GPL
+ *
+ * @license GPL-2.0-or-later
+ */
+
+namespace MediaWiki\Extension\OAuth\Control;
+
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Exception\ILocalizedException;
+use MediaWiki\Extension\OAuth\Backend\Consumer;
+use MediaWiki\Extension\OAuth\Entity\UserEntity;
+use MediaWiki\Extension\OAuth\Lib\OAuthException;
+use MediaWiki\Extension\OAuth\OAuthServices;
+use MediaWiki\Logger\LoggerFactory;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Status\Status;
+use Wikimedia\NormalizedException\INormalizedException;
+use Wikimedia\Rdbms\IDatabase;
+use Wikimedia\Rdbms\IDBAccessObject;
+
+/**
+ * This handles the core logic of submitting/approving application
+ * consumer requests and the logic of managing approved consumers
+ *
+ * This control can be used on any wiki, not just the management one
+ *
+ * @todo improve error messages
+ */
+class ConsumerAcceptanceSubmitControl extends SubmitControl {
+	/** @var IDatabase */
+	protected $dbw;
+
+	/** @var int */
+	protected $oauthVersion;
+
+	/**
+	 * @param IContextSource $context
+	 * @param array $params
+	 * @param IDatabase $dbw Result of Utils::getOAuthDB( DB_PRIMARY )
+	 * @param int $oauthVersion
+	 */
+	public function __construct(
+		IContextSource $context, array $params, IDatabase $dbw, $oauthVersion
+	) {
+		parent::__construct( $context, $params );
+		$this->dbw = $dbw;
+		$this->oauthVersion = (int)$oauthVersion;
+	}
+
+	/** @inheritDoc */
+	protected function getRequiredFields() {
+		$required = [
+			'renounce' => [
+				'acceptanceId' => '/^\d+$/',
+			],
+		];
+		if ( $this->isOAuth2() ) {
+			$required['accept'] = [
+				'client_id' => '/^[0-9a-f]{32}$/',
+				'confirmUpdate' => '/^[01]$/',
+			];
+		} else {
+			$required['accept'] = [
+				'consumerKey'   => '/^[0-9a-f]{32}$/',
+				'requestToken'  => '/^[0-9a-f]{32}$/',
+				'confirmUpdate' => '/^[01]$/',
+			];
+		}
+
+		return $required;
+	}
+
+	/** @inheritDoc */
+	protected function checkBasePermissions() {
+		$user = $this->getUser();
+		$services = MediaWikiServices::getInstance();
+		$permissionManager = $services->getPermissionManager();
+		$readOnlyMode = $services->getReadOnlyMode();
+
+		if ( !$user->isRegistered() ) {
+			return $this->failure( 'not_logged_in', 'badaccess-group0' );
+		} elseif ( !$permissionManager->userHasRight( $user, 'mwoauthmanagemygrants' ) ) {
+			return $this->failure( 'permission_denied', 'badaccess-group0' );
+		} elseif ( $readOnlyMode->isReadOnly() ) {
+			return $this->failure( 'readonly', 'readonlytext', $readOnlyMode->getReason() );
+		}
+		return $this->success();
+	}
+
+	/** @inheritDoc */
+	protected function processAction( $action ): Status {
+		// proposer or admin
+		$user = $this->getUser();
+		$userEntity = UserEntity::newFromMWUser( $user );
+		if ( !$userEntity ) {
+			return $this->failure( 'permission_denied', 'badaccess-group0' );
+		}
+
+		switch ( $action ) {
+			case 'accept':
+				$payload = [];
+				$identifier = $this->isOAuth2() ? 'client_id' : 'consumerKey';
+				$consumerRepository = OAuthServices::wrap( MediaWikiServices::getInstance() )->getConsumerRepository();
+				$cmr = $consumerRepository->getByKey( $this->vals[$identifier], IDBAccessObject::READ_LATEST );
+				if ( !$cmr ) {
+					return $this->failure( 'invalid_consumer_key', 'mwoauth-invalid-consumer-key' );
+				} elseif ( !$cmr->isUsableBy( $userEntity ) ) {
+					return $this->failure( 'permission_denied', 'badaccess-group0' );
+				}
+
+				try {
+					if ( $this->isOAuth2() ) {
+						$scopes = isset( $this->vals['scope'] ) ? explode( ' ', $this->vals['scope'] ) : [];
+
+						// T413947: Ensure that the 'basic'/'useoauth' scope can't be removed, e.g. by setting
+						// the 'scope' parameter to the /oauth2/authorize endpoint incorrectly
+						$scopes = $this->getAcceptedConsumerGrants( $scopes, $cmr );
+
+						$payload = $cmr->authorize( $userEntity, (bool)$this->vals['confirmUpdate'], $scopes );
+					} else {
+						$callback = $cmr->authorize(
+							$userEntity,
+							(bool)$this->vals[ 'confirmUpdate' ],
+							$cmr->getGrants(),
+							$this->vals[ 'requestToken' ]
+						);
+						$payload = [ 'callbackUrl' => $callback ];
+					}
+				} catch ( OAuthException $exception ) {
+					if ( $exception instanceof INormalizedException ) {
+						LoggerFactory::getInstance( 'OAuth' )->warning(
+							__METHOD__ . ": Exception " . $exception->getNormalizedMessage(),
+							[ 'exception' => $exception ] + $exception->getMessageContext()
+						);
+					} else {
+						LoggerFactory::getInstance( 'OAuth' )->warning(
+							__METHOD__ . ": Exception " . $exception->getMessage(),
+							[ 'exception' => $exception ]
+						);
+					}
+					if ( $exception instanceof ILocalizedException ) {
+						return $this->failure( 'oauth_exception', $exception->getMessageObject() );
+					} else {
+						return $this->failure( 'oauth_exception',
+							'mwoauth-oauth-exception', $exception->getMessage() );
+					}
+				}
+
+				LoggerFactory::getInstance( 'OAuth' )->info(
+					'{user} performed action {action} on consumer {consumer_key}', [
+						'action' => 'accept',
+						'user' => $user->getName(),
+						'comment' => '',
+						'clientip' => $this->getContext()->getRequest()->getIP(),
+					] + $cmr->getLogContext()
+				);
+
+				return $this->success( $payload );
+
+			case 'renounce':
+				$consumerAcceptanceRepository = OAuthServices::wrap( MediaWikiServices::getInstance() )
+					->getConsumerAcceptanceRepository();
+				$cmra = $consumerAcceptanceRepository->getById(
+					$this->vals['acceptanceId'], IDBAccessObject::READ_LATEST );
+				if ( !$cmra ) {
+					return $this->failure( 'invalid_access_token', 'mwoauth-invalid-access-token' );
+				} elseif ( !$cmra->isAuthorizedBy( $userEntity ) ) {
+					return $this->failure( 'invalid_access_token', 'mwoauth-invalid-access-token' );
+				}
+
+				$consumerRepository = OAuthServices::wrap( MediaWikiServices::getInstance() )->getConsumerRepository();
+				$cmr = $consumerRepository->getById( $cmra->getConsumerId(), IDBAccessObject::READ_LATEST );
+				LoggerFactory::getInstance( 'OAuth' )->info(
+					'{user} performed action {action} on consumer {consumer_key}', [
+						'action' => 'renounce',
+						'user' => $user->getName(),
+						'comment' => '',
+						'clientip' => $this->getContext()->getRequest()->getIP(),
+					] + $cmr->getLogContext(),
+				);
+
+				if ( $cmr->getOAuthVersion() === Consumer::OAUTH_VERSION_2 ) {
+					$this->removeOAuth2AccessTokens( $cmra->getId() );
+				}
+				$consumerAcceptanceRepository->delete( $cmra );
+
+				return $this->success( $cmra );
+		}
+	}
+
+	/**
+	 * Convenience function
+	 *
+	 * @return bool
+	 */
+	private function isOAuth2() {
+		return $this->oauthVersion === Consumer::OAUTH_VERSION_2;
+	}
+
+	/**
+	 * @param int $approvalId
+	 */
+	private function removeOAuth2AccessTokens( $approvalId ) {
+		$accessTokenRepository = OAuthServices::wrap( MediaWikiServices::getInstance() )
+			->getAccessTokenRepository();
+		$accessTokenRepository->deleteForApprovalId( $approvalId );
+	}
+}

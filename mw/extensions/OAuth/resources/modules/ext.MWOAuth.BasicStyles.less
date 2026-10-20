@@ -1,0 +1,82 @@
+@import 'mediawiki.skin.variables.less';
+@import 'mediawiki.mixins.less';
+
+.mw-mwoauthconsumerregistration-body,
+.mw-mwoauthmanageconsumers-body {
+	margin-bottom: 1em;
+}
+
+.mwoauth-circle-icon( @icon, @color ) {
+	width: @size-125;
+	height: @size-125;
+	padding: @spacing-25;
+	margin-bottom: @spacing-25;
+	display: inline-block;
+	background-color: @color;
+	border-radius: 100px;
+
+	&:before {
+		content: '';
+		.cdx-mixin-css-icon( @icon, @color-inverted, @size-125 );
+	}
+}
+
+.mw-mwoauthmanageconsumers,
+.mw-mwoauthmanagemygrants,
+.mw-mwoauthconsumerregistration {
+	&-proposed .mw-mwoauth-stage-icon {
+		.mwoauth-circle-icon( @cdx-icon-feedback, @color-progressive );
+	}
+
+	&-rejected .mw-mwoauth-stage-icon {
+		.mwoauth-circle-icon( @cdx-icon-block, @color-destructive );
+	}
+
+	&-expired .mw-mwoauth-stage-icon {
+		.mwoauth-circle-icon( @cdx-icon-history, @color-warning );
+	}
+
+	&-approved .mw-mwoauth-stage-icon {
+		.mwoauth-circle-icon( @cdx-icon-check, @color-success );
+	}
+
+	&-disabled .mw-mwoauth-stage-icon {
+		.mwoauth-circle-icon( @cdx-icon-trash, @color-disabled );
+	}
+}
+
+.mw-mwoauthmanagemygrants-list-item {
+	margin-bottom: 1em;
+}
+
+.mw-mwoautherror-details {
+	color: @color-disabled;
+	font-size: 0.7em;
+}
+
+span.mw-grantgroup {
+	font-weight: bold;
+}
+
+.mw-htmlform-field-HTMLInfoField .mw-mwoauth-infotable dt,
+.mw-mwoauth-infotable span.mw-grantgroup {
+	font-weight: normal;
+}
+
+/* grant descriptions inside an infotable */
+.mw-mwoauth-infotable dl {
+	margin-top: 0;
+}
+
+dl.mw-mwoauth-infotable dl dd {
+	font-size: 0.9em;
+}
+
+// need extra specificity because of some conflicting OOUI styles
+.mw-htmlform .mw-oauth-form-ignorewarnings-hidden {
+	display: none;
+
+	#oauth-form-with-warnings& {
+		display: block;
+	}
+}

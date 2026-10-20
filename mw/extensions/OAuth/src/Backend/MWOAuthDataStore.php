@@ -1,0 +1,296 @@
+<?php
+
+namespace MediaWiki\Extension\OAuth\Backend;
+
+use MediaWiki\Extension\OAuth\Lib\OAuthConsumer;
+use MediaWiki\Extension\OAuth\Lib\OAuthDataStore;
+use MediaWiki\Extension\OAuth\Lib\OAuthToken;
+use MediaWiki\Extension\OAuth\OAuthServices;
+use MediaWiki\Logger\LoggerFactory;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Utils\MWCryptRand;
+use Psr\Log\LoggerInterface;
+use Wikimedia\Message\MessageValue;
+use Wikimedia\ObjectCache\BagOStuff;
+use Wikimedia\Rdbms\IDBAccessObject;
+use Wikimedia\Rdbms\ILoadBalancer;
+
+class MWOAuthDataStore extends OAuthDataStore {
+
+	/** @var LoggerInterface */
+	protected $logger;
+
+	/**
+	 * @param ILoadBalancer $loadBalancer
+	 * @param BagOStuff $tokenCache Cache for tokens
+	 * @param BagOStuff $nonceCache Cache for nonces
+	 */
+	public function __construct(
+		private readonly ILoadBalancer $loadBalancer,
+		private readonly BagOStuff $tokenCache,
+		private readonly BagOStuff $nonceCache,
+	) {
+		$this->logger = LoggerFactory::getInstance( 'OAuth' );
+	}
+
+	/**
+	 * Get an MWOAuthConsumer from the consumer's key
+	 *
+	 * @param string $consumerKey the string value of the Consumer's key
+	 * @return Consumer|false
+	 */
+	public function lookup_consumer( $consumerKey ) {
+		$consumerRepository = OAuthServices::wrap( MediaWikiServices::getInstance() )->getConsumerRepository();
+		return $consumerRepository->getByKey( $consumerKey );
+	}
+
+	/**
+	 * Get either a request or access token from the data store
+	 *
+	 * @param OAuthConsumer|Consumer $consumer
+	 * @param string $token_type
+	 * @param ?string $token
+	 * @throws MWOAuthException
+	 * @return MWOAuthToken
+	 */
+	public function lookup_token( $consumer, $token_type, $token ) {
+		$this->logger->debug( __METHOD__ . ": Looking up $token_type token '$token'" );
+
+		if ( $token_type === 'request' ) {
+			if ( $token === null ) {
+				throw new MWOAuthException(
+					MessageValue::new( 'mwoauthdatastore-request-token-not-found' )
+						->rawParams( Utils::getErrorLink( 'E004' ) ),
+					$consumer->getLogContext()
+				);
+			}
+			$returnToken = $this->tokenCache->get( Utils::getCacheKey(
+				'token',
+				$consumer->key,
+				$token_type,
+				$token
+			) );
+			if ( $returnToken === '**USED**' ) {
+				throw new MWOAuthException(
+					MessageValue::new( 'mwoauthdatastore-request-token-already-used' )
+						->rawParams( Utils::getErrorLink( 'E009' ) ),
+					$consumer->getLogContext()
+				);
+			}
+			if ( !( $returnToken instanceof MWOAuthToken ) ) {
+				throw new MWOAuthException(
+					MessageValue::new( 'mwoauthdatastore-request-token-not-found' )
+						->rawParams( Utils::getErrorLink( 'E004' ) ),
+					$consumer->getLogContext()
+				);
+			}
+		} elseif ( $token_type === 'access' ) {
+			if ( $token === null ) {
+				throw new MWOAuthException(
+					MessageValue::new( 'mwoauthdatastore-access-token-not-found' ),
+					$consumer->getLogContext()
+				);
+			}
+			$consumerAcceptanceRepository = OAuthServices::wrap( MediaWikiServices::getInstance() )
+				->getConsumerAcceptanceRepository();
+			$cmra = $consumerAcceptanceRepository->getByToken( $token );
+			if ( !$cmra && $this->loadBalancer->hasReplicaServers() ) {
+				// try primary database in case there is replication lag T124942
+				$cmra = $consumerAcceptanceRepository->getByToken(
+					$token, IDBAccessObject::READ_LATEST );
+			}
+			if ( !$cmra ) {
+				throw new MWOAuthException(
+					MessageValue::new( 'mwoauthdatastore-access-token-not-found' ),
+					$consumer->getLogContext()
+				);
+			}
+
+			// Ensure the cmra's consumer matches the expected consumer (T103023)
+			$mwconsumer = ( $consumer instanceof Consumer )
+				? $consumer : $this->lookup_consumer( $consumer->key );
+			if ( !$mwconsumer || $mwconsumer->getId() !== $cmra->getConsumerId() ) {
+				throw new MWOAuthException(
+					MessageValue::new( 'mwoauthdatastore-access-token-not-found' ),
+					[ 'cmra_id' => $cmra->getId() ] + $consumer->getLogContext()
+				);
+			}
+
+			$secret = Utils::hmacDBSecret( $cmra->getAccessSecret() );
+			$returnToken = new MWOAuthToken( $cmra->getAccessToken(), $secret );
+		} else {
+			throw new MWOAuthException(
+				MessageValue::new( 'mwoauthdatastore-invalid-token-type' ),
+				[ 'token_type' => $token_type ] + $consumer->getLogContext()
+			);
+		}
+
+		return $returnToken;
+	}
+
+	/**
+	 * Check that nonce has not been seen before. Add it on check, so we don't repeat it.
+	 * Note, timestamp has already been checked, so this should be a fresh nonce.
+	 *
+	 * @param Consumer|OAuthConsumer $consumer
+	 * @param ?OAuthToken $token
+	 * @param string $nonce
+	 * @param int $timestamp
+	 * @return bool
+	 */
+	public function lookup_nonce( $consumer, $token, $nonce, $timestamp ) {
+		$key = Utils::getCacheKey( 'nonce', $consumer->key, (string)$token, $nonce );
+		// Do an add for the key associated with this nonce to check if it was already used.
+		// Set timeout 5 minutes in the future of the timestamp as OAuthServer does. Use the
+		// timestamp so the client can also expire their nonce records after 5 mins.
+		if ( !$this->nonceCache->add( $key, 1, $timestamp + 300 ) ) {
+			// T308861
+			$key = preg_replace(
+				"/(oauth_token_secret\=\w+:)/",
+				"oauth_token_secret=[REDACTED]:",
+				$key );
+
+			$consumerRepository = OAuthServices::wrap( MediaWikiServices::getInstance() )->getConsumerRepository();
+			$cmr = $consumerRepository->getByKey( $consumer->key );
+
+			$this->logger->info( '{key} exists, so nonce has been used by this consumer+token',
+				[ 'key' => $key, 'oauth_timestamp' => $timestamp ] + ( $cmr ? $cmr->getLogContext() : [] ) );
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Helper function to generate and return an MWOAuthToken. MWOAuthToken can be used as a
+	 * request or access token.
+	 * TODO: put in Utils?
+	 * @return MWOAuthToken
+	 */
+	public static function newToken() {
+		return new MWOAuthToken(
+			MWCryptRand::generateHex( 32 ),
+			MWCryptRand::generateHex( 32 )
+		);
+	}
+
+	/**
+	 * Generate a new token (attached to this consumer), save it in the cache, and return it
+	 *
+	 * @param Consumer|OAuthConsumer $consumer
+	 * @param string $callback
+	 * @return MWOAuthToken
+	 */
+	public function new_request_token( $consumer, $callback = 'oob' ) {
+		$token = self::newToken();
+		$cacheConsumerKey = Utils::getCacheKey( 'consumer', 'request', $token->key );
+		$cacheTokenKey = Utils::getCacheKey(
+			'token', $consumer->key, 'request', $token->key
+		);
+		$cacheCallbackKey = Utils::getCacheKey(
+			'callback', $consumer->key, 'request', $token->key
+		);
+
+		// 600s == 10 minutes. Kind of arbitrary.
+		$this->tokenCache->add( $cacheConsumerKey, $consumer->key, 600 );
+		$this->tokenCache->add( $cacheTokenKey, $token, 600 );
+		$this->tokenCache->add( $cacheCallbackKey, $callback, 600 );
+		$this->logger->debug( __METHOD__ .
+			": New request token {$token->key} for {$consumer->key} with callback {$callback}" );
+		return $token;
+	}
+
+	/**
+	 * Return a consumer key associated with the given request token.
+	 *
+	 * @param string $requestToken
+	 * @return string|false the consumer key or false if nothing is stored for the request token
+	 */
+	public function getConsumerKey( $requestToken ) {
+		$cacheKey = Utils::getCacheKey( 'consumer', 'request', $requestToken );
+		return $this->tokenCache->get( $cacheKey );
+	}
+
+	/**
+	 * Return a stored callback URL parameter given by the consumer in /initiate.
+	 * It throws an exception if callback URL parameter does not exist in the cache.
+	 * A stored callback URL parameter is deleted from the cache once read for the first
+	 * time.
+	 *
+	 * @param Consumer $consumer
+	 * @param string $requestKey original request key from /initiate
+	 * @throws MWOAuthException
+	 * @return string|false the stored callback URL parameter
+	 */
+	public function getCallbackUrl( $consumer, $requestKey ) {
+		$cacheKey = Utils::getCacheKey( 'callback', $consumer->getConsumerKey(), 'request', $requestKey );
+		$callback = $this->tokenCache->get( $cacheKey );
+		if ( $callback === null || !is_string( $callback ) ) {
+			throw new MWOAuthException(
+				MessageValue::new( 'mwoauthdatastore-callback-not-found' ),
+				$consumer->getLogContext()
+			);
+		}
+		$this->tokenCache->delete( $cacheKey );
+		return $callback;
+	}
+
+	/**
+	 * Return a new access token attached to this consumer for the user associated with this
+	 * token if the request token is authorized. Should also invalidate the request token.
+	 *
+	 * @param OAuthToken $token the request token that started this
+	 * @param Consumer $consumer
+	 * @param int|null $verifier
+	 * @throws MWOAuthException
+	 * @return MWOAuthToken the access token
+	 */
+	public function new_access_token( $token, $consumer, $verifier = null ) {
+		/** @var MWOAuthToken $token */'@phan-var MWOAuthToken $token';
+		$this->logger->debug( __METHOD__ .
+			": Getting new access token for token {$token->key}, consumer {$consumer->key}" );
+
+		if ( !$token->getVerifyCode() || !$token->getAccessKey() ) {
+			throw new MWOAuthException(
+				MessageValue::new( 'mwoauthdatastore-bad-token' ),
+				[ 'token' => $token->key ] + $consumer->getLogContext()
+			);
+		} elseif ( $token->getVerifyCode() !== $verifier ) {
+			throw new MWOAuthException(
+				MessageValue::new( 'mwoauthdatastore-bad-verifier' ),
+				[ 'token' => $token->key ] + $consumer->getLogContext()
+			);
+		}
+
+		$cacheKey = Utils::getCacheKey( 'token',
+			$consumer->getConsumerKey(), 'request', $token->key );
+		$accessToken = $this->lookup_token( $consumer, 'access', $token->getAccessKey() );
+		$this->tokenCache->set( $cacheKey, '**USED**', 600 );
+		$this->logger->debug( __METHOD__ .
+			": New access token {$accessToken->key} for {$consumer->key}" );
+		return $accessToken;
+	}
+
+	/**
+	 * Update a request token. The token probably already exists, but had another attribute added.
+	 *
+	 * @param OAuthToken $token the token to store
+	 * @param Consumer|OAuthConsumer $consumer
+	 */
+	public function updateRequestToken( $token, $consumer ) {
+		$cacheKey = Utils::getCacheKey( 'token', $consumer->key, 'request', $token->key );
+		// 10 more minutes. Kind of arbitrary.
+		$this->tokenCache->set( $cacheKey, $token, 600 );
+	}
+
+	/**
+	 * Return the string representing the Consumer's public RSA key
+	 *
+	 * @param string $consumerKey the string value of the Consumer's key
+	 * @return string|null
+	 */
+	public function getRSAKey( $consumerKey ) {
+		$consumerRepository = OAuthServices::wrap( MediaWikiServices::getInstance() )->getConsumerRepository();
+		$cmr = $consumerRepository->getByKey( $consumerKey );
+		return $cmr ? $cmr->getRsaKey() : null;
+	}
+}

@@ -1,0 +1,262 @@
+<?php
+
+namespace MediaWiki\Extension\OAuth\Backend;
+
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Extension\OAuth\Control\ConsumerValidator;
+use MediaWiki\Extension\OAuth\Entity\UserEntity;
+use MediaWiki\Json\FormatJson;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Message\Message;
+use Wikimedia\Message\MessageValue;
+use Wikimedia\Rdbms\IReadableDatabase;
+
+/**
+ * (c) Aaron Schulz 2013, GPL
+ *
+ * @license GPL-2.0-or-later
+ */
+
+/**
+ * Representation of an OAuth consumer acceptance.
+ * Created when the user clicks through the OAuth authorization dialog, this allows
+ * the specified consumer to perform actions in the name of the user
+ * (subject to the grant and wiki restrictions stored in the acceptance object).
+ */
+class ConsumerAcceptance extends MWOAuthDAO {
+	/** @var int Unique ID */
+	protected $id;
+
+	/** @var string Wiki ID the application can be used on (or "*" for all) */
+	protected $wiki;
+
+	/** @var int Publisher user ID (on central wiki) */
+	protected $userId;
+
+	/** @var int */
+	protected $consumerId;
+
+	/** @var string Hex token */
+	protected $accessToken;
+
+	/** @var string Secret HMAC key */
+	protected $accessSecret;
+
+	/** @var string[] List of grants */
+	protected $grants;
+
+	/** @var string TS_MW timestamp of acceptance */
+	protected $accepted;
+
+	/** @var string */
+	protected $oauth_version;
+
+	protected static function getSchema(): array {
+		return [
+			'table'               => 'oauth_accepted_consumer',
+			'fieldColumnMap'      => [
+				'id'              => 'oaac_id',
+				'wiki'            => 'oaac_wiki',
+				'userId'          => 'oaac_user_id',
+				'consumerId'      => 'oaac_consumer_id',
+				'accessToken'     => 'oaac_access_token',
+				'accessSecret'    => 'oaac_access_secret',
+				'grants'          => 'oaac_grants',
+				'accepted'        => 'oaac_accepted',
+				'oauth_version'   => 'oaac_oauth_version',
+			],
+			'extraFields'         => [],
+			'idField'             => 'id',
+			'autoIncrField'       => 'id',
+		];
+	}
+
+	protected static function getFieldPermissionChecks(): array {
+		return [
+			'wiki'          => 'userCanSee',
+			'userId'        => 'userCanSee',
+			'consumerId'    => 'userCanSee',
+			'accessToken'   => 'userCanSeePrivate',
+			'accessSecret'  => 'userCanSeeSecret',
+			'grants'        => 'userCanSee',
+			'accepted'      => 'userCanSee',
+			'oauth_version' => 'userCanSee',
+		];
+	}
+
+	/**
+	 * Database ID.
+	 * @return int
+	 */
+	public function getId() {
+		return $this->get( 'id' );
+	}
+
+	/**
+	 * Wiki on which the user has authorized the consumer to access their account. Wiki ID or '*'
+	 * for all.
+	 * @return string
+	 */
+	public function getWiki() {
+		return $this->get( 'wiki' );
+	}
+
+	/**
+	 * Central user ID of the authorizing user.
+	 * @return int
+	 */
+	public function getUserId() {
+		return $this->get( 'userId' );
+	}
+
+	/**
+	 * Database ID of the consumer.
+	 * @return int
+	 */
+	public function getConsumerId() {
+		return $this->get( 'consumerId' );
+	}
+
+	/**
+	 * The access token for the OAuth protocol
+	 * @return string
+	 */
+	public function getAccessToken() {
+		return $this->get( 'accessToken' );
+	}
+
+	/**
+	 * Secret key used to derive the access secret for the OAuth protocol.
+	 * The actual access secret will be calculated via Utils::hmacDBSecret() to mitigate
+	 * DB leaks.
+	 * @return string
+	 */
+	public function getAccessSecret() {
+		return $this->get( 'accessSecret' );
+	}
+
+	/**
+	 * The list of grants which have been granted.
+	 * @return string[]
+	 */
+	public function getGrants() {
+		return $this->get( 'grants' );
+	}
+
+	/**
+	 * Date of the authorization, in TS_MW format.
+	 * @return string
+	 */
+	public function getAccepted() {
+		return $this->get( 'accepted' );
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getOAuthVersion() {
+		return (int)$this->get( 'oauth_version' );
+	}
+
+	protected function normalizeValues() {
+		$this->userId = (int)$this->userId;
+		$this->consumerId = (int)$this->consumerId;
+		$this->accepted = wfTimestamp( TS_MW, $this->accepted );
+		$this->grants = (array)$this->grants;
+	}
+
+	/**
+	 * @inheritDoc
+	 * @throws MWOAuthException
+	 */
+	protected function encodeRow( IReadableDatabase $db, $row ) {
+		if ( (int)$row['oaac_user_id'] === 0 ) {
+			throw new MWOAuthException( MessageValue::new( 'mwoauth-consumer-access-no-user' ), [
+				'consumer_id' => $row['oaac_consumer_id'],
+			] );
+		}
+		// For compatibility with other wikis in the farm, un-remap some grants
+		foreach ( Consumer::$mapBackCompatGrants as $old => $new ) {
+			// phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
+			while ( ( $i = array_search( $new, $row['oaac_grants'], true ) ) !== false ) {
+				$row['oaac_grants'][$i] = $old;
+			}
+		}
+
+		$grants = FormatJson::encode( $row['oaac_grants'] );
+
+		if ( strlen( $grants ) > ConsumerValidator::BLOB_SIZE ) {
+			throw new MWOAuthException( MessageValue::new( 'mwoauth-consumer-access-grants-too-long' ) );
+		}
+
+		$row['oaac_grants'] = $grants;
+		$row['oaac_accepted'] = $db->timestamp( $row['oaac_accepted'] );
+		return $row;
+	}
+
+	/** @inheritDoc */
+	protected function decodeRow( IReadableDatabase $db, $row ) {
+		$row['oaac_grants'] = FormatJson::decode( $row['oaac_grants'], true );
+		$row['oaac_accepted'] = wfTimestamp( TS_MW, $row['oaac_accepted'] );
+
+		// For backwards compatibility, remap some grants
+		foreach ( Consumer::$mapBackCompatGrants as $old => $new ) {
+			// phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
+			while ( ( $i = array_search( $old, $row['oaac_grants'], true ) ) !== false ) {
+				$row['oaac_grants'][$i] = $new;
+			}
+		}
+
+		return $row;
+	}
+
+	/**
+	 * Check if the acceptance was authorized by $user.
+	 *
+	 * Always false when $user is null (as a convenience for using methods which return a UserEntity or null).
+	 */
+	public function isAuthorizedBy( ?UserEntity $user ): bool {
+		return $user && $this->userId === $user->getCentralId();
+	}
+
+	/**
+	 * @param string $name
+	 * @param IContextSource $context
+	 * @return Message|true
+	 */
+	protected function userCanSee( $name, IContextSource $context ) {
+		$permissionManager = MediaWikiServices::getInstance()->getPermissionManager();
+
+		if ( !$this->isAuthorizedBy( UserEntity::newFromMWUser( $context->getUser() ) )
+			&& !$permissionManager->userHasRight( $context->getUser(), 'mwoauthviewprivate' )
+		) {
+			return $context->msg( 'mwoauth-field-private' );
+		} else {
+			return true;
+		}
+	}
+
+	/**
+	 * @param string $name
+	 * @param IContextSource $context
+	 * @return Message|true
+	 */
+	protected function userCanSeePrivate( $name, IContextSource $context ) {
+		$permissionManager = MediaWikiServices::getInstance()->getPermissionManager();
+
+		if ( !$permissionManager->userHasRight( $context->getUser(), 'mwoauthviewprivate' ) ) {
+			return $context->msg( 'mwoauth-field-private' );
+		} else {
+			return $this->userCanSee( $name, $context );
+		}
+	}
+
+	/**
+	 * @param string $name
+	 * @param IContextSource $context
+	 * @return Message|true
+	 */
+	protected function userCanSeeSecret( $name, IContextSource $context ) {
+		return $context->msg( 'mwoauth-field-private' );
+	}
+}

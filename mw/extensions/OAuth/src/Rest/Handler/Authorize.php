@@ -1,0 +1,319 @@
+<?php
+
+namespace MediaWiki\Extension\OAuth\Rest\Handler;
+
+use Exception;
+use GuzzleHttp\Psr7\ServerRequest;
+use League\OAuth2\Server\Entities\ScopeEntityInterface;
+use League\OAuth2\Server\Exception\OAuthServerException;
+use League\OAuth2\Server\RequestTypes\AuthorizationRequest;
+use MediaWiki\Exception\MWExceptionHandler;
+use MediaWiki\Extension\OAuth\AuthorizationProvider\Grant\AuthorizationCodeProvider;
+use MediaWiki\Extension\OAuth\Entity\ClientEntity;
+use MediaWiki\Extension\OAuth\Entity\UserEntity;
+use MediaWiki\Extension\OAuth\Response;
+use MediaWiki\Language\LanguageCode;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Rest\Response as RestResponse;
+use MediaWiki\SpecialPage\SpecialPage;
+use MediaWiki\WikiMap\WikiMap;
+use Throwable;
+use Wikimedia\Message\MessageValue;
+use Wikimedia\ParamValidator\ParamValidator;
+
+/**
+ * Handles the oauth2/authorize endpoint, which displays an authorization dialog to the user if
+ * needed (by redirecting to Special:OAuth/approve), and returns an authorization code that can be
+ * traded for the access token.
+ *
+ * Supports some OIDC parameters.
+ * @see https://openid.net/specs/openid-connect-basic-1_0.html#RequestParameters
+ */
+class Authorize extends AuthenticationHandler {
+	private const RESPONSE_TYPE_CODE = 'code';
+
+	/** @inheritDoc */
+	public function execute() {
+		$response = new Response();
+
+		try {
+			if ( $this->queuedError ) {
+				throw $this->queuedError;
+			}
+			$request = ServerRequest::fromGlobals()->withQueryParams(
+				$this->getValidatedParams()
+			);
+			// Note: Owner-only clients can only use client_credentials grant
+			// so would be rejected from this endpoint with invalid_client error
+			// automatically, no need for additional checks
+			if ( !$this->user ) {
+				return $this->getLoginRedirectResponse();
+			}
+
+			$authProvider = $this->getAuthorizationProvider();
+			$authProvider->setUser( $this->user );
+			/** @var AuthorizationRequest $authRequest */
+			$authRequest = $authProvider->init( $request );
+			'@phan-var AuthorizationRequest $authRequest';
+			$this->setValidScopes( $authRequest );
+			if ( !$authProvider->needsUserApproval() ) {
+				return $authProvider->authorize( $authRequest, $response );
+			}
+
+			if ( $this->getValidatedParams()['approval_cancel'] ) {
+				throw new OAuthServerException(
+					wfMessage( 'mwoauth-oauth2-error-user-approval-deny' )->plain(),
+					401,
+					'unauthorized_client',
+					400,
+					null,
+					$authRequest->getRedirectUri()
+				);
+			}
+
+			if (
+				$this->getValidatedParams()['approval_pass'] &&
+				$this->checkApproval( $authRequest )
+			) {
+				$authRequest->setAuthorizationApproved( true );
+				return $authProvider->authorize( $authRequest, $response );
+			}
+
+			return $this->getApprovalRedirectResponse( $authRequest );
+		} catch ( OAuthServerException $ex ) {
+			return $this->errorResponse( $ex, $response );
+		} catch ( Throwable $ex ) {
+			MWExceptionHandler::logException( $ex );
+			return $this->errorResponse(
+				OAuthServerException::serverError( $ex->getMessage() ),
+				$response
+			);
+		}
+	}
+
+	protected function setValidScopes( AuthorizationRequest $authRequest ) {
+		/** @var ClientEntity $client */
+		$client = $authRequest->getClient();
+		'@phan-var ClientEntity $client';
+
+		$scopes = $this->getValidatedParams()['scope'];
+		if ( !$scopes ) {
+			// No scope parameter
+			$authRequest->setScopes(
+				$client->getScopes()
+			);
+			return;
+		}
+		// Trim off any not allowed scopes
+		$allowedScopes = $client->getGrants();
+
+		$authRequest->setScopes( array_filter(
+			$authRequest->getScopes(),
+			static function ( ScopeEntityInterface $scope ) use ( $allowedScopes ) {
+				return in_array( $scope->getIdentifier(), $allowedScopes );
+			}
+		) );
+	}
+
+	/** @inheritDoc */
+	public function getParamSettings() {
+		return [
+			'response_type' => [
+				self::PARAM_SOURCE => 'query',
+				ParamValidator::PARAM_TYPE => [
+					self::RESPONSE_TYPE_CODE
+				],
+				ParamValidator::PARAM_REQUIRED => true,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-response_type' ),
+			],
+			'client_id' => [
+				self::PARAM_SOURCE => 'query',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => true,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-client_id' ),
+			],
+			'redirect_uri' => [
+				self::PARAM_SOURCE => 'query',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-redirect_uri' ),
+			],
+			'scope' => [
+				self::PARAM_SOURCE => 'query',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-scope' ),
+			],
+			'state' => [
+				self::PARAM_SOURCE => 'query',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-state' ),
+			],
+			'code_challenge' => [
+				self::PARAM_SOURCE => 'query',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-code_challenge' ),
+			],
+			'code_challenge_method' => [
+				self::PARAM_SOURCE => 'query',
+				ParamValidator::PARAM_TYPE => [
+					'plain',
+					'S256'
+				],
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-code_challenge_method' ),
+			],
+			'approval_cancel' => [
+				self::PARAM_SOURCE => 'query',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-approval_cancel' ),
+			],
+			'approval_pass' => [
+				self::PARAM_SOURCE => 'query',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-approval_pass' ),
+			],
+			'display' => [
+				self::PARAM_SOURCE => 'query',
+				ParamValidator::PARAM_TYPE => [ 'page', 'popup', 'touch', 'wap' ],
+				ParamValidator::PARAM_DEFAULT => 'page',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-display' ),
+			],
+			'ui_locales' => [
+				self::PARAM_SOURCE => 'query',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				self::PARAM_DESCRIPTION => new MessageValue( 'mwoauth-rest-param-desc-ui_locales' ),
+			],
+		];
+	}
+
+	/**
+	 * Get generic query parameters to pass to Special:OAuth / Special:Userlogin
+	 */
+	private function getSpecialPageQueryParameters(): array {
+		$params = $this->getValidatedParams();
+		return [
+			// use popup mode for 'touch' and 'wap' as we don't have anything better
+			'display' => ( $params['display'] === 'page' ) ? null : 'popup',
+			'uselang' => $this->getUselangFromUiLocales( $params['ui_locales'] ?? null ),
+		];
+	}
+
+	private function getApprovalRedirectResponse( AuthorizationRequest $authRequest ): RestResponse {
+		$queryParams = [
+			'returnto' => $this->getRequest()->getUri()->getPath(),
+			'returntoquery' => $this->getQueryParamsCgi(),
+			'client_id' => $authRequest->getClient()->getIdentifier(),
+			'oauth_version' => ClientEntity::OAUTH_VERSION_2,
+			'scope' => implode( ' ', array_map( static function ( ScopeEntityInterface $scope ) {
+				return $scope->getIdentifier();
+			}, $authRequest->getScopes() ) ),
+		] + $this->getSpecialPageQueryParameters();
+		return $this->getResponseFactory()->createTemporaryRedirect(
+			SpecialPage::getTitleFor( 'OAuth', 'approve' )->getFullURL( $queryParams )
+		);
+	}
+
+	/**
+	 * Converts the OIDC ui_locales parameter (a space-separated list of BCP47 codes) into a
+	 * MediaWiki language code.
+	 * @param string|null $uiLocales Value of ui_locales parameter (or null if not given).
+	 * @return string|null MediaWiki language code that can be used with the 'uselang' parameter
+	 *   (or null if ui_locales was not given or none of its values were valid / known).
+	 */
+	private function getUselangFromUiLocales( ?string $uiLocales ): ?string {
+		$languageNameUtils = MediaWikiServices::getInstance()->getLanguageNameUtils();
+		$localeList = $uiLocales ? explode( ' ', $uiLocales ) : [];
+		foreach ( $localeList as $locale ) {
+			if ( !$languageNameUtils->isKnownLanguageTag( $locale ) ) {
+				continue;
+			}
+			// Does not handle most BCP47 tags with a region part (e.g. fr-CA) as LanguageCode
+			// doesn't. Didn't seem worthwhile to fix.
+			$code = LanguageCode::replaceDeprecatedCodes( LanguageCode::bcp47ToInternal( $locale ) );
+			if ( $code ) {
+				return $code;
+			}
+		}
+		return null;
+	}
+
+	private function getLoginRedirectResponse(): RestResponse {
+		return $this->getResponseFactory()->createTemporaryRedirect(
+			SpecialPage::getTitleFor( 'Userlogin' )->getFullURL( [
+				'returnto' => SpecialPage::getTitleFor( 'OAuth', 'rest_redirect' ),
+				'returntoquery' => wfArrayToCgi( [
+					'rest_url' => $this->getRequest()->getUri()->__toString(),
+				] ),
+			] + $this->getSpecialPageQueryParameters() )
+		);
+	}
+
+	/** @inheritDoc */
+	protected function getGrantType() {
+		return $this->getValidatedParams()['response_type'];
+	}
+
+	/**
+	 * @param string $grantType
+	 * @return string|false
+	 */
+	protected function getGrantClass( $grantType ) {
+		return match ( $grantType ) {
+			static::RESPONSE_TYPE_CODE => AuthorizationCodeProvider::class,
+			default => false,
+		};
+	}
+
+	/**
+	 * Check if user has approved the client, and scopes it requested
+	 */
+	private function checkApproval( AuthorizationRequest $authRequest ): bool {
+		/** @var ClientEntity $client */
+		$client = $authRequest->getClient();
+		'@phan-var ClientEntity $client';
+
+		/** @var UserEntity $userEntity */
+		$userEntity = $authRequest->getUser();
+		'@phan-var UserEntity $userEntity';
+
+		try {
+			$approval = $client->getCurrentAuthorization(
+				$userEntity,
+				WikiMap::getCurrentWikiId()
+			);
+		} catch ( Exception ) {
+			return false;
+		}
+
+		if ( !$approval ) {
+			return false;
+		}
+
+		// Scopes in OAuth 1.0 are called grants
+		$scopes = $approval->getGrants();
+		$requestedScopes = $this->getFlatScopes( $authRequest->getScopes() );
+		$missing = array_diff( $requestedScopes, $scopes );
+		if ( $missing ) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * @param ScopeEntityInterface[] $scopeEntities
+	 * @return string[]
+	 */
+	private function getFlatScopes( $scopeEntities ) {
+		return array_map( static function ( ScopeEntityInterface $scope ) {
+			return $scope->getIdentifier();
+		}, $scopeEntities );
+	}
+}
