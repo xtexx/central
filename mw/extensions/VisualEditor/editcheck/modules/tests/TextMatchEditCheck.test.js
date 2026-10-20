@@ -1,0 +1,599 @@
+QUnit.module( 'mw.editcheck.TextMatchEditCheck', ve.test.utils.newEditCheckEnvironment() );
+
+/**
+ * @ignore
+ */
+function resetStaticState( matchRules ) {
+	mw.editcheck.TextMatchEditCheck.static.matchRules = matchRules;
+	mw.editcheck.TextMatchEditCheck.static.matchRulesPromise = null;
+	mw.editcheck.TextMatchEditCheck.static.matchCache = {
+		matchRules: null,
+		memoizedFinders: {}
+	};
+}
+
+QUnit.test( 'onDocumentChange', ( assert ) => {
+	const cases = [
+		{
+			msg: 'Basic match',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					query: 'Foo'
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'Foo',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 1,
+			expectedTerms: [ 'Foo' ]
+		},
+		{
+			msg: 'Basic replacement',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					mode: 'replace',
+					query: {
+						Foo: 'Bar'
+					}
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'Foo',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 1,
+			expectedTerms: [ 'Foo' ],
+			expectedData: ( data ) => {
+				data.splice( 1, 3, ...'Bar' );
+			}
+		},
+		{
+			msg: 'Text replacement preserves formatting',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					mode: 'replace',
+					query: {
+						Foo: 'Bar'
+					}
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...ve.dm.example.annotateText( 'Foo baz', ve.dm.example.bold ),
+				{ type: '/paragraph' }
+			],
+			expectedActions: 1,
+			expectedTerms: [ 'Foo' ],
+			expectedData: ( data ) => {
+				const newData = ve.dm.example.preprocessAnnotations(
+					ve.dm.example.annotateText( 'Bar', ve.dm.example.bold )
+				).data;
+				data.splice( 1, 3, ...newData );
+			}
+		},
+		{
+			msg: 'Regex text replacement preserves case',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					mode: 'replace',
+					preserveCase: true,
+					isRegExp: true,
+					query: {
+						Foo: 'Bar'
+					}
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'FOO',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 1,
+			expectedTerms: [ 'FOO' ],
+			expectedData: ( data ) => {
+				data.splice( 1, 3, ...'BAR' );
+			}
+		},
+		{
+			msg: 'Regex replacement that only differs by case suggests nothing',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					mode: 'replace',
+					preserveCase: true,
+					isRegExp: true,
+					query: {
+						foo: 'Foo'
+					}
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'FOO',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 0
+		},
+		{
+			msg: 'Default to preserving case when case sensitive is not set',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					mode: 'replace',
+					query: {
+						Foo: 'Bar'
+					}
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'FOO',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 1,
+			expectedTerms: [ 'FOO' ],
+			expectedData: ( data ) => {
+				data.splice( 1, 3, ...'BAR' );
+			}
+		},
+		{
+			msg: 'Whole word only (substring ignored)',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					query: 'Foo'
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'Foobar',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 0
+		},
+		{
+			msg: 'Case sensitive',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					query: 'Foo',
+					caseSensitive: true
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'foo Foo',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 1,
+			expectedTerm: 'Foo'
+		},
+		{
+			msg: 'minOccurrences (paragraph) with enough occurrences',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					query: 'Foo',
+					expand: 'paragraph',
+					minOccurrences: 2
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'Foo bar Foo',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 1,
+			expectedTerms: [ 'Foo' ]
+		},
+		{
+			msg: 'minOccurrences (paragraph) without enough occurrences',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					query: 'Foo',
+					expand: 'paragraph',
+					minOccurrences: 2
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'Foo',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 0
+		},
+		{
+			msg: 'Simple regular expression',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					query: 'foo.*?bar',
+					isRegExp: true,
+					caseSensitive: false
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'foo some content bar',
+				' ',
+				...'FOO some content BAR',
+				{ type: '/paragraph' }
+			],
+			expectedTerms: [ 'foo some content bar', 'FOO some content BAR' ],
+			expectedActions: 2
+		},
+		{
+			msg: 'Case-sensitive regular expression',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					query: 'foo.*?bar',
+					isRegExp: true,
+					caseSensitive: true
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'foo some content bar',
+				' ',
+				...'FOO some content BAR',
+				{ type: '/paragraph' }
+			],
+			expectedTerms: [ 'foo some content bar' ],
+			expectedActions: 1
+		},
+		{
+			msg: 'Multiple regular expressions',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					query: [ '[fl]oo', '[bc]ar' ],
+					isRegExp: true
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'foo bar',
+				{ type: '/paragraph' }
+			],
+			expectedTerms: [ 'foo', 'bar' ],
+			expectedActions: 2
+		},
+		{
+			msg: 'Regex with replacements',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					query: {
+						'favour(ed|ite|ing)': 'favor$1'
+					},
+					mode: 'replace',
+					isRegExp: true
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'favourite',
+				{ type: '/paragraph' }
+			],
+			expectedTerms: [ 'favourite' ],
+			expectedActions: 1,
+			expectedData: ( data ) => {
+				data.splice( 5, 1 );
+			}
+		},
+		{
+			msg: 'Regex with replacements and objects',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Punctuation error.',
+					query: {
+						'([^\\d\\s]+)(—|\\s—|—\\s)([^\\d\\s]+)': '$1 — $3'
+					},
+					mode: 'replace',
+					isRegExp: true
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				{ type: 'alienInline' },
+				{ type: '/alienInline' },
+				'—',
+				{ type: 'alienInline' },
+				{ type: '/alienInline' },
+				{ type: '/paragraph' }
+			],
+			expectedTerms: [ '—' ],
+			expectedActions: 1,
+			expectedData: ( data ) => {
+				data.splice( 3, 1, ...' — ' );
+			}
+		},
+		{
+			msg: 'Regex with replacements and objects, both ends of the match change',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Use guillemets',
+					query: {
+						'"([^"]*)"': '«$1»'
+					},
+					mode: 'replace',
+					isRegExp: true
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				'"',
+				{ type: 'alienInline' },
+				{ type: '/alienInline' },
+				'"',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 0
+		},
+		{
+			msg: 'Multiple rules, one invalid',
+			matchRules: {
+				bad: {
+					title: 'Invalid',
+					message: 'This will SyntaxError',
+					query: '(foo',
+					isRegExp: true
+				},
+				good: {
+					title: 'Valid',
+					message: 'This is fine',
+					query: 'foo.bar',
+					isRegExp: true
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'foo bar',
+				{ type: '/paragraph' }
+			],
+			expectedTerms: [ 'foo bar' ],
+			expectedActions: 1
+		},
+		{
+			msg: 'Dismissed ranges ignored',
+			controller: { taggedFragments: {}, taggedIds: {} },
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					query: 'Foo'
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'Foo',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 1,
+			dismissAndRerun: true,
+			expectedActionsAfterDismiss: 0
+		},
+		{
+			msg: 'inNode filters (outside heading ignored)',
+			matchRules: {
+				'standard-headings': {
+					title: 'Non-standard heading',
+					message: 'Use standard headings',
+					query: {
+						Life: 'Biography'
+					},
+					inNode: 'mwHeading'
+				}
+			},
+			data: [
+				{ type: 'paragraph' },
+				...'Life',
+				{ type: '/paragraph' }
+			],
+			expectedActions: 0
+		},
+		{
+			msg: 'inNode filters (inside heading matches)',
+			matchRules: {
+				bad: {
+					title: 'Bad',
+					message: 'Avoid this term',
+					query: {
+						Life: 'Biography'
+					},
+					inNode: 'mwHeading'
+				}
+			},
+			data: [
+				{ type: 'mwHeading', attributes: { level: 2 } },
+				...'Life',
+				{ type: '/mwHeading' }
+			],
+			expectedActions: 1,
+			expectedTerms: [ 'Life' ],
+			expectedData: ( data ) => {
+				data.splice( 1, 4, ...'Biography' );
+			}
+		}
+	];
+
+	function runCase( caseItem ) {
+		resetStaticState( caseItem.matchRules );
+
+		const controller = caseItem.controller || ve.test.utils.EditCheck.dummyController;
+		const doc = ve.dm.example.createExampleDocumentFromData( [
+			...caseItem.data,
+			{ type: 'internalList' },
+			{ type: '/internalList' }
+		] );
+		const surfaceModel = new ve.dm.Surface( doc );
+		const check = new mw.editcheck.TextMatchEditCheck( controller, caseItem.checkConfig || {}, true );
+
+		return check.onDocumentChange( surfaceModel ).then( ( actions ) => {
+			assert.strictEqual( actions.length, caseItem.expectedActions, caseItem.msg );
+			if ( caseItem.expectedTerms !== undefined ) {
+				assert.deepEqual( actions.map( ( action ) => action.term ), caseItem.expectedTerms, caseItem.msg + ': terms' );
+			}
+
+			let promise = Promise.resolve();
+			if ( caseItem.dismissAndRerun ) {
+				actions.forEach( ( action ) => {
+					check.tag( 'dismissed', action );
+				} );
+				promise = check.onDocumentChange( surfaceModel ).then( ( actions2 ) => {
+					assert.strictEqual( actions2.length, caseItem.expectedActionsAfterDismiss, caseItem.msg + ': after dismiss' );
+				} );
+			} else if ( caseItem.expectedData ) {
+				const data = ve.copy( surfaceModel.getDocument().getFullData() );
+				caseItem.expectedData( data );
+				const dummySurface = ve.test.utils.createModelOnlySurface( surfaceModel );
+				actions.forEach( ( action ) => {
+					check.act( 'accept', action, dummySurface );
+				} );
+				assert.equalLinearData(
+					surfaceModel.getDocument().getFullData(),
+					data,
+					caseItem.msg + ': data'
+				);
+			}
+			return promise.then( () => {
+				resetStaticState( {} );
+			} );
+		} );
+	}
+
+	const done = assert.async();
+	( async function () {
+		for ( const caseItem of cases ) {
+			await runCase( caseItem );
+		}
+		done();
+	}() );
+} );
+
+QUnit.test( 'applyCase', ( assert ) => {
+	const tests = [
+		{ message: 'Latin upper', phrase: 'my Marty McFly SMS IDs', model: 'QUX QUUX', expected: 'MY MARTY MCFLY SMS IDS' },
+		{ message: 'Latin title', phrase: 'my Marty McFly SMS IDs', model: 'Qux Quux', expected: 'My Marty McFly SMS IDs' },
+		{ message: 'Latin lower', phrase: 'my Marty McFly SMS IDs', model: 'qux quux', expected: 'my Marty McFly SMS IDs' },
+		{ message: 'Latin mixed', phrase: 'my Marty McFly SMS IDs', model: 'Qux quux', expected: 'my Marty McFly SMS IDs' },
+		{ message: 'Latin uncased', phrase: 'my Marty McFly SMS IDs', model: '123 456', expected: 'my Marty McFly SMS IDs' },
+		{ message: 'Turkish upper', lang: 'tr', phrase: 'dün İstanbul’da bir BMW gördüm', model: 'DİYARI', expected: 'DÜN İSTANBUL’DA BİR BMW GÖRDÜM' },
+		{ message: 'Turkish title', lang: 'tr', phrase: 'dün İstanbul’da bir BMW gördüm', model: 'Diyarı', expected: 'Dün İstanbul’Da Bir BMW Gördüm' },
+		{ message: 'Turkish lower', lang: 'tr', phrase: 'dün İstanbul’da bir BMW gördüm', model: 'diyarı', expected: 'dün İstanbul’da bir BMW gördüm' },
+		{ message: 'Turkish mixed', lang: 'tr', phrase: 'dün İstanbul’da bir BMW gördüm', model: 'diYArı', expected: 'dün İstanbul’da bir BMW gördüm' },
+		{ message: 'Greek upper', phrase: 'εν Αρχη', model: 'ΜΗ', expected: 'ΕΝ ΑΡΧΗ' },
+		{ message: 'Greek title', phrase: 'εν Αρχη', model: 'Μη', expected: 'Εν Αρχη' },
+		{ message: 'Greek lower', phrase: 'εν Αρχη', model: 'μη', expected: 'εν Αρχη' },
+		{ message: 'Greek mixed', phrase: 'εν Αρχη', model: 'μΗ', expected: 'εν Αρχη' },
+		{ message: 'Han+Latin upper', phrase: '你partner最鐘意Uniqlo定GOD？', model: 'QUX', expected: '你PARTNER最鐘意UNIQLO定GOD？' },
+		{ message: 'Han+Latin title', phrase: '你partner最鐘意Uniqlo定GOD？', model: 'Qux', expected: '你Partner最鐘意Uniqlo定GOD？' },
+		{ message: 'Han+Latin lower', phrase: '你partner最鐘意Uniqlo定GOD？', model: 'qux', expected: '你partner最鐘意Uniqlo定GOD？' },
+		{ message: 'Han+Latin mixed', phrase: '你partner最鐘意Uniqlo定GOD？', model: 'qUX', expected: '你partner最鐘意Uniqlo定GOD？' },
+		{ message: 'Combining accents title', phrase: 'I like Caersw\u0302s cafe\u0301s', model: 'Qux', expected: 'I Like Caersw\u0302s Cafe\u0301s' }
+	];
+	tests.forEach( ( test ) => {
+		const observed = mw.editcheck.applyCase( test.phrase, test.model, test.lang );
+		assert.strictEqual( observed, test.expected, test.message );
+	} );
+} );
+
+QUnit.test( 'TextMatchRule config', ( assert ) => {
+	const defaultRuleConfig = {
+		ignoreQuotedContent: true,
+		ignoreSections: [ 'References' ]
+	};
+	const cases = [
+		{
+			msg: 'Rule with no config gets the rule defaults',
+			ruleConfig: undefined,
+			expected: {
+				showAsCheck: false,
+				showAsSuggestion: true
+			}
+		},
+		{
+			msg: 'Rule config replaces the rule defaults',
+			ruleConfig: {
+				ignoreSections: [ 'See also' ],
+				showAsCheck: true
+			},
+			expected: {
+				ignoreSections: [ 'See also' ],
+				showAsCheck: true,
+				showAsSuggestion: true
+			}
+		},
+		{
+			msg: 'Rule with no config gets the shared rule config',
+			defaultRuleConfig,
+			ruleConfig: undefined,
+			expected: {
+				showAsCheck: false,
+				showAsSuggestion: true,
+				ignoreQuotedContent: true,
+				ignoreSections: [ 'References' ]
+			}
+		},
+		{
+			msg: 'Rule config can replace, add to and remove from the shared rule config',
+			defaultRuleConfig,
+			ruleConfig: {
+				ignoreQuotedContent: false,
+				'+ignoreSections': [ 'See also' ],
+				'-ignoreSections': 'References'
+			},
+			expected: {
+				showAsCheck: false,
+				showAsSuggestion: true,
+				ignoreQuotedContent: false,
+				ignoreSections: [ 'See also' ]
+			}
+		}
+	];
+	cases.forEach( ( caseItem ) => {
+		const layers = [ caseItem.defaultRuleConfig, caseItem.ruleConfig, mw.editcheck.TextMatchRule.static.defaultConfig ];
+		const layersBefore = ve.copy( layers );
+		const rule = new mw.editcheck.TextMatchRule(
+			{ title: 'Test', query: 'Foo', config: caseItem.ruleConfig },
+			'test',
+			new Intl.Collator( 'en' ),
+			caseItem.defaultRuleConfig
+		);
+		assert.deepEqual( rule.config, caseItem.expected, caseItem.msg );
+		assert.deepEqual( layers, layersBefore, caseItem.msg + ': configs are not changed' );
+	} );
+
+	const check = new mw.editcheck.TextMatchEditCheck( null, { defaultRuleConfig } );
+	check.instantiateMatchRules( { test: { title: 'Test', query: 'Foo', config: { '+ignoreSections': [ 'Notes' ] } } } );
+	assert.deepEqual(
+		check.matchRules[ 0 ].config.ignoreSections,
+		[ 'References', 'Notes' ],
+		'TextMatchEditCheck gives its defaultRuleConfig to its rules'
+	);
+} );

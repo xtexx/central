@@ -1,0 +1,13 @@
+{
+	"@metadata": {
+		"authors": [
+			"Aristorkle",
+			"Noooote",
+			"WikiEditor50"
+		]
+	},
+	"visualeditor-ca-createlocaldescriptionsource": "Aumenta origen de descripcion local",
+	"visualeditor-ca-createsource": "Crea texto de codigo",
+	"visualeditor-ca-editsource": "Edita texto de codigo",
+	"visualeditor-ca-editsource-section": "edita texto de codigo"
+}

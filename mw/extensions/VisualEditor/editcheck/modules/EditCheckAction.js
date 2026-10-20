@@ -1,0 +1,660 @@
+/**
+ * EditCheckAction
+ *
+ * @class
+ * @mixes OO.EventEmitter
+ *
+ * @param {Object} config Configuration options
+ * @param {mw.editcheck.BaseEditCheck} config.check Check which created this action
+ * @param {ve.dm.SurfaceFragment[]} config.fragments Affected fragments
+ * @param {ve.dm.SurfaceFragment} [config.focusFragment] Fragment to focus
+ * @param {Function} [config.focusAnnotation] Annotation to focus, see ve.ce.Surface#selectAnnotation
+ * @param {jQuery|string|Function|OO.ui.HtmlSnippet} [config.title] Title
+ * @param {jQuery|string|Function|OO.ui.HtmlSnippet} [config.message] Body message
+ * @param {jQuery|string|Function|OO.ui.HtmlSnippet} [config.prompt] Prompt to show before choices
+ * @param {jQuery|string|Function|OO.ui.HtmlSnippet} [config.footer] Footer to show after choices
+ * @param {string} [config.footerIcon] Icon to show next to footer
+ * @param {string} [config.id] Optional unique identifier
+ * @param {string} [config.name] Name to report this action as, if it should be
+ *  distinguished from other actions of the same check
+ * @param {string} [config.icon] Optional icon name
+ * @param {string} [config.type='warning'] Type of message (e.g., 'warning', 'error')
+ * @param {boolean} [config.suggestion] Whether this is a suggestion
+ * @param {Object[]} [config.choices] User choices
+ * @param {boolean} [config.trackId] Whether to include the action's ID in instrumentation
+ * @param {boolean} [config.collapsible=true] Whether the widget can be expanded and collapsed
+ * @param {string} [config.messageType] Name of the mw.editcheck.SystemMessageEditCheck
+ *  messageType this action was built from. Used only to give the widget a
+ *  `ve-ui-editCheckActionWidget-<messageType>` class as a styling hook.
+ */
+mw.editcheck.EditCheckAction = function MWEditCheckAction( config ) {
+	// Mixin constructor
+	OO.EventEmitter.call( this );
+
+	this.mode = config.mode || '';
+	this.messageType = config.messageType;
+	this.check = config.check;
+	this.fragments = config.fragments;
+	this.originalText = this.fragments.map( ( fragment ) => fragment.getText() );
+	this.focusFragment = config.focusFragment;
+	this.focusAnnotation = config.focusAnnotation;
+	this.message = config.message;
+	this.prompt = config.prompt;
+	this.footer = config.footer;
+	this.footerIcon = config.footerIcon;
+	this.id = config.id;
+	this.name = config.name;
+	this.title = config.title;
+	this.icon = config.icon;
+	this.type = config.type || 'warning';
+	this.choices = config.choices || config.check.constructor.static.choices;
+	this.suggestion = config.suggestion;
+	this.trackId = !!config.trackId;
+	this.collapsible = config.collapsible !== false;
+	this.widget = null;
+	this.stale = false;
+	this.completed = false;
+	this.completionIntended = false;
+};
+
+/* Inheritance */
+
+OO.mixinClass( mw.editcheck.EditCheckAction, OO.EventEmitter );
+
+/* Events */
+
+/**
+ * Fired when the user selects an action (e.g., clicks a suggestion button).
+ *
+ * @event mw.editcheck.EditCheckAction#act
+ * @param {jQuery.Promise} promise A promise that resolves when the action is complete
+ */
+
+/**
+ * Fired when the action's stale state changes
+ *
+ * @event mw.editcheck.EditCheckAction#stale
+ * @param {boolean} stale The check is stale
+ */
+
+/**
+ * Fired when the action is shown to the user
+ *
+ * @event mw.editcheck.EditCheckAction#shown
+ * @param {boolean} shown The check is shown
+ */
+
+/**
+ * Fired when the action is seen by the user
+ *
+ * @event mw.editcheck.EditCheckAction#seen
+ * @param {boolean} seen The check is seen
+ */
+
+/**
+ * Fired when the action is completed successfully
+ * Unlike 'discard', this represents an actual outcome of the action,
+ * not just it being removed from the action list
+ *
+ * @event mw.editcheck.EditCheckAction#complete
+ * @param {jQuery|string|Function|OO.ui.HtmlSnippet} [message] Message to show for this
+ *  outcome that overrides the check's successResult message
+ */
+
+/* Methods */
+
+/**
+ * Compare the start offsets of two actions.
+ *
+ * @param {mw.editcheck.EditCheckAction} a
+ * @param {mw.editcheck.EditCheckAction} b
+ * @return {number}
+ */
+mw.editcheck.EditCheckAction.static.compareStarts = function ( a, b ) {
+	const aStart = a.getHighlightSelections()[ 0 ].getCoveringRange().start;
+	const bStart = b.getHighlightSelections()[ 0 ].getCoveringRange().start;
+	const difference = aStart - bStart;
+	if ( difference === 0 ) {
+		if ( a.check.takesFocus() ) {
+			return -1;
+		}
+		if ( b.check.takesFocus() ) {
+			return 1;
+		}
+		const aEnd = a.getHighlightSelections()[ 0 ].getCoveringRange().end;
+		const bEnd = b.getHighlightSelections()[ 0 ].getCoveringRange().end;
+		return bEnd - aEnd;
+	}
+	return difference;
+};
+
+/**
+ * Find the actions in a list that are equal to some actions
+ *
+ * Actions with no equal action in the list are removed.
+ *
+ * @param {mw.editcheck.EditCheckAction[]} actions Actions to find
+ * @param {mw.editcheck.EditCheckAction[]} list Actions to search
+ * @return {mw.editcheck.EditCheckAction[]} Actions from the list
+ */
+mw.editcheck.EditCheckAction.static.findEqualActions = function ( actions, list ) {
+	return actions
+		.map( ( action ) => list.find( ( listAction ) => listAction.equals( action ) ) )
+		.filter( ( action ) => action );
+};
+
+/**
+ * Get the action's title
+ *
+ * @return {jQuery|string|Function|OO.ui.HtmlSnippet}
+ */
+mw.editcheck.EditCheckAction.prototype.getTitle = function () {
+	return this.title || this.check.getTitle( this );
+};
+
+/**
+ * Get the action's footer, if any
+ *
+ * @return {jQuery|string|Function|OO.ui.HtmlSnippet|undefined}
+ */
+mw.editcheck.EditCheckAction.prototype.getFooter = function () {
+	return this.footer || this.check.getFooter( this );
+};
+
+/**
+ * Get the action's footerIcon, if any
+ *
+ * @return {string|undefined}
+ */
+mw.editcheck.EditCheckAction.prototype.getFooterIcon = function () {
+	return this.footerIcon || this.check.getFooterIcon( this );
+};
+
+/**
+ * Get the prompt question for the current choices
+ *
+ * @return {jQuery|string|Function|OO.ui.HtmlSnippet|undefined}
+ */
+mw.editcheck.EditCheckAction.prototype.getPrompt = function () {
+	return this.prompt || this.check.getPrompt( this );
+};
+
+/**
+ * Get the available choices
+ *
+ * @return {Object[]}
+ */
+mw.editcheck.EditCheckAction.prototype.getChoices = function () {
+	return this.choices;
+};
+
+/**
+ * Get selections to highlight for this check
+ *
+ * @return {ve.dm.Selection[]}
+ */
+mw.editcheck.EditCheckAction.prototype.getHighlightSelections = function () {
+	return this.fragments.map( ( fragment ) => fragment.getSelection() );
+};
+
+/**
+ * Get the selection to focus for this check
+ *
+ * @return {ve.dm.Selection}
+ */
+mw.editcheck.EditCheckAction.prototype.getFocusSelection = function () {
+	// TODO: Instead of fragments[0], create a fragment that covers all fragments?
+	return ( this.focusFragment || this.fragments[ 0 ] ).getSelection();
+};
+
+/**
+ * Get a description of the check
+ *
+ * @return {jQuery|string|Function|OO.ui.HtmlSnippet}
+ */
+mw.editcheck.EditCheckAction.prototype.getDescription = function () {
+	return this.message || this.check.getDescription( this );
+};
+
+/**
+ * Get the type of this action ('warning', 'error', 'progressive')
+ *
+ * @return {string}
+ */
+mw.editcheck.EditCheckAction.prototype.getType = function () {
+	if ( this.suggestion && !this.check.constructor.static.fixedType ) {
+		return 'progressive';
+	}
+	return this.type;
+};
+
+/**
+ * Get the name of the check type
+ *
+ * @return {string} Check type name
+ */
+mw.editcheck.EditCheckAction.prototype.getName = function () {
+	return this.name || this.check.getName();
+};
+
+/**
+ * Get the ID of the community-defined rule that produced this action
+ *
+ * The ID has no fixed set of values, so metrics must not use it as the check
+ * name.
+ *
+ * @return {string|null} Rule ID, or null if the check has no sub-rules
+ */
+mw.editcheck.EditCheckAction.prototype.getRuleId = function () {
+	return null;
+};
+
+/**
+ * Whether this is a suggestion
+ *
+ * @return {boolean}
+ */
+mw.editcheck.EditCheckAction.prototype.isSuggestion = function () {
+	return this.suggestion;
+};
+
+mw.editcheck.EditCheckAction.prototype.isExperimental = function () {
+	return ( !this.suggestion && !this.check.config.showAsCheck ) ||
+		( this.suggestion && !this.check.config.showAsSuggestion );
+};
+
+/**
+ * Whether widget needs to be redrawn using fresh data, without a full rerender
+ *
+ * Called from Controller#updateForListener when a new action #equals the old one,
+ * but there is an update to some data that is displayed in the widget
+ *
+ * @param {mw.editcheck.EditCheckAction} action the new, equivalent action
+ * @return {boolean} Whether widget needs to be redrawn
+ */
+mw.editcheck.EditCheckAction.prototype.updateFrom = function () {
+	return false;
+};
+
+/**
+ * Refresh the rendered widget to reflect any changes since it was last built
+ *
+ * Currently only updates the card description but this could be extended if other getters become stale(-able) too
+ */
+mw.editcheck.EditCheckAction.prototype.refreshWidget = function () {
+	if ( this.widget ) {
+		this.widget.setMessage( this.getDescription() );
+	}
+};
+
+/**
+ * Render as an EditCheckActionWidget
+ *
+ * @param {boolean} collapsed Start collapsed
+ * @param {boolean} singleAction This is the only action shown
+ * @param {ve.ui.Surface} surface Surface
+ * @return {mw.editcheck.EditCheckActionWidget}
+ */
+mw.editcheck.EditCheckAction.prototype.render = function ( collapsed, singleAction, surface ) {
+	this.widget = new mw.editcheck.EditCheckActionWidget( {
+		type: this.getType(),
+		icon: this.icon,
+		name: this.getName(),
+		checkName: this.check.getName(),
+		isSystemCheck: this.check.isSystemCheck(),
+		label: this.getTitle(),
+		message: this.getDescription(),
+		footer: this.getFooter(),
+		footerIcon: this.getFooterIcon(),
+		prompt: this.getPrompt(),
+		choices: this.getChoices(),
+		mode: this.mode,
+		singleAction,
+		suggestion: this.suggestion,
+		experimental: this.isExperimental(),
+		collapsible: this.collapsible,
+		classes: this.messageType ? [ 've-ui-editCheckActionWidget-' + this.messageType ] : undefined
+	} );
+	this.widget.connect( this, {
+		actionClick: [ 'onActionClick', surface ]
+	} );
+	// On mobile, the gutter usually emits 'shown' before this. The pre-save
+	// dialog has no gutter, so emit here too. The controller records 'shown'
+	// once for each action.
+	this.emit( 'shown' );
+	this.widget.once( 'actionSeen', this.onActionSeen.bind( this ) );
+	this.widget.toggleCollapse( collapsed );
+
+	return this.widget;
+};
+
+/**
+ * Set the mode used by the action widget
+ *
+ * @param {string} mode
+ */
+mw.editcheck.EditCheckAction.prototype.setMode = function ( mode ) {
+	this.mode = mode;
+	if ( this.widget ) {
+		this.widget.setMode( mode );
+	}
+};
+
+/**
+ * Handle click events from an action button
+ *
+ * @param {ve.ui.Surface} surface Surface
+ * @param {OO.ui.ActionWidget} actionWidget Clicked action widget
+ * @fires mw.editcheck.EditCheckAction#act
+ */
+mw.editcheck.EditCheckAction.prototype.onActionClick = function ( surface, actionWidget ) {
+	const promise = this.check.act( actionWidget.action, this, surface );
+	this.emit( 'act', promise || ve.createDeferred().resolve().promise(), actionWidget.action );
+};
+
+/**
+ * Handle seen events from an action widget
+ *
+ * @fires mw.editcheck.EditCheckAction#seen
+ */
+mw.editcheck.EditCheckAction.prototype.onActionSeen = function () {
+	this.emit( 'seen' );
+};
+
+/**
+ * Compare to another action
+ *
+ * @param {mw.editcheck.EditCheckAction} other Other action
+ * @param {boolean} allowOverlaps Count overlaps rather than a perfect match
+ * @return {boolean}
+ */
+mw.editcheck.EditCheckAction.prototype.equals = function ( other, allowOverlaps ) {
+	if ( this.check.constructor !== other.check.constructor ) {
+		return false;
+	}
+	if ( this.id !== other.id ) {
+		return false;
+	}
+	if ( this.fragments.length !== other.fragments.length ) {
+		return false;
+	}
+	return this.fragments.every( ( fragment, i ) => {
+		if ( allowOverlaps ) {
+			const selection = fragment.getSelection();
+			return other.fragments.some( ( otherFragment ) => {
+				if ( otherFragment.getSelection().equals( selection ) ) {
+					// A perfect match always counts, and also covers the case of
+					// zero-width ranges on the same point which don't "overlap"
+					return true;
+				}
+				// This case is meant to catch suggestions which were generated on
+				// the same content but which don't perfectly match up because the
+				// modified range is different.
+				const range = selection.getCoveringRange(),
+					otherRange = otherFragment.getSelection().getCoveringRange();
+				// If one is collapsed we accept them touching, otherwise we
+				// only allow overlaps.
+				return ( range.isCollapsed() || otherRange.isCollapsed() ) ?
+					otherRange.touchesRange( range ) :
+					otherRange.overlapsRange( range );
+			} );
+		} else {
+			return fragment.getSelection().equals( other.fragments[ i ].getSelection() );
+		}
+	} );
+};
+
+/**
+ * Update the stale state of the action
+ *
+ * The action is stale while the user revises it (see #startRevising), or
+ * when its text changed since the check last ran.
+ *
+ * @param {boolean} [resetText=false] The check ran again on the current text
+ * @return {boolean} The stale state changed
+ */
+mw.editcheck.EditCheckAction.prototype.updateStale = function ( resetText ) {
+	const wasStale = this.isStale();
+	// Revising ends when the selection leaves the action, which clears the 'revising' tag
+	if ( !this.isRevising() && ( resetText || !this.originalText ) ) {
+		this.originalText = this.fragments.map( ( fragment ) => fragment.getText() );
+	}
+	this.stale = !this.originalText || !OO.compare(
+		this.originalText,
+		this.fragments.map( ( fragment ) => fragment.getText() )
+	);
+	if ( wasStale !== this.isStale() ) {
+		this.emit( 'stale', this.stale );
+		return true;
+	}
+	return false;
+};
+
+/**
+ * Get the stale state of the action
+ *
+ * Users must call #updateStale first if they want to get the latest
+ * state based on the current text.
+ *
+ * @return {boolean} The action is stale
+ */
+mw.editcheck.EditCheckAction.prototype.isStale = function () {
+	return this.check.canBeStale() && this.stale;
+};
+
+/**
+ * Start revising the action, which makes it stale
+ *
+ * The 'revising' tag is cleared when the selection leaves the action's
+ * fragments, and this stops the revising.
+ */
+mw.editcheck.EditCheckAction.prototype.startRevising = function () {
+	// Include insertions, so text typed at the edges stays in the tagged range
+	this.check.tagFragments( 'revising', this.fragments, true, this.getTagName(), true );
+	this.originalText = null;
+	this.updateStale();
+};
+
+/**
+ * Stop revising the action, and accept its current text as checked
+ */
+mw.editcheck.EditCheckAction.prototype.stopRevising = function () {
+	// A tag left until the selection leaves would cause a refresh, which
+	// replaces the branch node run that clears staleness from typing.
+	this.check.untagFragments( 'revising', this.fragments, this.getTagName() );
+	this.originalText = this.fragments.map( ( fragment ) => fragment.getText() );
+	this.updateStale();
+};
+
+/**
+ * Check if the user is revising the action
+ *
+ * Only this action object is revising. Other actions in the tagged range are
+ * not, e.g. an action that replaces this one after the paragraph is split.
+ *
+ * This always uses the fragments, also for actions with an ID, because the
+ * tag must be cleared when the selection leaves a range.
+ *
+ * @return {boolean}
+ */
+mw.editcheck.EditCheckAction.prototype.isRevising = function () {
+	return !this.originalText && this.fragments.some( ( fragment ) => {
+		const range = fragment.getSelection().getCoveringRange();
+		return !!range && this.check.isTaggedRange( 'revising', range, this.getTagName() );
+	} );
+};
+
+/**
+ * Method called by the controller when the action is removed from the action list
+ *
+ * Also checks if a check previously called #intendComplete on this action,
+ * in which case that completion is finished here.
+ */
+mw.editcheck.EditCheckAction.prototype.discarded = function () {
+	if ( this.completionIntended ) {
+		this.complete();
+	}
+	this.emit( 'discard' );
+};
+
+/**
+ * Method called by a check when the action being discarded should indicate it's been completed
+ *
+ * For use by checks whose own workflow can be cancelled without the check knowing.
+ */
+mw.editcheck.EditCheckAction.prototype.intendComplete = function () {
+	this.completionIntended = true;
+};
+
+/**
+ * Cancel a previous call to #intendComplete
+ *
+ * Used when the check was dismissed before the user finished applying the fix.
+ *
+ */
+mw.editcheck.EditCheckAction.prototype.cancelComplete = function () {
+	this.completionIntended = false;
+};
+
+/**
+ * Method called when the action is completed successfully
+ *
+ * Call this before the action is removed from the action list. Then the system
+ * message is in the list when a dialog updates, and the dialog does not close.
+ *
+ * @param {jQuery|string|Function|OO.ui.HtmlSnippet} [message] Message to show for this
+ *  outcome that overrides the check's successResult message
+ *
+ * @fires mw.editcheck.EditCheckAction#complete
+ */
+mw.editcheck.EditCheckAction.prototype.complete = function ( message ) {
+	if ( this.completed ) {
+		return;
+	}
+	this.completed = true;
+	this.emit( 'complete', message );
+};
+
+/**
+ * Tag this action
+ *
+ * @param {string} tag
+ */
+mw.editcheck.EditCheckAction.prototype.tag = function ( tag ) {
+	this.check.tag( tag, this );
+};
+
+/**
+ * Untag this action
+ *
+ * @param {string} tag
+ * @return {boolean} Whether anything was untagged
+ */
+mw.editcheck.EditCheckAction.prototype.untag = function ( tag ) {
+	return this.check.untag( tag, this );
+};
+
+/**
+ * Is this action tagged?
+ *
+ * @param {string} tag
+ * @return {boolean}
+ */
+mw.editcheck.EditCheckAction.prototype.isTagged = function ( tag ) {
+	if ( this.id ) {
+		return this.check.isTaggedId( tag, this.id );
+	} else {
+		return this.fragments.some( ( fragment ) => this.check.isTaggedRange( tag, fragment.getSelection().getRange() ) );
+	}
+};
+
+/**
+ * Get unique tag name for this action
+ *
+ * @return {string}
+ */
+mw.editcheck.EditCheckAction.prototype.getTagName = function () {
+	return this.check.constructor.static.name;
+};
+
+/**
+ * Select the action in the surface
+ *
+ * @param {ve.ui.Surface} surface
+ * @param {boolean} selectFocusRange Whether to select the focus range of the check,
+ *  or just move the cursor to the nearest point in the selection if outside the check range
+ * @param {boolean} [focus=true] Activate and focus the surface
+ */
+mw.editcheck.EditCheckAction.prototype.select = function ( surface, selectFocusRange, focus = true ) {
+	const surfaceModel = surface.getModel();
+	const surfaceView = surface.getView();
+	if ( focus ) {
+		surfaceView.activate();
+	}
+	if ( this.focusAnnotation ) {
+		surfaceModel.setSelection( this.getFocusSelection() );
+		if ( focus ) {
+			surfaceView.selectAnnotation( this.focusAnnotation );
+		}
+	} else {
+		const checkRange = this.getFocusSelection().getCoveringRange();
+		// On mobile a node-covering selection opens the context, and the context
+		// closes the edit check drawer. Make this selection only on request.
+		if ( selectFocusRange || ( !OO.ui.isMobile() && surfaceView.findFocusedNode( checkRange ) ) ) {
+			surfaceModel.setLinearSelection( checkRange );
+		} else {
+			const surfaceRange = surfaceModel.getSelection().getCoveringRange();
+			// Collapse and move the selection to the nearest part of the check range
+			// Don't alter it if it touches the check range
+			if ( surfaceRange === null || surfaceRange.end < checkRange.start ) {
+				surfaceModel.setLinearSelection( new ve.Range( checkRange.start ) );
+			} else if ( surfaceRange.start > checkRange.end ) {
+				surfaceModel.setLinearSelection( new ve.Range( checkRange.end ) );
+			}
+		}
+		if ( focus ) {
+			surfaceView.focus();
+		}
+	}
+};
+
+/**
+ *
+ * Check if any of this action's fragments' ranges overlap with the given ranges
+ *
+ * @param {ve.Range[]} ranges The ranges
+ * @return {boolean} True if any overlap exists
+ */
+mw.editcheck.EditCheckAction.prototype.overlapsRanges = function ( ranges ) {
+	return this.fragments.some( ( fragment ) => {
+		const sel = fragment.getSelection();
+		let fragmentRange;
+		if ( sel instanceof ve.dm.LinearSelection ) {
+			fragmentRange = sel.getRange();
+		} else if ( sel instanceof ve.dm.TableSelection ) {
+			fragmentRange = sel.getCoveringRange();
+		} else {
+			return false;
+		}
+		return ranges.some( ( range ) => range.overlapsRange( fragmentRange ) );
+	} );
+};
+
+/**
+ * Check whether every range of this action has been dismissed for this check
+ *
+ * @param {string} tag
+ * @return {boolean}
+ */
+mw.editcheck.EditCheckAction.prototype.isDismissed = function () {
+	return this.isTagged( 'dismissed' );
+};
+
+/**
+ * Get action's id if it's configured to include it in its instrumentation
+ *
+ * @return {string} suffix with ID, or an empty string
+ */
+mw.editcheck.EditCheckAction.prototype.getTrackingIdSuffix = function () {
+	return this.trackId ? `-id-${ this.id }` : '';
+};

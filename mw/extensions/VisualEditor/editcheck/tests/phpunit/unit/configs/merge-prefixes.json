@@ -1,0 +1,39 @@
+{
+	"*": {
+		"+ignoreSections": [
+			"References"
+		]
+	},
+	"externalLink": {
+		"+ignoreSections": [
+			"External links"
+		],
+		"-ignoreSections": "References",
+		"+extraNamespaces": {
+			"Draft": true
+		},
+		"-extraNamespaces": [
+			"User"
+		]
+	},
+	"textMatch": {
+		"+ignoreSections": [
+			"Further reading"
+		],
+		"defaultRuleConfig": {
+			"ignoreQuotedContent": true,
+			"+ignoreSections": [
+				"Bibliography"
+			]
+		},
+		"matchRules": {
+			"spelling": {
+				"query": "teh",
+				"config": {
+					"ignoreQuotedContent": false,
+					"-ignoreSections": "Bibliography"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,99 @@
+ve.test.utils.EditCheck = {};
+
+ve.test.utils.EditCheck.dummyController = {
+	taggedFragments: {},
+	taggedIds: {},
+	ephemeralTags: [],
+	registerEphemeralTag: function ( name, tag, fragment ) {
+		this.ephemeralTags.push( { name, tag, fragment } );
+	},
+	unregisterEphemeralTag: function ( fragment ) {
+		this.ephemeralTags = this.ephemeralTags.filter( ( entry ) => entry.fragment !== fragment );
+	},
+	getTarget: () => ve.init.target
+};
+
+/**
+ * Make one suggestion action and one non-suggestion action
+ *
+ * Each action carries an id, so that tests can assert on which actions reached
+ * a function without comparing the action objects themselves.
+ *
+ * @return {mw.editcheck.EditCheckAction[]} Suggestion action, then warning action
+ */
+ve.test.utils.EditCheck.makeDisplayActions = function () {
+	const doc = new ve.dm.Document( [ { type: 'paragraph' }, ...'abcdef', { type: '/paragraph' } ] ),
+		surface = new ve.dm.Surface( doc ),
+		fragments = [ surface.getFragment( new ve.dm.LinearSelection( new ve.Range( 1, 4 ) ) ) ],
+		check = new mw.editcheck.BaseEditCheck( ve.test.utils.EditCheck.dummyController, {}, false );
+
+	return [
+		new mw.editcheck.EditCheckAction( { fragments, choices: [], suggestion: true, id: 'suggestion', check } ),
+		new mw.editcheck.EditCheckAction( { fragments, choices: [], suggestion: false, id: 'warning', check } )
+	];
+};
+
+/**
+ * Make actions with a check, at different offsets, so that they can be compared with equals
+ *
+ * @param {string[]} ids Action ids, in document order
+ * @return {mw.editcheck.EditCheckAction[]} Actions
+ */
+ve.test.utils.EditCheck.makeComparableActions = function ( ids ) {
+	const doc = new ve.dm.Document( [ { type: 'paragraph' }, ...'abcdef', { type: '/paragraph' } ] ),
+		surface = new ve.dm.Surface( doc ),
+		check = new mw.editcheck.BaseEditCheck( ve.test.utils.EditCheck.dummyController, {}, false );
+
+	return ids.map( ( id, i ) => new mw.editcheck.EditCheckAction( {
+		fragments: [ surface.getFragment( new ve.dm.LinearSelection( new ve.Range( i + 1, i + 2 ) ) ) ],
+		choices: [],
+		check,
+		id
+	} ) );
+};
+
+/**
+ * Get the ids of a list of actions
+ *
+ * Missing actions give an empty list, so that a failure shows the difference
+ * instead of stopping the test.
+ *
+ * @param {mw.editcheck.EditCheckAction[]} [actions] Actions to name
+ * @return {string[]} Action ids
+ */
+ve.test.utils.EditCheck.actionIds = function ( actions ) {
+	return ( actions || [] ).map( ( action ) => action.id );
+};
+
+/**
+ * Make a controller stub which hides suggestions, as suppressSuggestionDisplay does
+ *
+ * @param {mw.editcheck.EditCheckAction[]} actions Actions the controller holds
+ * @return {Object} Controller stub
+ */
+ve.test.utils.EditCheck.makeHidingController = function ( actions ) {
+	return {
+		getActions: () => actions,
+		getDisplayActions: () => actions.filter( ( action ) => !action.isSuggestion() ),
+		filterActionsForDisplay: ( toFilter ) => toFilter.filter( ( action ) => !action.isSuggestion() )
+	};
+};
+
+// Edit check environment extends MW environment:
+ve.test.utils.newEditCheckEnvironment = function ( env = {} ) {
+	return ve.test.utils.newMwEnvironment( ve.extendObject( {}, env, {
+		beforeEach() {
+			this.originalConfig = mw.editcheck.config;
+			mw.editcheck.config = {};
+			if ( env.beforeEach ) {
+				env.beforeEach.call( this );
+			}
+		},
+		afterEach() {
+			mw.editcheck.config = this.originalConfig;
+			if ( env.afterEach ) {
+				env.afterEach.call( this );
+			}
+		}
+	} ) );
+};

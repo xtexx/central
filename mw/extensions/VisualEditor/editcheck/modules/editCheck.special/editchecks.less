@@ -1,0 +1,99 @@
+@import 'mediawiki.skin.variables.less';
+
+/**
+ * Styles for Special:Editchecks
+ */
+
+.mw-editchecks {
+	width: 100%;
+
+	tr {
+		vertical-align: top;
+	}
+
+	&-appearance {
+		width: 1px;
+	}
+
+	.mw-editchecks-title,
+	.mw-editchecks-name {
+		width: 20%;
+	}
+
+	summary {
+		cursor: pointer;
+	}
+
+	.mw-json {
+		margin-top: 4px;
+		margin-bottom: 8px;
+	}
+
+	.ve-ui-editCheckDialog {
+		width: 300px;
+
+		.ve-ui-editCheckActionWidget.oo-ui-messageWidget {
+			margin: 4px 0;
+		}
+	}
+
+	.mw-mf & {
+		width: 100%;
+		background-color: transparent;
+		border: 0;
+
+		.mw-editchecks-header {
+			display: none;
+		}
+
+		> tbody,
+		> tbody > tr,
+		> tbody > tr > td {
+			width: 100%;
+			display: block;
+			border: 0;
+			box-sizing: border-box;
+		}
+
+		> tbody > tr {
+			margin-bottom: @spacing-50;
+			padding-bottom: @spacing-50;
+			border-bottom: @border-base;
+		}
+
+		.ve-ui-editCheckDialog {
+			width: 100%;
+			// Remove the mobile drawer styles of the editor dialog
+			max-width: none;
+			margin: 0;
+			box-shadow: none;
+			transform: none;
+			transition: none;
+			background: @background-color-base;
+			border: @border-subtle;
+		}
+
+		// Show each value below its key. Long keys then do not push the
+		// values off the screen.
+		.mw-json {
+			&,
+			> tbody,
+			> tbody > tr,
+			> tbody > tr > th,
+			> tbody > tr > td {
+				display: block;
+			}
+
+			th,
+			td {
+				padding: @spacing-25 @spacing-50;
+				text-align: left;
+				overflow-wrap: anywhere;
+			}
+
+			th {
+				border-bottom: 0;
+			}
+		}
+	}
+}

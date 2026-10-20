@@ -1,0 +1,439 @@
+/*!
+ * VisualEditor UserInterface GutterSidebarEditCheckDialog class.
+ *
+ * @copyright See AUTHORS.txt
+ */
+
+/**
+ * GutterSidebarEditCheckDialog constructor.
+ *
+ * The edit check dialog which is created when the user is on mobile. It adds a narrow gutter wide enough to show an
+ * icon. When clicked, we create (or reuse) a ve.ui.FixedEditCheckDialog instance to show the check details.
+ *
+ * @class
+ * @extends ve.ui.SidebarDialog
+ * @constructor
+ * @param {Object} config Configuration options
+ */
+ve.ui.GutterSidebarEditCheckDialog = function VeUiGutterSidebarEditCheckDialog( config ) {
+	// Parent constructor
+	ve.ui.GutterSidebarEditCheckDialog.super.call( this, config );
+
+	this.$element.addClass( 've-ui-gutterSidebarEditCheckDialog' );
+};
+
+/* Inheritance */
+
+OO.inheritClass( ve.ui.GutterSidebarEditCheckDialog, ve.ui.SidebarDialog );
+
+/* Static properties */
+
+ve.ui.GutterSidebarEditCheckDialog.static.name = 'gutterSidebarEditCheckDialog';
+
+ve.ui.GutterSidebarEditCheckDialog.static.size = 'gutter';
+
+// The gutter should never steal the focus, as it's intended to be a discreet notification
+ve.ui.GutterSidebarEditCheckDialog.static.activeSurface = true;
+
+/* Methods */
+
+/**
+ * @inheritdoc
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.initialize = function () {
+	// Parent method
+	ve.ui.GutterSidebarEditCheckDialog.super.prototype.initialize.call( this );
+
+	// OO.ui.Window#ready focuses the content, and the browser scrolls it into
+	// view. The content is at the top of the surface, above the edited section.
+	// The gutter must not take the focus, so make the content unfocusable.
+	this.$content.removeAttr( 'tabindex' );
+
+	this.sections = [];
+	this.navigableActions = [];
+	// More than one system message can coexist (such as several plain 'success' messages,
+	// each with their own autoDismiss timer, in different sections), so track each one
+	// that we've auto-shown, not just the most recent
+	this.autoShownSystemActions = new Set();
+	this.hasActionInSectionInitially = false;
+	this.renderDeferred = ve.createDeferred();
+	// Many actions can arrive together, and each render measures all of them
+	this.renderActionsDebounced = ve.debounceWithTest( () => !!this.surface, () => this.renderActions(), 100 );
+
+	this.scrollIntoView = new ve.ui.EditCheckScrollIntoViewWidget();
+	this.scrollIntoView.connect( this, {
+		showClick: 'onScrollIntoViewShowClick',
+		closeClick: 'onScrollIntoViewCloseClick'
+	} );
+
+	this.$element.append( this.scrollIntoView.$element );
+};
+
+/**
+ * Handle click events from scroll-into-view's show button.
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.onScrollIntoViewShowClick = function () {
+	if ( this.sections.length ) {
+		this.scrollToNearestAction();
+		return;
+	}
+	// if no suggestions are available in this section, then a click should open the full page editor
+	const target = this.controller.getTarget();
+	if ( target ) {
+		this.controller.originSection = target.section;
+		target.switchToVisualSection( null, 0 );
+	}
+};
+
+/**
+ * Handle click events from scroll-into-view's close button.
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.onScrollIntoViewCloseClick = function () {
+	if ( this.scrollIntoView ) {
+		this.scrollIntoView.$element.remove();
+		this.scrollIntoView.destroy();
+		this.scrollIntoView = null;
+	}
+};
+
+/**
+ * Handle focusAction events from the controller
+ *
+ * @param {mw.editcheck.EditCheckAction} action
+ * @param {number} index
+ * @param {boolean} scrollTo
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.onFocusAction = function () {
+	this.onScrollIntoViewCloseClick();
+};
+
+/**
+ * @inheritdoc
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.getSetupProcess = function ( data ) {
+	const process = this.constructor.super.prototype.getSetupProcess.call( this, data );
+	return process.first( () => {
+		this.controller = data.controller;
+		if ( !Object.prototype.hasOwnProperty.call( data, 'inBeforeSave' ) ) {
+			throw new Error( 'inBeforeSave argument required' );
+		}
+		this.inBeforeSave = data.inBeforeSave;
+		this.surface = data.controller.surface;
+		this.fromSection = false;
+		this.scrollToNearestActionDebounced = ve.debounceWithTest( () => this.fromSection, this.scrollToNearestAction.bind( this ), 500 );
+		this.controller.on( 'actionsUpdated', this.onActionsUpdated, null, this );
+		this.controller.on( 'actionsUpdatedProgress', this.onActionsUpdatedProgress, null, this );
+		this.controller.on( 'position', this.onPosition, null, this );
+		this.controller.on( 'focusAction', this.onFocusAction, null, this );
+
+		this.fromSection = !!this.controller.originSection;
+		if ( this.fromSection ) {
+			this.scrollIntoView = null;
+		}
+		this.renderActions( data.newActions || [] );
+
+		if ( this.scrollIntoView ) {
+			const fullPageButton = this.controller.getTarget().switchToFullPageButtonBottom;
+			this.scrollIntoView.observeFullPageButton( fullPageButton.$element[ 0 ] );
+		}
+	}, this );
+};
+
+/**
+ * @inheritdoc
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.getTeardownProcess = function ( data ) {
+	// Parent method
+	const process = ve.ui.GutterSidebarEditCheckDialog.super.prototype.getTeardownProcess.call( this, data );
+	return process.first( () => {
+		this.controller.disconnect( this );
+
+		this.widgets.forEach( ( widget ) => widget.teardown() );
+		this.widgets = [];
+		this.renderDeferred = ve.createDeferred();
+
+		if ( this.scrollIntoView ) {
+			this.scrollIntoView.clear();
+		}
+
+		this.fromSection = false;
+		this.surface = null;
+		this.controller = null;
+	}, this );
+};
+
+/**
+ * Handle updates to the list of edit check actions.
+ *
+ * @param {string} listener Check listener
+ * @param {mw.editcheck.EditCheckAction[]} actions All current actions
+ * @param {mw.editcheck.EditCheckAction[]} newActions Newly added actions
+ * @param {mw.editcheck.EditCheckAction[]} discardedActions Newly removed actions
+ * @param {boolean} rejected The last action was rejected/dismissed
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.onActionsUpdated = function ( listener, actions, newActions ) {
+	if ( this.inBeforeSave !== ( listener === 'onBeforeSave' ) ) {
+		return;
+	}
+	this.renderActions( newActions );
+};
+
+/**
+ * Handle an action that arrives before all checks for its listener finish
+ *
+ * @param {string} listener Check listener
+ * @param {mw.editcheck.EditCheckAction} action
+ * @param {mw.editcheck.EditCheckAction|null} oldAction Previously present equal action
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.onActionsUpdatedProgress = function ( listener, action, oldAction ) {
+	if ( this.inBeforeSave !== ( listener === 'onBeforeSave' ) || oldAction ) {
+		return;
+	}
+	this.renderActionsDebounced();
+};
+
+/**
+ * Handle position events from the controller
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.onPosition = function () {
+	this.renderActions();
+};
+
+/**
+ * Scroll to the action nearest the user's current position
+ *
+ * If actions exist both above and below, it will default to scrolling
+ * to the action above, unless the direction parameter is passed.
+ *
+ * @param {string} [direction] Direction to scroll if actions exist both above and below
+ * @return {boolean} An action was found and focused
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.scrollToNearestAction = function ( direction ) {
+	this.fromSection = false;
+	this.controller.originSection = null;
+	const actionToFocus = mw.editcheck.chooseScrollAction( this.findNearestActions(), direction );
+	if ( actionToFocus ) {
+		this.showDialogWithAction( actionToFocus, { alignToTop: true, duration: 'slow' } );
+		return true;
+	}
+	return false;
+};
+
+/**
+ * Notify the scroll-into-view widget of the state of suggestions around this section
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.setOutsideSectionState = function () {
+	if ( !this.scrollIntoView || this.controller.getTarget().section === null ) {
+		return;
+	}
+	// Use the actions that the gutter shows now, so that the button can show
+	// before all checks finish. A later action in the section can hide it again.
+	const placement = this.controller.getSuggestionPlacement( this.controller.getDisplayActions() );
+	this.scrollIntoView.setOutsideSectionState( {
+		enabled: !this.hasActionInSectionInitially,
+		hasAbove: placement.hasAbove,
+		hasBelow: placement.hasBelow
+	} );
+};
+
+/**
+ * Render the current actions as gutter icons, grouping overlapping actions.
+ *
+ * @param {mw.editcheck.EditCheckAction[]} [newActions] Newly found actions, which could takeFocus
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.renderActions = function ( newActions = [] ) {
+	const actions = this.controller.getDisplayActions();
+	// A new action can be discarded or replaced after the caller got it
+	newActions = mw.editcheck.EditCheckAction.static.findEqualActions( newActions, actions );
+	this.sections = [];
+	this.navigableActions = [];
+	for ( const action of this.autoShownSystemActions ) {
+		if ( !actions.includes( action ) ) {
+			this.autoShownSystemActions.delete( action );
+		}
+	}
+	if ( this.scrollIntoView ) {
+		this.scrollIntoView.clear();
+	}
+
+	if ( actions.length === 0 ) {
+		this.close( 'complete' );
+		return;
+	}
+
+	const surfaceView = this.surface.getView();
+
+	// First join overlapping actions into "sections"
+	actions.forEach( ( action ) => {
+		const rects = action.getHighlightSelections().map( ( selection ) => {
+			const selectionView = ve.ce.Selection.static.newFromModel( selection, surfaceView );
+			return selectionView.getSelectionBoundingRect();
+		} ).filter( ( rect ) => rect );
+		const boundingRect = ve.getBoundingRect( rects );
+		// Filter out actions from outside this section
+		if ( !boundingRect ) {
+			return;
+		}
+
+		this.navigableActions.push( action );
+		// Look for any other section that the new one overlaps with
+		// TODO: join when two other sections are joined by the new one?
+		const prev = this.sections.find( ( p ) => !( p.rect.bottom < boundingRect.top || boundingRect.bottom < p.rect.top ) );
+		if ( prev ) {
+			// overlap, so merge
+			prev.actions.push( action );
+			// top, bottom, left, right, width, height
+			prev.rect.top = Math.min( prev.rect.top, boundingRect.top );
+			prev.rect.bottom = Math.max( prev.rect.bottom, boundingRect.bottom );
+			prev.rect.height = prev.rect.bottom - prev.rect.top;
+			return;
+		}
+		this.sections.push( { actions: [ action ], rect: boundingRect } );
+	} );
+
+	// Now try to reuse old widgets if possible, to avoid icons flickering
+	const oldWidgets = this.widgets || [];
+	const hasSystemAction = actions.some( ( action ) => action.check.isSystemCheck() );
+	// Skip autofocusing entirely if there's nothing new, unless there's a system message
+	// (system messages can be added to the action list before the check it follows up on is removed,
+	// so the render where it becomes the only action left in its section can be one with no newActions)
+	let shown = newActions.length === 0 && !hasSystemAction;
+	this.widgets = [];
+	this.sections.forEach( ( section ) => {
+		let widget = this.findReusableWidget( oldWidgets, section.actions );
+		if ( widget ) {
+			oldWidgets.splice( oldWidgets.indexOf( widget ), 1 );
+			widget.navigableActions = this.navigableActions;
+			widget.actions = section.actions;
+		} else {
+			widget = new mw.editcheck.EditCheckGutterSectionWidget( {
+				actions: section.actions,
+				navigableActions: this.navigableActions,
+				controller: this.controller
+			} );
+			this.$body.append( widget.$element );
+		}
+		widget.setPosition( section.rect );
+		this.widgets.push( widget );
+		if ( this.scrollIntoView ) {
+			this.hasActionInSectionInitially = true;
+			this.scrollIntoView.observe( widget.$element[ 0 ] );
+		}
+
+		// See if one of these should be autofocused; it's simplest to check
+		// here rather than doing a separate loop because we need to call this
+		// on the section widget.
+		const actionToShow = !shown && section.actions.find( ( action ) => {
+			if ( !action.check.takesFocus() ) {
+				return false;
+			}
+			// Show a system message as soon as it exists, even if other actions remain in its section,
+			// but not if a synchronously re-entered render already triggered its display a moment ago
+			if ( action.check.isSystemCheck() ) {
+				return !this.autoShownSystemActions.has( action );
+			}
+			return newActions.includes( action );
+		} );
+		if ( actionToShow ) {
+			if ( actionToShow.check.isSystemCheck() ) {
+				this.autoShownSystemActions.add( actionToShow );
+			}
+			widget.showDialogWithAction( actionToShow );
+			shown = true;
+		}
+		section.actions.forEach( ( action ) => {
+			action.emit( 'shown' );
+		} );
+	} );
+	oldWidgets.forEach( ( widget ) => widget.teardown() );
+	// After the loop, so the icons' measurements don't interleave with its writes
+	this.widgets.forEach( ( widget ) => widget.updateSticky() );
+	// An action only gets a widget if it is inside the attached root. When
+	// editing one section the others have no rect, which is correct and not a
+	// sign that the layout is unsettled.
+	const attachedRootRange = this.surface.getModel().getDocument().getAttachedRootRange();
+	const isRenderable = ( action ) => action.getHighlightSelections().some( ( selection ) => {
+		const range = selection.getCoveringRange();
+		return range && attachedRootRange.containsRange( range );
+	} );
+	if ( this.widgets.length || !actions.some( isRenderable ) ) {
+		// Something rendered, or nothing was going to. If the layout has not
+		// settled yet, a later redraw resolves this instead, probably from a
+		// position event.
+		this.renderDeferred.resolve();
+	}
+	this.setOutsideSectionState();
+	this.scrollToNearestActionDebounced();
+};
+
+/**
+ * Find an old widget that can show a section
+ *
+ * A widget can show the section if the section has all of the widget's actions.
+ * Then an icon stays in place when a new action joins its section. An acting
+ * widget is preferred, so that it is not removed while its action runs.
+ *
+ * @param {mw.editcheck.EditCheckGutterSectionWidget[]} oldWidgets
+ * @param {mw.editcheck.EditCheckAction[]} actions Actions of the section
+ * @return {mw.editcheck.EditCheckGutterSectionWidget|null}
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.findReusableWidget = function ( oldWidgets, actions ) {
+	const candidates = oldWidgets.filter(
+		( widget ) => widget.actions.every( ( action ) => actions.includes( action ) )
+	);
+	return candidates.find( ( widget ) => widget.acting ) ||
+		candidates.reduce( ( best, widget ) => ( !best || widget.actions.length > best.actions.length ? widget : best ), null );
+};
+
+/**
+ * Show the edit check dialog with a specific widget's actions and a specific action focused
+ *
+ * @param {mw.editcheck.EditCheckAction} action Action to focus
+ * @param {Object} [scrollConfig] Configuration for scrolling
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.showDialogWithAction = function ( action, scrollConfig ) {
+	// The focus changing will also trigger onPosition after this, so we don't
+	// need to update the state of anything. We do need to trigger the drawer
+	// showing if this is an action that takesFocus, however. We can assume
+	// that the widgets will have been redrawn already by an earlier
+	// actionsUpdated when the actions were actually discovered.
+	if ( action ) {
+		for ( const widget of this.widgets ) {
+			if ( widget.actions.includes( action ) ) {
+				widget.showDialogWithAction( action, scrollConfig );
+				return;
+			}
+		}
+	}
+};
+
+/**
+ * Wait for some actions to have been rendered by this dialog
+ *
+ * @return {jQuery.Promise}
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.whenActionsRendered = function () {
+	return this.renderDeferred.promise();
+};
+
+/**
+ * Find nearest suggestions above and below user's current position
+ *
+ * @return {{above: mw.editcheck.EditCheckAction|null, below: mw.editcheck.EditCheckAction|null}}
+ */
+ve.ui.GutterSidebarEditCheckDialog.prototype.findNearestActions = function () {
+	if ( !this.surface ) {
+		return null;
+	}
+	const actionRects = [];
+
+	// create action/rect pairs for the first action in all sections
+	this.sections.forEach( ( section ) => {
+		actionRects.push( { item: section.actions[ 0 ], rect: section.rect } );
+	} );
+	return mw.editcheck.findNearestByRect( actionRects, this.surface );
+};
+
+/* Registration */
+
+ve.ui.windowFactory.register( ve.ui.GutterSidebarEditCheckDialog );

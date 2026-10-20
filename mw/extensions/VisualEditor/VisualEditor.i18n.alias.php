@@ -1,0 +1,62 @@
+<?php
+/**
+ * Aliases for Special:CollabPad
+ *
+ * @file
+ * @ingroup Extensions
+ * @copyright 2011-2020 VisualEditor Team and others; see AUTHORS.txt
+ * @license MIT
+ */
+
+$specialPageAliases = [];
+
+/** English
+ * @author "James D. Forrester"
+ */
+$specialPageAliases['en'] = [
+	'CollabPad' => [ 'CollabPad', 'Collab Pad' ],
+	'EditChecks' => [ 'EditChecks', 'Edit checks' ],
+	'EditCheckHeadless' => [ 'EditCheckHeadless', 'Edit check headless' ],
+];
+
+/** Arabic
+ */
+$specialPageAliases['ar'] = [
+	'CollabPad' => 'كولاب باد',
+];
+
+/** Cyrmu
+ * @author "James D. Forrester"
+ */
+$specialPageAliases['cy'] = [
+	'CollabPad' => [ 'PadCydweithredu', 'Pad Cydweithredu' ],
+];
+
+/** Hebrew
+ */
+$specialPageAliases['he'] = [
+	'CollabPad' => [ 'פנקס שיתופי' ],
+];
+
+/** Macedonian
+ */
+$specialPageAliases['mk'] = [
+	'CollabPad' => [ 'Соработна тетратка' ],
+];
+
+/** Marathi
+ */
+$specialPageAliases['mr'] = [
+	'CollabPad' => [ 'सहसंपादनपत्र' ],
+];
+
+/** Ukrainian (українська) */
+$specialPageAliases['uk'] = [
+	'EditChecks' => [ 'Перевірки_редагувань' ],
+];
+
+/** Urdu
+ */
+$specialPageAliases['ur'] = [
+	'CollabPad' => [ 'مشترکہ پیڈ' ],
+];

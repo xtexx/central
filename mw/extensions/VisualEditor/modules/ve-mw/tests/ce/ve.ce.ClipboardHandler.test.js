@@ -1,0 +1,250 @@
+/*!
+ * VisualEditor MediaWiki-specific ContentEditable ClipboardHandler tests.
+ *
+ * @copyright See AUTHORS.txt
+ * @license The MIT License (MIT); see LICENSE.txt
+ */
+
+QUnit.module( 've.ce.ClipboardHandler (MW)', ve.test.utils.newMwEnvironment() );
+
+/* Tests */
+
+QUnit.test( 'beforePaste/afterPaste', ( assert ) => {
+	const extLink = {
+		type: 'link/mwExternal',
+		attributes: {
+			href: 'https://example.com/'
+		}
+	};
+
+	const articleDataMw = ve.escapeHtml( JSON.stringify( {
+		name: 'templatestyles',
+		attrs: { src: 'CopyTest/styles.css' },
+		parts: [ { template: { target: { wt: 'CopyTest', href: './Template:CopyTest' }, params: { 1: { wt: '1' } }, i: 0 } } ]
+	} ) );
+
+	const cases = [
+		{
+			documentHtml: '<p></p>',
+			rangeOrSelection: new ve.Range( 1 ),
+			pasteHtml: '<span typeof="mw:Entity" id="mwAB">-</span><span typeof="mw:Entity" id="mw-reference-cite">-</span>',
+			fromVe: true,
+			expectedRangeOrSelection: new ve.Range( 5 ),
+			expectedHtml: '<p><span typeof="mw:Entity">-</span><span typeof="mw:Entity" id="mw-reference-cite">-</span></p>',
+			msg: 'RESTBase IDs stripped'
+		},
+		{
+			documentHtml: '<p></p>',
+			rangeOrSelection: new ve.Range( 1 ),
+			pasteHtml: '<span typeof="mw:Entity" id="mwAB">-</span><span typeof="mw:Entity" id="mw-reference-cite">-</span>',
+			clipboardHandlerHtml: '<span>-</span><span>-</span>',
+			fromVe: true,
+			expectedRangeOrSelection: new ve.Range( 5 ),
+			expectedHtml: '<p><span typeof="mw:Entity">-</span><span typeof="mw:Entity" id="mw-reference-cite">-</span></p>',
+			msg: 'RESTBase IDs still stripped if used when important attributes dropped'
+		},
+		{
+			documentHtml: '<p></p>',
+			rangeOrSelection: new ve.Range( 1 ),
+			pasteHtml: '<a href="https://example.net/">Lorem</a> <a href="not-a-protocol:Some%20text">ipsum</a> <a href="mailto:example@example.net">dolor</a> <a href="javascript:alert()">sit amet</a>',
+			expectedRangeOrSelection: new ve.Range( 27 ),
+			// hrefs with invalid protocols get removed by DOMPurify, and these links become spans in
+			// ve.dm.LinkAnnotation.static.toDataElement (usually the span is stripped later)
+			expectedHtml: '<p>Lorem <span>ipsum</span> dolor <span>sit amet</span></p>',
+			config: {
+				importRules: {
+					external: {
+						blacklist: {
+							'link/mwExternal': true
+						}
+					}
+				}
+			},
+			msg: 'External links stripped'
+		},
+		{
+			documentHtml: '<p></p>',
+			rangeOrSelection: new ve.Range( 1 ),
+			pasteHtml: '<a href="https://example.net/">Lorem</a> <a href="not-a-protocol:Some%20text">ipsum</a> <a href="mailto:example@example.net">dolor</a> <a href="javascript:alert()">sit amet</a>',
+			expectedRangeOrSelection: new ve.Range( 27 ),
+			// hrefs with invalid protocols get removed by DOMPurify, and these links become spans in
+			// ve.dm.LinkAnnotation.static.toDataElement (usually the span is stripped later)
+			expectedHtml: '<p><a href="https://example.net/" rel="mw:ExtLink">Lorem</a> <span>ipsum</span> <a href="mailto:example@example.net" rel="mw:ExtLink">dolor</a> <span>sit amet</span></p>',
+			config: {
+				importRules: {
+					external: {
+						blacklist: {
+							'link/mwExternal': false
+						}
+					}
+				}
+			},
+			msg: 'External links not stripped, but only some protocols allowed'
+		},
+		{
+			documentHtml: '<p></p>',
+			rangeOrSelection: new ve.Range( 1 ),
+			// As written by ve.init.mw.ArticleCopyHandler for a transclusion that starts with TemplateStyles
+			pasteHtml: '<span typeof="mw:Transclusion" about="#mwt1" data-mw="' + articleDataMw + '" data-ve-no-generated-contents="true"></span>' +
+				'<span class="copytest" about="#mwt1"><a rel="mw:WikiLink" href="https://example.org/wiki/Special:BookSources/1">1</a></span>',
+			expectedRangeOrSelection: new ve.Range( 3 ),
+			expectedHtml: '<p><span typeof="mw:Transclusion" data-mw="' + articleDataMw + '"></span></p>',
+			msg: 'Transclusion copied from an article view'
+		},
+		{
+			documentHtml: '<p></p>',
+			rangeOrSelection: new ve.Range( 1 ),
+			pasteHtml: '<span typeof="mw:Transclusion" about="#mwt1" data-mw="' + articleDataMw + '" data-ve-no-generated-contents="true"></span>' +
+				'<span class="copytest" about="#mwt1"><a rel="mw:WikiLink" href="https://example.org/wiki/Special:BookSources/1">1</a></span>',
+			// The browser can remove an empty span when it pastes into the clipboard handler element
+			clipboardHandlerHtml: '<span class="copytest"><a href="https://example.org/wiki/Special:BookSources/1">1</a></span>',
+			expectedRangeOrSelection: new ve.Range( 3 ),
+			expectedHtml: '<p><span typeof="mw:Transclusion" data-mw="' + articleDataMw + '"></span></p>',
+			msg: 'Transclusion copied from an article view, span removed by paste'
+		},
+		{
+			rangeOrSelection: new ve.Range( 1 ),
+			pasteText: 'https://example.com/',
+			expectedRangeOrSelection: new ve.Range( 21 ),
+			expectedDefaultPrevented: true,
+			expectedOps: [
+				[
+					{ type: 'retain', length: 1 },
+					{
+						type: 'replace',
+						insert: [
+							...ve.dm.example.annotateText( 'https://example.com/', extLink )
+						],
+						remove: []
+					},
+					{ type: 'retain', length: 29 }
+				]
+			],
+			config: {
+				mode: 'visual'
+			},
+			msg: 'URL pasted as plain text, visual mode'
+		},
+		{
+			rangeOrSelection: new ve.Range( 1 ),
+			pasteText: 'https://example.com/',
+			expectedRangeOrSelection: new ve.Range( 21 ),
+			expectedDefaultPrevented: true,
+			expectedOps: [
+				[
+					{ type: 'retain', length: 1 },
+					{
+						type: 'replace',
+						insert: [
+							...'https://example.com/'
+						],
+						remove: []
+					},
+					{ type: 'retain', length: 29 }
+				]
+			],
+			config: {
+				mode: 'source'
+			},
+			msg: 'URL pasted as plain text, source mode'
+		},
+		{
+			rangeOrSelection: new ve.Range( 1 ),
+			pasteData: {
+				'text/link-preview': '{"description":"","domain":"example.com","filtered_terms":["exampl","exampl","domain"],"image_url":"","keywords":"","preferred_format":"text/html;content=titled-hyperlink","title":"Example Domain","type":"website","url":"https://example.com/"}'
+			},
+			expectedRangeOrSelection: new ve.Range( 15 ),
+			expectedDefaultPrevented: true,
+			expectedOps: [
+				[
+					{ type: 'retain', length: 1 },
+					{
+						type: 'replace',
+						insert: [
+							...ve.dm.example.annotateText( 'Example Domain', extLink )
+						],
+						remove: []
+					},
+					{ type: 'retain', length: 29 }
+				]
+			],
+			config: {
+				mode: 'visual'
+			},
+			msg: 'URL pasted as text/link-preview, visual mode'
+		},
+		{
+			rangeOrSelection: new ve.Range( 1 ),
+			pasteData: {
+				'text/link-preview': '{"description":"","domain":"example.com","filtered_terms":["exampl","exampl","domain"],"image_url":"","keywords":"","preferred_format":"text/html;content=titled-hyperlink","title":"Example Domain","type":"website","url":"https://example.com/"}'
+			},
+			expectedRangeOrSelection: new ve.Range( 21 ),
+			expectedDefaultPrevented: true,
+			expectedOps: [
+				[
+					{ type: 'retain', length: 1 },
+					{
+						type: 'replace',
+						insert: [
+							...'https://example.com/'
+						],
+						remove: []
+					},
+					{ type: 'retain', length: 29 }
+				]
+			],
+			config: {
+				mode: 'source'
+			},
+			msg: 'URL pasted as text/link-preview, source mode'
+		}
+	];
+
+	const done = assert.async();
+	( async function () {
+		for ( const caseItem of cases ) {
+			await ve.test.utils.runSurfacePasteTest( assert, caseItem );
+		}
+		done();
+	}() );
+} );
+
+QUnit.test.each( 'hasNodesWithHiddenContent', {
+	'plain text': {
+		data: [ { type: 'paragraph' }, ...'Foo', { type: '/paragraph' } ],
+		expected: false
+	},
+	'content node, which plain text can reproduce': {
+		data: [
+			{ type: 'paragraph' },
+			{ type: 'mwEntity', attributes: { character: '{' } }, { type: '/mwEntity' },
+			{ type: '/paragraph' }
+		],
+		expected: false
+	},
+	'extension node, which keeps its source in an attribute': {
+		data: [
+			{ type: 'mwPre', attributes: { mw: { name: 'pre', body: { extsrc: 'Foo' } } } },
+			{ type: '/mwPre' }
+		],
+		expected: true
+	},
+	'structure, which plain text can reproduce': {
+		data: [
+			{ type: 'list', attributes: { style: 'bullet' } },
+			{ type: 'listItem' },
+			{ type: 'paragraph' }, ...'Foo', { type: '/paragraph' },
+			{ type: '/listItem' },
+			{ type: '/list' }
+		],
+		expected: false
+	}
+}, ( assert, caseItem ) => {
+	const data = new ve.dm.LinearData( new ve.dm.HashValueStore(), caseItem.data );
+	assert.strictEqual(
+		ve.ce.MWWikitextClipboardHandler.static.hasNodesWithHiddenContent(
+			data, new ve.Range( 0, caseItem.data.length )
+		),
+		caseItem.expected
+	);
+} );

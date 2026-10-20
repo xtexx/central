@@ -1,0 +1,47 @@
+/*!
+ * VisualEditor MediaWiki DesktopArticleTarget noscript styles
+ *
+ * @copyright See AUTHORS.txt
+ * @license The MIT License (MIT); see LICENSE.txt
+ */
+/**
+ * Hide VE edit tab and section edit things for noscript users.
+ * For script users they're always visible unless and until ve-not-available is added.
+ */
+
+@import 'mediawiki.skin.variables.less';
+/* stylelint-disable selector-max-id */
+
+.client-nojs,
+.ve-not-available {
+	#ca-ve-edit,
+	/* Account for optional .mw-editsection-divider, to be removed in the future (T268900) */
+	.mw-editsection-visualeditor + .mw-editsection-divider,
+	.mw-editsection-visualeditor {
+		display: none;
+	}
+
+	// (wgVisualEditorTabPosition === 'before')
+	// If the hidden item was first, give the next item the opening bracket
+	a.mw-editsection-visualeditor:first-of-type + .mw-editsection-divider + a::before,
+	a.mw-editsection-visualeditor:first-of-type + a::before {
+		content: '[';
+		// For browsers supporting alt text in 'content', make it empty
+		content: '[' / '';
+		margin-right: 0.25em;
+		margin-inline: 0 0.25em;
+	}
+
+	// (wgVisualEditorTabPosition === 'after')
+	// If the hidden item was last, give the previous item the closing bracket (instead of the separator)
+	a:has( + .mw-editsection-divider + a.mw-editsection-visualeditor:last-of-type )::after,
+	a:has( + a.mw-editsection-visualeditor:last-of-type )::after {
+		content: ']';
+		// For browsers supporting alt text in 'content', make it empty
+		content: ']' / '';
+		margin-left: 0.25em;
+		margin-inline: 0.25em 0;
+	}
+}
+
+/* stylelint-enable selector-max-id */

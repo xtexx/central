@@ -1,0 +1,1751 @@
+'use strict';
+
+const midEditListeners = [ 'onDocumentChange', 'onBranchNodeChange' ];
+// System messages have no listener. #registerSystemMessage adds them to the 'systemMessages'
+// action list, which actionsByListener, #getActions and #removeAction accept as a listener.
+const midEditActionLists = [ ...midEditListeners, 'systemMessages' ];
+
+/**
+ * EditCheck controller
+ *
+ * Manages triggering and updating edit checks.
+ *
+ * Lifecycle:
+ *
+ * - init.js makes one controller for each article target. The controller
+ *   connects to each new surface on surfaceReady, which includes a section
+ *   switch. When the surface is destroyed, it closes its sidebar and clears
+ *   its state.
+ * - A first refresh runs soon after the controller connects to a surface.
+ *   Actions found in this refresh are not "new", because they are restored
+ *   or are suggestions that the user did not cause. A refresh runs the
+ *   checks of the mid-edit listeners at the same time.
+ * - Mid-edit, an undo stack change runs the onDocumentChange checks. A
+ *   selection in a different branch node runs the onBranchNodeChange checks,
+ *   if the document changed after their last run. updateForListener keeps an
+ *   existing action when it finds an equal one, so that the action keeps its
+ *   state. The exception is a check that is equal to a suggestion: the check
+ *   replaces the suggestion. updateForListener emits actionsUpdatedProgress
+ *   for each action when it arrives. Until all checks for the listener are
+ *   finished, a new action is pending. When they are finished,
+ *   updateForListener emits actionsUpdated if the list of actions changed,
+ *   or if an action was replaced. If a newer run for the same listener
+ *   started before this, updateForListener ignores the results of the older
+ *   run and does not emit actionsUpdated for it.
+ * - Before save, the onBeforeSave checks run and inBeforeSave is true.
+ *   getActions then gives only the pre-save actions.
+ *
+ * Dialogs:
+ *
+ * - Mid-edit, the controller opens one sidebar with showSidebar, when the
+ *   first action that it can show arrives: sidebarEditCheckDialog on
+ *   desktop, or gutterSidebarEditCheckDialog on mobile. On mobile, a gutter
+ *   icon opens mobileEditCheckDialog, with a scope that limits it to the
+ *   actions of that part of the page. A click on a different icon while it
+ *   is open replaces its scope.
+ * - Before save, the controller opens fixedEditCheckDialog if there are
+ *   pre-save actions.
+ * - A dialog reads its actions from getDisplayActions, in its setup and on
+ *   each actionsUpdated, and keeps only the actions in its scope.
+ *   getDisplayActions includes the pending actions. The window
+ *   manager runs the setup some time after the open request, and a dialog
+ *   gets no events before its setup. The read in setup includes the updates
+ *   that occur while the dialog opens. A showSidebar call while the sidebar
+ *   opens adds its new actions to the data that the setup reads.
+ *   ensureActionIsShown waits until the sidebar is open before it focuses
+ *   an action.
+ * - Each dialog ignores action updates from the mode that it is not in:
+ *   pre-save or mid-edit.
+ *
+ * @class EditCheckController
+ * @constructor
+ * @mixes OO.EventEmitter
+ * @param {ve.init.mw.Target} target The VisualEditor target
+ * @param {Object} config
+ * @param {boolean} config.suggestionsModeAvailable Suggestions mode is available
+ */
+function Controller( target, config ) {
+	// Mixin constructors
+	OO.EventEmitter.call( this );
+
+	this.target = target;
+	// Suggestion mode is available, and the suggestion mode toggle is visible in the toolbar
+	this.suggestionsModeAvailable = config.suggestionsModeAvailable;
+	// Suggestions are currently visible, toggled by the toolbar tool
+	this.suggestionsVisible = this.suggestionsModeAvailable && (
+		!!ve.userConfig( 'visualeditor-editcheck-suggestions-toggle' ) ||
+		// Preference only applies to desktop for now
+		OO.ui.isMobile()
+	);
+	// Suppress suggestions without affecting user config or toolbar state, used by external tools
+	this.suppressSuggestions = false;
+
+	// These are not in clearState as we may want them to persist when switching sections (surface reload)
+	this.lastAvailableSuggestionCount = 0;
+
+	this.clearState();
+
+	const teardownCheck = () => !!this.surface;
+
+	this.onUndoStackChangeDebounced = ve.debounceWithTest( teardownCheck, this.onUndoStackChange.bind( this ), 100 );
+	this.onPositionDebounced = ve.debounceWithTest( teardownCheck, this.onPosition.bind( this ), 100 );
+	this.onSelectDebounced = ve.debounceWithTest( teardownCheck, this.onSelect.bind( this ), 100 );
+	this.onContextChangeDebounced = ve.debounceWithTest( teardownCheck, this.onContextChange.bind( this ), 100 );
+	this.updatePositionsDebounced = ve.debounceWithTest( teardownCheck, this.updatePositions.bind( this ), 50 );
+	this.updateSuggestionCountDebounced = ve.debounceWithTest( teardownCheck, this.updateSuggestionCount.bind( this ), 500 );
+
+	this.target.connect( this, {
+		virtualKeyboardChange: 'onVirtualKeyboardChange'
+	} );
+
+	this.scrollActionIntoViewDebounced = ve.debounceWithTest( teardownCheck, this.scrollActionIntoView.bind( this ) );
+
+	this.perf = new mw.editcheck.EditCheckPerformance( this );
+}
+
+/* Inheritance */
+
+OO.mixinClass( Controller, OO.EventEmitter );
+
+/* Events */
+
+/**
+ * Actions for a given listener are updated
+ *
+ * @event EditCheckController#actionsUpdated
+ * @param {string} listener The action list that changed: a listener type (e.g. 'onBeforeSave'),
+ *  or 'systemMessages' for the actions from #registerSystemMessage
+ * @param {mw.editcheck.EditCheckAction[]} actions All current actions
+ * @param {mw.editcheck.EditCheckAction[]} newActions Actions newly added
+ * @param {mw.editcheck.EditCheckAction[]} discardedActions Actions newly removed
+ * @param {boolean} rejected The update was due to a user rejecting/dismissing a check
+ */
+
+/**
+ * Progress while actions for a given listener are being updated
+ *
+ * @event EditCheckController#actionsUpdatedProgress
+ * @param {string} listener The listener type (e.g. 'onBeforeSave')
+ * @param {mw.editcheck.EditCheckAction} action
+ * @param {mw.editcheck.EditCheckAction} oldAction previously present equivalent action
+ */
+
+/**
+ * An action is focused
+ *
+ * @event EditCheckController#focusAction
+ * @param {mw.editcheck.EditCheckAction} action Action
+ * @param {number} index Index of the action in #getActions
+ * @param {boolean} scrollTo Scroll the action's selection into view
+ */
+
+/**
+ * Actions have been redrawn or repositioned
+ *
+ * @event EditCheckController#position
+ */
+
+/**
+ * The selected branch node has changed
+ *
+ * @event EditCheckController#branchNodeChange
+ * @param {ve.dm.BranchNode} branchNode
+ */
+
+/* Methods */
+
+/**
+ * Reset controller state (on init or teardown)
+ */
+Controller.prototype.clearState = function () {
+	if ( this.systemMessages ) {
+		[ ...this.systemMessages.keys() ].forEach( ( action ) => this.forgetSystemMessage( action ) );
+	}
+	this.actionsByListener = {};
+	this.surface = null;
+	this.inBeforeSave = false;
+	this.branchNode = null;
+	this.focusedAction = null;
+	this.inSetup = null;
+	this.ignoreNextSelectionChange = null;
+	this.taggedFragments = {};
+	this.taggedIds = {};
+	this.ephemeralTags = [];
+	// State of each system message action from #registerSystemMessage
+	this.systemMessages = new Map();
+	this.lastBranchNodeChangeHistoryPointer = null;
+	this.refreshDeferred = null;
+	this.sidebarOpeningPromise = null;
+	this.sidebarOpeningNewActions = null;
+	this.runsByListener = {};
+	this.pendingActionsByListener = {};
+};
+
+/**
+ * Set up controller
+ */
+Controller.prototype.setup = function () {
+	const target = this.target;
+	target.on( 'surfaceReady', () => {
+		this.surface = target.getSurface();
+
+		if ( this.surface.getMode() !== 'visual' ) {
+			// Some checks will entirely work in source mode for most cases.
+			// But others will fail spectacularly -- e.g. reference check
+			// isn't aware of <ref> tags and so will suggest that all content
+			// has references added. As such, disable in source mode for now.
+			return;
+		}
+		// TODO: Consider if suggestions are possible as well
+		if ( !this.editChecksArePossible() ) {
+			return;
+		}
+		// Ideally this would happen slightly earlier:
+		$( document.documentElement ).addClass( 've-editcheck-available' );
+		// Adding the class can cause large layout changes (e.g. hiding Vector
+		// side panels), so emit a window resize event to notify any components
+		// that may be affected, e.g. the VE toolbar
+		window.dispatchEvent( new Event( 'resize' ) );
+
+		this.surface.getView().connect( this, {
+			position: 'onPositionDebounced'
+		} );
+		this.surface.getModel().connect( this, {
+			// The less-frequent undoStackChange is used for updating actions
+			undoStackChange: 'onUndoStackChangeDebounced',
+			// documentUpdate is used for updating highlights
+			documentUpdate: 'onDocumentUpdate',
+			select: 'onSelectDebounced',
+			contextChange: 'onContextChangeDebounced'
+		} );
+
+		this.surface.getSidebarDialogs().connect( this, {
+			opening: 'onSidebarDialogsOpeningOrClosing',
+			closing: 'onSidebarDialogsOpeningOrClosing'
+		} );
+
+		this.on( 'branchNodeChange', this.onBranchNodeChange, null, this );
+		this.on( 'actionsUpdated', this.onActionsUpdated, null, this );
+
+		// Run on load (e.g. recovering from auto-save)
+		this.inSetup = true;
+		setTimeout( () => this.refresh().always( () => {
+			this.inSetup = null;
+		} ), 100 );
+
+		this.surface.on( 'destroy', () => {
+			this.perf.recordTypingLagSummary();
+			this.off( 'actionsUpdated' );
+
+			const win = this.surface.getSidebarDialogs().getCurrentWindow();
+			if ( win ) {
+				win.close();
+			}
+
+			this.clearState();
+
+			$( document.documentElement ).removeClass( 've-editcheck-available' );
+			window.dispatchEvent( new Event( 'resize' ) );
+		} );
+	}, null, this );
+
+	this.setupPreSaveProcess();
+};
+
+/**
+ * Get the current VE target
+ *
+ * @return {ve.init.mw.Target}
+ */
+Controller.prototype.getTarget = function () {
+	return this.target;
+};
+
+/**
+ * Handle sidebar dialog open/close events
+ *
+ * Transition skin/VE components around to make room for sidebar
+ *
+ * @param {OO.ui.Window} win The window instance
+ * @param {jQuery.Promise} openingOrClosing Promise that resolves when closing finishes
+ */
+Controller.prototype.onSidebarDialogsOpeningOrClosing = function ( win, openingOrClosing ) {
+	if ( win.constructor.static.name !== 'sidebarEditCheckDialog' ) {
+		return;
+	}
+	const isOpening = !win.isOpened();
+	// Wait for sidebar to render before applying CSS which starts transitions
+	requestAnimationFrame( () => {
+		$( document.documentElement ).toggleClass( 've-editcheck-enabled', isOpening );
+	} );
+	if ( isOpening ) {
+		mw.hook( 've.hideVectorColumns' ).fire();
+	} else {
+		openingOrClosing.then( () => {
+			mw.hook( 've.restoreVectorColumns' ).fire();
+		} );
+	}
+	// Adjust toolbar position after animation ends
+	setTimeout( () => {
+		// Check the toolbar still exists (i.e. we haven't closed the editor)
+		if ( this.target.toolbar ) {
+			this.target.toolbar.onWindowResize();
+		}
+	}, OO.ui.theme.getDialogTransitionDuration() );
+};
+
+/**
+ * Check if any edit checks could be run for the current user/context
+ *
+ * @return {boolean}
+ */
+Controller.prototype.editChecksArePossible = function () {
+	if ( mw.editcheck.suggestionsModeAvailable ) {
+		// Suggestions override user checks so assume something can be shown
+		return true;
+	}
+	return [ 'onBeforeSave', 'onDocumentChange', 'onBranchNodeChange' ].some(
+		( listener ) => mw.editcheck.editCheckFactory.getNamesByListener( listener ).some(
+			( checkName ) => this.canBeShown( checkName )
+		)
+	);
+};
+
+/**
+ * Check if a given edit check could be run for the current user/context
+ *
+ * @param {string} checkName Check name
+ * @param {boolean} [suggestion=false] Whether we are checking for suggestion mode
+ * @return {boolean}
+ */
+Controller.prototype.canBeShown = function ( checkName, suggestion = false ) {
+	const check = mw.editcheck.editCheckFactory.create( checkName, this );
+	try {
+		return check.canBeShown( this.surface.getModel().getDocument(), suggestion );
+	} catch ( e ) {
+		mw.log.error( `Error checking canBeShown for ${ checkName }`, e );
+		return false;
+	}
+};
+
+/**
+ * Update position of edit check highlights
+ *
+ * @fires EditCheckController#position
+ */
+Controller.prototype.updatePositions = function () {
+	this.drawSelections();
+
+	this.emit( 'position' );
+};
+
+/**
+ * Update edit check list
+ *
+ * @fires EditCheckController#actionsUpdated
+ * @param {boolean} useCache Whether to piggyback onto an existing refresh if one is ongoing
+ * @return {Promise<mw.editcheck.EditCheckAction[]>} An updated set of
+ *  actions. This promise will resolve *after* any actionsUpdated events are
+ *  fired.
+ */
+Controller.prototype.refresh = function ( useCache ) {
+	if ( this.refreshDeferred && useCache ) {
+		return this.refreshDeferred.promise();
+	}
+	const deferred = ve.createDeferred();
+	deferred.always( () => {
+		if ( this.refreshDeferred === deferred ) {
+			this.refreshDeferred = null;
+		}
+	} );
+	this.refreshDeferred = deferred;
+	if ( this.target.deactivating || !this.target.active ) {
+		return deferred.reject().promise();
+	}
+	if ( this.inBeforeSave ) {
+		// These shouldn't be recalculated
+		const actions = this.getActions();
+		this.emit( 'actionsUpdated', 'onBeforeSave', actions, [], [], false );
+		return deferred.resolve( actions ).promise();
+	} else {
+		// Run the listeners at the same time, so that a slow check for one
+		// listener does not delay the checks for the other. Start each in its
+		// own idle callback, so that their synchronous work is not one long
+		// task. The timeout limits the delay when the page is busy.
+		const runs = midEditListeners.map( ( listener ) => new Promise( ( resolve ) => {
+			mw.requestIdleCallback( () => {
+				try {
+					resolve( this.updateForListener( listener, true ) );
+				} catch ( error ) {
+					mw.log.error( 'Could not update for listener: ' + listener, error );
+					resolve( [] );
+				}
+			}, { timeout: 300 } );
+		} ) );
+		Promise.all( runs ).then( () => {
+			deferred.resolve( this.getActions() );
+		} );
+		return deferred.promise();
+	}
+};
+
+/**
+ * Wait for the sidebar to be shown, if it is being opened
+ *
+ * @return {jQuery.Promise}
+ */
+Controller.prototype.whenSidebarShown = function () {
+	return this.sidebarOpeningPromise || ve.createDeferred().resolve().promise();
+};
+
+/**
+ * Toggle whether suggestions are shown to the user.
+ */
+Controller.prototype.toggleSuggestionsVisible = function () {
+	if ( !this.suggestionsModeAvailable ) {
+		return;
+	}
+	this.suggestionsVisible = !this.suggestionsVisible;
+	if ( !!ve.userConfig( 'visualeditor-editcheck-suggestions-toggle' ) !== this.suggestionsVisible ) {
+		ve.userConfig( 'visualeditor-editcheck-suggestions-toggle', this.suggestionsVisible );
+	}
+	mw.notify(
+		ve.msg( this.suggestionsVisible ?
+			( this.lastAvailableSuggestionCount > 0 ? 'editcheck-suggestions-turned-on' : 'editcheck-suggestions-none' ) :
+			'editcheck-suggestions-turned-off'
+		),
+		{ tag: 'editcheck-suggestions-toggle', type: 'notice' }
+	);
+
+	this.actionsByListener = {};
+	// Treat this refresh as being as if we were in initial setup -- we don't
+	// want the "new" suggestions to be focused.
+	this.inSetup = true;
+	this.refresh().always( () => {
+		this.inSetup = null;
+	} );
+};
+
+/**
+ * Suppress suggestions without affecting user preferences
+ *
+ * Suggestions will still continue to be generated and cached, just not displayed.
+ * For use by external tools.
+ *
+ * @param {boolean} suppress if true, does not display any suggestions
+ */
+Controller.prototype.suppressSuggestionDisplay = function ( suppress ) {
+	if ( this.suppressSuggestions === suppress ) {
+		return;
+	}
+	this.suppressSuggestions = suppress;
+	this.refresh();
+};
+
+/**
+ * Update the suggestion count shown on the toolbar tool
+ *
+ * @param {number} count The number of suggestions
+ */
+Controller.prototype.updateSuggestionCount = function ( count ) {
+	const suggestionsModeTool = this.target.getToolbar().tools.editCheckSuggestions;
+	if ( suggestionsModeTool ) {
+		suggestionsModeTool.$icon.attr(
+			'data-count',
+			ve.msg( 'editcheck-toolbar-suggestions-count', Math.min( 100, count ) )
+		);
+	}
+};
+
+/**
+ * Fires all edit checks associated with a given listener.
+ *
+ * Actions are created anew for every run, but we want continuity for certain state changes. We therefore match them up
+ * to existing actions by checking for equality, ie, the same constructor and same ID or fragments.
+ *
+ * We return a promise so that UI actions such as opening the pre-save dialog
+ * do not occur until checks have completed.
+ *
+ * @param {string} listener e.g. onBeforeSave, onDocumentChange, onBranchNodeChange
+ * @param {boolean} fromRefresh Update comes from a manual refresh, not a real event
+ * @return {Promise<mw.editcheck.EditCheckAction[]>} An updated set of actions.
+ * @fires EditCheckController#actionsUpdated
+ * @fires EditCheckController#actionsUpdatedProgress
+ */
+Controller.prototype.updateForListener = function ( listener, fromRefresh ) {
+	if ( !this.surface ) {
+		// The controller has been destroyed while this was waiting to be called;
+		// just abandon early with a claim there were no checks found, in case any
+		// listeners try to do something.
+		return Promise.resolve( [] );
+	}
+	if ( this.surface.getModel().isStaging() ) {
+		return Promise.resolve( this.getActions( listener ) );
+	}
+	const run = {};
+	this.runsByListener[ listener ] = run;
+	// Actions that arrive before all checks for this listener finish
+	const pending = [];
+	this.pendingActionsByListener[ listener ] = pending;
+	const clearPending = () => {
+		if ( this.pendingActionsByListener[ listener ] === pending ) {
+			delete this.pendingActionsByListener[ listener ];
+		}
+	};
+	const onProgress = ( action ) => {
+		const existing = this.getActions( listener );
+		const oldAction = existing.find( ( existingAction ) => action.equals( existingAction ) );
+		if ( oldAction && !( oldAction.isSuggestion() && !action.isSuggestion() ) ) {
+			// Let a new non-suggestion take over from an old suggestion
+			if ( oldAction.updateFrom( action ) ) {
+				oldAction.refreshWidget();
+			}
+			action = oldAction;
+		}
+		if ( this.runsByListener[ listener ] !== run ) {
+			// A newer run for this listener replaced this run
+			return;
+		}
+		if ( !existing.includes( action ) ) {
+			pending.push( action );
+			// The user can see and use a pending action before the run finishes
+			this.trackAction( action );
+		}
+		this.emit( 'actionsUpdatedProgress', listener, action, oldAction );
+		this.onActionStreamed( listener );
+	};
+	let actionsPromise;
+	// Create all actions for this listener
+	if ( this.suggestionsModeAvailable && !this.inBeforeSave ) {
+		// eslint-disable-next-line no-jquery/no-when
+		actionsPromise = $.when(
+			mw.editcheck.editCheckFactory.createAllActionsByListener( this, listener, this.surface.getModel(), true, onProgress ),
+			mw.editcheck.editCheckFactory.createAllActionsByListener( this, listener, this.surface.getModel(), false, onProgress )
+		).then( ( suggestionActions, checkActions ) => [
+			...checkActions,
+			// Discard any suggestions that have an equivalent non-suggestion
+			...suggestionActions.filter( ( suggestion ) => !checkActions.find( ( action ) => action.equals( suggestion, true ) ) )
+		] );
+	} else {
+		actionsPromise = mw.editcheck.editCheckFactory.createAllActionsByListener( this, listener, this.surface.getModel(), false, onProgress );
+	}
+	actionsPromise = actionsPromise
+		.then( ( actionsFromListener ) => {
+			clearPending();
+			if ( this.runsByListener[ listener ] !== run ) {
+				// A newer run for this listener started, or the surface was
+				// destroyed. The results of this run are out of date.
+				return this.getActions( listener );
+			}
+			// Get the existing actions for this listener
+			const existing = this.getActions( listener );
+
+			// Try to match each new action to an existing one (to preserve state)
+			const replacements = [];
+			const actions = actionsFromListener.map( ( action ) => {
+				const oldAction = existing.find( ( existingAction ) => action.equals( existingAction ) );
+				if ( oldAction && !( oldAction.isSuggestion() && !action.isSuggestion() ) ) {
+					return oldAction;
+				}
+				if ( oldAction ) {
+					// Let a new non-suggestion take over from an old suggestion.
+					// It is not new to the user, but the dialogs must draw it again.
+					replacements.push( action );
+					if ( this.focusedAction === oldAction ) {
+						this.focusedAction = action;
+					}
+				}
+				return action;
+			} );
+
+			// A real event checks the current text again, so the text is no
+			// longer stale. The 'revising' tag stays until the selection
+			// leaves the action, and any run can find that it was cleared.
+			let staleUpdated = false;
+			actions.forEach( ( action ) => {
+				if ( action.isStale() && action.updateStale( !fromRefresh ) ) {
+					staleUpdated = true;
+				}
+			} );
+
+			// Update the actions for this listener
+			this.actionsByListener[ listener ] = actions;
+
+			let newActions = actions.filter( ( action ) => existing.every( ( oldAction ) => !action.equals( oldAction ) ) );
+			const discardedActions = existing.filter( ( action ) => actions.every( ( newAction ) => !action.equals( newAction ) ) );
+
+			[ ...newActions, ...replacements ]
+				// Pending actions are tracked from when they arrive
+				.filter( ( action ) => !pending.includes( action ) )
+				.forEach( ( action ) => this.trackAction( action ) );
+
+			// If the actions list changed, update
+			if (
+				fromRefresh || staleUpdated || actions.length !== existing.length ||
+				newActions.length || discardedActions.length || replacements.length
+			) {
+				if ( this.inSetup ) {
+					// Any actions that are present during initial setup
+					// shouldn't be treated as being "new". They're either
+					// restored from a saved session, or are suggestions, and
+					// in either case we don't want them treated as if the
+					// user just caused them.
+					newActions = [];
+				}
+
+				if ( this.suppressSuggestions ) {
+					newActions = newActions.filter( ( action ) => !action.isSuggestion() );
+				}
+				// TODO: We need to consider a consistency check here as the document state may have changed since the
+				// action within the promise was created
+				// Notify listeners that actions have been updated
+				this.emit( 'actionsUpdated', listener, this.getActions(), newActions, discardedActions, false );
+			}
+			// Return the updated actions
+			return actions;
+		} ).catch( ( error ) => {
+			mw.log.error( 'Could not update for listener: ' + listener, error );
+			return [];
+		} );
+	actionsPromise.then( clearPending, clearPending );
+	return actionsPromise;
+};
+
+/**
+ * Record when an action is shown, seen or used
+ *
+ * @param {mw.editcheck.EditCheckAction} action
+ */
+Controller.prototype.trackAction = function ( action ) {
+	action.once( 'shown', this.onActionSeenOrShown.bind( this, action, 'shown' ) );
+	action.once( 'seen', this.onActionSeenOrShown.bind( this, action, 'seen' ) );
+	action.on( 'act', this.onActionAct, [ action ], this );
+	action.on( 'complete', this.onActionCompleted, [ action ], this );
+};
+
+/**
+ * Get the current actions, and the mid-edit actions that are pending
+ *
+ * A pending action arrived before all checks for its listener finished. As
+ * when the checks finish, a check replaces an equal suggestion, and other
+ * equal actions are shown once.
+ *
+ * @return {mw.editcheck.EditCheckAction[]} Actions
+ */
+Controller.prototype.getActionsWithPending = function () {
+	const actions = this.getActions();
+	if ( this.inBeforeSave ) {
+		return actions;
+	}
+	midEditListeners.forEach( ( listener ) => {
+		( this.pendingActionsByListener[ listener ] || [] ).forEach( ( action ) => {
+			if ( this.suppressSuggestions && action.isSuggestion() ) {
+				return;
+			}
+			const index = actions.findIndex( ( listAction ) => listAction.equals( action ) );
+			if ( index === -1 ) {
+				actions.push( action );
+			} else if ( actions[ index ].isSuggestion() && !action.isSuggestion() ) {
+				actions[ index ] = action;
+			}
+		} );
+	} );
+	actions.sort( mw.editcheck.EditCheckAction.static.compareStarts );
+	return actions;
+};
+
+/**
+ * Get the actions that a dialog can show
+ *
+ * @return {mw.editcheck.EditCheckAction[]} Actions
+ */
+Controller.prototype.getDisplayActions = function () {
+	return this.filterActionsForDisplay( this.getActionsWithPending() );
+};
+
+/**
+ * Handle an action that arrives before all checks for its listener finish
+ *
+ * Show it now, so that the user does not wait for the slowest check.
+ *
+ * @param {string} listener
+ */
+Controller.prototype.onActionStreamed = function ( listener ) {
+	if ( listener === 'onBeforeSave' || this.inBeforeSave || !this.surface ) {
+		return;
+	}
+	// The suggestion count and indicators wait for all checks to finish.
+	// Until then, the list still has the old actions that the run removes.
+	if ( this.getDisplayActions().length ) {
+		// New actions get the focus when all checks finish, after the rules
+		// for setup and suppressed suggestions apply
+		this.showSidebar( [] );
+	}
+};
+
+/**
+ * Filter actions for display based on current settings
+ *
+ * @param {mw.editcheck.EditCheckAction[]} actions Actions to filter
+ * @return {mw.editcheck.EditCheckAction[]} Filtered actions
+ */
+Controller.prototype.filterActionsForDisplay = function ( actions ) {
+	if ( !this.suggestionsVisible || this.suppressSuggestions ) {
+		return actions.filter( ( action ) => !action.isSuggestion() );
+	}
+	return actions;
+};
+
+/**
+ * Remove an edit check action
+ *
+ * @param {string} listener Listener which triggered the action
+ * @param {mw.editcheck.EditCheckAction} action Action to remove
+ * @param {boolean} rejected The action was rejected
+ * @fires EditCheckController#actionsUpdated
+ */
+Controller.prototype.removeAction = function ( listener, action, rejected ) {
+	const actions = this.actionsByListener[ listener ];
+	if ( !actions || actions.length === 0 ) {
+		return;
+	}
+	const index = actions.indexOf( action );
+	if ( index === -1 ) {
+		return;
+	}
+	const removed = actions.splice( index, 1 );
+
+	this.emit( 'actionsUpdated', listener, this.getActions(), [], removed, rejected );
+};
+
+/**
+ * Trigger a focus state for a given action
+ *
+ * Will emit a focusAction event if the focused action changed or if scrolling
+ * was requested.
+ *
+ * @param {mw.editcheck.EditCheckAction} action Action to focus
+ * @param {boolean} [scrollTo] Scroll action's selection into view
+ * @param {Object} [scrollConfig] Configuration for scrolling
+ * @return {jQuery.Promise} Promise resolved when scrolling is complete
+ * @fires EditCheckController#focusAction
+ * @fires EditCheckController#position
+ */
+Controller.prototype.focusAction = function ( action, scrollTo, scrollConfig ) {
+	if ( !scrollTo && action === this.focusedAction ) {
+		// Don't emit unnecessary events if there is no change or scroll
+		return ve.createDeferred().resolve().promise();
+	}
+
+	this.focusedAction = action;
+
+	let scrollPromise;
+	if ( scrollTo ) {
+		scrollPromise = this.scrollActionIntoView( action, scrollConfig );
+	}
+
+	this.emit( 'focusAction', action, this.getActions().indexOf( action ), scrollTo );
+
+	this.updatePositionsDebounced();
+
+	return scrollPromise || ve.createDeferred().resolve().promise();
+};
+
+/**
+ * Make sure an action is visible to the user
+ *
+ * This will scroll the action into view and make sure its widget is expanded
+ * so the contents can be seen.
+ *
+ * @param {mw.editcheck.EditCheckAction} action Action to focus
+ * @param {Object|boolean} [scrollConfig] Configuration for scrolling or (deprecated) a boolean to set alignToTop
+ */
+Controller.prototype.ensureActionIsShown = function ( action, scrollConfig ) {
+	if ( scrollConfig === true ) {
+		scrollConfig = { alignToTop: true };
+	}
+	// If this is called directly from refresh then the sidebar was opened
+	// by an actionsUpdated that *immediately* precedes this call, so it
+	// can still be opening. A dialog gets no events before its setup.
+	this.whenSidebarShown().then( () => {
+		if ( !this.surface ) {
+			// The surface was destroyed while we waited
+			return;
+		}
+		if ( !OO.ui.isMobile() ) {
+			this.focusAction( action, true, scrollConfig );
+			return;
+		}
+		const currentWindow = this.surface.getSidebarDialogs().getCurrentWindow();
+		if ( !currentWindow || currentWindow.constructor.static.name !== 'gutterSidebarEditCheckDialog' ) {
+			return;
+		}
+		currentWindow.whenActionsRendered().then( () => {
+			// This will ultimately focus the action and scroll it into view as well:
+			currentWindow.showDialogWithAction( action, ve.extendObject( { alignToTop: true }, scrollConfig ) );
+		} );
+	} );
+};
+
+/**
+ * Scroll to the action nearest the user's current position
+ *
+ * @param {string} [direction] If actions exist both above and below, it will scroll in this direction
+ * @return {boolean} An action was found and focused
+ */
+Controller.prototype.scrollToNearestAction = function ( direction ) {
+	const currentWindow = this.surface.getSidebarDialogs().getCurrentWindow();
+	return !!( currentWindow && currentWindow.scrollToNearestAction && currentWindow.scrollToNearestAction( direction ) );
+};
+
+/**
+ * Get actions by listener
+ *
+ * If no listener is specified, then get all actions relevant to the current moment, i.e.:
+ * - During beforeSave, get onBeforeSave listeners
+ * - Otherwise, get all mid-edit listeners
+ *
+ * @param {string} [listener] The listener; if omitted, get all relevant actions
+ * @return {mw.editcheck.EditCheckAction[]} Actions
+ */
+Controller.prototype.getActions = function ( listener ) {
+	if ( listener ) {
+		let lsActions = this.actionsByListener[ listener ] || [];
+		if ( this.suppressSuggestions ) {
+			lsActions = lsActions.filter( ( action ) => !action.isSuggestion() );
+		}
+		return lsActions;
+	}
+	const listeners = this.inBeforeSave ? [ 'onBeforeSave' ] : midEditActionLists;
+	let actions = [].concat( ...listeners.map( ( lr ) => this.actionsByListener[ lr ] || [] ) );
+	if ( this.suppressSuggestions ) {
+		actions = actions.filter( ( action ) => !action.isSuggestion() );
+	}
+	actions.sort( mw.editcheck.EditCheckAction.static.compareStarts );
+	return actions;
+};
+
+/**
+ * Handle virtual keyboard change events from the target
+ */
+Controller.prototype.onVirtualKeyboardChange = function () {
+	// On mobile we want to close the drawer if the keyboard is shown
+	if ( this.surface && OO.ui.isMobile() && !this.inBeforeSave && this.target.isVirtualKeyboardOpen() ) {
+		this.closeDialog( 'mobile-keyboard' );
+	}
+};
+
+/**
+ * Handle select events from the surface model
+ *
+ * @param {ve.dm.Selection} selection New selection
+ */
+Controller.prototype.onSelect = function () {
+	if ( this.ignoreNextSelectionChange ) {
+		this.ignoreNextSelectionChange = null;
+		return;
+	}
+	this.clearEphemeralTagsForSelection();
+	this.emitBranchNodeChangeIfNeeded();
+	if ( !OO.ui.isMobile() ) {
+		this.focusActionForSelection();
+	}
+};
+
+/**
+ * Register an ephemeral tag, to be cleared once the selection leaves its range
+ *
+ * @param {string} name Tag namespace (check name)
+ * @param {string} tag Tag
+ * @param {ve.dm.SurfaceFragment} fragment The tagged fragment, as stored in taggedFragments
+ */
+Controller.prototype.registerEphemeralTag = function ( name, tag, fragment ) {
+	this.ephemeralTags.push( { name, tag, fragment } );
+};
+
+/**
+ * Register a system message tied to a fragment
+ *
+ * Shown as an EditCheckAction card at a resolved action's location.
+ *
+ * The action is added at once, so that a dialog whose last action completed
+ * has the message to show, and does not close.
+ *
+ * @param {ve.dm.SurfaceFragment} fragment Fragment where the resolved action was
+ * @param {Object} config EditCheckAction configuration
+ * @param {string} [config.messageType='success'] Name of a static.messageTypes entry to use as a base
+ * @param {boolean} [config.dismissOnOtherFocus] If this suggestion card should be dismissed as soon as user moves on
+ *  to a different check or suggestion
+ * @return {Promise} Resolves when the action is announced as new
+ * @fires EditCheckController#actionsUpdated
+ */
+Controller.prototype.registerSystemMessage = function ( fragment, config ) {
+	const messageTypes = mw.editcheck.SystemMessageEditCheck.static.messageTypes;
+	const actionConfig = ve.extendObject( {}, messageTypes[ config.messageType ] || messageTypes.success, config );
+	const action = new mw.editcheck.EditCheckAction( ve.extendObject( {}, actionConfig, {
+		check: mw.editcheck.editCheckFactory.create( mw.editcheck.SystemMessageEditCheck.static.name, this ),
+		fragments: [ fragment ]
+	} ) );
+	const message = { originalData: fragment.getData() };
+	this.systemMessages.set( action, message );
+	this.actionsByListener.systemMessages = ( this.actionsByListener.systemMessages || [] ).concat( action );
+	this.trackAction( action );
+
+	if ( actionConfig.dismissOnOtherFocus ) {
+		message.onOtherFocus = ( focusedAction ) => {
+			if ( focusedAction && focusedAction !== action ) {
+				this.removeSystemMessage( action );
+			}
+		};
+		this.on( 'focusAction', message.onOtherFocus );
+	}
+
+	// Auto-dismiss after the specified time
+	// (if not specified, this message type stays until the user acts on it or navigates away)
+	if ( actionConfig.autoDismiss ) {
+		message.autoDismissTimeout = setTimeout( () => this.removeSystemMessage( action ), actionConfig.autoDismiss );
+	}
+
+	// This can occur in an actionsUpdated handler, so do not emit the event again until it is finished
+	return Promise.resolve().then( () => {
+		if ( this.systemMessages.has( action ) ) {
+			this.emit( 'actionsUpdated', 'systemMessages', this.getActions(), [ action ], [], false );
+		}
+	} );
+};
+
+/**
+ * Remove a system message and its action
+ *
+ * @param {mw.editcheck.EditCheckAction} action Action of the system message
+ */
+Controller.prototype.removeSystemMessage = function ( action ) {
+	if ( this.forgetSystemMessage( action ) ) {
+		this.removeAction( 'systemMessages', action, false );
+	}
+};
+
+/**
+ * Stop the timeout and the focus handler of a system message, and forget its state
+ *
+ * @private
+ * @param {mw.editcheck.EditCheckAction} action Action of the system message
+ * @return {boolean} The system message was registered
+ */
+Controller.prototype.forgetSystemMessage = function ( action ) {
+	const message = this.systemMessages.get( action );
+	if ( !message ) {
+		// Already removed, e.g. by the user or because it was stale
+		return false;
+	}
+	this.systemMessages.delete( action );
+	clearTimeout( message.autoDismissTimeout );
+	if ( message.onOtherFocus ) {
+		this.off( 'focusAction', message.onOtherFocus );
+	}
+	return true;
+};
+
+/**
+ * Remove any system messages whose fragments changed, e.g. by an undo
+ */
+Controller.prototype.dropStaleSystemMessages = function () {
+	[ ...this.systemMessages ]
+		.filter( ( [ action, message ] ) => !ve.compare( action.fragments[ 0 ].getData(), message.originalData ) )
+		.forEach( ( [ action ] ) => this.removeSystemMessage( action ) );
+};
+
+/**
+ * Stop clearing a tag when the selection leaves its range
+ *
+ * @param {ve.dm.SurfaceFragment} fragment The tagged fragment, as given to #registerEphemeralTag
+ */
+Controller.prototype.unregisterEphemeralTag = function ( fragment ) {
+	this.ephemeralTags = this.ephemeralTags.filter( ( entry ) => entry.fragment !== fragment );
+};
+
+/**
+ * Clear any ephemeral tags whose range the selection has left, and refresh if so
+ */
+Controller.prototype.clearEphemeralTagsForSelection = function () {
+	// Debounced via onSelect; may fire after teardown.
+	if ( !this.surface || !this.ephemeralTags.length ) {
+		return;
+	}
+	const covering = this.surface.getModel().getSelection().getCoveringRange();
+	let cleared = false;
+	this.ephemeralTags = this.ephemeralTags.filter( ( entry ) => {
+		const range = entry.fragment.getSelection().getCoveringRange();
+		if ( range && covering && range.containsRange( covering ) ) {
+			return true;
+		}
+		const tagged = this.taggedFragments[ entry.name ] && this.taggedFragments[ entry.name ][ entry.tag ];
+		const index = tagged ? tagged.indexOf( entry.fragment ) : -1;
+		if ( index !== -1 ) {
+			tagged.splice( index, 1 );
+		}
+		cleared = true;
+		return false;
+	} );
+	if ( cleared ) {
+		this.refresh();
+	}
+};
+
+/**
+ * Update actions based on the current selection
+ *
+ * @fires EditCheckController#actionsUpdated
+ * @fires EditCheckController#focusAction
+ */
+Controller.prototype.focusActionForSelection = function () {
+	if ( !this.surface ) {
+		// This is debounced, and could potentially be called after teardown
+		return;
+	}
+	if ( this.surface.getView().reviewMode ) {
+		// In review mode the selection and display of checks is being managed by the dialog
+		return;
+	}
+
+	const selection = this.surface.getModel().getSelection();
+	const actions = this.getActions();
+
+	if ( actions.length === 0 || selection.isNull() ) {
+		// Nothing to do
+		return;
+	}
+
+	// Prefer a system message over whatever it's following up on when both overlap the same selection
+	const preferAction = ( candidates ) => candidates.find( ( action ) => action.check.isSystemCheck() ) ||
+		candidates[ candidates.length - 1 ];
+
+	// First check if the selection matches any action's #getFocusSelection as this
+	// is more specific than highlights.
+	const focusSelectionActions = actions.filter(
+		( action ) => action.getFocusSelection().getCoveringRange().containsRange( selection.getCoveringRange() )
+	);
+	if ( focusSelectionActions.length > 0 ) {
+		// Focus the last action returned (among non-system messages), because it should be the most-specific
+		this.focusAction( preferAction( focusSelectionActions ), false );
+		return;
+	}
+
+	const highlightSelectionsActions = actions.filter(
+		( action ) => action.getHighlightSelections().some(
+			( highlightSelection ) => highlightSelection.getCoveringRange().containsRange( selection.getCoveringRange() ) ) );
+
+	if ( highlightSelectionsActions.length > 0 ) {
+		this.focusAction( preferAction( highlightSelectionsActions ), false );
+		return;
+	}
+};
+
+/**
+ * Whether to ignore the next select event that is received
+ *
+ * @param {boolean} [ignore=true]
+ */
+Controller.prototype.setIgnoreNextSelectionChange = function ( ignore = true ) {
+	this.ignoreNextSelectionChange = ignore;
+};
+
+/**
+ * Handle contextChange events from the surface model
+ */
+Controller.prototype.onContextChange = function () {
+	if ( OO.ui.isMobile() && this.surface.getContext().isVisible() ) {
+		if ( !this.inBeforeSave ) {
+			// The context overlaps the drawer on mobile, so we should get rid of the drawer
+			this.closeDialog( 'context' );
+		} else {
+			// We still want to hide the context, just not close the dialog
+			this.surface.getModel().setNullSelection();
+		}
+	}
+};
+
+/**
+ * Handle position events from the surface view
+ *
+ * @param {boolean} passive Event is passive (don't scroll)
+ */
+Controller.prototype.onPosition = function ( passive ) {
+	// Layout changed, so rects are stale; core's SelectionManager redraws on this event for the
+	// same reason. Without this, actions found while the surface had no layout box are never
+	// drawn. (E.g. while the mobile anonwarning was covering the surface.)
+	this.updatePositionsDebounced();
+
+	if ( !passive && this.getActions().length && this.focusedAction && this.surface.getView().reviewMode ) {
+		this.scrollActionIntoViewDebounced( this.focusedAction, { alignToTop: !OO.ui.isMobile() } );
+	}
+};
+
+/**
+ * Handle changes to the model's undo stack
+ *
+ * This less-frequent event is used for updating actions.
+ */
+Controller.prototype.onUndoStackChange = function () {
+	if ( !this.inBeforeSave ) {
+		this.dropStaleSystemMessages();
+		this.updateForListener( 'onDocumentChange' );
+	}
+};
+
+/**
+ * Handle changes to the document model
+ *
+ * This event is only used for updating highlights.
+ */
+Controller.prototype.onDocumentUpdate = function () {
+	this.updatePositionsDebounced();
+};
+
+/**
+ * Handle changes to the selection moving between branch nodes
+ */
+Controller.prototype.onBranchNodeChange = function () {
+	if ( !this.surface ) {
+		// This is debounced, and could potentially be called after teardown
+		return;
+	}
+	if ( !this.inBeforeSave ) {
+		const historyPointer = this.surface.getModel().getDocument().getCompleteHistoryLength();
+		if ( this.lastBranchNodeChangeHistoryPointer === historyPointer ) {
+			return;
+		}
+		this.updateForListener( 'onBranchNodeChange' ).then( () => {
+			if ( this.surface ) {
+				this.lastBranchNodeChangeHistoryPointer = historyPointer;
+			}
+		} );
+	}
+};
+
+/**
+ * Handler when 'actionsUpdated' fires.
+ *
+ * Updates gutter and highlights when the action list has changed.
+ * Displays the edit check dialog if it is not already on screen.
+ *
+ * @listens EditCheckController#actionsUpdated
+ * @param {string} listener e.g. onBeforeSave, onDocumentChange, onBranchNodeChange
+ * @param {mw.editcheck.EditCheckAction[]} actions
+ * @param {mw.editcheck.EditCheckAction[]} newActions
+ * @param {mw.editcheck.EditCheckAction[]} discardedActions
+ */
+Controller.prototype.onActionsUpdated = function ( listener, actions, newActions, discardedActions ) {
+	// Do we need to redraw anything?
+	if ( newActions.length || discardedActions.length ) {
+		if ( this.focusedAction && discardedActions.includes( this.focusedAction ) ) {
+			this.focusedAction = null;
+		}
+		this.updatePositionsDebounced();
+	}
+
+	// Let actions know they've been discarded
+	for ( const action of discardedActions ) {
+		action.discarded();
+	}
+
+	// Do we need to show mid-edit actions?
+	if ( listener === 'onBeforeSave' ) {
+		return;
+	}
+	this.updateSuggestionIndicators( actions );
+
+	const visibleNewActions = this.filterActionsForDisplay( newActions );
+	if ( !this.filterActionsForDisplay( actions ).length ) {
+		return;
+	}
+	this.showSidebar( visibleNewActions ).then( () => {
+		if ( visibleNewActions.length ) {
+			// Check if any new actions are relevant to our current selection:
+			this.emitBranchNodeChangeIfNeeded();
+			this.focusActionForSelection();
+		}
+	} );
+};
+
+/**
+ * Update the suggestion count and the edit-full-page indicators
+ *
+ * @param {mw.editcheck.EditCheckAction[]} actions All current mid-edit actions
+ */
+Controller.prototype.updateSuggestionIndicators = function ( actions ) {
+	// System messages and any other future system checks shouldn't affect suggestion count
+	actions = actions.filter( ( action ) => !action.check.isSystemCheck() );
+	const suggestionCount = actions.filter( ( action ) => action.isSuggestion() ).length;
+	let availableSuggestionCount = suggestionCount;
+	const target = this.target;
+	if ( target.enableVisualSectionEditing && target.section !== null ) {
+		if ( !this.editFullPageIndicatorTop ) {
+			this.editFullPageIndicatorTop = new OO.ui.IconWidget( {
+				icon: 'lightbulb',
+				classes: [ 've-ui-editCheck-editFullPage-indicator' ]
+			} );
+			this.editFullPageIndicatorBottom = new OO.ui.IconWidget( {
+				icon: 'lightbulb',
+				classes: [ 've-ui-editCheck-editFullPage-indicator' ]
+			} );
+			target.switchToFullPageButtonTop.$label.append( this.editFullPageIndicatorTop.$element );
+			target.switchToFullPageButtonBottom.$label.append( this.editFullPageIndicatorBottom.$element );
+		}
+		const placement = this.getSuggestionPlacement( actions );
+		availableSuggestionCount = placement.inSection;
+		this.editFullPageIndicatorTop.toggle( placement.hasAbove );
+		this.editFullPageIndicatorBottom.toggle( placement.hasBelow );
+	}
+
+	// Ignore a count of 0 during initial setup
+	if ( !( this.inSetup && suggestionCount === 0 ) ) {
+		this.updateSuggestionCountDebounced( suggestionCount );
+	}
+
+	this.lastAvailableSuggestionCount = availableSuggestionCount;
+};
+
+/**
+ * Find where suggestions are, compared to the section that is being edited
+ *
+ * @param {mw.editcheck.EditCheckAction[]} actions
+ * @return {{inSection: number, hasAbove: boolean, hasBelow: boolean}} Number of
+ *  suggestions in the section, and if there are suggestions above or below it
+ */
+Controller.prototype.getSuggestionPlacement = function ( actions ) {
+	const attachedRootRange = this.surface.getModel().getDocument().getAttachedRoot().getOuterRange();
+	const ranges = actions.filter( ( action ) => action.isSuggestion() )
+		.map( ( action ) => action.getFocusSelection().getCoveringRange() );
+	return {
+		inSection: ranges.filter( ( range ) => attachedRootRange.containsRange( range ) ).length,
+		hasAbove: ranges.some( ( range ) => range.end < attachedRootRange.start ),
+		hasBelow: ranges.some( ( range ) => range.start > attachedRootRange.end )
+	};
+};
+
+/**
+ * Open the mid-edit sidebar, if it is not open
+ *
+ * The sidebar reads the actions from the controller in its setup.
+ *
+ * @param {mw.editcheck.EditCheckAction[]} newActions Newly added actions, which the sidebar can focus
+ * @return {jQuery.Promise} Promise which resolves when the sidebar is open
+ */
+Controller.prototype.showSidebar = function ( newActions ) {
+	const windowName = OO.ui.isMobile() ? 'gutterSidebarEditCheckDialog' : 'sidebarEditCheckDialog';
+	if ( this.sidebarOpeningPromise ) {
+		// A second open before the first one finishes never resolves, so wait
+		// for the first one. Its setup can occur after the current window is
+		// set, and it reads the new actions then, so add these to them.
+		this.sidebarOpeningNewActions.push( ...newActions );
+		return this.sidebarOpeningPromise;
+	}
+	const currentWindow = this.surface.getSidebarDialogs().getCurrentWindow();
+	if ( currentWindow && currentWindow.constructor.static.name === windowName ) {
+		return ve.createDeferred().resolve().promise();
+	}
+	const target = this.target;
+	target.$element.addClass( 've-ui-editCheck-sidebar-active' );
+	const windowAction = ve.ui.actionFactory.create( 'window', this.surface, 'check' );
+	// Copy, because later calls add to this array
+	const openingNewActions = newActions.slice();
+	const openingPromise = windowAction.open(
+		windowName,
+		{ inBeforeSave: this.inBeforeSave, newActions: openingNewActions, controller: this }
+	).then( ( instance ) => {
+		ve.track( 'activity.editCheckDialog', { action: 'window-open-from-check-midedit' } );
+		instance.closed.then( () => {
+			target.$element.removeClass( 've-ui-editCheck-sidebar-active' );
+		} );
+	} );
+	this.sidebarOpeningPromise = openingPromise;
+	this.sidebarOpeningNewActions = openingNewActions;
+	openingPromise.always( () => {
+		if ( this.sidebarOpeningPromise === openingPromise ) {
+			this.sidebarOpeningPromise = null;
+			this.sidebarOpeningNewActions = null;
+		}
+	} );
+	return openingPromise;
+};
+
+/**
+ * Adds the pre-save edit check dialog before the normal page commit dialog.
+ * Handles closing the mid-edit dialog, as well as restoring it if the user
+ * exits the pre-save check dialog.
+ *
+ * We execute all pre-save checks, which may be asynchronous, and wait for them
+ * to complete before opening the pre-save dialog.
+ *
+ * TODO: Set a time-out so that we don't hang forever if an async check takes
+ * too long.
+ */
+Controller.prototype.setupPreSaveProcess = function () {
+	const target = this.target;
+	const preSaveProcess = target.getPreSaveProcess();
+	const trackPreSaveCheck = function ( kind ) {
+		ve.track( 'stats.mediawiki_editcheck_preSaveChecks_total', 1, {
+			wiki: mw.config.get( 'wgDBname' ),
+			kind
+		} );
+	};
+	preSaveProcess.next( () => {
+		const surface = target.getSurface();
+		if ( surface.getMode() !== 'visual' ) {
+			return;
+		}
+		trackPreSaveCheck( 'Available' );
+
+		const oldFocusedAction = this.focusedAction;
+		this.inBeforeSave = true;
+		return this.updateForListener( 'onBeforeSave' ).then( ( actions ) => {
+			if ( !this.surface ) {
+				// The user left the editing session during the time checks were being generated.
+				trackPreSaveCheck( 'Abandoned' );
+				return ve.createDeferred().reject().promise();
+			}
+			if ( actions.length ) {
+				trackPreSaveCheck( 'Shown' );
+
+				this.setupToolbar( target );
+
+				let $contextContainer, contextPadding;
+				if ( surface.context.popup ) {
+					contextPadding = surface.context.popup.containerPadding;
+					$contextContainer = surface.context.popup.$container;
+					surface.context.popup.$container = surface.$element;
+					surface.context.popup.containerPadding = 20;
+				}
+
+				return this.closeSidebars( 'preSaveProcess' ).then( () => this.closeDialog( 'preSaveProcess' ).then( () => {
+					target.onContainerScroll();
+					const windowAction = ve.ui.actionFactory.create( 'window', surface, 'check' );
+					return windowAction.open( 'fixedEditCheckDialog', { inBeforeSave: true, controller: this } )
+						.then( ( instance ) => {
+							ve.track( 'activity.editCheckDialog', { action: 'window-open-from-check-presave' } );
+							this.scrollActionIntoViewDebounced( this.focusedAction, { alignToTop: true } );
+
+							instance.closed.then( () => {}, () => {} ).then( () => {
+								surface.getView().setReviewMode( false );
+								this.inBeforeSave = false;
+								this.focusedAction = oldFocusedAction;
+								// Re-open the mid-edit sidebar if necessary.
+								this.refresh();
+							} );
+							return instance.closing.then( ( data ) => {
+								if ( target.deactivating || !target.active ) {
+									// Someone clicking "read" to leave the article
+									// will trigger the closing of this; in that
+									// case, just abandon what we're doing
+									trackPreSaveCheck( 'Abandoned' );
+									return ve.createDeferred().reject().promise();
+								}
+								this.restoreToolbar( target );
+
+								if ( $contextContainer ) {
+									surface.context.popup.$container = $contextContainer;
+									surface.context.popup.containerPadding = contextPadding;
+								}
+
+								target.onContainerScroll();
+
+								if ( data ) {
+									const delay = ve.createDeferred();
+									// If they inserted, wait 2 seconds on desktop
+									// before showing save dialog to give user time
+									// to see success notification.
+									setTimeout( () => {
+										trackPreSaveCheck( 'Completed' );
+										delay.resolve();
+									}, !OO.ui.isMobile() && data.action !== 'reject' ? 2000 : 0 );
+									return delay.promise();
+								} else {
+									// closed via "back" or otherwise
+									trackPreSaveCheck( 'Abandoned' );
+									return ve.createDeferred().reject().promise();
+								}
+							} );
+						} );
+				} ) );
+			} else {
+				this.inBeforeSave = false;
+				// Counterpart to earlier preSaveChecksShown, for use in tracking
+				// errors in check-generation:
+				trackPreSaveCheck( 'NotShown' );
+			}
+		} );
+	} );
+};
+
+/**
+ * Replace toolbar tools for review mode during pre-save checks.
+ *
+ * @param {ve.init.mw.ArticleTarget} target
+ */
+Controller.prototype.setupToolbar = function ( target ) {
+	const surface = target.getSurface();
+	const toolbar = target.getToolbar();
+	this.$originalToolbarTools = toolbar.$group.add( toolbar.$after ).addClass( 'oo-ui-element-hidden' );
+
+	const reviewToolbar = new ve.ui.TargetToolbar( target, target.toolbarConfig );
+	reviewToolbar.setup( [
+		{
+			name: 'back',
+			type: 'bar',
+			include: [ 'editCheckBack' ]
+		},
+		{
+			name: 'title',
+			type: 'label',
+			label: ve.msg( 'editcheck-dialog-title' )
+		},
+		{
+			name: 'save',
+			type: 'bar',
+			include: [ 'showSaveDisabled' ]
+		}
+	], surface );
+
+	reviewToolbar.items[ 1 ].$element.removeClass( 'oo-ui-toolGroup-empty' );
+	// Just append the $group of the new toolbar, so we don't have to wire up all the toolbar events.
+	this.$reviewToolbarGroup = reviewToolbar.$group.addClass( 've-ui-editCheck-toolbar-tools' );
+	toolbar.$group.after( this.$reviewToolbarGroup );
+
+	toolbar.onWindowResize();
+};
+
+/**
+ * Restores the original toolbar tools after review mode is complete.
+ *
+ * @param {ve.init.mw.ArticleTarget} target
+ */
+Controller.prototype.restoreToolbar = function ( target ) {
+	if ( !this.$reviewToolbarGroup ) {
+		return;
+	}
+	const toolbar = target.getToolbar();
+
+	this.$reviewToolbarGroup.remove();
+	this.$reviewToolbarGroup = null;
+
+	this.$originalToolbarTools.removeClass( 'oo-ui-element-hidden' );
+
+	toolbar.onWindowResize();
+};
+
+/**
+ * Redraw selection highlights
+ */
+Controller.prototype.drawSelections = function () {
+	const allActions = this.filterActionsForDisplay( this.getActions() );
+	const surfaceView = this.surface.getView();
+	const selectionManager = surfaceView.getSelectionManager();
+	const activeSelections = this.focusedAction ? this.focusedAction.getHighlightSelections().map(
+		( selection ) => ve.ce.Selection.static.newFromModel( selection, surfaceView )
+	) : [];
+	if ( this.focusedAction ) {
+		this.focusedAction.updateStale();
+	}
+	const isStale = !!this.focusedAction && this.focusedAction.isStale();
+	const showGutter = !isStale && !OO.ui.isMobile();
+	const activeOptions = {
+		showGutter,
+		showRects: !isStale,
+		showBounding: isStale,
+		wrapperClass: 've-ce-surface-selections-editCheck-active' +
+			( isStale ? ' ve-ce-surface-selections-editCheck-stale' : '' )
+	};
+	const inactiveOptions = {
+		showGutter,
+		showRects: true,
+		wrapperClass: 've-ce-surface-selections-editCheck-inactive'
+	};
+
+	if ( this.inBeforeSave ) {
+		// Review mode grays out everything that's not highlighted:
+		const highlightNodes = [];
+		allActions.forEach( ( action ) => {
+			action.getHighlightSelections().forEach( ( selection ) => {
+				highlightNodes.push( ...surfaceView.getDocument().selectNodes( selection.getCoveringRange(), 'branches' ).map( ( spec ) => spec.node ) );
+			} );
+		} );
+		surfaceView.setReviewMode( true, highlightNodes );
+		if ( this.focusedAction ) {
+			selectionManager.drawSelections( 'editCheck-active-' + this.focusedAction.getType(), activeSelections, activeOptions );
+		}
+		return;
+	}
+	[ 'warning', 'error', 'progressive', 'success' ].forEach( ( type ) => {
+		const actions = allActions.filter( ( action ) => action.getType() === type );
+
+		if ( actions.length === 0 ) {
+			// Clear any previously drawn selections
+			selectionManager.drawSelections( 'editCheck-active-' + type, [] );
+			selectionManager.drawSelections( 'editCheck-inactive-' + type, [] );
+			return;
+		}
+
+		const inactiveSelections = [];
+		actions.forEach( ( action ) => {
+			if ( action === this.focusedAction ) {
+				return;
+			}
+			action.getHighlightSelections().forEach( ( selection ) => {
+				const selectionView = ve.ce.Selection.static.newFromModel( selection, surfaceView );
+				inactiveSelections.push( selectionView );
+			} );
+			if ( action.widget ) {
+				action.widget.setFetchSelectionElements( () => {
+					const selectionElements = [];
+					action.getHighlightSelections().forEach( ( selection ) => {
+						const element = selectionManager.getCachedSelectionElements( 'editCheck-inactive-' + type, selection, inactiveOptions );
+						if ( element ) {
+							selectionElements.push( element );
+						}
+					} );
+					return selectionElements;
+				} );
+			}
+		} );
+
+		if ( isStale && activeSelections.length ) {
+			// When in reviewing a check (stale), suppress all inactive selections that overlap with the active selection (T420712).
+			const activeRange = activeSelections[ 0 ].getModel().getCoveringRange();
+			for ( let i = inactiveSelections.length - 1; i >= 0; i-- ) {
+				if ( activeRange.overlapsRange( inactiveSelections[ i ].getModel().getCoveringRange() ) ) {
+					inactiveSelections.splice( i, 1 );
+				}
+			}
+		}
+
+		// The following classes are used here:
+		// * ve-ce-surface-selections-editCheck-active-warning
+		// * ve-ce-surface-selections-editCheck-active-error
+		// * ve-ce-surface-selections-editCheck-active-progressive
+		// * ve-ce-surface-selections-editCheck-active-success
+		// * ve-ce-surface-selections-editCheck-inactive-warning
+		// * ve-ce-surface-selections-editCheck-inactive-error
+		// * ve-ce-surface-selections-editCheck-inactive-progressive
+		// * ve-ce-surface-selections-editCheck-inactive-success
+		selectionManager.drawSelections( 'editCheck-inactive-' + type, inactiveSelections, inactiveOptions );
+		const activeSelectionsForType = this.focusedAction && this.focusedAction.getType() === type ? activeSelections : [];
+		selectionManager.drawSelections( 'editCheck-active-' + type, activeSelectionsForType, activeOptions );
+	} );
+};
+
+/**
+ * Scrolls an action's selection into view
+ *
+ * @param {mw.editcheck.EditCheckAction} action
+ * @param {Object} [scrollConfig] Configuration for scrolling
+ * @return {jQuery.Promise} Promise resolved when scrolling is complete
+ */
+Controller.prototype.scrollActionIntoView = function ( action, scrollConfig ) {
+	// scrollSelectionIntoView scrolls to the focus of a selection, but we
+	// want the very beginning to be in view, so collapse it:
+	const selection = action.getHighlightSelections()[ 0 ].collapseToStart();
+
+	return this.surface.scrollSelectionIntoView( selection, ve.extendObject( {
+		animate: true,
+		extraPadding: { top: 10, bottom: OO.ui.isMobile() ? 200 : 10 }
+	}, scrollConfig ) );
+};
+
+/**
+ * Closes the edit check dialog
+ *
+ * @param {string} [action] Name of action which triggered the close ('mobile-keyboard', 'context', 'preSaveProcess')
+ * @return {jQuery.Promise}
+ */
+Controller.prototype.closeDialog = function ( action ) {
+	const currentWindow = this.surface.getToolbarDialogs( ve.ui.FixedEditCheckDialog.static.position ).getCurrentWindow();
+	if ( currentWindow && ( currentWindow.constructor.static.name === 'mobileEditCheckDialog' || currentWindow.constructor.static.name === 'fixedEditCheckDialog' ) ) {
+		// .always is not chainable
+		return currentWindow.close( action ? { action } : undefined ).closed.then( () => {}, () => {} );
+	}
+	return ve.createDeferred().resolve().promise();
+};
+
+/**
+ * Closes the sidebar edit check dialogs (mid-edit).
+ *
+ * @param {string} [action] Name of action which triggered the close (currently only 'preSaveProcess')
+ * @return {jQuery.Promise}
+ */
+Controller.prototype.closeSidebars = function ( action ) {
+	const currentWindow = this.surface.getSidebarDialogs().getCurrentWindow();
+	if ( currentWindow && currentWindow.constructor.static.name === 'sidebarEditCheckDialog' ) {
+		// .always is not chainable
+		return currentWindow.close( action ? { action } : undefined ).closed.then( () => {}, () => {} );
+	}
+	return ve.createDeferred().resolve().promise();
+};
+
+/**
+ * Set the current branch node from a selection
+ *
+ * @param {ve.dm.Selection} selection New selection
+ * @return {boolean} whether the branch node changed
+ */
+Controller.prototype.updateCurrentBranchNodeFromSelection = function ( selection ) {
+	let newBranchNode = null;
+	if ( selection instanceof ve.dm.LinearSelection ) {
+		newBranchNode = this.surface.model.documentModel.getBranchNodeFromOffset( selection.range.to );
+	}
+	if ( newBranchNode !== this.branchNode ) {
+		this.branchNode = newBranchNode;
+		return true;
+	}
+	return false;
+};
+
+/*
+ * Emit the branchNodeChange event if it's appropriate to do so
+ *
+ * That means: we're not in beforeSave and the selection has moved since
+ * this was last checked.
+ *
+ * @fires EditCheckController#branchNodeChange
+ */
+Controller.prototype.emitBranchNodeChangeIfNeeded = function () {
+	const selection = this.surface.getModel().getSelection();
+
+	if ( !this.inBeforeSave && this.updateCurrentBranchNodeFromSelection( selection ) ) {
+		this.emit( 'branchNodeChange', this.branchNode );
+	}
+};
+
+/**
+ * Count one lifecycle event against the community-defined rule that caused it
+ *
+ * The rule ID has no fixed set of values, so a cross with the check labels
+ * makes too many series.
+ *
+ * @param {mw.editcheck.EditCheckAction} action
+ * @param {string} event Lifecycle event: 'shown', 'seen', or the choice taken
+ */
+Controller.prototype.trackRule = function ( action, event ) {
+	const ruleId = action.getRuleId();
+	if ( ruleId === null ) {
+		return;
+	}
+	ve.track( 'stats.mediawiki_editcheck_rules_total', 1, {
+		wiki: mw.config.get( 'wgDBname' ),
+		kind: action.check.getName(),
+		rule: mw.editcheck.sanitizeStatsvLabel( ruleId ),
+		event
+	} );
+};
+
+/**
+ * Handle instrumentation and tracking when an action is shown or marked as seen
+ *
+ * @param {mw.editcheck.EditCheckAction} action Action that was seen or shown
+ * @param {string} seenOrShown Whether the action was 'seen' or 'shown'
+ */
+Controller.prototype.onActionSeenOrShown = function ( action, seenOrShown ) {
+	const moment = this.inBeforeSave ? 'presave' : 'midedit';
+	const name = action.getName();
+	const type = action.isSuggestion() ? 'suggestion' : 'check';
+	const data = { action: `${ type }-${ seenOrShown }-${ moment }${ action.getTrackingIdSuffix() }` };
+	if ( action.isSuggestion() ) {
+		mw.editcheck.state.suggestions[ seenOrShown ][ name ] = true;
+	} else {
+		mw.editcheck.state.checks[ seenOrShown ][ name ] = true;
+	}
+	ve.track( `activity.editCheck-${ name }`, data );
+	// The EventLogging event above is sampled and only readable in Superset,
+	// so keep an unsampled counter for Grafana.
+	ve.track( 'stats.mediawiki_editcheck_actions_total', 1, {
+		wiki: mw.config.get( 'wgDBname' ),
+		kind: action.check.getName(),
+		type,
+		event: seenOrShown,
+		moment
+	} );
+	this.trackRule( action, seenOrShown );
+};
+
+/**
+ * Handle instrumentation and tracking when an action is used
+ *
+ * @param {mw.editcheck.EditCheckAction} action that was used
+ * @param {Promise|jQuery.Promise} promise that will resolve when the action finishes
+ * @param {string} actionTaken name of the action taken
+ */
+Controller.prototype.onActionAct = function ( action, promise, actionTaken ) {
+	const name = action.getName();
+	const type = action.isSuggestion() ? 'suggestion' : 'check';
+	const data = {
+		action: ( action.isSuggestion() ? 'suggestion-' : '' ) + 'action-' + ( actionTaken || 'unknown' ) + action.getTrackingIdSuffix()
+	};
+	ve.track( `activity.editCheck-${ name }`, data );
+	// Each check declares its choices in static.choices, so `act` stays bounded.
+	ve.track( 'stats.mediawiki_editcheck_actionsTaken_total', 1, {
+		wiki: mw.config.get( 'wgDBname' ),
+		kind: action.check.getName(),
+		type,
+		act: actionTaken || 'unknown',
+		moment: this.inBeforeSave ? 'presave' : 'midedit'
+	} );
+	this.trackRule( action, actionTaken || 'unknown' );
+	if ( action.check.constructor.static.dismissalActions.includes( actionTaken ) ) {
+		// These are actions that represent "don't change anything", and so
+		// don't count as the check having been used
+		return;
+	}
+	if ( action.isSuggestion() ) {
+		mw.editcheck.state.suggestions.used[ name ] = true;
+	} else {
+		mw.editcheck.state.checks.used[ name ] = true;
+	}
+};
+
+Controller.prototype.onActionCompleted = function ( action, message ) {
+	if ( this.inBeforeSave ) {
+		// SystemMessageEditCheck has no onBeforeSave listener so a message
+		// registered here wouldn't show until we're back mid-edit, at which point
+		// it could suddenly appear alongside unrelated ones - which we don't want
+		return;
+	}
+	const config = {
+		title: message || action.check.constructor.static.successResult || OO.ui.deferMsg(
+			action.suggestion ? 'editcheck-dialog-success-suggestion' : 'editcheck-dialog-success-check'
+		),
+		suggestion: action.suggestion
+	};
+	if ( action.isSuggestion() && this.consumePublishPath() ) {
+		config.messageType = 'publishPath';
+		config.dismissOnOtherFocus = true;
+		const hasOtherSuggestions = this.getActions().some(
+			( candidate ) => candidate !== action && candidate.isSuggestion() && !candidate.check.isSystemCheck()
+		);
+		if ( !hasOtherSuggestions ) {
+			config.choices = mw.editcheck.SystemMessageEditCheck.static.messageTypes.publishPath.choices
+				.filter( ( choice ) => choice.action !== 'viewMoreSuggestions' );
+		}
+	}
+	this.registerSystemMessage( action.fragments[ action.fragments.length - 1 ], config );
+};
+
+/**
+ * Check if the publish path card can show, and if so, do not show it again
+ *
+ * @return {boolean} The publish path card can show
+ */
+Controller.prototype.consumePublishPath = function () {
+	if ( !mw.editcheck.showPublishPath ) {
+		return false;
+	}
+	mw.editcheck.showPublishPath = false;
+	if ( !mw.user.isAnon() ) {
+		new mw.Api().saveOption( 'visualeditor-editcheck-showpublishpath', '0' );
+		mw.user.options.set( 'visualeditor-editcheck-showpublishpath', '0' );
+	}
+	return true;
+};
+
+module.exports = {
+	Controller
+};

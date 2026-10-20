@@ -1,0 +1,286 @@
+/**
+ * Edit check to detect duplicate links within a section or paragraph
+ *
+ * @class
+ * @extends mw.editcheck.LinkEditCheck
+ *
+ * @constructor
+ * @param {mw.editcheck.Controller} controller
+ * @param {Object} [config]
+ * @param {string} [config.scope='paragraph'] Scope to check for duplicates: 'paragraph' or 'section'
+ * @param {boolean} [includeSuggestions=false]
+ */
+mw.editcheck.DuplicateLinkEditCheck = function MWDuplicateLinkEditCheck() {
+	// Parent constructor
+	mw.editcheck.DuplicateLinkEditCheck.super.apply( this, arguments );
+};
+
+/* Inheritance */
+
+OO.inheritClass( mw.editcheck.DuplicateLinkEditCheck, mw.editcheck.LinkEditCheck );
+
+/* Static properties */
+
+mw.editcheck.DuplicateLinkEditCheck.static.defaultConfig = ve.extendObject( {}, mw.editcheck.DuplicateLinkEditCheck.super.static.defaultConfig, {
+	showAsCheck: false,
+	scope: 'paragraph',
+	ignoreFragmentSelfLinks: false
+} );
+
+mw.editcheck.DuplicateLinkEditCheck.static.name = 'duplicateLink';
+
+mw.editcheck.DuplicateLinkEditCheck.static.title = OO.ui.deferMsg( 'editcheck-duplicate-link-title' );
+
+mw.editcheck.DuplicateLinkEditCheck.static.description = ve.deferJQueryMsg( 'editcheck-duplicate-link-description' );
+
+mw.editcheck.DuplicateLinkEditCheck.static.actionModes = {
+	adjacent: {
+		name: 'duplicateLink-adjacent',
+		title: OO.ui.deferMsg( 'editcheck-adjacent-link-title' ),
+		message: ve.deferJQueryMsg( 'editcheck-adjacent-link-description' )
+	}
+};
+
+mw.editcheck.DuplicateLinkEditCheck.static.choices = [
+	{
+		action: 'remove',
+		label: OO.ui.deferMsg( 'editcheck-action-remove-link' ),
+		modes: [ '' ]
+	},
+	{
+		action: 'merge',
+		label: OO.ui.deferMsg( 'editcheck-action-merge-links' ),
+		modes: [ 'adjacent' ]
+	},
+	{
+		action: 'dismiss',
+		label: OO.ui.deferMsg( 'ooui-dialog-process-dismiss' ),
+		modes: [ '', 'adjacent' ]
+	}
+];
+
+mw.editcheck.DuplicateLinkEditCheck.static.linkClasses = [ ve.dm.MWInternalLinkAnnotation ];
+
+/* Methods */
+
+/*
+ * Break down the document into sections
+ */
+function getSectionRanges( documentModel ) {
+	const headingRanges = documentModel.getNodesByType( 'mwHeading', true )
+		.filter( ( node ) => node.getAttribute( 'level' ) === 2 )
+		.map( ( node ) => node.getOuterRange() );
+
+	const sections = [];
+	let start = 0;
+	for ( const headingRange of headingRanges ) {
+		sections.push( new ve.Range( start, headingRange.start ) );
+		start = headingRange.end;
+	}
+	sections.push( new ve.Range( start, documentModel.getDocumentRange().end ) );
+	return sections;
+}
+
+function orderedCollectBy( iterable, keyFunction ) {
+	const result = new Map();
+	for ( const entry of iterable ) {
+		const key = keyFunction( entry );
+		if ( key === undefined || key === null ) {
+			continue;
+		}
+		if ( result.has( key ) ) {
+			result.get( key ).push( entry );
+		} else {
+			result.set( key, [ entry ] );
+		}
+	}
+	return result;
+}
+
+mw.editcheck.DuplicateLinkEditCheck.prototype.onDocumentChange = function ( surfaceModel ) {
+	const normalizedTitleKey = 'normalizedTitle';
+
+	const documentModel = surfaceModel.getDocument();
+
+	// Each section of the document that we want to detect duplicates within
+	let sectionRanges;
+	if ( this.config.scope === 'section' ) {
+		sectionRanges = getSectionRanges( documentModel );
+	} else if ( this.config.scope === 'paragraph' ) {
+		sectionRanges = documentModel.getNodesByType( 'paragraph' ).map( ( node ) => node.getOuterRange() );
+	}
+
+	// Traverse the tree once to find internal links, and build a map
+	const allLinks = documentModel.getDocumentNode().getAnnotationRanges().filter(
+		( annRange ) => annRange.annotation.name === ve.dm.MWInternalLinkAnnotation.static.name &&
+			// Ignore fragment self-links if configured (T422190)
+			!( this.config.ignoreFragmentSelfLinks && ve.init.platform.linkCache.constructor.static.isFragmentSelfLink(
+				annRange.annotation.getAttribute( 'lookupTitle' ),
+				!!annRange.annotation.getFragment()
+			) )
+	);
+	const allLinksByTitle = orderedCollectBy( allLinks, ( annRef ) => annRef.annotation.getAttribute( normalizedTitleKey ) );
+
+	// Traverse again for links we want to show a Check on. This could be a small set, or all links.
+	// Filter out any links that appear only once in the document.
+	// getModifiedLinkRanges handles filtering sections and dismissed actions.
+	const candidateModifiedLinks = this.getModifiedLinkRanges(
+		surfaceModel, this.getModifiedContentRanges( documentModel )
+	).filter(
+		( annRange ) => ( allLinksByTitle.get( annRange.annotation.getAttribute( normalizedTitleKey ) ) || [] ).length > 1
+	);
+
+	// Now we have a list of modified links which, if they're root links and duplicated in the same section by another root link, are duplicates.
+	let i = 0; // Index into candidate links
+	const actions = [];
+	for ( const sectionRange of sectionRanges ) {
+		const duplicateLinksByTitle = new Map();
+		for ( ; i < candidateModifiedLinks.length && candidateModifiedLinks[ i ].range.end <= sectionRange.end; i++ ) {
+			const annRange = candidateModifiedLinks[ i ];
+			const title = annRange.annotation.getAttribute( normalizedTitleKey );
+			if ( !duplicateLinksByTitle.has( title ) ) {
+				const sectionLinksForTitle = allLinksByTitle.get( title ).filter( ( ar ) => sectionRange.containsRange( ar.range ) );
+				if ( sectionLinksForTitle.length > 1 ) {
+					// Only validate we're in a root paragraph after confirming there's a duplicate in the section
+					const rootSectionLinksForTitle = sectionLinksForTitle.filter( ( ar ) => documentModel.getBranchNodeFromOffset( ar.range.start ).getParent() === documentModel.attachedRoot );
+					if ( rootSectionLinksForTitle.length > 1 ) {
+						duplicateLinksByTitle.set( title, rootSectionLinksForTitle );
+					} else {
+						duplicateLinksByTitle.set( title, [] );
+					}
+				} else {
+					duplicateLinksByTitle.set( title, [] );
+				}
+			}
+			const duplicateLinks = duplicateLinksByTitle.get( title );
+			if ( duplicateLinks.length < 2 ) {
+				continue;
+			}
+
+			const index = duplicateLinks.findIndex( ( ar ) => annRange.range.equalsSelection( ar.range ) );
+			if ( index === 0 ) {
+				// Don't mark the first link as a duplicate.
+				continue;
+			}
+
+			// Highlight all duplicates with the one being acted on first
+			const highlights = duplicateLinks.slice();
+			highlights.splice( index, 1 );
+			highlights.unshift( annRange );
+
+			// Check if the links are adjacent, or separated by whitespace only:
+			const adjacent = duplicateLinks.every( ( link, j ) => {
+				if ( j === 0 ) {
+					return true;
+				}
+				const previousLink = duplicateLinks[ j - 1 ];
+				const betweenText = documentModel.data.getText( true, new ve.Range( previousLink.range.end, link.range.start ) );
+				return /^[\s]*$/.test( betweenText ) &&
+					// Newline indicates element data
+					!/\n/.test( betweenText );
+			} );
+
+			if ( adjacent ) {
+				// Show nothing if the merge cannot work (T437749)
+				const mergeRange = ve.Range.static.newCoveringRange(
+					duplicateLinks.map( ( ar ) => ar.range )
+				);
+				if ( !this.getMergeOuterAnnotations( documentModel, mergeRange ) ) {
+					continue;
+				}
+				actions.push( this.buildActionFromLinkRange( annRange.range, surfaceModel, ve.extendObject( {
+					fragments: highlights.map( ( ar ) => surfaceModel.getLinearFragment( ar.range ) ),
+					mode: 'adjacent'
+				}, this.constructor.static.actionModes.adjacent ) ) );
+			} else {
+				actions.push( this.buildActionFromLinkRange( annRange.range, surfaceModel, {
+					fragments: highlights.map( ( ar ) => surfaceModel.getLinearFragment( ar.range ) )
+				} ) );
+			}
+		}
+	}
+
+	return actions;
+};
+
+/**
+ * Get the annotations which nest outside a merged link
+ *
+ * The converter puts the link inside each annotation which is already open where
+ * the link starts. If such an annotation stops inside the link, the link must
+ * close and open again. An equal annotation with other HTML attributes gives the
+ * same result. Parsoid puts a different id on each element, so two italic runs
+ * always differ in this way. The link then becomes more than one element, and the
+ * merge makes no change to the page. (T437749)
+ *
+ * The caller must give the whole link one instance of each of these annotations.
+ * That instance covers whitespace only, or replaces an equal annotation, so the
+ * page looks the same.
+ *
+ * @param {ve.dm.Document} documentModel
+ * @param {ve.Range} range Range which the merged link covers
+ * @return {ve.dm.Annotation[]|null} Annotations to set over the whole range, or null
+ *  if the merge needs a change which the reader can see
+ */
+mw.editcheck.DuplicateLinkEditCheck.prototype.getMergeOuterAnnotations = function ( documentModel, range ) {
+	const data = documentModel.data;
+	const linkNames = this.constructor.static.linkClasses.map( ( linkClass ) => linkClass.static.name );
+	// An annotation is open where the link starts only if it also covers the offset
+	// before it. Compare it the way the converter does, to get the same nesting.
+	const previousAnnotations = data.getAnnotationsFromOffset( range.start - 1 );
+	const outerAnnotations = data.getAnnotationsFromOffset( range.start ).filter(
+		( annotation ) => !linkNames.includes( annotation.name ) &&
+			previousAnnotations.containsComparableForSerialization( annotation )
+	).get();
+
+	for ( const annotation of outerAnnotations ) {
+		for ( let offset = range.start; offset < range.end; offset++ ) {
+			const hasEqual = data.getAnnotationsFromOffset( offset ).containsComparable( annotation );
+			// Whitespace looks the same with the annotation, other content does not
+			if ( !hasEqual && !/^\s$/.test( data.getCharacterData( offset ) ) ) {
+				return null;
+			}
+		}
+	}
+	return outerAnnotations;
+};
+
+mw.editcheck.DuplicateLinkEditCheck.prototype.act = function ( choice, action, surface ) {
+	if ( choice === 'remove' ) {
+		action.fragments[ 0 ].annotateContent( 'clear', ve.ce.MWInternalLinkAnnotation.static.name );
+		action.select( surface, true );
+		action.complete();
+		return;
+	} else if ( choice === 'merge' ) {
+		let coveringRange;
+		action.fragments.forEach( ( fragment ) => {
+			const r = fragment.getSelection().getCoveringRange();
+			coveringRange = coveringRange ? coveringRange.expand( r ) : r;
+		} );
+		const surfaceModel = surface.getModel();
+		const coveringFragment = surfaceModel.getLinearFragment( coveringRange );
+		const linkAnnotation = this.getLinkFromFragment( action.fragments[ 0 ] );
+		const documentModel = surfaceModel.getDocument();
+		const outerAnnotations = this.getMergeOuterAnnotations( documentModel, coveringRange ) || [];
+		coveringFragment
+			.annotateContent( 'clear', ve.ce.MWInternalLinkAnnotation.static.name )
+			.annotateContent( 'set', linkAnnotation );
+		outerAnnotations.forEach( ( annotation ) => {
+			// Clear the equal annotations first: 'set' does nothing at an offset
+			// which one of them already covers
+			documentModel.data.getAnnotationsFromRange( coveringRange, true )
+				.getComparableAnnotations( annotation ).get()
+				.forEach( ( equalAnnotation ) => coveringFragment.annotateContent( 'clear', equalAnnotation ) );
+			coveringFragment.annotateContent( 'set', annotation );
+		} );
+		this.selectAnnotation( coveringFragment, surface );
+		action.complete();
+		return;
+	}
+	// Parent method
+	return mw.editcheck.DuplicateLinkEditCheck.super.prototype.act.apply( this, arguments );
+};
+
+/* Registration */
+
+mw.editcheck.editCheckFactory.register( mw.editcheck.DuplicateLinkEditCheck );
