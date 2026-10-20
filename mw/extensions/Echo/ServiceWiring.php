@@ -1,0 +1,129 @@
+<?php
+
+use MediaWiki\Context\RequestContext;
+use MediaWiki\Extension\Notifications\AttributeManager;
+use MediaWiki\Extension\Notifications\Cache\RevisionLocalCache;
+use MediaWiki\Extension\Notifications\Cache\TitleLocalCache;
+use MediaWiki\Extension\Notifications\Controller\EventController;
+use MediaWiki\Extension\Notifications\DbDomains;
+use MediaWiki\Extension\Notifications\Mapper\EventMapper;
+use MediaWiki\Extension\Notifications\Mapper\NotificationMapper;
+use MediaWiki\Extension\Notifications\Push\NotificationServiceClient;
+use MediaWiki\Extension\Notifications\Push\SubscriptionManager;
+use MediaWiki\Logger\LoggerFactory;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Storage\NameTableStore;
+
+// PHP unit does not understand code coverage for this file
+// as the @covers annotation cannot cover a specific file.
+// Whether the services return without error is checked in ServiceWiringTest.php
+// @codeCoverageIgnoreStart
+/** @phpcs-require-sorted-array */
+return [
+
+	'EchoAttributeManager' => static function ( MediaWikiServices $services ): AttributeManager {
+		$echoConfig = $services->getConfigFactory()->makeConfig( 'Echo' );
+
+		return new AttributeManager(
+			$echoConfig->get( 'EchoNotifications' ),
+			$echoConfig->get( 'EchoNotificationCategories' ),
+			$echoConfig->get( 'DefaultNotifyTypeAvailability' ),
+			$echoConfig->get( 'NotifyTypeAvailabilityByCategory' ),
+			$services->getUserGroupManager(),
+			$services->getUserOptionsLookup()
+		);
+	},
+
+	'EchoEventController' => static function ( MediaWikiServices $services ): EventController {
+		return new EventController(
+			$services->get( 'EchoEventMapper' ),
+			$services->get( 'EchoNotificationMapper' ),
+			$services->getDBLoadBalancerFactory(),
+			$services->getUserFactory()
+		);
+	},
+
+	'EchoEventMapper' => static function ( MediaWikiServices $services ): EventMapper {
+		return new EventMapper( $services->getConnectionProvider() );
+	},
+
+	'EchoNotificationMapper' => static function ( MediaWikiServices $services ): NotificationMapper {
+		return new NotificationMapper( $services->getConnectionProvider() );
+	},
+
+	'EchoPushNotificationServiceClient' => static function (
+		MediaWikiServices $services
+	): NotificationServiceClient {
+		$echoConfig = $services->getConfigFactory()->makeConfig( 'Echo' );
+		$client = new NotificationServiceClient(
+			$services->getHttpRequestFactory(),
+			$services->getFormatterFactory()->getStatusFormatter( RequestContext::getMain() ),
+			$echoConfig->get( 'EchoPushServiceBaseUrl' )
+		);
+		$client->setLogger( LoggerFactory::getInstance( 'Echo' ) );
+		return $client;
+	},
+
+	'EchoPushSubscriptionManager' => static function ( MediaWikiServices $services ): SubscriptionManager {
+		$echoConfig = $services->getConfigFactory()->makeConfig( 'Echo' );
+		// Use the shared virtual domain for push subscriptions
+		$loadBalancerFactory = $services->getDBLoadBalancerFactory();
+		$loadBalancer = $loadBalancerFactory->getLoadBalancer( DbDomains::VIRTUAL_SHARED_DOMAIN );
+		$dbw = $loadBalancerFactory->getPrimaryDatabase( DbDomains::VIRTUAL_SHARED_DOMAIN );
+		$dbr = $loadBalancerFactory->getReplicaDatabase( DbDomains::VIRTUAL_SHARED_DOMAIN );
+		// The load balancer only selects the cluster the virtual domain maps to,
+		// not the database within it; its local domain is the current wiki.
+		// get{Primary,Replica}Database aquire the correct connection.
+		// This is a bug in the load balancer; until it is fixed,
+		// take the domain ID from the mapped domain from the connection instead (T435305).
+		$dbDomain = $dbr->getDomainID();
+
+		$pushProviderStore = new NameTableStore(
+			$loadBalancer,
+			$services->getMainWANObjectCache(),
+			LoggerFactory::getInstance( 'Echo' ),
+			'echo_push_provider',
+			'epp_id',
+			'epp_name',
+			null,
+			$dbDomain
+		);
+
+		$pushTopicStore = new NameTableStore(
+			$loadBalancer,
+			$services->getMainWANObjectCache(),
+			LoggerFactory::getInstance( 'Echo' ),
+			'echo_push_topic',
+			'ept_id',
+			'ept_text',
+			null,
+			$dbDomain
+		);
+
+		$maxSubscriptionsPerUser = $echoConfig->get( 'EchoPushMaxSubscriptionsPerUser' );
+
+		return new SubscriptionManager(
+			$dbw,
+			$dbr,
+			$pushProviderStore,
+			$pushTopicStore,
+			$maxSubscriptionsPerUser
+		);
+	},
+
+	'EchoRevisionLocalCache' => static function ( MediaWikiServices $services ): RevisionLocalCache {
+		return new RevisionLocalCache(
+			$services->getConnectionProvider(),
+			$services->getRevisionStore()
+		);
+	},
+
+	'EchoTitleLocalCache' => static function ( MediaWikiServices $services ): TitleLocalCache {
+		return new TitleLocalCache(
+			$services->getPageStore(),
+			$services->getTitleFactory()
+		);
+	},
+];
+
+// @codeCoverageIgnoreEnd
