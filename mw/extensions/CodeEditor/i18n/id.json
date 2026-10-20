@@ -1,0 +1,24 @@
+{
+	"@metadata": {
+		"authors": [
+			"Daud I.F. Argana",
+			"Farras",
+			"Penyuwangi",
+			"William Surya Permana"
+		]
+	},
+	"codeeditor-desc": "Penyuntingan dengan penyorotan sintaks untuk halaman JavaScript dan CSS menggunakan [https://ace.c9.io/ penyunting Ace]",
+	"codeeditor-next-annotation": "Pergi ke anotasi berikutnya",
+	"codeeditor-toolbar-toggle": "Nyalakan/Matikan penyunting kode",
+	"codeeditor-save-with-errors": "Dokumen mengandung galat. Apakah Anda yakin ingin menerbitkannya?",
+	"codeeditor-invisibleChars-toggle": "Nyalakan/Matikan karakter tak terlihat",
+	"codeeditor-lineWrapping-toggle": "Nyalakan/Matikan pembungkusan baris",
+	"codeeditor-searchReplace-toggle": "Nyalakan/Matikan dialog cari dan ganti",
+	"codeeditor-gotoline": "Pergi ke baris nomor...",
+	"codeeditor-gotoline-placeholder": "baris[:kolom]",
+	"codeeditor-gotoline-prompt": "Masukkan nomor baris",
+	"codeeditor-indent": "Naikkan indentasi",
+	"codeeditor-outdent": "Kurangi indentasi",
+	"codeeditor-error-title": "Dependensi gagal",
+	"codeeditor-error-message": "CodeEditor memerlukan dimuatnya WikiEditor"
+}
