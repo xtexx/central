@@ -1,0 +1,50 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\SecurePoll\Jobs;
+
+use MediaWiki\Extension\SecurePoll\Context;
+use MediaWiki\JobQueue\Job;
+
+/**
+ * Unarchive an election
+ */
+class UnarchiveElectionJob extends Job {
+	/**
+	 * @inheritDoc
+	 */
+	public function __construct( $title, $params ) {
+		parent::__construct( 'securePollUnarchiveElection', $title, $params );
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function run() {
+		$electionId = $this->params['electionId'];
+		$context = new Context();
+		$dbw = $context->getPrimaryDB();
+
+		$isArchived = $dbw->newSelectQueryBuilder()
+			->select( 'pr_value' )
+			->from( 'securepoll_properties' )
+			->where( [
+				'pr_entity' => $electionId,
+				'pr_key' => 'is-archived',
+			] )
+			->caller( __METHOD__ )
+			->fetchField();
+		if ( $isArchived ) {
+			$dbw->newDeleteQueryBuilder()
+				->deleteFrom( 'securepoll_properties' )
+				->where( [
+					'pr_entity' => $electionId,
+					'pr_key' => 'is-archived',
+				] )
+				->caller( __METHOD__ )
+				->execute();
+		}
+		return true;
+	}
+}

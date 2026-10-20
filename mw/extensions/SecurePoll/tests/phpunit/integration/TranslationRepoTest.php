@@ -1,0 +1,103 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\SecurePoll\Test\Integration;
+
+use MediaWiki\Extension\SecurePoll\Entities\Election;
+use MediaWiki\Extension\SecurePoll\TranslationRepo;
+use MediaWiki\User\User;
+use MediaWikiIntegrationTestCase;
+use Wikimedia\Rdbms\IConnectionProvider;
+use Wikimedia\Rdbms\IDatabase;
+use Wikimedia\Rdbms\ReplaceQueryBuilder;
+use Wikimedia\Rdbms\SelectQueryBuilder;
+
+/**
+ * @covers \MediaWiki\Extension\SecurePoll\TranslationRepo
+ */
+class TranslationRepoTest extends MediaWikiIntegrationTestCase {
+
+	/**
+	 * @param array $data
+	 * @param string $language
+	 * @param string $comment
+	 * @param array $wikis
+	 * @param int $expectedReplaceCalls
+	 * @dataProvider provideSetTranslationsTestData
+	 * @covers \MediaWiki\Extension\SecurePoll\TranslationRepo::setTranslation
+	 */
+	public function testSetTranslation( $data, $language, $comment, $wikis, $expectedReplaceCalls ) {
+		$this->overrideConfigValue( 'SecurePollUseNamespace', false );
+		$this->overrideConfigValue( 'SecurePollUseMediaWikiNamespace', false );
+
+		$services = $this->getServiceContainer();
+		$rqb = $this->createMock( ReplaceQueryBuilder::class );
+		foreach ( [ 'replaceInto', 'uniqueIndexFields', 'rows', 'caller' ] as $method ) {
+			$rqb->method( $method )->willReturnSelf();
+		}
+		$sqb = $this->createMock( SelectQueryBuilder::class );
+		foreach ( [ 'select', 'from', 'where', 'caller' ] as $method ) {
+			$sqb->method( $method )->willReturnSelf();
+		}
+		$sqb->method( 'fetchField' )->willReturn( 7894 );
+		$mockDB = $this->createMock( IDatabase::class );
+		$mockDB->method( 'newSelectQueryBuilder' )->willReturn( $sqb );
+		$mockDB->expects( $this->exactly( $expectedReplaceCalls ) )
+			->method( 'newReplaceQueryBuilder' )
+			->willReturn( $rqb );
+
+		$translationRepo = new TranslationRepo(
+			$this->getMockConnectionProvider( $mockDB ),
+			$services->getWikiPageFactory()
+		);
+
+		$mockUser = $this->createMock( User::class );
+
+		$election = $this->createMock( Election::class );
+		$election->method( 'getDescendants' )->willReturn( [] );
+		$election->method( 'getProperty' )->willReturn( $wikis );
+		$election->method( 'getMessageNames' )->willReturn( [ 'intro', 'title' ] );
+		$election->method( 'getId' )->willReturn( 7894 );
+
+		$translationRepo->setTranslation( $election, $data, $language, $mockUser, $comment );
+	}
+
+	public static function provideSetTranslationsTestData() {
+		return [
+			'default' => [
+				// data to be set with translation parser
+				[
+					'trans_7894_intro' => 'Election Intro Text',
+					'trans_7894_title' => 'Election Title'
+				],
+				// Lang code
+				'en',
+				// comment for updater
+				'',
+				// election property wikis
+				false,
+				// How often do we expect Database::replace to be called
+				1
+			],
+			'multiple-wikis' => [
+				[
+					'trans_7894_intro' => 'Wahleinführungstext',
+					'trans_7894_title' => 'Wahltitel'
+				],
+				'de',
+				'test comment',
+				'votewiki
+				testwiki
+				languagewiki',
+				4
+			]
+			];
+	}
+
+	private function getMockConnectionProvider( IDatabase $mockDB ): IConnectionProvider {
+		$connectionProvider = $this->createMock( IConnectionProvider::class );
+		$connectionProvider->method( 'getPrimaryDatabase' )->willReturn( $mockDB );
+		return $connectionProvider;
+	}
+}

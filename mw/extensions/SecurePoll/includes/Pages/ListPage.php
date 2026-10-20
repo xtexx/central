@@ -1,0 +1,180 @@
+<?php
+
+declare( strict_types=1 );
+
+namespace MediaWiki\Extension\SecurePoll\Pages;
+
+use MediaWiki\Extension\SecurePoll\Entities\Election;
+use MediaWiki\Extension\SecurePoll\SpecialSecurePoll;
+use MediaWiki\JobQueue\JobQueueGroup;
+use MediaWiki\JobQueue\JobSpecification;
+use MediaWiki\Status\Status;
+use MediaWiki\Title\Title;
+
+/**
+ * SecurePoll subpage to show a list of votes for a given election.
+ * Provides an administrator interface for striking fraudulent votes.
+ */
+class ListPage extends ActionPage {
+	/** @var Election */
+	public $election;
+
+	public function __construct(
+		SpecialSecurePoll $specialPage,
+		private readonly JobQueueGroup $jobQueueGroup,
+	) {
+		parent::__construct( $specialPage );
+	}
+
+	/**
+	 * Execute the subpage.
+	 * @param array $params Array of subpage parameters.
+	 */
+	public function execute( $params ) {
+		$out = $this->specialPage->getOutput();
+		$out->enableOOUI();
+
+		if ( !count( $params ) ) {
+			$out->addWikiMsg( 'securepoll-too-few-params' );
+
+			return;
+		}
+
+		$electionId = intval( $params[0] );
+		$this->election = $this->context->getElection( $electionId );
+		if ( !$this->election ) {
+			$out->addWikiMsg( 'securepoll-invalid-election', $electionId );
+
+			return;
+		}
+		$this->initLanguage( $this->specialPage->getUser(), $this->election );
+
+		$out->setPageTitleMsg( $this->msg( 'securepoll-list-title', $this->election->getMessage( 'title' ) ) );
+
+		if ( $this->showRedirectMessage( 'list', $params ) ) {
+			return;
+		}
+
+		$isAdmin = $this->election->isAdmin( $this->specialPage->getUser() );
+
+		if ( $this->election->getProperty( 'voter-privacy' ) && !$isAdmin ) {
+			$out->addWikiMsg( 'securepoll-list-private' );
+
+			return;
+		}
+
+		$dbr = $this->election->context->getReplicaDB();
+
+		$res = $dbr->newSelectQueryBuilder()
+			->select( [
+				'distinctVoters' => 'COUNT(CASE WHEN vote_struck = 0 AND vote_current = 1 THEN 1 END)',
+				'allVotes' => 'COUNT(*)',
+				'notCurrentVotes' => 'COUNT(CASE WHEN vote_current = 0 THEN 1 END)',
+				'struckVotes' => 'COUNT(CASE WHEN vote_struck = 1 THEN 1 END)'
+			] )
+			->from( 'securepoll_votes' )
+			->where( [
+				'vote_election' => $this->election->getId(),
+			] )
+			->caller( __METHOD__ )
+			->fetchRow();
+
+		$distinct_voters = $res->distinctVoters;
+		$all_votes = $res->allVotes;
+		$not_current_votes = $res->notCurrentVotes;
+		$struck_votes = $res->struckVotes;
+
+		$out->addHTML(
+			'<div id="mw-poll-stats">' . $this->msg( 'securepoll-voter-stats' )->numParams(
+				$distinct_voters
+			)->parseAsBlock() . $this->msg( 'securepoll-vote-stats' )->numParams(
+					$all_votes,
+					$not_current_votes,
+					$struck_votes
+				)->parseAsBlock() . '</div>'
+		);
+
+		$pager = new ListPager( $this );
+
+		// If someone that can see PII is viewing the votes (and the PII), log it
+		$securePollUseLogging = $this->specialPage->getConfig()->get( 'SecurePollUseLogging' );
+		$canViewPii = $this->specialPage->getUser()->isAllowed( 'securepoll-view-voter-pii' );
+		if ( $isAdmin && $securePollUseLogging && $canViewPii ) {
+			$fields = [
+				'spl_election_id' => $electionId,
+				'spl_user' => $this->specialPage->getUser()->getId(),
+				'spl_type' => self::LOG_TYPE_VIEWVOTES,
+
+			];
+			$this->jobQueueGroup->push(
+				new JobSpecification(
+					'securePollLogAdminAction',
+					[ 'fields' => $fields ],
+					[],
+					$this->getTitle()
+				)
+			);
+		}
+
+		$out->addHTML( $pager->getLimitForm() . $pager->getNavigationBar() );
+		$out->addParserOutputContent(
+			$pager->getBodyOutput(),
+			$this->context->getParserOptions()
+		);
+		$out->addHTML( $pager->getNavigationBar() );
+		if ( $isAdmin ) {
+			$out->addJsConfigVars( 'SecurePollSubPage', 'list' );
+			$out->addModules( 'ext.securepoll.htmlform' );
+		}
+	}
+
+	/**
+	 * The strike/unstrike backend.
+	 * @param string $action strike or unstrike
+	 * @param int $voteId
+	 * @param string $reason
+	 * @return Status
+	 */
+	public function strike( $action, $voteId, $reason ) {
+		$dbw = $this->context->getPrimaryDB();
+		// this still gives the securepoll-need-admin error when an admin tries to
+		// delete a nonexistent vote.
+		if ( !$this->election->isAdmin( $this->specialPage->getUser() ) ) {
+			return Status::newFatal( 'securepoll-need-admin' );
+		}
+		if ( $action != 'strike' ) {
+			$action = 'unstrike';
+		}
+
+		$dbw->startAtomic( __METHOD__ );
+		// Add it to the strike log
+		$dbw->newInsertQueryBuilder()
+			->insertInto( 'securepoll_strike' )
+			->row( [
+				'st_vote' => $voteId,
+				'st_timestamp' => $dbw->timestamp(),
+				'st_action' => $action,
+				'st_reason' => $reason,
+				'st_user' => $this->specialPage->getUser()->getId()
+			] )
+			->caller( __METHOD__ )
+			->execute();
+		// Update the status cache
+		$dbw->newUpdateQueryBuilder()
+			->update( 'securepoll_votes' )
+			->set( [ 'vote_struck' => intval( $action == 'strike' ) ] )
+			->where( [ 'vote_id' => $voteId ] )
+			->caller( __METHOD__ )
+			->execute();
+		$dbw->endAtomic( __METHOD__ );
+
+		return Status::newGood();
+	}
+
+	/**
+	 * @return Title object
+	 */
+	public function getTitle() {
+		return $this->specialPage->getPageTitle( 'list/' . $this->election->getId() );
+	}
+}
