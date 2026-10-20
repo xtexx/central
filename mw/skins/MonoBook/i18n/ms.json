@@ -1,0 +1,26 @@
+{
+	"@metadata": {
+		"authors": [
+			"Anakmalaysia",
+			"Aviator",
+			"Hakimi97",
+			"Izington",
+			"Pizza1016"
+		]
+	},
+	"skinname-monobook": "MonoBook",
+	"monobook-desc": "Rupa MediaWiki yang klasik sejak tahun 2004, dinamakan bersempena gambar buku hitam putih pada latar belakang laman.",
+	"monobook.css": "/* Semua CSS di sini akan dimuatkan untuk pengguna kulit MonoBook */",
+	"monobook.js": "/* Semua JavaScript di sini akan dimuatkan untuk pengguna kulit MonoBook */",
+	"monobook-jumptotop": "kembali ke atas",
+	"monobook-jumptopersonal": "Alat pengguna",
+	"monobook-jumptonavigation": "Pergi ke navigasi",
+	"monobook-jumptosearch": "Pergi ke carian",
+	"monobook-more-actions": "Lagi",
+	"cactions-mobile": "Tindakan laman",
+	"monobook-cactions-label": "Pilihan laman",
+	"monobook-notifications-link": "Pemberitahuan $1",
+	"monobook-notifications-link-none": "Pemberitahuan",
+	"monobook-view-history": "Sejarah",
+	"monobook-action-undelete": "Nyahhapus {{PLURAL:$1|satu suntingan|$1 suntingan}}"
+}
