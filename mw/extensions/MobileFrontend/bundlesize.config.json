@@ -1,0 +1,43 @@
+[
+	{
+		"resourceModule": "mobile.startup",
+		"maxSize": "13.7KB"
+	},
+	{
+		"resourceModule": "mobile.init",
+		"maxSize": "6.1KB"
+	},
+	{
+		"resourceModule": "mobile.codex.styles",
+		"@note": "Output controlled by Codex releases.",
+		"maxSize": null
+	},
+	{
+		"resourceModule": "mobile.init.styles",
+		"maxSize": "2.6KB"
+	},
+	{
+		"resourceModule": "mobile.special.mobileoptions.scripts",
+		"maxSize": "3.3KB"
+	},
+	{
+		"resourceModule": "mobile.special.userlogin.scripts",
+		"maxSize": "0.3KB"
+	},
+	{
+		"resourceModule": "mobile.special.watchlist.scripts",
+		"maxSize": "3.1KB"
+	},
+	{
+		"resourceModule": "mobile.userpage.styles",
+		"maxSize": "0.5KB"
+	},
+	{
+		"resourceModule": "mobile.special.styles",
+		"maxSize": "2.8KB"
+	},
+	{
+		"resourceModule": "mobile.special.mobileoptions.styles",
+		"maxSize": "2.2KB"
+	}
+]

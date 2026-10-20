@@ -1,0 +1,695 @@
+/* global $ */
+const
+	currentPageId = mw.config.get( 'wgArticleId' ),
+	util = require( '../mobile.startup/util' ),
+	fakeToolbar = require( './fakeToolbar' ),
+	editorLoadingOverlay = require( './editorLoadingOverlay' ),
+	OverlayManager = require( '../mobile.startup/OverlayManager' ),
+	// #ca-edit, .mw-editsection are standard MediaWiki elements
+	// .edit-link can be added to links anywhere to trigger the editor (e.g. MobileFrontend
+	// user page creation CTA, edit-full-page overflow menu item)
+	// Links in content are handled separately to allow reloading the content (T324686)
+	$editTab = $( '#ca-edit, #ca-editsource, #ca-viewsource, #ca-ve-edit, #ca-ve-create, #ca-createsource' ),
+	hasTwoEditIcons = $editTab.length > 1,
+	EDITSECTION_SELECTOR = '.mw-editsection a, .edit-link',
+	user = mw.user,
+	CtaDrawer = require( '../mobile.startup/CtaDrawer' ),
+	veConfig = mw.config.get( 'wgVisualEditorConfig' ),
+	editorPath = /^\/editor\/(\d+|T-\d+|all)$/;
+
+let editorOverride = null;
+
+/**
+ * Event handler for edit link clicks. Will prevent default link
+ * behaviour and will not allow propagation
+ *
+ * @method
+ * @ignore
+ * @param {HTMLElement} elem
+ * @param {jQuery.Event} ev
+ * @param {Router} router
+ */
+function onEditLinkClick( elem, ev, router ) {
+	let section;
+	if ( $( EDITSECTION_SELECTOR ).length === 0 ) {
+		// If section edit links are not available, the only edit link
+		// should allow editing the whole page (T232170)
+		section = 'all';
+	} else {
+		section = mw.util.getParamValue( 'section', elem.href ) || 'all';
+	}
+	// Don't do anything for section edit links for different pages (transcluded)
+	if ( mw.config.get( 'wgPageName' ) !== mw.util.getParamValue( 'title', elem.href ) ) {
+		return;
+	}
+	if ( hasTwoEditIcons ) {
+		if ( elem.id === 'ca-ve-edit' || elem.id === 'ca-ve-create' ) {
+			// "Edit" tab loads the visual editor
+			editorOverride = 'VisualEditor';
+		} else if ( elem.id === 'ca-editsource' || elem.id === 'ca-createsource' ) {
+			// "Edit source" tab loads the source editor
+			editorOverride = 'SourceEditor';
+		} else {
+			// Any other edit links (e.g. for sections) load the preferred editor
+		}
+	}
+	router.navigate( '#/editor/' + section );
+	// DO NOT USE stopPropagation or you'll break click tracking in WikimediaEvents
+	// You DO NOT NEED to
+	// prevent folding section when clicking Edit by stopping propagation
+	// as this is a concern of the Toggler class and taken care of by inspecting
+	// !ev.target.href (see Toggler.js)
+	// avoid navigating to ?action=edit
+	ev.preventDefault();
+}
+
+/**
+ * Retrieve the user's preferred editor setting. If none is set, return the default
+ * editor for this wiki.
+ *
+ * @method
+ * @ignore
+ * @return {string} Either 'VisualEditor' or 'SourceEditor'
+ */
+function getPreferredEditor() {
+	if ( editorOverride ) {
+		// Temporary override, set via the URL for this request
+		// or by clicking the chosen mode when both tabs are shown
+		return editorOverride;
+	}
+	const preferredEditor = mw.user.options.get( 'mobile-editor' ) || mw.storage.get( 'preferredEditor' );
+	if ( preferredEditor ) {
+		return preferredEditor;
+	}
+	switch ( mw.config.get( 'wgMFDefaultEditor' ) ) {
+		case 'source':
+			return 'SourceEditor';
+		case 'visual':
+			return 'VisualEditor';
+		case 'preference':
+			// First check if the user has actually used the desktop editor.
+			// This is done hackily by checking if they have the preference
+			// set to suppress the welcome dialog or user education popups. (T261423)
+			if ( mw.user.options.get( 'visualeditor-hidebetawelcome' ) || mw.user.options.get( 'visualeditor-hideusered' ) ) {
+				return mw.user.options.get( 'visualeditor-editor' ) === 'visualeditor' ? 'VisualEditor' : 'SourceEditor';
+			} else {
+				// When there is no desktop preference, we use MFFallbackEditor.
+				return mw.config.get( 'wgMFFallbackEditor' ) === 'visual' ? 'VisualEditor' : 'SourceEditor';
+			}
+	}
+	// In the event of misconfiguration, fall back to source
+	return 'SourceEditor';
+}
+
+/**
+ * Determine if the content model of the current page is wikitext.
+ *
+ * @method
+ * @ignore
+ * @return {boolean}
+ */
+function isWikiText() {
+	return mw.config.get( 'wgPageContentModel' ) === 'wikitext';
+}
+
+/**
+ * Check if the visual editor is available on the current page.
+ *
+ * @method
+ * @ignore
+ * @return {boolean}
+ */
+function isVEAvailable() {
+	return !!veConfig &&
+		!mw.config.get( 'wgVisualEditorDisabledByHook' ) &&
+		isWikiText();
+}
+
+/**
+ * Check if the visual editor in visual mode is available on the current page.
+ *
+ * @method
+ * @ignore
+ * @return {boolean}
+ */
+function isVEVisualAvailable() {
+	if ( !isVEAvailable() ) {
+		return false;
+	}
+	const visualEditorNamespaces = veConfig.namespaces || [];
+	return visualEditorNamespaces.includes( mw.config.get( 'wgNamespaceNumber' ) );
+}
+
+/**
+ * Check if the visual editor in source mode is available on the current page.
+ *
+ * @method
+ * @ignore
+ * @return {boolean}
+ */
+function isVESourceAvailable() {
+	return isVEAvailable() &&
+		mw.config.get( 'wgMFEnableVEWikitextEditor' );
+}
+
+/**
+ * Initialize the edit button so that it launches the editor interface when clicked.
+ *
+ * @method
+ * @ignore
+ * @param {Skin} skin
+ * @param {module:mobile.startup/PageHTMLParser} currentPageHTMLParser
+ * @param {Router} router
+ * @param {boolean} [readOnly] Open the editor in read-only mode, and leave the edit
+ *  links alone. The caller binds its own handler to them.
+ */
+function setupEditor( skin, currentPageHTMLParser, router, readOnly ) {
+	const
+		titleObj = mw.Title.newFromText( mw.config.get( 'wgPageName' ) ),
+		overlayManager = OverlayManager.getSingleton(),
+		isNewPage = currentPageId === 0,
+		// Read before these parameters are stripped from the URL below.
+		veaction = mw.util.getParamValue( 'veaction' ),
+		urlSection = mw.util.getParamValue( 'section' ),
+		// A veaction=editsource URL asks for the wikitext editor of VisualEditor.
+		// Give it, whatever the site configuration says. The desktop site does the
+		// same against the equivalent user preference (T239796).
+		veSourceEnabled = isVESourceAvailable() ||
+			( isVEAvailable() && veaction === 'editsource' );
+
+	if ( !readOnly ) {
+		// A tap on an edit link asks to edit, which the user cannot do. init() binds a
+		// message to the links instead.
+		$editTab.add( '.edit-link' ).on( 'click.mfeditlink', function ( ev ) {
+			onEditLinkClick( this, ev, overlayManager.router );
+		} );
+		mw.hook( 'wikipage.content' ).add( ( $content ) => {
+			// make sure that any .edit-link links in here don't get double-handled
+			$content.find( EDITSECTION_SELECTOR ).off( 'click.mfeditlink' ).on( 'click.mfeditlink', function ( ev ) {
+				onEditLinkClick( this, ev, overlayManager.router );
+			} );
+		} );
+	}
+
+	overlayManager.add( editorPath, ( sectionId ) => {
+		if ( readOnly && !veaction ) {
+			// "View source" shows the wikitext. Nobody asked for a specific editor, so
+			// keep the user's editing preference out of it. editorOverride is temporary,
+			// which also keeps this out of the preference itself.
+			editorOverride = 'SourceEditor';
+		}
+		const
+			scrollTop = window.pageYOffset,
+			$contentText = $( '#mw-content-text' ),
+			url = new URL( location.href ),
+			editorOptions = {
+				fakeToolbar,
+				overlayManager,
+				currentPageHTMLParser,
+				fakeScroll: 0,
+				api: new mw.Api(),
+				isVEVisualAvailable: isVEVisualAvailable(),
+				licenseMsg: skin.getLicenseMsg(),
+				title: titleObj.getPrefixedText(),
+				titleObj,
+				isAnon: user.isAnon(),
+				isNewPage,
+				readOnly: !!readOnly,
+				veaction,
+				isVESourceAvailable: veSourceEnabled,
+				oldId: mw.util.getParamValue( 'oldid' ),
+				returnToApp: mw.util.getParamValue( 'returntoapp' ),
+				appInstallId: mw.util.getParamValue( 'appinstallid' ),
+				contentLang: $contentText.attr( 'lang' ),
+				contentDir: $contentText.attr( 'dir' ),
+				// Arrange preload content if we're on a page with those URL parameters
+				preload: url.searchParams.get( 'preload' ),
+				preloadparams: mw.util.getArrayParam( 'preloadparams', url.searchParams ),
+				editintro: url.searchParams.get( 'editintro' )
+			},
+			visualAbortPromise = $.Deferred();
+
+		const animationDelayDeferred = util.Deferred();
+
+		let abortableDataPromise, overlayPromise,
+			initMechanism = mw.util.getParamValue( 'redlink' ) ? 'new' : 'click';
+
+		if ( sectionId !== 'all' ) {
+			editorOptions.sectionId = isWikiText() ? sectionId : undefined;
+		}
+
+		function showLoading() {
+			let $sectionTop, fakeScroll, enableVisualSectionEditing;
+
+			$( document.body ).addClass( 've-loading' );
+
+			const $page = $( '#mw-mf-page-center' );
+			const $content = $( '#content' );
+			if ( sectionId === '0' || sectionId === 'all' ) {
+				$sectionTop = $( '#bodyContent' );
+			} else {
+				$sectionTop = $(
+					// ends with section=N
+					'a[href$="section=' + sectionId + '"],' +
+					// contains section=N&...
+					'a[href*="section=' + sectionId + '&"]'
+				).closest( '.mw-heading, h1, h2, h3, h4, h5, h6' );
+				// When loading on action=edit URLs, there is no page content
+				if ( !$sectionTop.length ) {
+					$sectionTop = $( '#bodyContent' );
+				}
+			}
+			// Pretend that we didn't just scroll the page to the top.
+			$page.prop( 'scrollTop', scrollTop );
+			// Then, pretend that we're scrolling to the position of the clicked heading.
+			fakeScroll = $sectionTop[0].getBoundingClientRect().top;
+			// Adjust for height of the toolbar.
+			fakeScroll -= 48;
+			if ( shouldLoadVisualEditor() ) {
+				enableVisualSectionEditing = veConfig.enableVisualSectionEditing === true ||
+					// === ve.init.mw.MobileArticleTarget.static.trackingName
+					veConfig.enableVisualSectionEditing === 'mobile';
+				if ( sectionId === '0' || sectionId === 'all' || enableVisualSectionEditing ) {
+					// Adjust for surface padding. Only needed if we're at the beginning of the doc.
+					fakeScroll -= 16;
+				}
+			} else {
+				if ( sectionId === '0' || sectionId === 'all' ) {
+					fakeScroll -= 16;
+				}
+			}
+			$content.css( {
+				// Use transform instead of scroll for smoother animation (via CSS transitions).
+				transform: 'translate( 0, ' + -fakeScroll + 'px )',
+				// If the clicked heading is near the end of the page, we might need to insert
+				// some extra space to allow us to scroll "beyond the end" of the page.
+				'padding-bottom': '+=' + fakeScroll,
+				'margin-bottom': '-=' + fakeScroll
+			} );
+			editorOptions.fakeScroll = fakeScroll;
+			setTimeout( animationDelayDeferred.resolve, 500 );
+		}
+
+		function clearLoading() {
+			if ( abortableDataPromise && abortableDataPromise.abort ) {
+				abortableDataPromise.abort();
+			}
+
+			$( '#content' ).css( {
+				transform: '',
+				'padding-bottom': '',
+				'margin-bottom': ''
+			} );
+
+			$( document.body ).removeClass( 've-loading' );
+		}
+
+		function loadBasicEditor() {
+			// Note that this option was used when logging a wikitext init later
+			initMechanism = 'tooslow';
+
+			// This restarts the loading (whether it was aborted when loading the code or the data)
+			visualAbortPromise.reject();
+			if ( abortableDataPromise && abortableDataPromise.abort ) {
+				abortableDataPromise.abort();
+			}
+		}
+
+		/**
+		 * Log init event to edit schema.
+		 * Need to log this from outside the Overlay object because that module
+		 * won't have loaded yet.
+		 *
+		 * @private
+		 * @ignore
+		 * @param {string} editor name e.g. wikitext or visualeditor
+		 * @method
+		 */
+		function logInit( editor ) {
+			mw.track( 'editAttemptStep', {
+				action: 'init',
+				type: 'section',
+				mechanism: initMechanism,
+				integration: 'page',
+				/* eslint-disable camelcase */
+				editor_interface: editor
+				/* eslint-enable camelcase */
+			} );
+		}
+
+		/**
+		 * Check whether VisualEditor should be loaded
+		 *
+		 * @private
+		 * @ignore
+		 * @method
+		 * @return {bool}
+		 */
+		function shouldLoadVisualEditor() {
+			const preferredEditor = getPreferredEditor();
+
+			return veSourceEnabled || (
+				isVEVisualAvailable() &&
+				// If the user prefers visual mode or the user has no preference and
+				// the visual mode is the default editor for this wiki
+				preferredEditor === 'VisualEditor'
+			);
+		}
+
+		/**
+		 * Load source editor
+		 *
+		 * @ignore
+		 * @method
+		 * @return {jQuery.Promise} Promise resolved with the editor overlay
+		 * @fires mobileFrontend.editorOpening
+		 */
+		function loadSourceEditor() {
+			logInit( 'wikitext' );
+			// Inform other interested code that we're loading the editor
+			/**
+			 * Internal for use in GrowthExperiments only.
+			 *
+			 * @event ~'mobileFrontend.editorOpening'
+			 * @memberof Hooks
+			 */
+			mw.hook( 'mobileFrontend.editorOpening' ).fire();
+
+			return mw.loader.using( 'mobile.editor.overlay' ).then( () => {
+				const SourceEditorOverlay = __non_webpack_require__( 'mobile.editor.overlay' ).SourceEditorOverlay;
+				return new SourceEditorOverlay( editorOptions );
+			} );
+		}
+
+		/**
+		 * Load visual editor. If it fails to load for any reason, load the source editor instead.
+		 *
+		 * @private
+		 * @ignore
+		 * @method
+		 * @return {jQuery.Promise} Promise resolved with the editor overlay
+		 */
+		function loadVisualEditorMaybe() {
+			logInit( 'visualeditor' );
+			// Inform other interested code that we're loading the editor
+			/**
+			 * Internal for use in GrowthExperiments only.
+			 *
+			 * @event ~'mobileFrontend.editorOpening'
+			 * @memberof Hooks
+			 */
+			mw.hook( 'mobileFrontend.editorOpening' ).fire();
+
+			editorOptions.mode = veSourceEnabled && getPreferredEditor() === 'SourceEditor' ?
+				'source' :
+				'visual';
+			editorOptions.dataPromise = mw.loader.using( 'ext.visualEditor.targetLoader' ).then( () => {
+				abortableDataPromise = mw.libs.ve.targetLoader.requestPageData(
+					editorOptions.mode,
+					editorOptions.titleObj.getPrefixedDb(),
+					{
+						sessionStore: true,
+						section: editorOptions.sectionId === undefined ?
+							null : editorOptions.sectionId,
+						oldId: editorOptions.oldId || undefined,
+						preload: editorOptions.preload,
+						preloadparams: editorOptions.preloadparams,
+						editintro: editorOptions.editintro,
+						// Should be ve.init.mw.MobileArticleTarget.static.trackingName,
+						// but the class hasn't loaded yet.
+						targetName: 'mobile'
+					} );
+				return abortableDataPromise;
+			} );
+
+			const visualLoadingPromise = mw.loader.using( 'ext.visualEditor.targetLoader' )
+				.then(
+					// Load 'mobile.editor.overlay' separately, so that if we fall back to basic
+					// editor, we can display it without waiting for the visual code
+					() => mw.loader.using( 'mobile.editor.overlay' ).then( () => {
+						mw.libs.ve.targetLoader.addPlugin( 'ext.visualEditor.mobileArticleTarget' );
+						if ( veSourceEnabled ) {
+							// Target loader only loads wikitext editor if the desktop
+							// preference is set.
+							// TODO: Have a cleaner API for this instead of duplicating
+							// the module name here.
+							mw.libs.ve.targetLoader.addPlugin( 'ext.visualEditor.mwwikitext' );
+						}
+						return mw.libs.ve.targetLoader.loadModules( editorOptions.mode );
+					} )
+				);
+
+			// Continue when loading is completed or aborted
+			const visualPromise = $.Deferred();
+			visualLoadingPromise.then( visualPromise.resolve, visualPromise.reject );
+			visualAbortPromise.then( visualPromise.reject, visualPromise.reject );
+
+			return visualPromise
+				.then( () => {
+					const editorOverlays = __non_webpack_require__( 'mobile.editor.overlay' );
+					const VisualEditorOverlay = editorOverlays.VisualEditorOverlay;
+					const SourceEditorOverlay = editorOverlays.SourceEditorOverlay;
+					editorOptions.SourceEditorOverlay = SourceEditorOverlay;
+					return new VisualEditorOverlay( editorOptions );
+				}, () => loadSourceEditor() );
+		}
+
+		// showLoading() has to run after the overlay has opened, which disables page scrolling.
+		// clearLoading() has to run after the loading overlay is hidden in any way
+		// (either when loading is aborted, or when the editor overlay is shown instead).
+		const loadingOverlay = editorLoadingOverlay(
+			showLoading, clearLoading, shouldLoadVisualEditor() ? loadBasicEditor : null
+		);
+
+		if ( shouldLoadVisualEditor() ) {
+			overlayPromise = loadVisualEditorMaybe();
+		} else {
+			overlayPromise = loadSourceEditor();
+		}
+
+		// Wait for the scroll animation to finish before we show the editor overlay
+		util.Promise.all( [ overlayPromise, animationDelayDeferred ] ).then( ( overlay ) => {
+			// Wait for the data to load before we show the editor overlay
+			overlay.getLoadingPromise().catch( ( error ) => {
+				if ( visualAbortPromise.state() === 'rejected' ) {
+					return loadSourceEditor().then( ( sourceOverlay ) => {
+						overlay = sourceOverlay;
+						return overlay.getLoadingPromise();
+					} );
+				}
+				return $.Deferred().reject( error ).promise();
+			} ).then( () => {
+				// Make sure the user did not close the loading overlay while we were waiting
+				const overlayData = overlayManager.stack[0];
+				if ( !overlayData || overlayData.overlay !== loadingOverlay ) {
+					return;
+				}
+				// Show the editor!
+				overlayManager.replaceCurrent( overlay );
+			}, ( error, apiResponse ) => {
+				// Could not load the editor.
+				overlayManager.router.back();
+				if ( error.show ) {
+					// Probably a blockMessageDrawer returned because the user is blocked.
+					document.body.appendChild( error.$el[ 0 ] );
+					error.show();
+				} else if ( apiResponse ) {
+					mw.notify( editorOptions.api.getErrorMessage( apiResponse ) );
+				} else {
+					mw.notify( mw.msg( 'mobile-frontend-editor-error-loading' ) );
+				}
+			} );
+		} );
+
+		// Reset the temporary override for the next load
+		editorOverride = null;
+
+		return loadingOverlay;
+	} );
+
+	if ( !readOnly ) {
+		// "View source" shows the whole page, so leave that link alone.
+		$( '#ca-edit a, a#ca-edit, #ca-editsource a, a#ca-editsource' ).prop( 'href', ( i, href ) => {
+			const editUrl = new URL( href, location.href );
+			// By default the editor opens section 0 (lead section), rather than the whole article.
+			// This might be changed in the future (T210659).
+			editUrl.searchParams.set( 'section', '0' );
+			return editUrl.toString();
+		} );
+	}
+
+	// We use wgAction instead of getParamValue('action') as the former can be
+	// overridden by hooks to stop the editor loading automatically.
+	// The route is already set when the log-in flow returns to the editor, because
+	// createAnonWarning carries veaction through it. Any other route belongs to a
+	// different overlay, so leave the request alone.
+	const path = router.getPath();
+	if (
+		( veaction || mw.config.get( 'wgAction' ) === 'edit' ) &&
+		( !path || editorPath.test( path ) )
+	) {
+		if ( veaction === 'edit' ) {
+			editorOverride = 'VisualEditor';
+		} else if ( veaction === 'editsource' ) {
+			editorOverride = 'SourceEditor';
+		}
+		// else: action=edit, for which we allow the default to take effect
+
+		// eslint-disable-next-line no-restricted-properties
+		if ( window.history && history.pushState ) {
+			// We're reformatting the action=edit URL into a view URL and
+			// replacing it into the history, and then will fall through to
+			// router.navigate which will move us to the editing URL for the
+			// mobile site. We do this because the editor overlay deeply
+			// expects to have been opened on top of an actual page, and e.g.
+			// closing the editor via the X will produce unexpected behavior
+			// otherwise.
+			const url = new URL( location.href );
+			url.searchParams.delete( 'action' );
+			url.searchParams.delete( 'veaction' );
+			url.searchParams.delete( 'section' );
+			history.replaceState( null, document.title, url );
+		}
+
+		if ( !path ) {
+			const fragment = '#/editor/' + ( urlSection || ( mw.config.get( 'wgAction' ) === 'edit' ? 'all' : '0' ) );
+			util.docReady( () => {
+				router.navigate( fragment );
+			} );
+		}
+	}
+}
+
+/**
+ * Hide any section id icons in the page. This will not hide the edit icon in the page action
+ * menu.
+ *
+ * @method
+ * @ignore
+ * @param {module:mobile.startup/PageHTMLParser} currentPageHTMLParser
+ */
+function hideSectionEditIcons( currentPageHTMLParser ) {
+	currentPageHTMLParser.$el.find( '.mw-editsection' ).hide();
+}
+
+/**
+ * Show a drawer with log in / sign up buttons.
+ *
+ * @method
+ * @ignore
+ * @param {Router} router
+ */
+function bindEditLinksLoginDrawer( router ) {
+	let drawer;
+	function showLoginDrawer() {
+		if ( !drawer ) {
+			drawer = new CtaDrawer( {
+				content: mw.msg( 'mobile-frontend-editor-disabled-anon' ),
+				signupQueryParams: {
+					warning: 'mobile-frontend-watchlist-signup-action'
+				}
+			} );
+			document.body.appendChild( drawer.$el[ 0 ] );
+		}
+		drawer.show();
+	}
+	$editTab.on( 'click', ( ev ) => {
+		showLoginDrawer();
+		ev.preventDefault();
+	} );
+	mw.hook( 'wikipage.content' ).add( ( $content ) => {
+		$content.find( EDITSECTION_SELECTOR ).on( 'click', ( ev ) => {
+			showLoginDrawer();
+			ev.preventDefault();
+		} );
+	} );
+	router.addRoute( editorPath, () => {
+		showLoginDrawer();
+	} );
+	router.checkRoute();
+}
+
+/**
+ * Setup the editor if the user can edit the page otherwise show a sorry toast.
+ *
+ * @method
+ * @ignore
+ * @param {module:mobile.startup/PageHTMLParser} currentPageHTMLParser
+ * @param {Skin} skin
+ * @param {Router} router
+ */
+function init( currentPageHTMLParser, skin, router ) {
+	let editRestrictions;
+	// see: https://www.mediawiki.org/wiki/Manual:Interface/JavaScript#Page-specific
+	const isReadOnly = mw.config.get( 'wgMinervaReadOnly' );
+	const isEditable = !isReadOnly && mw.config.get( 'wgIsProbablyEditable' );
+
+	if ( isEditable ) {
+		// Edit button updated in setupEditor.
+		setupEditor( skin, currentPageHTMLParser, router );
+	} else {
+		hideSectionEditIcons( currentPageHTMLParser );
+		editRestrictions = mw.config.get( 'wgRestrictionEdit' );
+		if ( mw.user.isAnon() && Array.isArray( editRestrictions ) && !editRestrictions.length ) {
+			// Nothing restricts the page, so the user only has to log in
+			bindEditLinksLoginDrawer( router );
+		} else if ( isReadOnly ) {
+			bindEditLinksSorryToast( mw.msg( 'apierror-readonly' ), router );
+		} else {
+			// The user cannot edit this page, usually because it is protected. A tap on
+			// an edit link says so. A URL that asks for an editor gets one, read-only,
+			// as the desktop site does.
+			const $link = $( '<a>' ).attr( 'href', mw.util.getUrl( mw.config.get( 'wgPageName' ), { action: 'edit' } ) );
+			bindEditLinksSorryToast(
+				mw.message( 'mobile-frontend-editor-disabled', $link ).parseDom()
+			);
+			setupEditor( skin, currentPageHTMLParser, router, true );
+		}
+	}
+}
+
+/**
+ * Wire up events that ensure we
+ * show a toast message with sincere condolences when user navigates to
+ * #/editor or clicks on an edit button
+ *
+ * @method
+ * @ignore
+ * @param {string} msg Message for sorry message
+ * @param {Router} [router] Also show the message on the editor route. Leave this out
+ *  when an editor answers that route.
+ */
+function bindEditLinksSorryToast( msg, router ) {
+	$editTab.on( 'click', ( ev ) => {
+		mw.notify( msg );
+		ev.preventDefault();
+	} );
+	mw.hook( 'wikipage.content' ).add( ( $content ) => {
+		$content.find( EDITSECTION_SELECTOR ).on( 'click', ( ev ) => {
+			mw.notify( msg );
+			ev.preventDefault();
+		} );
+	} );
+	if ( router ) {
+		router.addRoute( editorPath, () => {
+			mw.notify( msg );
+		} );
+		router.checkRoute();
+	}
+}
+
+module.exports = function ( currentPageHTMLParser, skin ) {
+	// If not supported, do not setup.
+	if ( !mw.config.get( 'wgMFIsSupportedEditRequest' ) ) {
+		return;
+	}
+	const router = __non_webpack_require__( 'mediawiki.router' );
+
+	if ( mw.config.get( 'wgNamespaceNumber' ) === mw.config.get( 'wgNamespaceIds' ).file && currentPageId === 0 ) {
+		// Is a new file page (enable upload image only) T60311
+		bindEditLinksSorryToast( mw.msg( 'mobile-frontend-editor-uploadenable' ), router );
+	} else {
+		// Edit button is currently hidden. A call to init() will update it as needed.
+		init( currentPageHTMLParser, skin, router );
+	}
+};

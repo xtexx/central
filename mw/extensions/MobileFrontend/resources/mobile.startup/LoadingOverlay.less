@@ -1,0 +1,19 @@
+@import 'mediawiki.mixins.less';
+
+.overlay {
+	&.overlay-loading {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: @background-color-backdrop-light;
+
+		// editor overlay needed to hide header
+		.header {
+			display: none;
+		}
+		// Avoid display of scroll bar
+		.overlay-content {
+			overflow: hidden;
+		}
+	}
+}

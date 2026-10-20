@@ -1,0 +1,74 @@
+<?php
+
+namespace Tests\MobileFrontend\Devices;
+
+use MediaWiki\Request\WebRequest;
+use MobileFrontend\Devices\AMFDeviceDetector;
+
+/**
+ * @group MobileFrontend
+ * @covers \MobileFrontend\Devices\AMFDeviceDetector
+ * @covers \MobileFrontend\Devices\DeviceProperties
+ */
+class AMFDeviceDetectorTest extends \MediaWikiUnitTestCase {
+
+	private WebRequest $request;
+	private AMFDeviceDetector $detector;
+
+	protected function setUp(): void {
+		parent::setUp();
+
+		$this->request = new WebRequest();
+		$this->detector = new AMFDeviceDetector();
+	}
+
+	/**
+	 * @dataProvider provideIsMobileDevice
+	 */
+	public function testIsMobileDevice( array $server, bool $expected ) {
+		$properties = $this->detector->detectDeviceProperties( $this->request, $server );
+
+		$this->assertSame( $expected, $properties->isMobileDevice );
+	}
+
+	public static function provideIsMobileDevice() {
+		return [
+			[
+				[ 'AMF_DEVICE_IS_MOBILE' => 'true' ],
+				true,
+			],
+			[
+				[ 'AMF_DEVICE_IS_MOBILE' => 'false' ],
+				false,
+			],
+		];
+	}
+
+	/**
+	 * @dataProvider provideIsTabletDevice
+	 */
+	public function testIsTabletDevice( array $server, bool $expected ) {
+		$properties = $this->detector->detectDeviceProperties( $this->request, $server );
+
+		$this->assertSame( $expected, $properties->isTabletDevice );
+	}
+
+	public static function provideIsTabletDevice() {
+		return [
+			[
+				[ 'AMF_DEVICE_IS_TABLET' => 'true' ],
+				true,
+			],
+			[
+				[ 'AMF_DEVICE_IS_TABLET' => 'false' ],
+				false,
+			],
+		];
+	}
+
+	public function testItShouldHandleNoAMFEnvironmentVariables() {
+		$this->assertNull(
+			$this->detector->detectDeviceProperties( $this->request, [] )
+		);
+	}
+}

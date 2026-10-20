@@ -1,0 +1,336 @@
+const isCollapsedByDefault = require( './isCollapsedByDefault' );
+
+/**
+ * Sets attributes on collapsible toggle icon button based on collapsed state
+ * This should be kept in sync with MobileFrontendHooks::interimTogglingSupportForParsoid()
+ *
+ * @method
+ * @param {HTMLElement} heading wrapper div element containing heading text,
+ * toggle icon button and edit section link
+ * @param {HTMLElement} button button element for the toggle icon
+ * @param {boolean} isCollapsed collapsed state to set
+ * @ignore
+ */
+function setCollapsedHeadingState( heading, button, isCollapsed ) {
+	// update the dropdown state based on the content visibility
+	const icon = button.querySelector( '.mf-collapsible-icon' );
+	if ( isCollapsed ) {
+		button.setAttribute( 'aria-expanded', 'false' );
+		icon.classList.add( 'mf-icon-expand' );
+		icon.classList.remove( 'mf-icon-collapse' );
+	} else {
+		button.setAttribute( 'aria-expanded', 'true' );
+		icon.classList.add( 'mf-icon-collapse' );
+		icon.classList.remove( 'mf-icon-expand' );
+	}
+
+	/**
+	 * Internal for use inside ReaderExperiments
+	 *
+	 * @event ~'readerExperiments.section-toggled'
+	 * @memberof Hooks
+	 */
+	mw.hook( 'readerExperiments.section-toggled' ).fire( {
+		heading,
+		isExpanded: !isCollapsed
+	} );
+}
+
+/**
+ * Sets attributes on collapsible elements based on collapsed state.
+ *
+ * This should be kept in sync with MobileFrontendHooks::interimTogglingSupportForParsoid()
+ * If a user taps a heading before this module loads, that inline script
+ * sets `content.hidden = false`. init() then detects that via
+ * `wasExpanded` and we keep the section open. Any change to how we hide
+ * the content must use`content.hidden`.
+ *
+ * @method
+ * @param {HTMLElement} content div element containing collapsible content
+ * @param {HTMLElement} heading wrapper div element containing heading text,
+ * toggle icon button and edit section link
+ * @param {HTMLElement} button button element for the toggle icon
+ * @param {boolean} isCollapsed collapsed state to set
+ * @ignore
+ */
+function setCollapsedState( content, heading, button, isCollapsed ) {
+	// show the content if hidden, hide if shown (until found so find in page works)
+	content.hidden = isCollapsed ? 'until-found' : false;
+
+	setCollapsedHeadingState( heading, button, isCollapsed );
+}
+
+/**
+ * Toggles collapsible state for a heading
+ *
+ * @method
+ * @param {HTMLElement} content div element containing collapsible content
+ * @param {HTMLElement} heading wrapper div element containing heading text,
+ * toggle icon button and edit section link
+ * @param {HTMLElement} button button element for the toggle icon
+ * @ignore
+ */
+function toggle( content, heading, button ) {
+	const currentlyHidden = content.hidden;
+	setCollapsedState( content, heading, button,
+		// This should reflect **new** collapsed state
+		!currentlyHidden );
+}
+
+/**
+ * Prepares a heading wrapper element for collapsible functionality.
+ * This should be kept in sync with MobileFrontendHooks::interimTogglingSupportForParsoid()
+ *
+ * @method
+ * @param {HTMLElement} wrapper The heading wrapper element
+ * @param {HTMLElement} content The content element associated with this heading
+ * @return {HTMLElement|null} The toggle button element, or null if the wrapper has no heading
+ * @ignore
+ */
+function prepareHeadingWrapper( wrapper, content ) {
+	// Beware that the temporary handler may have set up some sections
+	// during load-time scroll-and-click activity.
+	let button = wrapper.querySelector( 'button.mf-collapsible-toggle' );
+	if ( !button ) {
+		const heading = wrapper.querySelector( 'h1, h2, h3, h4, h5, h6' );
+		if ( !heading ) {
+			return null;
+		}
+
+		wrapper.classList.add( 'mf-collapsible-heading' );
+		content.classList.add( 'mf-collapsible-content' );
+		if ( !content.id ) {
+			content.id = heading.id + '-collapsible-content';
+		}
+
+		button = document.createElement( 'button' );
+		button.type = 'button';
+		button.classList.add( 'mf-collapsible-toggle' );
+		button.setAttribute( 'aria-controls', content.id );
+		button.setAttribute( 'aria-labelledby', heading.id );
+
+		const icon = document.createElement( 'span' );
+		icon.classList.add( 'mf-icon', 'mf-icon--small', 'mf-collapsible-icon' );
+		icon.setAttribute( 'aria-hidden', 'true' );
+		button.appendChild( icon );
+
+		heading.after( button );
+	}
+
+	return button;
+}
+
+/**
+ * Attaches event listeners to a heading wrapper for collapsible functionality.
+ *
+ * @method
+ * @param {HTMLElement} wrapper The heading wrapper element
+ * @param {HTMLElement} content The content element associated with this heading
+ * @param {HTMLElement} button The toggle button element
+ * @ignore
+ */
+function attachEventListeners( wrapper, content, button ) {
+	// T389820 toggle the icon by expanding the heading on match.
+	content.addEventListener( 'beforematch', () => {
+		setCollapsedHeadingState( wrapper, button, false );
+	} );
+
+	// Delegated click handler on the wrapper. Clicks on the button bubble here.
+	wrapper.addEventListener( 'click', ( ev ) => {
+		// Only toggle if a non-link was clicked.
+		// We don't want sections to collapse if the edit link is clicked for example.
+		const clickedLink = ev.target.closest( 'a' );
+		if ( !clickedLink ) {
+			toggle( content, wrapper, button );
+		}
+	} );
+}
+
+/**
+ * Queries for an element by its ID within a container.
+ *
+ * @method
+ * @param {HTMLElement} container The container element
+ * @param {string} id The element ID to search for
+ * @return {HTMLElement|null} The found element, or null
+ * @ignore
+ */
+function queryById( container, id ) {
+	try {
+		return container.querySelector( '#' + CSS.escape( id ) );
+	} catch ( e ) {
+		return null;
+	}
+}
+
+/**
+ * Finds the element targeted by the current URL hash fragment.
+ * Tries the raw fragment first, then the percent-decoded fragment per the
+ * HTML spec: https://html.spec.whatwg.org/multipage/browsing-the-web.html#target-element
+ *
+ * @method
+ * @param {HTMLElement} container The container element
+ * @return {HTMLElement|null} The target element, or null
+ * @ignore
+ */
+function findFragmentTarget( container ) {
+	// eslint-disable-next-line no-restricted-properties
+	const hash = window.location.hash;
+	if ( hash.indexOf( '#' ) !== 0 ) {
+		return null;
+	}
+	const id = hash.slice( 1 );
+	const target = queryById( container, id );
+	if ( target ) {
+		return target;
+	}
+	const decodedId = mw.util.percentDecodeFragment( id );
+	if ( decodedId ) {
+		return queryById( container, decodedId );
+	}
+	return null;
+}
+
+/**
+ * Expands the section containing the given target element.
+ * Adapted from reveal() in Toggler.js (used with Legacy parser).
+ *
+ * @method
+ * @param {HTMLElement} target The target element to reveal
+ * @ignore
+ */
+function expandSectionForTarget( target ) {
+	// Find the collapsible heading - first check if target is inside a collapsible heading
+	let heading = target.closest( '.mf-collapsible-heading' );
+
+	// If not in heading, check if it's in collapsible content
+	if ( !heading ) {
+		const content = target.closest( '.mf-collapsible-content' );
+		if ( content ) {
+			heading = content.previousElementSibling;
+			if ( heading && !heading.classList.contains( 'mf-collapsible-heading' ) ) {
+				heading = null;
+			}
+		}
+	}
+
+	// If we found a heading and it's collapsed, expand it.
+	if ( heading ) {
+		const button = heading.querySelector( 'button.mf-collapsible-toggle' );
+		if ( button && button.getAttribute( 'aria-expanded' ) === 'false' ) {
+			const content = heading.nextElementSibling;
+			if ( content ) {
+				setCollapsedState( content, heading, button, false );
+			}
+		}
+	}
+
+	// Scroll to target after expanding (expanding makes page longer)
+	setTimeout( () => {
+		target.scrollIntoView();
+	}, 250 );
+}
+
+/**
+ * Checks the current URL hash and expands any section containing the fragment.
+ *
+ * @method
+ * @param {HTMLElement} container The container element
+ * @ignore
+ */
+function checkHash( container ) {
+	const target = findFragmentTarget( container );
+	if ( target ) {
+		expandSectionForTarget( target );
+	}
+}
+
+/**
+ * Checks the value of wgInternalRedirectTargetUrl and sets the hash if present.
+ * checkHash() will expand the collapsed section that contains it afterwards.
+ *
+ * @method
+ * @ignore
+ */
+function checkInternalRedirectAndHash() {
+	const internalRedirect = mw.config.get( 'wgInternalRedirectTargetUrl' );
+	const internalRedirectHash = internalRedirect ? internalRedirect.split( '#' )[ 1 ] : false;
+
+	if ( internalRedirectHash ) {
+		// eslint-disable-next-line no-restricted-properties
+		window.location.hash = internalRedirectHash;
+	}
+}
+
+/**
+ * Initialises collapsing code.
+ *
+ * @method
+ * @param {HTMLElement} container to enable collapsing on
+ * @ignore
+ */
+function init( container ) {
+	// These classes override site settings and user preferences. For example:
+	// * ...-collapsed used on talk pages by DiscussionTools. (T321618, T322628)
+	// * ...-expanded used in previews (T336572)
+	let isCollapsed;
+	const override = container.closest( '.collapsible-headings-collapsed, .collapsible-headings-expanded' );
+	if ( override ) {
+		isCollapsed = override.classList.contains( 'collapsible-headings-collapsed' );
+	} else {
+		// Check site config and user preferences
+		isCollapsed = isCollapsedByDefault();
+	}
+
+	const headingWrappers = Array.from(
+		container.querySelectorAll( '.mw-parser-output > section > .mw-heading' )
+	);
+
+	// Handle internal redirect hash before collapsing so we know the final hash.
+	checkInternalRedirectAndHash();
+	// Find the fragment target to avoid collapsing the section that contains it.
+	// This works together with the CSS :has(:target) rule in main.less to
+	// ensure the targeted section is visible from first paint without a flash.
+	const fragmentTarget = findFragmentTarget( container );
+
+	headingWrappers.forEach( ( wrapper ) => {
+		const content = wrapper.nextElementSibling;
+		if ( !content || content.tagName !== 'DIV' ) {
+			// Under unclear circumstances a heading for an empty section gets
+			// output with no section content div. Seen during testing on eg:
+			// https://it.wikipedia.org/w/index.php?title=File:Assalto_di_Piazza_Nicosia.jpg&oldid=124040867
+			return;
+		}
+		const wasExpanded =
+			content.classList.contains( 'mf-collapsible-content' ) &&
+			!content.getAttribute( 'hidden' );
+		const button = prepareHeadingWrapper( wrapper, content );
+		if ( !button ) {
+			return;
+		}
+
+		attachEventListeners( wrapper, content, button );
+		// Skip collapsing if this section contains the fragment target
+		// or if it was opened during slow loading.
+		const shouldCollapse = isCollapsed &&
+			!wasExpanded &&
+			!( fragmentTarget &&
+				( content.contains( fragmentTarget ) || wrapper.contains( fragmentTarget ) ) );
+		setCollapsedState( content, wrapper, button, shouldCollapse );
+	} );
+
+	// If the fragment target was found, expand and scroll to it.
+	if ( fragmentTarget ) {
+		expandSectionForTarget( fragmentTarget );
+	}
+
+	window.addEventListener( 'hashchange', () => checkHash( container ) );
+
+	// Remove the temporary open handler used during slow page loading:
+	if ( window.mfTempClickHandler !== undefined ) {
+		document.removeEventListener( 'click', window.mfTempClickHandler );
+		delete window.mfTempClickHandler;
+	}
+}
+
+module.exports = { init };
