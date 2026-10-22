@@ -12,10 +12,9 @@
 		root /var/lib/mediawiki/images/{args[0]}
 		file_server
 	}
-	respond "This service is temporarily down for maintenance due to recently announced security vulnerabilities in PHP. We plan to resume the service at around 14:30 UTC. Sorry for inconvenience." 503
-	# reverse_proxy unix//var/run/mediawiki/lighttpd.sock {
-	# 	header_up X-Xens-Wiki "{args[0]}"
-	# }
+	reverse_proxy unix//var/run/mediawiki/lighttpd.sock {
+		header_up X-Xens-Wiki "{args[0]}"
+	}
 }
 
 uploads.w.xvnet.eu.org uploads.wiki.xvnet0.eu.org http://uploads.wiki.xvn {
