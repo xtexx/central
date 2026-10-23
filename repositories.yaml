@@ -81,11 +81,11 @@
   kind: extensions
   prefix: mw/extensions/DismissableSiteNotice
   git: https://gerrit.wikimedia.org/r/mediawiki/extensions/DismissableSiteNotice
-- name: DynamicPageList3
+- name: DynamicPageList4
   kind: extensions
-  prefix: mw/extensions/DynamicPageList3
+  prefix: mw/extensions/DynamicPageList4
   branch: main
-  git: https://github.com/Universal-Omega/DynamicPageList3
+  git: https://github.com/Universal-Omega/DynamicPageList4
 - name: Echo
   kind: extensions
   prefix: mw/extensions/Echo
