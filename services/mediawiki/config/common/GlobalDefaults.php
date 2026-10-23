@@ -39,7 +39,7 @@ $xvGlobalExtensions = [
 	'CodeMirror',
 	'Description2',
 	'DiscussionTools',
-	'DynamicPageList3',
+	'DynamicPageList4',
 	'Echo',
 	'Gadgets',
 	'ImageMap',
