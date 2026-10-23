@@ -1,3 +1,6 @@
+builtin:
+  disabled:
+    - vscode.html-language-features
 disabled:
   - id: ccls-project.ccls
     uuid: 8e21d425-1e30-4072-8436-786a9017e5c7
@@ -44,6 +47,12 @@ enabled:
     uuid: ddb6b8b1-9e92-40ce-90d4-45bb5f345ef9
   - id: llvm-vs-code-extensions.vscode-clangd
     uuid: 103154cb-b81d-4e1b-8281-c5f4fa563d37
+  - id: LorisCro.super
+    uuid: 3d11d400-9879-4e94-b381-9443f67f2d9a
+  - id: LorisCro.supermd
+    uuid: eb4e166d-9f90-4498-bd47-07015c5c0326
+  - id: LorisCro.ziggy
+    uuid: 70b20023-23ab-4c70-ad20-d0350cd5c103
   - id: maelvalais.autoconf
     uuid: 3ca928a4-41a2-409c-81be-e58c381fce5a
   - id: matthewpi.caddyfile-support
@@ -80,6 +89,8 @@ enabled:
     uuid: 105c0b3c-07a9-4156-a4fc-4141040eb07e
   - id: ms-vscode.vscode-serial-monitor
     uuid: 17dcad22-0c4b-428f-8a04-5d2629f1480e
+  - id: ms-vscode.wasm-wasi-core
+    uuid: 868e7815-da44-48b6-acf7-6b3d61bd01ea
   - id: myriad-dreamin.tinymist
     uuid: e15002cc-f2ff-4c29-b86a-7504683a0369
   - id: nefrob.vscode-just-syntax
