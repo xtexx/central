@@ -1,0 +1,135 @@
+<?php
+
+declare( strict_types = 1 );
+
+namespace MediaWiki\Extension\DynamicPageList4\Tests;
+
+use DOMDocument;
+use DOMXPath;
+use ImportStreamSource;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\User\User;
+use MediaWiki\User\UserFactory;
+use MediaWikiIntegrationTestCase;
+use function dirname;
+use function explode;
+use function rtrim;
+use const NS_MAIN;
+
+abstract class DPLIntegrationTestCase extends MediaWikiIntegrationTestCase {
+
+	public function addDBDataOnce(): void {
+		$file = dirname( __DIR__ ) . '/seed-data.xml';
+		$this->seedTestUsers( $file );
+
+		$importStreamSource = ImportStreamSource::newFromFile( $file );
+		if ( !$importStreamSource->isGood() ) {
+			$this->fail( "Import source for $file failed." );
+		}
+
+		$services = $this->getServiceContainer();
+		$importer = $services->getWikiImporterFactory()->getWikiImporter(
+			$importStreamSource->value,
+			$this->getTestSysop()->getAuthority()
+		);
+
+		$importer->disableStatisticsUpdate();
+
+		// Ensure we actually create local user accounts in the DB
+		$importer->setUsernamePrefix( '', true );
+		$importer->doImport();
+	}
+
+	/**
+	 * Import test accounts from seed data so that DPL queries can refer to them.
+	 */
+	private function seedTestUsers( string $seedDataPath ): void {
+		$doc = new DOMDocument();
+		$doc->preserveWhiteSpace = false;
+		$doc->load( $seedDataPath );
+
+		$xpath = new DOMXPath( $doc );
+		$xpath->registerNamespace( 'mw', 'http://www.mediawiki.org/xml/export-0.11/' );
+
+		$authManager = $this->getServiceContainer()->getAuthManager();
+
+		$userNodes = $xpath->query( '//mw:mediawiki/mw:page/mw:revision/mw:contributor/mw:username' );
+		$usersByName = [];
+		foreach ( $userNodes as $node ) {
+			$userName = $node->nodeValue;
+
+			// Already created
+			if ( isset( $usersByName[$userName] ) ) {
+				continue;
+			}
+
+			$usersByName[$userName] = true;
+			$user = $this->newUserFromName( $userName );
+
+			if ( !$user || $user->idForName() !== 0 ) {
+				// Sanity check
+				return;
+			}
+
+			$status = $authManager->autoCreateUser(
+				$user,
+				$authManager::AUTOCREATE_SOURCE_MAINT,
+				false
+			);
+
+			if ( !$status->isOK() ) {
+				return;
+			}
+		}
+	}
+
+	private function newUserFromName( string $name ): ?User {
+		$services = $this->getServiceContainer();
+		return $services->getUserFactory()->newFromName( $name, UserFactory::RIGOR_CREATABLE );
+	}
+
+	/**
+	 * Convenience function to return the list of page titles matching a DPL query.
+	 */
+	protected function getDPLQueryResults( array $params, string $format ): array {
+		$params += [
+			// Use a custom format for executing the query to allow easily extracting results.
+			'format' => "<div id=\"dpl-test-query\">,$format,|,</div>",
+		];
+
+		$html = $this->runDPLQuery( $params );
+		$doc = new DOMDocument();
+		$doc->loadHTML( $html );
+		$queryResults = $doc->getElementById( 'dpl-test-query' );
+		if ( $queryResults ) {
+			return explode( '|', rtrim( $queryResults->textContent, '|' ) );
+		}
+
+		return [];
+	}
+
+	/**
+	 * Build and execute a DPL invocation using the given parameters and return the HTML output.
+	 */
+	protected function runDPLQuery( array $params ): string {
+		$invocation = '<dpl>';
+
+		foreach ( $params as $paramName => $values ) {
+			// multi-value parameters
+			$values = (array)$values;
+			foreach ( $values as $value ) {
+				$invocation .= "$paramName=$value\n";
+			}
+		}
+
+		$invocation .= '</dpl>';
+
+		$parser = $this->getServiceContainer()->getParserFactory()->getInstance();
+		$title = $this->getServiceContainer()->getTitleFactory()->makeTitle( NS_MAIN, 'DPLQueryTest' );
+		$parserOptions = ParserOptions::newCanonical( RequestContext::getMain() );
+
+		$parserOutput = $parser->parse( $invocation, $title, $parserOptions );
+		return $parserOutput->getContentHolderText();
+	}
+}

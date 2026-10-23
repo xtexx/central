@@ -1,0 +1,139 @@
+# DynamicPageList4
+
+The **DynamicPageList4** extension is a reporting tool for MediaWiki, listing category members and intersections with various formats and details. For full documentation, see the [manual](https://dpl4.wikitide.org).
+
+When invoked with a basic set of selection parameters DPL4 displays a list of pages in one or more categories. Selections may also be based on factors such as author, namespace, date, name pattern, usage of templates, or references to other articles. Output takes a variety of forms, some of which incorporate elements of selected articles.
+
+This extension is invoked with the parser function `{{#dpl: .... }}` or parser tag `<DPL>`. A [Wikimedia](https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:DynamicPageList_(Wikimedia))-compatible implementation of certain features can be invoked with `<DynamicPageList>`.
+
+Complex look ups can result in computationally expensive database queries. However, by default all output is cached for a period of one hour to reduce the need to rerun the query every page load. The [Other Parameters](https://dpl4.wikitide.org/wiki/Other_parameters#cacheperiod) manual page contains information on parameters that can be used to disable the cache and allow instant updates.
+
+* Manual and Complete Documentation: [Documentation](https://dpl4.wikitide.org)
+* Source Code: [Source code at GitHub](https://github.com/Universal-Omega/DynamicPageList4)
+* Bugs and Feature Requests: [Issues at GitHub](https://github.com/Universal-Omega/DynamicPageList4/issues)
+* Licensing: DynamicPageList4 is released under [GNU General Public License, version 3](https://opensource.org/licenses/GPL-3.0).
+
+
+## Installation
+Please see the [releases page](https://github.com/Universal-Omega/DynamicPageList4/releases) for the latest releases.
+
+## Configuration
+These are DPL4's configuration settings and along with their default values. To change them make sure they are defined before including the extension on the wiki. More configuration information is available on the **[MediaWiki extension page](https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:DynamicPageList4#Configuration)**.
+
+| Setting                                      | Default | Description                                                                                                                                                                                                                      |
+|:--------------------------------------------|:--------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| $wgDPLAllowedNamespaces         | []      | By default all existing namespaces are used when DPL4 initializes. Customize this setting with an array of namespace constants to restrict DPL4 to work only in those namespaces.                                   |
+| $wgDPLAllowUnlimitedCategories  | false   | Set this to true to ignore `$wgDPLMaxCategoryCount` and allow unlimited categories. Please note that large amounts of categories in a query can slow down or crash servers.                                                          |
+| $wgDPLAllowUnlimitedResults     | false   | Set this to true to ignore `$wgDPLMaxResultCount` and allow unlimited results. Please note that large result sets may result in slow or failed page loads.                                                                         |
+| $wgDPLAlwaysCacheResults        | false   | Set this to true to ignore `allowcachedresults` and always enable the parser cache.                                                                                                                                               |
+| $wgDPLCategoryStyleListCutoff   | 6       | Maximum number of items in a category list before being cut off.                                                                                                                                                                   |
+| $wgDPLFunctionalRichness        | 3       | Set the level of parameters available to end users.                                                                                                                                    |
+| $wgDPLMaxCategoryCount          | 8       | Maximum number of categories to allow in queries.                                                                                                                                                                                     |
+| $wgDPLMaxQueryTime              | 10000   | Maximum allowed time for database queries in milliseconds.                                                                                                                                                                            |
+| $wgDPLMaxResultCount            | 500     | Maximum number of results to return from a query.                                                                                                                                                                                     |
+| $wgDPLMinCategoryCount          | 0       | Minimum number of categories to allow in queries.                                                                                                                                        |
+| $wgDPLOverrideParameterDefaults | []      | An associative array of parameter names and their override values. These values replace the default parameter values defined in `ParametersData`, but only if the current defaults differ.                                       |
+| $wgDPLQueryCacheTime            | 0       | Can help with situations where you have a template with the same query used on a large number of pages all being refreshed at once. The query cache cannot be purged. Suggested value between 30 to 600.                      |
+| $wgDPLRecursivePreprocess       | true    | Use `Parser::recursivePreprocess()` to improve performance by preserving the internal cache, reducing redundant template parsing.                                                                                                    |
+| $wgDPLRecursiveTagParse         | false   | Do recursive tag parsing on `<dpl>` parser tags converting tags and functions such as magic words like `{{PAGENAME}}`. This is similar to the `{{#dpl}}` parser function call, but may not work exactly the same in all cases.   |
+| $wgDPLRunFromProtectedPagesOnly | false   | Set this to true to allow DPL4 to run from protected pages only. This is recommended if wiki administrators are having issues with malicious users creating computationally intensive queries.                            |
+
+The global variable `$wgNonincludableNamespaces` is automatically respected by DPL4. It will prevent the contents of the listed namespaces from appearing in DPL4's output.
+
+**Note: `$wgDPLMaxResultCount` is a LIMIT *on the SQL query itself*. Some DPL4 query parameters like `includematch` are applied *after* the SQL query, however, so results here may easily be misleading.**
+
+### Functional Richness
+
+DynamicPageList4 has many features which are unlocked based on the maximum functional richness level. There are some that can cause high CPU or database load and should be used sparingly.
+
+* `$wgDPLFunctionalRichness = 0` is equivalent to Wikimedia's [DynamicPageList](https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:DynamicPageList_(Wikimedia))
+* `$wgDPLFunctionalRichness = 1` adds additional formatting parameters
+* `$wgDPLFunctionalRichness = 2` adds performance equivalent features for templates and pagelinks
+* `$wgDPLFunctionalRichness = 3` allows more-expensive page inclusion features and regular expression queries.
+* `$wgDPLFunctionalRichness = 4` not recommended for public websites. Includes debugging parameters for testing and development.
+
+
+## Usage
+### Extended DPL4 Functionality
+Extended DPL4 is invoked by using the parser function `{{#dpl: .... }}`, or the parser extension tag `<DPL> .... </DPL>`.
+
+*See [Manual - **General Usage and Invocation Syntax**](https://dpl4.wikitide.org/wiki/General_usage_and_invocation_syntax) and [**Criteria for Page Selection**](https://dpl4.wikitide.org/wiki/Criteria_for_page_selection)*
+
+### Backwards Compatibility
+Functionality compatible with Wikimedia's DPL extension (Intersection) can be invoked with `<DynamicPageList> .... </DynamicPageList>`. Further information can be found on the [Compatibility manual page](https://dpl4.wikitide.org/wiki/Compatibility).
+
+## Usage Philosophy and Overview
+With the assumption there are some articles writtne about *countries* those articles will typically have three things in common:
+* They will belong to a common category
+* They will have a similar chapter structure, i.e. they will contain paragraphs named 'Religion' or 'History'
+* They will use a template which is used to present highly structured short data items ('Capital', 'Inhabitants', ..) in a nice way (e.g. as a wikitable)
+
+### Generate a Report Based on **countries**
+If there was a need to assemble a report of what countries practice a certain religion this could be easily done with the **category** and **linksto** parameters.
+<pre>
+{{#dpl:
+category=countries
+|linksto=Pastafarianism
+}}
+</pre>
+
+With DPL4 one could:
+* Generate a list of all those articles (or a random sample)
+* Show metadata of the articles (popularity, date of last update, ..)
+* Show one or more chapters of the articles ('transclude' content)
+* Show parameter values which are passed to the common template
+* Order articles appropriately
+* Present the result in a sortable table (e.g.)
+* Generate multiple column output
+
+### Which steps are necessary?
+**Find the articles you want to list:**
+* Select by a logical combination (AND,OR,NOT) of categories
+* Specify a range for the number of categories the article must be assigned to
+* Select by a logical combination (AND,OR,NOT) of namespaces
+* Define a pattern which must match the article's name
+* Name a page to which the article must or must not link
+* Name a template which the article must or must not use
+* Name a text pattern which must occur within external links from a page
+* Exclude or include redirections
+* Restrict your search to stable pages or quality pages ("flagged revisions")
+* Use other criteria for selection like author, date of last change etc.
+* Define regular expressions to match the contents of pages you want to include
+
+**Order the result list of articles according to**
+* Article Name
+* Article Size
+* Date of last change
+* Last User to Make an Edit
+
+**Define attributes you want to see**
+* Article Name
+* Article Namespace
+* Article Size
+* Date of Last Change
+* Date of Last Access
+* Last User to Make an Edit
+
+**Define contents you want to show**
+* Whole Article
+* Contents of Certain Sections (Identified by headings)
+* Text Portions (Defined by special marker tags in the article)
+* Values of template calls
+* Use a custom template to show output
+
+**Define the output format**
+* Specify header and footer for the default output
+* Use ordered list, unordered list
+* Use tables
+* Format table fields individually by applying templates to their content
+* Use category style listing
+* Truncate title or contents to a certain maximum length
+* Add a link to the article or to one or more of its sections
+
+## Considerations
+### Performance
+DPL4's code execution and database access is typically fast for typical category and article look ups. However, using loose LIKE and REGEXP match parameters and/or requesting large data sets can result in long database access times. Parser time should also be kept in consideration. For example, having the query of image results go into a template that displays them will result in a parser media transform for each one. This can quickly eat up 2MBs of RAM per media transform.
+
+## See Also
+### Further Reading
+DPL4 can do much more than we can explain here. A complete **[manual](https://dpl4.wikitide.org)** is available with full parameter documentation.
