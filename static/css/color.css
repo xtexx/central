@@ -1,6 +1,8 @@
 :root {
-    --color-body-bg: #fcfcfc;
-    --color-body-fg: #333333;
+    --color-body-bg: #ececec;
+    --color-body-fg: #353535;
+    --color-selection-bg: #aaaaaa;
+    --color-selection-fg-mix: #333333;
     --color-link-fg: #3366ff;
     --color-article-header-bottom: #222222;
     --color-article-tag: #535353;
@@ -22,6 +24,8 @@
     :root {
         --color-body-bg: #171717;
         --color-body-fg: #cccccc;
+        --color-selection-bg: #454545;
+        --color-selection-fg-mix: #cccccc;
         --color-link-fg: #33aaff;
         --color-article-header-bottom: #ffffff;
         --color-article-tag: #848484;
