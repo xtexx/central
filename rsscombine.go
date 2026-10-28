@@ -22,6 +22,10 @@ import (
 var k = koanf.NewWithConf(koanf.Conf{Delim: "/"})
 
 func fetchUrl(fc *FeedConfig) {
+	if fc.LinkdingURL != "" {
+		fetchLinkding(fc)
+		return
+	}
 	fp := gofeed.NewParser()
 	fp.Client = &http.Client{
 		Timeout: time.Duration(k.Int64("client_timeout_seconds")) * time.Second,
@@ -52,6 +56,8 @@ func fetchUrl(fc *FeedConfig) {
 
 type FeedConfig struct {
 	URL                  string
+	LinkdingURL          string
+	LinkdingToken        string
 	Feed                 *gofeed.Feed
 	OverrideAuthor       string
 	OnlyCJK              bool
@@ -216,6 +222,8 @@ func GetAtomFeed() *feeds.Feed {
 	for _, cfg := range k.Slices("feeds") {
 		var fc FeedConfig
 		fc.URL = cfg.String("url")
+		fc.LinkdingURL = cfg.String("linkding_url")
+		fc.LinkdingToken = os.Getenv(cfg.String("linkding_token_env"))
 		fc.Feed = nil
 		fc.OverrideAuthor = cfg.String("override_author")
 		fc.OnlyCJK = cfg.Bool("only_cjk")
