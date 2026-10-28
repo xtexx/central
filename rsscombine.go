@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 	"unicode"
@@ -21,17 +22,32 @@ import (
 var k = koanf.NewWithConf(koanf.Conf{Delim: "/"})
 
 func fetchUrl(fc *FeedConfig) {
-	log.Printf("Fetching URL: %v\n", fc.URL)
 	fp := gofeed.NewParser()
 	fp.Client = &http.Client{
 		Timeout: time.Duration(k.Int64("client_timeout_seconds")) * time.Second,
 	}
-	feed, err := fp.ParseURL(fc.URL)
-	if err != nil {
-		log.Printf("Error on URL: %v (%v)", fc.URL, err)
-		return
+	if strings.HasPrefix(fc.URL, "./") {
+		log.Printf("Loading file: %v\n", fc.URL)
+		fileData, err := os.ReadFile(fc.URL)
+		if err != nil {
+			log.Printf("Error on file: %v (%v)", fc.URL, err)
+			return
+		}
+		feed, err := fp.ParseString(string(fileData))
+		if err != nil {
+			log.Printf("Error on file: %v (%v)", fc.URL, err)
+			return
+		}
+		fc.Feed = feed
+	} else {
+		log.Printf("Fetching URL: %v\n", fc.URL)
+		feed, err := fp.ParseURL(fc.URL)
+		if err != nil {
+			log.Printf("Error on URL: %v (%v)", fc.URL, err)
+			return
+		}
+		fc.Feed = feed
 	}
-	fc.Feed = feed
 }
 
 type FeedConfig struct {
