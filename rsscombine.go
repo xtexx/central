@@ -167,6 +167,10 @@ func combineFeeds(fcs []*FeedConfig) *feeds.Feed {
 					continue
 				}
 			}
+			if len(item.Title) == 0 {
+				log.Printf("item \"%s\" is filtered for having no title\n", item.Link)
+				continue
+			}
 			created := item.PublishedParsed
 			if created == nil {
 				created = item.UpdatedParsed
@@ -174,6 +178,10 @@ func combineFeeds(fcs []*FeedConfig) *feeds.Feed {
 			updated := item.UpdatedParsed
 			if updated == nil {
 				updated = item.PublishedParsed
+			}
+			if created == nil {
+				log.Printf("item \"%s\" is filtered for having no updated date\n", item.Link)
+				continue
 			}
 			author := getAuthor(fc.Feed, item)
 			if len(fc.OverrideAuthor) != 0 {
