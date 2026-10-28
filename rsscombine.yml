@@ -4,7 +4,10 @@ description: exozyme members' RSS feeds
 author_name: Ersei
 author_email: contact+exozyme@ersei.net
 feed_limit: 10
-output: rss.xml
+outputs:
+  atom: rss.atom
+  rss: rss.xml
+  json: rss.json
 feeds:
   - url: https://ersei.net/en/blog.atom
   - url: https://www.1a-insec.net/all.atom.xml

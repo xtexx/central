@@ -187,14 +187,34 @@ func LoadConfig() {
 func main() {
 	LoadConfig()
 	combinedFeed := GetAtomFeed()
-	atom, _ := combinedFeed.ToAtom()
 	log.Printf("Rendered RSS with %v items", len(combinedFeed.Items))
-	if k.String("output") != "" {
-		if err := os.WriteFile(k.String("output"), []byte(atom), 0666); err != nil {
+	atom, err := combinedFeed.ToAtom()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if k.String("outputs/atom") != "" {
+		if err := os.WriteFile(k.String("outputs/atom"), []byte(atom), 0666); err != nil {
 			log.Fatal(err)
 		}
 	} else {
 		fmt.Println(atom)
 	}
-	return
+	if k.String("outputs/rss") != "" {
+		out, err := combinedFeed.ToJSON()
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := os.WriteFile(k.String("outputs/rss"), []byte(out), 0666); err != nil {
+			log.Fatal(err)
+		}
+	}
+	if k.String("outputs/json") != "" {
+		out, err := combinedFeed.ToRss()
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := os.WriteFile(k.String("outputs/json"), []byte(out), 0666); err != nil {
+			log.Fatal(err)
+		}
+	}
 }
