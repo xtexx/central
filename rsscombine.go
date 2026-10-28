@@ -35,11 +35,12 @@ func fetchUrl(fc *FeedConfig) {
 }
 
 type FeedConfig struct {
-	URL            string
-	Feed           *gofeed.Feed
-	OverrideAuthor string
-	OnlyCJK        bool
-	OnlyNonCJK     bool
+	URL                  string
+	Feed                 *gofeed.Feed
+	OverrideAuthor       string
+	OnlyCJK              bool
+	OnlyNonCJK           bool
+	AllowDuplicatedLinks bool
 }
 
 func fetchUrls(fc []*FeedConfig) {
@@ -134,7 +135,7 @@ func combineFeeds(fcs []*FeedConfig) *feeds.Feed {
 			if len(item.Links) > 0 {
 				item.Link = item.Links[0]
 			}
-			if seen[item.Link] {
+			if seen[item.Link] && !fc.AllowDuplicatedLinks {
 				log.Printf("seen link \"%s\" for item %s\n", item.Link, item.Title)
 				continue
 			}
@@ -198,6 +199,7 @@ func GetAtomFeed() *feeds.Feed {
 		if fc.OnlyCJK && fc.OnlyNonCJK {
 			log.Fatalf("feed \"%s\" only_cjk and only_non_cjk cannot be set at the same time", fc.URL)
 		}
+		fc.AllowDuplicatedLinks = cfg.Bool("allow_duplicated_links")
 		feeds = append(feeds, &fc)
 	}
 	fetchUrls(feeds)
