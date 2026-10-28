@@ -8,6 +8,7 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/gorilla/feeds"
 	"github.com/knadh/koanf/parsers/yaml"
@@ -35,8 +36,10 @@ func fetchUrl(fc *FeedConfig) {
 
 type FeedConfig struct {
 	URL            string
-	OverrideAuthor string
 	Feed           *gofeed.Feed
+	OverrideAuthor string
+	OnlyCJK        bool
+	OnlyNonCJK     bool
 }
 
 func fetchUrls(fc []*FeedConfig) {
@@ -87,10 +90,22 @@ func getAuthor(feed *gofeed.Feed, item *gofeed.Item) *gofeed.Person {
 	if len(item.Authors) != 0 {
 		return item.Authors[0]
 	}
-	log.Printf("Could not determine author for %v", feed.Link)
+	log.Printf("Could not determine author for %v %v", feed.Link, item.Link)
 	return &gofeed.Person{
 		Name: k.String("default_author_name"),
 	}
+}
+
+func containsCJK(s string) bool {
+	for _, r := range s {
+		if unicode.Is(unicode.Han, r) ||
+			unicode.Is(unicode.Hangul, r) ||
+			unicode.Is(unicode.Hiragana, r) ||
+			unicode.Is(unicode.Katakana, r) {
+			return true
+		}
+	}
+	return false
 }
 
 func combineFeeds(fcs []*FeedConfig) *feeds.Feed {
@@ -120,12 +135,28 @@ func combineFeeds(fcs []*FeedConfig) *feeds.Feed {
 				item.Link = item.Links[0]
 			}
 			if seen[item.Link] {
-				fmt.Printf("seen link \"%s\" for item %s\n", item.Link, item.Title)
+				log.Printf("seen link \"%s\" for item %s\n", item.Link, item.Title)
 				continue
+			}
+			seen[item.Link] = true
+			if fc.OnlyCJK || fc.OnlyNonCJK {
+				has_cjk := containsCJK(item.Title)
+				if fc.OnlyCJK && !has_cjk {
+					log.Printf("item \"%s\" \"%s\" is filtered for not containing CJK chars\n", item.Link, item.Title)
+					continue
+				}
+				if fc.OnlyNonCJK && has_cjk {
+					log.Printf("item \"%s\" \"%s\" is filtered for containing CJK chars\n", item.Link, item.Title)
+					continue
+				}
 			}
 			created := item.PublishedParsed
 			if created == nil {
 				created = item.UpdatedParsed
+			}
+			updated := item.UpdatedParsed
+			if updated == nil {
+				updated = item.PublishedParsed
 			}
 			author := getAuthor(fc.Feed, item)
 			if len(fc.OverrideAuthor) != 0 {
@@ -141,9 +172,8 @@ func combineFeeds(fcs []*FeedConfig) *feeds.Feed {
 				Created:     *created,
 				Content:     item.Content,
 				Id:          item.Link,
-				Updated:     *item.UpdatedParsed,
+				Updated:     *updated,
 			})
-			seen[item.Link] = true
 		}
 	}
 	// Sort items by created date
@@ -163,6 +193,11 @@ func GetAtomFeed() *feeds.Feed {
 		fc.URL = cfg.String("url")
 		fc.Feed = nil
 		fc.OverrideAuthor = cfg.String("override_author")
+		fc.OnlyCJK = cfg.Bool("only_cjk")
+		fc.OnlyNonCJK = cfg.Bool("only_non_cjk")
+		if fc.OnlyCJK && fc.OnlyNonCJK {
+			log.Fatalf("feed \"%s\" only_cjk and only_non_cjk cannot be set at the same time", fc.URL)
+		}
 		feeds = append(feeds, &fc)
 	}
 	fetchUrls(feeds)

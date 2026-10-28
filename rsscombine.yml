@@ -3,7 +3,7 @@ link: https://feeds.exozy.me/rss.xml
 description: exozyme members' RSS feeds
 author_name: Ersei
 author_email: contact+exozyme@ersei.net
-feed_limit: 10
+feed_limit: 100
 outputs:
   atom: rss.atom
   rss: rss.xml
@@ -11,3 +11,5 @@ outputs:
 feeds:
   - url: https://ersei.net/en/blog.atom
   - url: https://www.1a-insec.net/all.atom.xml
+  - url: https://blog.xtexx.eu.org/post/index.xml
+    only_cjk: true
