@@ -67,10 +67,10 @@ func (s byPublished) Swap(i, j int) {
 }
 
 func (s byPublished) Less(i, j int) bool {
-	if s[i].Feed == nil {
+	if s[i].Feed == nil || len(s[i].Feed.Items) == 0 {
 		return false
 	}
-	if s[j].Feed == nil {
+	if s[j].Feed == nil || len(s[j].Feed.Items) == 0 {
 		return true
 	}
 	date1 := s[i].Feed.Items[0].PublishedParsed
