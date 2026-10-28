@@ -6,49 +6,53 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/gorilla/feeds"
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/confmap"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 	"github.com/mmcdole/gofeed"
-	"github.com/spf13/viper"
 )
 
-func getUrls() []string {
-	return viper.GetStringSlice("feeds")
-}
+var k = koanf.NewWithConf(koanf.Conf{Delim: "/"})
 
-func fetchUrl(url string, ch chan<- *gofeed.Feed) {
-	log.Printf("Fetching URL: %v\n", url)
+func fetchUrl(fc *FeedConfig) {
+	log.Printf("Fetching URL: %v\n", fc.URL)
 	fp := gofeed.NewParser()
 	fp.Client = &http.Client{
-		Timeout: time.Duration(viper.GetInt("client_timeout_seconds")) * time.Second,
+		Timeout: time.Duration(k.Int64("client_timeout_seconds")) * time.Second,
 	}
-	feed, err := fp.ParseURL(url)
-	if err == nil {
-		ch <- feed
-	} else {
-		log.Printf("Error on URL: %v (%v)", url, err)
-		ch <- nil
+	feed, err := fp.ParseURL(fc.URL)
+	if err != nil {
+		log.Printf("Error on URL: %v (%v)", fc.URL, err)
+		return
 	}
+	fc.Feed = feed
 }
 
-func fetchUrls(urls []string) []*gofeed.Feed {
-	allFeeds := make([]*gofeed.Feed, 0)
-	ch := make(chan *gofeed.Feed)
-	for _, url := range urls {
-		go fetchUrl(url, ch)
+type FeedConfig struct {
+	URL            string
+	OverrideAuthor string
+	Feed           *gofeed.Feed
+}
+
+func fetchUrls(fc []*FeedConfig) {
+	var wg sync.WaitGroup
+	for _, feed := range fc {
+		wg.Add(1)
+		go func(fc *FeedConfig) {
+			defer wg.Done()
+			fetchUrl(fc)
+		}(feed)
 	}
-	for range urls {
-		feed := <-ch
-		if feed != nil {
-			allFeeds = append(allFeeds, feed)
-		}
-	}
-	return allFeeds
+	wg.Wait()
 }
 
 // TODO: there must be a shorter syntax for this
-type byPublished []*gofeed.Feed
+type byPublished []*FeedConfig
 
 func (s byPublished) Len() int {
 	return len(s)
@@ -59,45 +63,56 @@ func (s byPublished) Swap(i, j int) {
 }
 
 func (s byPublished) Less(i, j int) bool {
-	date1 := s[i].Items[0].PublishedParsed
-	if date1 == nil {
-		date1 = s[i].Items[0].UpdatedParsed
+	if s[i].Feed == nil {
+		return false
 	}
-	date2 := s[j].Items[0].PublishedParsed
+	if s[j].Feed == nil {
+		return true
+	}
+	date1 := s[i].Feed.Items[0].PublishedParsed
+	if date1 == nil {
+		date1 = s[i].Feed.Items[0].UpdatedParsed
+	}
+	date2 := s[j].Feed.Items[0].PublishedParsed
 	if date2 == nil {
-		date2 = s[j].Items[0].UpdatedParsed
+		date2 = s[j].Feed.Items[0].UpdatedParsed
 	}
 	return date1.Before(*date2)
 }
 
-func getAuthor(feed *gofeed.Feed) string {
-	if feed.Author != nil {
-		return feed.Author.Name
+func getAuthor(feed *gofeed.Feed, item *gofeed.Item) *gofeed.Person {
+	if len(feed.Authors) != 0 {
+		return feed.Authors[0]
 	}
-	if feed.Items[0].Author != nil {
-		return feed.Items[0].Author.Name
+	if len(item.Authors) != 0 {
+		return item.Authors[0]
 	}
 	log.Printf("Could not determine author for %v", feed.Link)
-	return viper.GetString("default_author_name")
+	return &gofeed.Person{
+		Name: k.String("default_author_name"),
+	}
 }
 
-func combineallFeeds(allFeeds []*gofeed.Feed) *feeds.Feed {
+func combineFeeds(fcs []*FeedConfig) *feeds.Feed {
 	feed := &feeds.Feed{
-		Title:       viper.GetString("title"),
-		Link:        &feeds.Link{Href: viper.GetString("link")},
-		Description: viper.GetString("description"),
+		Title:       k.String("title"),
+		Link:        &feeds.Link{Href: k.String("link")},
+		Description: k.String("description"),
 		Author: &feeds.Author{
-			Name:  viper.GetString("author_name"),
-			Email: viper.GetString("author_email"),
+			Name:  k.String("author_name"),
+			Email: k.String("author_email"),
 		},
 		Created: time.Now(),
 	}
-	sort.Sort(sort.Reverse(byPublished(allFeeds)))
-	limit_per_feed := viper.GetInt("feed_limit_per_feed")
-	limit_all := viper.GetInt("feed_limit")
+	sort.Sort(sort.Reverse(byPublished(fcs)))
+	limit_per_feed := k.Int("feed_limit_per_feed")
+	limit_all := k.Int("feed_limit")
 	seen := make(map[string]bool)
-	for _, sourceFeed := range allFeeds {
-		for i, item := range sourceFeed.Items {
+	for _, fc := range fcs {
+		if fc.Feed == nil {
+			continue
+		}
+		for i, item := range fc.Feed.Items {
 			if i > limit_per_feed {
 				break
 			}
@@ -112,14 +127,21 @@ func combineallFeeds(allFeeds []*gofeed.Feed) *feeds.Feed {
 			if created == nil {
 				created = item.UpdatedParsed
 			}
+			author := getAuthor(fc.Feed, item)
+			if len(fc.OverrideAuthor) != 0 {
+				author = &gofeed.Person{
+					Name: fc.OverrideAuthor,
+				}
+			}
 			feed.Items = append(feed.Items, &feeds.Item{
 				Title:       item.Title,
 				Link:        &feeds.Link{Href: item.Link},
 				Description: item.Description,
-				Author:      &feeds.Author{Name: getAuthor(sourceFeed)},
+				Author:      &feeds.Author{Name: author.Name, Email: author.Email},
 				Created:     *created,
 				Content:     item.Content,
 				Id:          item.Link,
+				Updated:     *item.UpdatedParsed,
 			})
 			seen[item.Link] = true
 		}
@@ -135,30 +157,31 @@ func combineallFeeds(allFeeds []*gofeed.Feed) *feeds.Feed {
 }
 
 func GetAtomFeed() *feeds.Feed {
-	urls := getUrls()
-	allFeeds := fetchUrls(urls)
-	combinedFeed := combineallFeeds(allFeeds)
+	feeds := make([]*FeedConfig, 0)
+	for _, cfg := range k.Slices("feeds") {
+		var fc FeedConfig
+		fc.URL = cfg.String("url")
+		fc.Feed = nil
+		fc.OverrideAuthor = cfg.String("override_author")
+		feeds = append(feeds, &fc)
+	}
+	fetchUrls(feeds)
+	combinedFeed := combineFeeds(feeds)
 	return combinedFeed
 }
 
 func LoadConfig() {
 	configFile, ok := os.LookupEnv("RSSCOMBINE_CONFIG")
-	if ok {
-		viper.SetConfigFile(configFile)
-	} else {
-		viper.SetConfigName("rsscombine")
+	if !ok {
+		configFile = "rsscombine.yml"
 	}
-	viper.AddConfigPath(".")
-	viper.SetEnvPrefix("RSSCOMBINE")
-	viper.AutomaticEnv()
-	viper.SetDefault("default_author_name", "Unknown Author")
-	viper.SetDefault("client_timeout_seconds", "60")
-	viper.SetDefault("feed_limit_per_feed", "20")
-	viper.SetDefault("feed_limit", "20")
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
-	}
+	k.Load(confmap.Provider(map[string]any{
+		"default_author_name":    "Unknown Author",
+		"client_timeout_seconds": "60",
+		"feed_limit_per_feed":    "20",
+		"feed_limit":             "20",
+	}, "/"), nil)
+	k.Load(file.Provider(configFile), yaml.Parser())
 }
 
 func main() {
@@ -166,8 +189,8 @@ func main() {
 	combinedFeed := GetAtomFeed()
 	atom, _ := combinedFeed.ToAtom()
 	log.Printf("Rendered RSS with %v items", len(combinedFeed.Items))
-	if viper.GetString("output") != "" {
-		if err := os.WriteFile(viper.GetString("output"), []byte(atom), 0666); err != nil {
+	if k.String("output") != "" {
+		if err := os.WriteFile(k.String("output"), []byte(atom), 0666); err != nil {
 			log.Fatal(err)
 		}
 	} else {

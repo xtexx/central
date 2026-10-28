@@ -6,8 +6,5 @@ author_email: contact+exozyme@ersei.net
 feed_limit: 10
 output: rss.xml
 feeds:
-  - https://ersei.net/en/blog.atom
-  - https://a.exozy.me/index.xml
-  - https://aryak.me/rss.xml
-  - https://www.1a-insec.net/all.atom.xml
-  - https://karawale.in/index.xml
+  - url: https://ersei.net/en/blog.atom
+  - url: https://www.1a-insec.net/all.atom.xml

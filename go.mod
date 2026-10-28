@@ -1,11 +1,10 @@
-module codeberg.org/exozyme/rsscombine
+module codeberg.org/xtex/rsscombine
 
 go 1.26.0
 
 require (
 	github.com/gorilla/feeds v1.2.0
 	github.com/mmcdole/gofeed v1.5.0
-	github.com/spf13/viper v1.21.0
 )
 
 require (
@@ -15,8 +14,15 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/knadh/koanf/maps v0.1.3 // indirect
+	github.com/knadh/koanf/parsers/yaml v1.1.1 // indirect
+	github.com/knadh/koanf/providers/confmap v1.0.1 // indirect
+	github.com/knadh/koanf/providers/file v1.2.1 // indirect
+	github.com/knadh/koanf/v2 v2.4.1 // indirect
 	github.com/magiconair/properties v1.18.12 // indirect
+	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/mmcdole/goxpp v1.3.0 // indirect
 	github.com/mmcdole/goxpp/v2 v2.0.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
