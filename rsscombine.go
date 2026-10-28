@@ -142,7 +142,12 @@ func GetAtomFeed() *feeds.Feed {
 }
 
 func LoadConfig() {
-	viper.SetConfigName("rsscombine")
+	configFile, ok := os.LookupEnv("RSSCOMBINE_CONFIG")
+	if ok {
+		viper.SetConfigFile(configFile)
+	} else {
+		viper.SetConfigName("rsscombine")
+	}
 	viper.AddConfigPath(".")
 	viper.SetEnvPrefix("RSSCOMBINE")
 	viper.AutomaticEnv()

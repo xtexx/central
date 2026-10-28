@@ -1,5 +1,12 @@
 name: "RSSCombine"
 description: "Combine multiple RSS feeds into a single feed."
+inputs:
+  config:
+    description: "Configuration file"
+    required: false
+    default: "rsscombine.yml"
 runs:
   using: "docker"
   image: "Dockerfile"
+  env:
+    RSSCOMBINE_CONFIG: ${{ inputs.config }}
