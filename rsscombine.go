@@ -224,6 +224,9 @@ func GetAtomFeed() *feeds.Feed {
 		fc.URL = cfg.String("url")
 		fc.LinkdingURL = cfg.String("linkding_url")
 		fc.LinkdingToken = os.Getenv(cfg.String("linkding_token_env"))
+		if len(fc.LinkdingURL) != 0 && len(fc.LinkdingToken) == 0 {
+			log.Fatalf("linkding feed \"%s\" has no token", fc.LinkdingURL)
+		}
 		fc.Feed = nil
 		fc.OverrideAuthor = cfg.String("override_author")
 		fc.OnlyCJK = cfg.Bool("only_cjk")
