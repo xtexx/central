@@ -1,4 +1,4 @@
-FROM docker.io/golang:1.23.4-alpine as builder
+FROM docker.io/golang:1.27-alpine as builder
 ARG CGO_ENABLED=0
 WORKDIR /app
 COPY go.mod go.sum ./
