@@ -237,7 +237,7 @@ func main() {
 		fmt.Println(atom)
 	}
 	if k.String("outputs/rss") != "" {
-		out, err := combinedFeed.ToJSON()
+		out, err := combinedFeed.ToRss()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -246,7 +246,7 @@ func main() {
 		}
 	}
 	if k.String("outputs/json") != "" {
-		out, err := combinedFeed.ToRss()
+		out, err := combinedFeed.ToJSON()
 		if err != nil {
 			log.Fatal(err)
 		}
