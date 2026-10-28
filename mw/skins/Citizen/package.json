@@ -37,10 +37,10 @@
 		"jsdom": "^30.1.3",
 		"lefthook": "^2.2.2",
 		"less": "^4.9.1",
-		"markdownlint-cli": "^0.49.1",
+		"markdownlint-cli": "^0.50.0",
 		"mustache": "^4.2.0",
 		"stylelint": "17.16.0",
-		"stylelint-config-recess-order": "7.8.2",
+		"stylelint-config-recess-order": "7.9.0",
 		"stylelint-config-wikimedia": "0.19.4",
 		"stylelint-order": "^8.1.2",
 		"stylelint-plugin-use-baseline": "^1.4.8",
@@ -52,5 +52,5 @@
 	"overrides": {
 		"eslint-plugin-mediawiki": "0.8.2"
 	},
-	"version": "3.24.0"
+	"version": "3.25.0"
 }
