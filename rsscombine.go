@@ -57,6 +57,7 @@ type FeedConfig struct {
 	OnlyCJK              bool
 	OnlyNonCJK           bool
 	AllowDuplicatedLinks bool
+	Limit                int
 }
 
 func fetchUrls(fc []*FeedConfig) {
@@ -137,7 +138,6 @@ func combineFeeds(fcs []*FeedConfig) *feeds.Feed {
 		Created: time.Now(),
 	}
 	sort.Sort(sort.Reverse(byPublished(fcs)))
-	limit_per_feed := k.Int("feed_limit_per_feed")
 	limit_all := k.Int("feed_limit")
 	seen := make(map[string]bool)
 	for _, fc := range fcs {
@@ -145,7 +145,7 @@ func combineFeeds(fcs []*FeedConfig) *feeds.Feed {
 			continue
 		}
 		for i, item := range fc.Feed.Items {
-			if i > limit_per_feed {
+			if i > fc.Limit {
 				break
 			}
 			if len(item.Links) > 0 {
@@ -216,6 +216,10 @@ func GetAtomFeed() *feeds.Feed {
 			log.Fatalf("feed \"%s\" only_cjk and only_non_cjk cannot be set at the same time", fc.URL)
 		}
 		fc.AllowDuplicatedLinks = cfg.Bool("allow_duplicated_links")
+		fc.Limit = cfg.Int("limit")
+		if fc.Limit == 0 {
+			fc.Limit = k.Int("feed_limit_per_feed")
+		}
 		feeds = append(feeds, &fc)
 	}
 	fetchUrls(feeds)
