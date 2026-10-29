@@ -18,7 +18,7 @@ this is one of the places where [xtex](https://xtexx.eu.org) writes things rando
 {{<hlist>}}
 
 - [exozyme](https://exozy.me/)
-- [molyuu](https://molyuu.cyou/)
+- [molyuu](https://molyuu.com/)
 - [梓瑶](https://blog.ziyao.cc/)
 
 {{</hlist>}}
