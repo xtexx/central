@@ -108,11 +108,11 @@ func (s byPublished) Less(i, j int) bool {
 }
 
 func getAuthor(feed *gofeed.Feed, item *gofeed.Item) *gofeed.Person {
-	if len(feed.Authors) != 0 {
-		return feed.Authors[0]
-	}
 	if len(item.Authors) != 0 {
 		return item.Authors[0]
+	}
+	if len(feed.Authors) != 0 {
+		return feed.Authors[0]
 	}
 	log.Printf("Could not determine author for %v %v", feed.Link, item.Link)
 	return &gofeed.Person{
