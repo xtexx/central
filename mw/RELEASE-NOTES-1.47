@@ -79,10 +79,17 @@ For notes on 1.46.x and older releases, see HISTORY.
 * (T432760) Added $wgUseParsoidParser, $wgUseParsoidLinksUpdate,
   and $wgUseParsoidMessages to control the use of Parsoid for wikitext parsing.
   $wgUseParsoidParser is enabled by default, meaning articles will be rendered
-  by Parsoid. $wgUseParsoidLinksUpdate is set to null, meaning that it will
+  by Parsoid. $wgUseParsoidLinksUpdate selects the parser for the parses on
+  edit, purge and in jobs which update the links tables and other derived page
+  metadata. It is set to null, meaning that it will
   take the same value as $wgUseParsoidParser. $wgUseParsoidMessages is
   disabled by default. Using Parsoid for parsing messages is still considered
-  experimental.
+  experimental.  These variables are temporary, and intended to allow
+  controlled transition to the new default parser.
+  Content handlers which override ContentHandler::getParserOutputForIndexing()
+  may wish to examine $wgUseParsoidLinksUpdate, to ensure the parser options
+  used for indexing your content match those used for links updates and
+  indexing of wikitext content.
 * …
 
 ==== Changed configuration ====
@@ -260,8 +267,8 @@ For notes on 1.46.x and older releases, see HISTORY.
 
 ==== New external libraries ====
 
-* Added symfony/mailer at 7.4.19.
-* Added symfony/mime at 7.4.19.
+* Added symfony/mailer at 7.4.22.
+* Added symfony/mime at 7.4.22.
 * Added symfony/polyfill-php86 at 1.43.0.
 * …
 
@@ -293,6 +300,7 @@ For notes on 1.46.x and older releases, see HISTORY.
 * Updated wikimedia/language-data from 1.1.13 to 1.1.14.
 * Updated wikimedia/minify from 2.10.0 to 2.12.0.
 * Updated wikimedia/object-factory from 6.0.0 to 7.0.0.
+* Updated wikimedia/parsoid from 0.23.0 to 0.24.0.
 * Updated wikimedia/shellbox from 4.4.0 to 4.5.2.
 * …
 
@@ -335,6 +343,9 @@ For notes on 1.46.x and older releases, see HISTORY.
 
 === Action API changes in 1.47 ===
 * php response format has been removed.
+* list=users and list=allusers have a new blockhidden field in the blockinfo
+  property, which is true when the block is hidden. Only these two modules
+  output the field, and only to users with the hideuser right.
 * When encountering a 'reauthenticate' error, clients must start a new
   authentication process by passing the "operation" value included in the
   error into meta=authmanagerinfo&amirequestsfor=login as 'amireauthenticate',
@@ -657,6 +668,8 @@ because of Phabricator reports.
 * The "MainWANObjectCache" service and MediaWikiServices::getMainWANObjectCache
   method have been deprecated. Inject the "WANObjectCache" service name
   or call MediaWikiServices::getWANObjectCache instead.
+* MetricInterface::copyToStatsdAt(), deprecated since 1.45, now emits
+  deprecation warnings.
 * OutputPage::setPrintable, OutputPage::isPrintable, and
   OutputPage::transformCssMedia are no longer needed per T259141 and have been
   deprecated without replacement.
