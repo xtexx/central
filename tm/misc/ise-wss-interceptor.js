@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         iFlytek ISE WS Interceptor
 // @namespace    https://xtexx.eu.org/
-// @version      1.0.5
+// @version      1.0.6
 // @description  Intercepts and modifies iFlytek ISE WebSocket results
 // @author       xtex
 // @match        *://*.fifedu.com/*
@@ -13,6 +13,8 @@
 // @updateURL    https://codeberg.org/xtex/gadgets/raw/branch/stable/tm/misc/ise-wss-interceptor.js
 // @license      Unlicense
 // ==/UserScript==
+
+// XML format reference: https://www.xfyun.cn/doc/Ise/IseAPI.html
 
 (function () {
 	'use strict';
@@ -81,7 +83,7 @@
 		return btoa(binary);
 	}
 
-	function extractUpstreamContent(data) {
+	function extractModelContent(data) {
 		if (typeof data !== 'string' || data.length === 0) return null;
 		let json;
 		try {
@@ -90,10 +92,12 @@
 			return null;
 		}
 		if (!json || !json.business) return null;
-		const text = json.business.text;
+		let text = json.business.text;
 		if (typeof text !== 'string' || text.length === 0) return null;
-		const m = text.match(/^\[content\]\r?\n([\s\S]*)$/);
-		return m ? m[1] : text;
+		text = text
+			.replace(/^\[(?:content|topic)\](?:\r?\n|\s|[0-9]|\.)*/gm, '')
+			.trim();
+		return text;
 	}
 
 	function randomSpeed() {
@@ -105,7 +109,7 @@
 	// Build a replacement <sentence> matching the reference structure
 	// ------------------------------------------------------------------
 
-	function buildFakeSentence(doc, words, config) {
+	function buildStubSentence(doc, words, config) {
 		const sentence = doc.createElement('sentence');
 		sentence.setAttribute('accuracy_score', config.NEW_SCORE_MAPPED);
 		sentence.setAttribute('beg_pos', '0');
@@ -153,20 +157,6 @@
 	// XML modification paths
 	// ------------------------------------------------------------------
 
-	/**
-	 * is_rejected=true path.
-	 * Patch the original XML in place (do NOT rebuild from scratch):
-	 *  - inner <read_chapter> (inside <rec_paper>):
-	 *      is_rejected      -> false
-	 *      reject_type      -> 64
-	 *      speeking_speed   -> random 140-200
-	 *      except_info      -> 28676
-	 *      content          -> upstream content (original case)
-	 *      word_count       -> word count
-	 *  - replace its <sentence> with a freshly-built one from the lowercase
-	 *    upstream content (word / syll / phone structure per the reference)
-	 *  - rewrite every score attribute to NEW_SCORE_MAPPED
-	 */
 	function modifyRejectedXml(xml, config, upstreamContent) {
 		const parser = new DOMParser();
 		const doc = parser.parseFromString(xml, 'text/xml');
@@ -184,11 +174,11 @@
 		}
 
 		// Patch inner <read_chapter> elements (nested inside <rec_paper>)
-		const innerRCs = doc.querySelectorAll('rec_paper > read_chapter');
+		const innerRCs = doc.querySelectorAll(
+			'rec_paper > read_chapter, topic > rec_paper > rec_paper'
+		);
 		if (innerRCs.length === 0) {
-			warn(
-				'modifyRejectedXml: no inner <read_chapter> found under <rec_paper>'
-			);
+			warn('modifyRejectedXml: no inner <rec_paper> matched');
 		}
 		innerRCs.forEach((rc) => {
 			rc.setAttribute('content', trimmed);
@@ -197,13 +187,22 @@
 			rc.setAttribute('speeking_speed', randomSpeed());
 			rc.setAttribute('except_info', '28676');
 			rc.setAttribute('word_count', String(words.length));
+			rc.setAttribute('total_score', config.NEW_SCORE_MAPPED);
+			rc.setAttribute('accuracy_score', config.NEW_SCORE_MAPPED);
+			rc.setAttribute('phone_score', config.NEW_SCORE_MAPPED);
 
-			const oldSentence = rc.querySelector('sentence');
-			if (oldSentence) {
-				const newSentence = buildFakeSentence(doc, words, config);
-				rc.replaceChild(newSentence, oldSentence);
+			const oldSentences = rc.querySelectorAll('sentence');
+			if (oldSentences.length !== 0) {
+				for (const oldSentence of oldSentences) {
+					const newSentence = buildStubSentence(doc, words, config);
+					newSentence.setAttribute(
+						'index',
+						oldSentence.getAttribute('index')
+					);
+					rc.replaceChild(newSentence, oldSentence);
+				}
 			} else {
-				rc.appendChild(buildFakeSentence(doc, words, config));
+				rc.appendChild(buildStubSentence(doc, words, config));
 			}
 		});
 
@@ -229,11 +228,7 @@
 		return result;
 	}
 
-	/**
-	 * Normal (non-rejected) path: only rewrite score attributes and lowercase
-	 * the top-level <sentence> content from <read_chapter content>.
-	 */
-	function modifyNormalXml(xml, config) {
+	function modifyAcceptedXml(xml, config) {
 		const parser = new DOMParser();
 		const doc = parser.parseFromString(xml, 'text/xml');
 		if (doc.querySelector('parsererror')) {
@@ -310,7 +305,7 @@
 				warn(
 					'modifyXml: is_rejected=true but no upstream content captured, falling back'
 				);
-				return modifyNormalXml(xml, config);
+				return modifyAcceptedXml(xml, config);
 			}
 			info(
 				'modifyXml: is_rejected=true, patching in place from upstream content'
@@ -318,7 +313,7 @@
 			return modifyRejectedXml(xml, config, upstreamContent);
 		}
 
-		return modifyNormalXml(xml, config);
+		return modifyAcceptedXml(xml, config);
 	}
 
 	// ------------------------------------------------------------------
@@ -378,7 +373,7 @@
 			const origSend = ws.send.bind(ws);
 			ws.send = function (data) {
 				try {
-					const c = extractUpstreamContent(data);
+					const c = extractModelContent(data);
 					if (c) {
 						upstreamContent = c;
 						info(
