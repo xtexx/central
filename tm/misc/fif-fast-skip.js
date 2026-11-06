@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FiF Challenge Skipper
 // @namespace    https://xtexx.eu.org/
-// @version      1.0.0
+// @version      1.0.1
 // @description  Skips FiF examination as fast as possible
 // @author       xtex
 // @match        *://*.fifedu.com/*
@@ -17,7 +17,8 @@
 	'use strict';
 
 	const DEBUG = true;
-	const INTERVAL_MS = 700;
+	const INTERVAL_MS = 900;
+	const DELAY_MS = 400;
 	const MIN_RECORD_TIME_SEC = 5;
 	const STOP_RECORD_PROBABILITY = 0.2;
 
@@ -27,17 +28,43 @@
 
 	let recordBeginTime = null;
 
+	function clickBtn(btn) {
+		info('Click button', btn);
+		btn.dispatchEvent(
+			new Event('click', { bubbles: true, cancelable: true })
+		);
+	}
+
 	setInterval(function () {
+		// Close "音频不存在, 是否继续?" message box
+		let noSkipPlay = false;
+		for (const msgBox of document.querySelectorAll('.el-message-box')) {
+			if (!msgBox.checkVisibility()) continue;
+			const msgTextEl = msgBox.querySelector('.el-message-box__message');
+			const msgText = msgTextEl ? msgTextEl.textContent : '';
+			info('Found message box', msgText);
+			if (msgText.trim().indexOf('音频不存在, 是否继续?') >= 0) {
+				info('Matched audio not found message box');
+				const primaryBtn = msgBox.querySelector('.el-button--primary');
+				if (primaryBtn && primaryBtn.checkVisibility()) {
+					info('Found primary continue button, clicking');
+					setTimeout(clickBtn.bind(this, primaryBtn), DELAY_MS);
+					noSkipPlay = true;
+				}
+			}
+		}
+
+		if (noSkipPlay) return;
+
 		// Skip playing voices
 		const skipPlayBtn = document.querySelector(
 			'div.exercise_wrap div.service-item-taste div.btn-content img.btn-skip'
 		);
 		if (skipPlayBtn && skipPlayBtn.checkVisibility()) {
-			info('Skip playing button visible, skipping');
-			skipPlayBtn.dispatchEvent(
-				new Event('click', { bubbles: true, cancelable: true })
-			);
+			info('Skip playing button visible');
+			setTimeout(clickBtn.bind(this, skipPlayBtn), DELAY_MS);
 		}
+
 		// Stop recording automatically
 		const stopRecordBtn = document.querySelector(
 			'div#app div.exercise_main div.service-item-content button.taste-button.ready-button.ing'
@@ -61,9 +88,7 @@
 				Math.random() < STOP_RECORD_PROBABILITY
 			) {
 				info(`Stop recording`);
-				stopRecordBtn.dispatchEvent(
-					new Event('click', { bubbles: true, cancelable: true })
-				);
+				setTimeout(clickBtn.bind(this, stopRecordBtn), DELAY_MS);
 			}
 		} else {
 			recordBeginTime = null;
