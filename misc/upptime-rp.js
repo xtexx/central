@@ -23,17 +23,21 @@
 		function patchNode(node) {
 			console.log('Upptime-RP: Patching node', node);
 			const src = node.getAttribute('src');
-			if (src && !src.startsWith(RP))
-				node.setAttribute('src', RP + src);
+			if (src && !src.startsWith(RP)) node.setAttribute('src', RP + src);
 
 			const style = node.getAttribute('style');
-			if (style && style.replace(RP + 'https://', '').includes('https://'))
-				node.setAttribute('style', style.replace('https://', RP + 'https://'));
+			if (
+				style &&
+				style.replace(RP + 'https://', '').includes('https://')
+			)
+				node.setAttribute(
+					'style',
+					style.replace('https://', RP + 'https://')
+				);
 		}
 		for (const mutation of mutationList) {
 			patchNode(mutation.target);
-			for (const node of mutation.addedNodes)
-				patchNode(node);
+			for (const node of mutation.addedNodes) patchNode(node);
 		}
 	});
 	observer.observe(document.documentElement, {

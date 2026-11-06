@@ -5,4 +5,4 @@ stable:
 	git push origin stable:stable --force
 
 fmt:
-	prettier --write '.'
+	pnpx prettier --write '.'
