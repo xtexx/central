@@ -1,4 +1,4 @@
-# HiSilicon Device Tree Table (HSDT) file unpacker
+# HiSilicon Device Tree Table (HSDT) File Unpacker
 
 This tool unpacks HSDT files, which are used by HiSilicon-based devices, for example, smart phones by Huawei.
 
@@ -6,9 +6,9 @@ On Huawei's smart phone devices using HiSilicon SoCs, device-tree table is store
 
 The format of HSDT is a bit (strictly speaking, 96 bits) simliar to QCDT files, which are used by Qualcomm devices. HSDT files begin with a header (`dt_table_t`) following by many entries (`dt_entry_t`). A magic value of 0x54445348 (`HSDT` in ASCII octects) is always placed at the head of HSDT files.
 
-This tool is able to classify HSDT extracted from Huawei system update package (`UPDATE.APP`), which has an extra header of 4 KiB at the beginning, and HSDT dumped from Huawei smart phones (`/dev/block/bootdevice/by-name/dts`). It can also GZIP-decompress extracted DTB files automatically and extract VRL data from the table (the VRL data is related to verification, but the VRL-extracting feature is not test, as I did not find any HSDT file with VRL data in my reverse engineering project of their fastboot).
+This tool is able to classify HSDT extracted from Huawei system update package (`UPDATE.APP`), which has an extra header of 4 KiB at the beginning, and HSDT dumped from Huawei smart phones (`/dev/block/bootdevice/by-name/dts`). It can also GZIP-decompress extracted DTB files automatically and extract VRL data from the table (the VRL data is related to verification, but the VRL-extracting feature is not tested, as I did not find any HSDT file with VRL data in my reverse engineering project of their fastboot).
 
-To build this tools, run `make` with Zig tool-chain configured.
+To build this tools, run `make` with Zig toolchain configured.
 
 There is also a pattern of ImHex editor available at [the content store](https://github.com/WerWolv/ImHex-Patterns/pull/280).
 

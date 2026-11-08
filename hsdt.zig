@@ -21,8 +21,8 @@
 const std = @import("std");
 const Io = std.Io;
 
-pub const DT_TABLE_MAGIC = @as(u32, 0x54445348);
-pub const DT_TABLE_VERSION = @as(u32, 1);
+pub const DT_TABLE_MAGIC: u32 = 0x54445348;
+pub const DT_TABLE_VERSION: u32 = 11;
 
 pub const DtTableHeader = struct {
     magic: u32 = DT_TABLE_MAGIC,
@@ -55,7 +55,7 @@ pub const DtEntry = struct {
 
     pub fn read(reader: *Io.Reader) !@This() {
         const board_id: [4]u8 = (try reader.take(4))[0..4].*;
-        // in my reverse project, the following four bytes are always zero
+        // in my reversing project, the following four bytes are always zero
         // and are not used by the fastboot
         // maybe we can ignore this if not zero,
         // but the error is used as a notice
