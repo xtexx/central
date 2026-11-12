@@ -182,8 +182,24 @@ class CLDRRebuild extends Maintenance {
 				}
 
 				if ( count( array_keys( $newJsonMessages ) ) > 1 ) {
+					ksort( $newJsonMessages );
 					// only write $newJsonMessages if it contains keys beyond the "@metadata"
 					$this->writeJsonMessages( $OUTPUT, $mwCode, $newJsonMessages );
+
+					if ( $mwCode === 'en' ) {
+						array_walk(
+							$newJsonMessages,
+							static function ( &$value, $key ) {
+								if ( $key === "@metadata" ) {
+									$value = [ 'authors' => [] ];
+									return;
+								}
+								$key = str_replace( 'cldr-language-name-', '', $key );
+								$value = "{{doc-cldr-language-name|$key}}";
+							},
+						);
+						$this->writeJsonMessages( $OUTPUT, 'qqq', $newJsonMessages );
+					}
 				}
 
 				$availableCodes[] = $mwCode;
