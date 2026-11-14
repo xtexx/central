@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         iTEST Helper
 // @namespace    https://xtexx.eu.org/
-// @version      1.0.2
+// @version      1.0.3
 // @description  Utilities for iTEST
 // @author       xtex
 // @match        *://itestcloud.unipus.cn/*
@@ -503,7 +503,8 @@
 	}
 
 	box.append(header, body);
-	if (pageType !== 'unknown') document.body.appendChild(box);
+	if (pageType !== 'unknown')
+		document.addEventListener('load', () => document.body.appendChild(box));
 	log('float window mounted');
 
 	// Dragging
