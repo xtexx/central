@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         iTEST Helper
 // @namespace    https://xtexx.eu.org/
-// @version      1.0.5
+// @version      1.0.6
 // @description  Utilities for iTEST
 // @author       xtex
 // @match        *://itestcloud.unipus.cn/*
@@ -236,7 +236,7 @@
 
 		const result = [...container.querySelectorAll('div[id]')]
 			.filter((el) => /^ques-\d+$/.test(el.id))
-			.forEach((quesEl) => {
+			.map((quesEl) => {
 				log('extractAnswers: processing question block', quesEl);
 				const item = {
 					id: Number.parseInt(quesEl.id.slice(5)),
@@ -480,7 +480,7 @@
 				flashButton(copyAnswerBtn, '提取题目失败', true);
 				return;
 			}
-			if (!items.length) {
+			if (items.length === 0) {
 				flashButton(copyAnswerBtn, '未找到题目', true);
 				return;
 			}
