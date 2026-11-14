@@ -113,6 +113,8 @@ enabled:
     uuid: b2215d5f-675e-4a2b-b6ac-1ca737518b78
   - id: timonwong.shellcheck
     uuid: f95d8fff-f70a-4ae5-bb06-5c47ddbc8fc6
+  - id: tombi-toml.tombi
+    uuid: bb77ad7f-cbc2-4e7a-8793-aa8f16a4ff2f
   - id: unifiedjs.vscode-mdx
     uuid: af8cfc85-cb72-45d0-bae2-9a98cd0c69f3
   - id: Vue.volar
