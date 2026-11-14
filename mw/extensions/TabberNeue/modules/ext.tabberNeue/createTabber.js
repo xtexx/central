@@ -3,10 +3,13 @@ const createKeyboardNavigator = require( './createKeyboardNavigator.js' );
 const createFindReveal = require( './createFindReveal.js' );
 const createVisibilityObserver = require( './createVisibilityObserver.js' );
 const createPanelTransition = require( './createPanelTransition.js' );
+const createPanelAligner = require( './createPanelAligner.js' );
 const createTabIndicator = require( './createTabIndicator.js' );
 const createViewTransitionWrapper = require( './createViewTransitionWrapper.js' );
 const defaultLoadTransclusion = require( './loadTransclusion.js' );
-const { getElementSize, panelAtScrollOffset, setAttributes } = require( './domHelpers.js' );
+const {
+	getElementSize, panelAtScrollOffset, setAttributes, stepInLockstep
+} = require( './domHelpers.js' );
 
 /**
  * Per-element orchestrator. Composes the unit factories and owns the
@@ -81,11 +84,6 @@ function createTabber( opts ) {
 		panelIdToPanelMap.set( panel.id, panel );
 	}
 
-	// Initialize tab attrs
-	for ( const tab of tabs ) {
-		setAttributes( tab, { tabindex: '-1', 'aria-selected': 'false' } );
-	}
-
 	let activeTab = null;
 	let activePanel = null;
 
@@ -97,6 +95,7 @@ function createTabber( opts ) {
 	const isWrap = element.classList.contains( 'tabber--wrap' );
 	units.tabIndicator = createTabIndicator( { tablist, document: doc, enabled: !isWrap } );
 	units.panelTransition = createPanelTransition( { document: doc } );
+	units.panelAligner = createPanelAligner( { section, IntersectionObserver: IO } );
 	units.vt = createViewTransitionWrapper( { section, document: doc } );
 	units.findReveal = createFindReveal( {
 		section, panels, document: doc,
@@ -108,12 +107,16 @@ function createTabber( opts ) {
 		}
 	} );
 
-	function setActivePanel( panel, options = {} ) {
-		if ( !panel ) {
-			return;
-		}
-		// Reveal before measuring: a panel still carrying `hidden="until-found"`
-		// skips its contents and measures zero height.
+	// Showing a panel, split into read-only and write-only steps so that init
+	// can batch each step across tabbers.
+
+	/**
+	 * Writes. Reveal before measuring: a panel still carrying
+	 * `hidden="until-found"` skips its contents and measures zero height.
+	 *
+	 * @param {HTMLElement} panel
+	 */
+	function showPanel( panel ) {
 		units.findReveal.sync( panel );
 		if ( panel.querySelector( '.tabber__transclusion' ) ) {
 			transclude( {
@@ -127,24 +130,67 @@ function createTabber( opts ) {
 				onContentReplaced: ( p ) => mwApi.hook( 'wikipage.content' ).fire( $( p ) )
 			} );
 		}
+	}
+
+	/**
+	 * Reads.
+	 *
+	 * @param {HTMLElement} panel
+	 * @return {{clippedScrollTop: number, height: number}}
+	 */
+	function measurePanel( panel ) {
+		return {
+			clippedScrollTop: section.scrollTop,
+			height: getElementSize( panel, 'height' )
+		};
+	}
+
+	/**
+	 * Writes.
+	 *
+	 * @param {{height: number}} metrics
+	 */
+	function sizeSection( metrics ) {
+		section.style.height = metrics.height + 'px';
+	}
+
+	/**
+	 * Scroll writes. They flush pending layout, so run them after other writes.
+	 *
+	 * @param {HTMLElement} panel
+	 * @param {{clippedScrollTop: number}} metrics
+	 */
+	function scrollSection( panel, metrics ) {
 		// A non-zero scrollTop means something outside this module scrolled the
 		// section's own box to reveal clipped content — an in-panel anchor jump,
 		// or a pre-init reveal. The section rests at scrollTop 0, so move that
 		// offset to the page scroll to hold the content in place. Reset it
 		// explicitly; resizing the section does not reliably clamp it away.
-		const clippedScrollTop = section.scrollTop;
-		const h = getElementSize( panel, 'height' );
-		section.style.height = h + 'px';
-		if ( clippedScrollTop ) {
+		if ( metrics.clippedScrollTop ) {
 			section.scrollTop = 0;
-			win.scrollBy( { top: clippedScrollTop, behavior: 'instant' } );
+			win.scrollBy( { top: metrics.clippedScrollTop, behavior: 'instant' } );
 		}
-		if ( !options.preventScroll ) {
-			section.scrollLeft = panel.offsetLeft;
-		}
+		// Also restores the offset lost when a tabber is detached and put back.
+		section.scrollLeft = panel.offsetLeft;
 	}
 
-	function performActivation( tab, options ) {
+	function setActivePanel( panel ) {
+		if ( !panel ) {
+			return;
+		}
+		showPanel( panel );
+		const metrics = measurePanel( panel );
+		sizeSection( metrics );
+		scrollSection( panel, metrics );
+	}
+
+	/**
+	 * Writes. Select a tab and track its panel.
+	 *
+	 * @param {HTMLElement} tab
+	 * @return {string} id of the panel the tab controls
+	 */
+	function selectTab( tab ) {
 		if ( activeTab ) {
 			activeTab.setAttribute( 'tabindex', '-1' );
 			activeTab.setAttribute( 'aria-selected', 'false' );
@@ -152,30 +198,39 @@ function createTabber( opts ) {
 		tab.setAttribute( 'tabindex', '0' );
 		tab.setAttribute( 'aria-selected', 'true' );
 		activeTab = tab;
-		units.tabIndicator.update( activeTab );
-
-		units.overflow.scrollTabIntoView( tab );
 
 		const panelId = tab.getAttribute( 'aria-controls' );
 		const newActivePanel = panelIdToPanelMap.get( panelId );
-		const previousActivePanel = activePanel;
-
-		if ( previousActivePanel && previousActivePanel !== newActivePanel ) {
-			registry.unobserveResize( previousActivePanel );
+		if ( activePanel && activePanel !== newActivePanel ) {
+			registry.unobserveResize( activePanel );
+			activePanel.setAttribute( 'tabindex', '-1' );
 		}
 		activePanel = newActivePanel;
+		units.panelAligner.track( activePanel || null );
+		if ( activePanel ) {
+			activePanel.setAttribute( 'tabindex', '0' );
+			registry.observeResize( activePanel );
+		}
+		return panelId;
+	}
 
-		// eslint-disable-next-line n/no-unsupported-features/node-builtins
+	/**
+	 * @param {string} panelId
+	 * @param {ActivationSource} [source]
+	 */
+	function dispatchTabChange( panelId, source ) {
 		element.dispatchEvent( new CustomEvent( 'tabber:tabchange', {
 			bubbles: true, composed: true,
-			detail: { panelId, source: options.source || 'programmatic' }
+			detail: { panelId, source: source || 'programmatic' }
 		} ) );
+	}
 
-		if ( !activePanel ) {
-			return;
-		}
-		registry.observeResize( activePanel );
-		setActivePanel( activePanel, options );
+	function performActivation( tab, options ) {
+		const panelId = selectTab( tab );
+		units.tabIndicator.update( tab );
+		units.overflow.scrollTabIntoView( tab );
+		dispatchTabChange( panelId, options.source );
+		setActivePanel( activePanel );
 	}
 
 	function activate( tab, options = {} ) {
@@ -290,7 +345,16 @@ function createTabber( opts ) {
 		}
 	} );
 
-	function init( initialTab ) {
+	/**
+	 * Bring the tabber live on `initialTab`. Each `yield` ends a phase that only
+	 * reads layout or only writes it. The registry runs every tabber through a
+	 * phase before starting the next, so a page pays for one layout per read
+	 * phase rather than one per tabber.
+	 *
+	 * @param {HTMLElement|null} initialTab
+	 * @yield {undefined}
+	 */
+	function* initPhases( initialTab ) {
 		// Read any pre-init reveal before the class swap below drops the critical
 		// CSS `height: 0` on non-first panels: giving them their real height
 		// clamps an in-panel scroll offset back to 0. section.scrollLeft is
@@ -298,15 +362,54 @@ function createTabber( opts ) {
 		const revealedPanel = getRevealedPanel();
 		const revealedTab = revealedPanel ? panelToTabMap.get( revealedPanel ) : null;
 		const revealedOffset = revealedPanel ? revealedPanel.scrollTop : 0;
+		yield;
 
-		units.overflow.update();
-		// Mark live before the first activate() so any listener that filters
-		// on the tabber--live class sees the bootstrap event in the correct
-		// state. Current consumers don't filter, but this is cheap insurance.
+		// Write. Construction leaves the DOM alone, so building every tabber
+		// first flushes nothing. Mark live before the init event so a listener
+		// that filters on tabber--live sees it in the right state.
 		element.classList.remove( 'tabber--init' );
 		element.classList.add( 'tabber--live' );
-		activate( initialTab, { source: 'init' } );
-		if ( !revealedTab || revealedTab !== initialTab || !activePanel ) {
+		for ( const tab of tabs ) {
+			setAttributes( tab, { tabindex: '-1', 'aria-selected': 'false' } );
+		}
+		// Only the active panel is in the tab order; focusing a clipped panel
+		// scrolls the section to it.
+		for ( const panel of panels ) {
+			panel.setAttribute( 'tabindex', '-1' );
+		}
+		units.tabIndicator.attach();
+		if ( initialTab ) {
+			// Before measuring, like any activation, so the section fits whatever
+			// a listener adds to the panel.
+			dispatchTabChange( selectTab( initialTab ), 'init' );
+		}
+		if ( activePanel ) {
+			showPanel( activePanel );
+		}
+		yield;
+
+		// Read. From activeTab, which an init listener may have changed.
+		const overflowMetrics = units.overflow.getMetrics( activeTab );
+		const indicatorMetrics = units.tabIndicator.measure( activeTab );
+		const panelMetrics = activePanel ? measurePanel( activePanel ) : null;
+		yield;
+
+		// Write.
+		units.overflow.update( overflowMetrics );
+		units.tabIndicator.apply( indicatorMetrics );
+		if ( panelMetrics ) {
+			sizeSection( panelMetrics );
+		}
+		yield;
+
+		// Scroll. Only the first scroll write on the page flushes layout.
+		if ( activeTab ) {
+			units.overflow.scrollTabIntoView( activeTab, overflowMetrics );
+		}
+		if ( panelMetrics ) {
+			scrollSection( activePanel, panelMetrics );
+		}
+		if ( !revealedTab || revealedTab !== activeTab || !activePanel ) {
 			return;
 		}
 		// The browser chose its page scroll against the pre-init layout. Now that
@@ -324,13 +427,61 @@ function createTabber( opts ) {
 		}
 	}
 
-	function handleResize( target ) {
-		if ( target === tablist ) {
-			units.overflow.update();
-			units.tabIndicator.update( activeTab );
-		} else if ( target === activePanel ) {
-			setActivePanel( target, { preventScroll: true } );
+	/**
+	 * Bring this tabber live on its own. scan() batches initPhases() instead.
+	 *
+	 * @param {HTMLElement|null} initialTab
+	 */
+	function init( initialTab ) {
+		stepInLockstep( [ initPhases( initialTab ) ] );
+	}
+
+	/**
+	 * Follow a ResizeObserver entry for the tablist or the active panel, phased
+	 * like initPhases() so that the registry can batch a callback's entries.
+	 *
+	 * @param {Element} target
+	 * @yield {undefined}
+	 */
+	function* resizePhases( target ) {
+		const isTablist = target === tablist;
+		const isPanel = target === activePanel;
+
+		// Write. Normally a no-op: the panel is already shown.
+		if ( isPanel ) {
+			showPanel( target );
 		}
+		yield;
+
+		// Read.
+		const overflowMetrics = isTablist ? units.overflow.getMetrics() : null;
+		const indicatorMetrics = isTablist ? units.tabIndicator.measure( activeTab ) : null;
+		const panelMetrics = isPanel ? measurePanel( target ) : null;
+		yield;
+
+		// Write.
+		if ( isTablist ) {
+			units.overflow.update( overflowMetrics );
+			units.tabIndicator.apply( indicatorMetrics );
+		}
+		if ( panelMetrics ) {
+			sizeSection( panelMetrics );
+		}
+		yield;
+
+		// Scroll.
+		if ( panelMetrics ) {
+			scrollSection( target, panelMetrics );
+		}
+	}
+
+	/**
+	 * Follow one resize on its own. The registry batches resizePhases() instead.
+	 *
+	 * @param {Element} target
+	 */
+	function handleResize( target ) {
+		stepInLockstep( [ resizePhases( target ) ] );
 	}
 
 	function getDefaultTab() {
@@ -385,6 +536,7 @@ function createTabber( opts ) {
 
 	return {
 		init,
+		initPhases,
 		activate,
 		getActiveTab: () => activeTab,
 		getActivePanel: () => activePanel,
@@ -393,9 +545,11 @@ function createTabber( opts ) {
 		getTabForPanel,
 		hasPanel,
 		handleResize,
+		resizePhases,
 		destroy() {
 			visibility.destroy();
 			units.findReveal.destroy();
+			units.panelAligner.destroy();
 			units.overflow.destroy();
 			units.keyboard.destroy();
 			units.tabIndicator.destroy();

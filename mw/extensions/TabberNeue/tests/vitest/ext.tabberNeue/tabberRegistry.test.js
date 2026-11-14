@@ -24,7 +24,7 @@ describe( 'tabberRegistry', () => {
 
 	// Separate named constructor for IntersectionObserver mock.
 	function MockIOImpl() {
-		return { observe: vi.fn(), disconnect: vi.fn() };
+		return { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
 	}
 
 	beforeEach( () => {
@@ -84,6 +84,50 @@ describe( 'tabberRegistry', () => {
 		expect( document.querySelectorAll( '.tabber--init' ).length ).toBe( 0 );
 	} );
 
+	describe( 'scan initialises tabbers together (#352)', () => {
+		it( 'reads every tabber before any of them goes live', () => {
+			const a = makeTabberEl( 'a' );
+			const b = makeTabberEl( 'b' );
+			const aLiveAtBRead = [];
+			Object.defineProperty( b.querySelector( '.tabber__section' ), 'scrollLeft', {
+				configurable: true,
+				get: () => {
+					aLiveAtBRead.push( a.classList.contains( 'tabber--live' ) );
+					return 0;
+				},
+				set: () => {}
+			} );
+			make().scan();
+			expect( aLiveAtBRead.length ).toBeGreaterThan( 1 );
+			expect( aLiveAtBRead ).not.toContain( true );
+		} );
+
+		it( 'measures every panel before sizing any section', () => {
+			const a = makeTabberEl( 'a' );
+			const b = makeTabberEl( 'b' );
+			const aSizedAtBMeasure = [];
+			const panelB = b.querySelector( '.tabber__panel' );
+			const rect = panelB.getBoundingClientRect.bind( panelB );
+			panelB.getBoundingClientRect = () => {
+				aSizedAtBMeasure.push( a.querySelector( '.tabber__section' ).style.height !== '' );
+				return rect();
+			};
+			make().scan();
+			expect( aSizedAtBMeasure ).toEqual( [ false ] );
+		} );
+
+		it( 'still initialises the tabbers before one that fails to construct', () => {
+			const a = makeTabberEl( 'a' );
+			// No header: createTabber throws on it.
+			const broken = document.createElement( 'div' );
+			broken.className = 'tabber tabber--init';
+			document.body.appendChild( broken );
+			const reg = make();
+			expect( () => reg.scan() ).toThrow();
+			expect( a.classList.contains( 'tabber--live' ) ).toBe( true );
+		} );
+	} );
+
 	it( 'scan is idempotent', () => {
 		makeTabberEl( 'a' );
 		const reg = make();
@@ -141,6 +185,7 @@ describe( 'tabberRegistry', () => {
 			ResizeObserver: MockRO,
 			IntersectionObserver: vi.fn( function MockIO() {
 				this.observe = vi.fn();
+				this.unobserve = vi.fn();
 				this.disconnect = vi.fn();
 			} ),
 			setTimeout: setTimeoutSpy,
@@ -180,6 +225,26 @@ describe( 'tabberRegistry', () => {
 		// No assertion target — we're just confirming no exception. Real assertion would
 		// require spying on the tabber instance, which is internal.
 		expect( () => ro.cb( [ { target: tablist } ] ) ).not.toThrow();
+	} );
+
+	it( 'measures every resized panel before sizing any section', () => {
+		const a = makeTabberEl( 'a' );
+		const b = makeTabberEl( 'b' );
+		const reg = make();
+		reg.scan();
+		const panelA = a.querySelector( '.tabber__panel' );
+		const panelB = b.querySelector( '.tabber__panel' );
+		const sectionA = a.querySelector( '.tabber__section' );
+		const before = sectionA.style.height;
+		panelA.getBoundingClientRect = () => ( { height: 50 } );
+		const aHeightAtBMeasure = [];
+		panelB.getBoundingClientRect = () => {
+			aHeightAtBMeasure.push( sectionA.style.height );
+			return { height: 20 };
+		};
+		resizeObservers[ 0 ].cb( [ { target: panelA }, { target: panelB } ] );
+		expect( sectionA.style.height ).toBe( '50px' );
+		expect( aHeightAtBMeasure ).toEqual( [ before ] );
 	} );
 
 	it( 'toggleAnimation(true) adds the class on documentElement', () => {
