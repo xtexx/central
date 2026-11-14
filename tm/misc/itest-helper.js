@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         iTEST Helper
 // @namespace    https://xtexx.eu.org/
-// @version      1.0.6
+// @version      1.0.7
 // @description  Utilities for iTEST
 // @author       xtex
 // @match        *://itestcloud.unipus.cn/*
@@ -254,7 +254,7 @@
 
 				item.subQuestions = [
 					...quesEl.querySelectorAll('[class*="subQuesBox___"]'),
-				].forEach((subQuesEl) => {
+				].map((subQuesEl) => {
 					const subItem = { content: '', options: [], correct: [] };
 
 					const contentEl = subQuesEl.querySelector(
