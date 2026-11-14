@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         iTEST Helper
 // @namespace    https://xtexx.eu.org/
-// @version      1.0.1
+// @version      1.0.2
 // @description  Utilities for iTEST
 // @author       xtex
 // @match        *://itestcloud.unipus.cn/*
@@ -33,7 +33,7 @@
 				? 'answer'
 				: 'unknown';
 
-	log('script loaded, url =', location.href, ', isPaperPage =', isPaperPage);
+	log('script loaded', { url: location.href, pageType });
 
 	/* ========== Focus bypass interceptor ========== */
 	const FocusBypass = (function () {
