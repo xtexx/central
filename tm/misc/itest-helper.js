@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         iTEST Helper
 // @namespace    https://xtexx.eu.org/
-// @version      1.0.4
+// @version      1.0.5
 // @description  Utilities for iTEST
 // @author       xtex
 // @match        *://itestcloud.unipus.cn/*
@@ -275,8 +275,7 @@
 							.forEach((optEl) => {
 								const varEl = optEl.querySelector('var');
 								if (varEl) varEl.textContent += '. ';
-							})
-							.forEach((optEl) => {
+
 								const txt = (optEl.textContent || '')
 									.replace(/\s+/g, ' ')
 									.trim();
