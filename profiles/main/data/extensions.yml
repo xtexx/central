@@ -97,6 +97,8 @@ enabled:
     uuid: 053eb5da-dc16-49f0-837f-d627da0dc8c5
   - id: pascal-lab.vide-code-extension
     uuid: e4d63179-943d-4383-9b02-ca60b7dcf1b1
+  - id: platformio.platformio-ide
+    uuid: 9d96b65c-c227-4a9e-80b7-e52b8a58c5f2
   - id: redhat.vscode-xml
     uuid: 6703768d-d42f-474e-9f6e-5f288d53f6e8
   - id: redhat.vscode-yaml
