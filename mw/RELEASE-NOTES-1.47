@@ -26,6 +26,21 @@ Some specific notes for MediaWiki 1.47 upgrades are below:
   by 1.47.  Rollback from 1.47 to 1.45 is fully supported.  We recommend
   a two-step upgrade from 1.43 to 1.45.6 and then to 1.47, which will
   preserve rollback-compatibility of ParserCache entries.
+* (T405901) If you use APCu for any of your caches (for instance
+  $wgMainCacheType = CACHE_ACCEL), clear the APCu cache after
+  upgrading. This can be done by restarting your web server or PHP-FPM.
+  Entries cached by an older MediaWiki version can contain objects of
+  classes that have since been namespaced. Due to a serialization bug in
+  PHP, private properties of such objects are not restored when they are
+  unserialized, causing errors such as "Typed property
+  ReplacementArray::$data must not be accessed before initialization".
+* Parsoid is the new default parser. You can switch back to the legacy parser
+  by setting $wgUseParsoidParser=false. Some third party extensions might
+  not support Parsoid yet. Extension developers are encouraged to read
+  https://www.mediawiki.org/wiki/Parsoid/So_you_want_your_extension_to_work_with_Parsoid
+  Features like $wgAllowExternalImages, $wgEnableImageWhitelist and
+  $wgAllowExternalImagesFrom are not yet supported with the new parser.
+* …
 
 For notes on 1.46.x and older releases, see HISTORY.
 
@@ -566,6 +581,16 @@ For notes on 1.46.x and older releases, see HISTORY.
 * ConfigRepository class and MediaWikiServices::getConfigRepository(),
   deprecated since 1.42, have been removed.
 * ApiBase::makeMessage(), deprecated since 1.43, has been removed.
+* SamplingStatsdClient, deprecated since 1.43, has been removed.
+* StatsdAwareInterface, deprecated since 1.45, has been removed.
+* MediaWikiServices::getStatsdDataFactory() and
+  StatsFactory::withStatsdDataFactory(), deprecated since 1.45,
+  have been removed.
+* MediaWikiServices::getPerDbNameStatsdDataFactory(), deprecated since 1.44,
+  has been removed. Use StatsFactory with wiki ID from
+  WikiMap::getCurrentWikiId() as label instead.
+* TextSlotDiffRenderer::setStatsdDataFactory(), deprecated since 1.43,
+  has been removed.
 
 === Deprecations in 1.47 ===
 
@@ -787,6 +812,9 @@ For notes on 1.46.x and older releases, see HISTORY.
 * (T436997) Passing an int bitmask as the $options parameter to
   ParserOutputAccess::getParserOutput() and ::getCachedParserOutput() is
   deprecated and emits deprecation warnings. Pass an options array instead.
+* JsonLocalizer::localizeValue() is deprecated and emits deprecation warnings.
+  Use JsonLocalizer::localizeJson() or JsonLocalizer::getFormattedMessage()
+  instead.
 * Calling PageConfigFactory::createFromParserOptions() with ParserOptions
   that do not have the 'useParsoid' option set is deprecated and emits
   warnings.
