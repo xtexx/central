@@ -22,6 +22,7 @@
 	"securepoll-stv-unranked-candidates": "Not ranked",
 	"securepoll-stv-ranked-candidates": "Ranked",
 	"securepoll-header-comments": "Comments",
+	"securepoll-comment-too-long": "Your comment is too long. Please shorten it to $1 {{PLURAL:$1|character|characters}} or fewer.",
 	"securepoll-submit": "Submit vote",
 	"securepoll-gpg-receipt": "If you wish, you may retain the following receipt as evidence of your vote:\n\n<pre>$1</pre>",
 	"securepoll-thanks": "Thank you, your vote has been recorded.",
@@ -61,6 +62,7 @@
 	"securepoll-too-few-edits-before-date": "Sorry, you cannot vote in this election as you have made fewer than $1 {{PLURAL:$1|edit|edits}} before $2",
 	"securepoll-too-few-edits-between-dates": "Sorry, you cannot vote in this election as you have fewer than $1 {{PLURAL:$1|edit|edits}} between $2 and $3",
 	"securepoll-list-title": "List votes: $1",
+	"securepoll-list-title-hidden": "List votes",
 	"securepoll-list-private": "Sorry, viewing the list of voters for this election is restricted to election administrators.",
 	"securepoll-header-timestamp": "Time",
 	"securepoll-header-date": "Date",
@@ -379,5 +381,6 @@
 	"securepoll-tallymodifiers-question-label": "Question: \"$1\"",
 	"securepoll-tally-stv-candidate-excluded": "Manually exclude candidates",
 	"securepoll-stv-result-election-excluded-header": "Excluded candidates",
-	"securepoll-stv-excluded-candidates-help-text": "The following candidate(s) were manually excluded from the tally."
+	"securepoll-stv-excluded-candidates-help-text": "The following candidate(s) were manually excluded from the tally.",
+	"securepoll-csrf-error-during-voting": "Sorry! We could not process your vote due to a loss of session data. You might have been logged out. Please verify that you're still logged in and try again. If it still does not work, try logging out and logging back in, and check that your browser allows cookies from this site."
 }

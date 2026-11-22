@@ -48,6 +48,7 @@
 	"securepoll-stv-unranked-candidates": "Used as a header",
 	"securepoll-stv-ranked-candidates": "Used as a header",
 	"securepoll-header-comments": "Fieldset header for the comments text area on the vote page.",
+	"securepoll-comment-too-long": "Error shown on the vote page when the comment exceeds the maximum length.\n\nParameters:\n* $1 - Maximum number of characters allowed",
 	"securepoll-submit": "{{Identical|Submit}}",
 	"securepoll-gpg-receipt": "Parameters:\n* $1 - the receipt. Format: \n<pre>\nSPID: (10-digit vote ID)\n(encrypted vote record)\n</pre>\nIf the election doesn't use encryption, the following message is used:\n* {{msg-mw|securepoll-thanks}}",
 	"securepoll-thanks": "If the election use encryption, the following message is used:\n* {{msg-mw|Securepoll-gpg-receipt}}",
@@ -87,6 +88,7 @@
 	"securepoll-too-few-edits-before-date": "Used as error message. Parameters:\n* $1 - number of edits\n* $2 - date",
 	"securepoll-too-few-edits-between-dates": "Used as error message. Parameters:\n* $1 - number of edits\n* $2 - start date\n* $3 end date",
 	"securepoll-list-title": "Used as page title and as page subtitle. Parameters:\n* $1 - title of the election, or the string \"[title]\"",
+	"securepoll-list-title-hidden": "Used as page subtitle on the vote details page when the election title is hidden because the election has voter privacy and the viewer is not an election administrator.",
 	"securepoll-list-private": "Used as an error message.",
 	"securepoll-header-timestamp": "{{Identical|Time}}",
 	"securepoll-header-date": "Column header used instead of \"Time\" when only the date is shown\n{{identical|Date}}",
@@ -405,5 +407,6 @@
 	"securepoll-tallymodifiers-question-label": "Display the question on the tally page",
 	"securepoll-tally-stv-candidate-excluded": "Describes the modification being selected on the tally page",
 	"securepoll-stv-result-election-excluded-header": "Header for list of excluded candidates on STV tally result page",
-	"securepoll-stv-excluded-candidates-help-text": "Description of candidates that were manually excluded on the STV tally result page."
+	"securepoll-stv-excluded-candidates-help-text": "Description of candidates that were manually excluded on the STV tally result page.",
+	"securepoll-csrf-error-during-voting": "Error message shown when CSRF token does not match when submitting a vote. Text is similar to {{msg-mw|Session_fail_preview}}."
 }
