@@ -105,6 +105,9 @@ class SpecialVersion extends SpecialPage {
 			$extName = 'MediaWiki';
 		}
 
+		// The subpage names software that isn't installed
+		$extNotFound = $extNode === null && $extName !== 'MediaWiki';
+
 		// Now figure out what to do
 		switch ( strtolower( $parts[0] ) ) {
 			case 'credits':
@@ -137,7 +140,11 @@ class SpecialVersion extends SpecialPage {
 				}
 
 				$out->setPageTitleMsg( $this->msg( 'version-credits-title' )->plaintextParams( $extName ) );
-				$out->addWikiTextAsInterface( $wikiText );
+				if ( $extNotFound ) {
+					$out->addHTML( $this->msg( 'version-ext-not-found' )->plaintextParams( $extName )->parseAsBlock() );
+				} else {
+					$out->addWikiTextAsInterface( $wikiText );
+				}
 				break;
 
 			case 'license':
@@ -146,9 +153,13 @@ class SpecialVersion extends SpecialPage {
 				$licenseFound = false;
 
 				if ( $extName === 'MediaWiki' ) {
-					$out->addWikiTextAsInterface(
-						file_get_contents( MW_INSTALL_PATH . '/COPYING' )
+					$license = file_get_contents( MW_INSTALL_PATH . '/COPYING' );
+					$license = str_replace(
+						'CREDITS file',
+						'[[Special:Version/Credits|CREDITS file]]',
+						$license
 					);
+					$out->addWikiTextAsInterface( $license );
 					$licenseFound = true;
 				} elseif ( ( $extNode !== null ) && isset( $extNode['path'] ) ) {
 					$files = ExtensionInfo::getLicenseFileNames( dirname( $extNode['path'] ) );
@@ -168,13 +179,38 @@ class SpecialVersion extends SpecialPage {
 						}
 					}
 				}
-				if ( !$licenseFound ) {
+				if ( $extNotFound ) {
+					$out->addHTML( $this->msg( 'version-ext-not-found' )->plaintextParams( $extName )->parseAsBlock() );
+				} elseif ( !$licenseFound ) {
 					$out->addWikiTextAsInterface( '{{int:version-license-not-found}}' );
 				}
 				break;
 
 			default:
 				$out->addModuleStyles( 'mediawiki.special' );
+
+				// The API only serves the SBOM to named users
+				if ( $this->getUser()->isNamed() ) {
+					$out->addModuleStyles( 'mediawiki.htmlform.codex.styles' );
+					$out->addModules( 'mediawiki.misc-authed-ooui' );
+					$out->setIndicators( [ 'mw-version-sbom' => Html::element(
+						'a',
+						[
+							'id' => 'mw-version-sbom-download',
+							'class' => 'cdx-button cdx-button--fake-button cdx-button--fake-button--enabled',
+							'href' => $this->getConfig()->get( MainConfigNames::ScriptPath ) . '/api.php?' .
+								http_build_query( [
+									'action' => 'query',
+									'meta' => 'siteinfo',
+									'siprop' => 'sbom',
+									'format' => 'json',
+									'formatversion' => '2',
+								] ),
+							'download' => 'sbom.cdx.json',
+						],
+						$this->msg( 'version-download-sbom' )->text()
+					) ] );
+				}
 
 				$out->addHTML( $this->getMediaWikiCredits() );
 

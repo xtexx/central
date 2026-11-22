@@ -149,7 +149,7 @@ abstract class Skin extends ContextSource {
 			// design their home page differently. This came up in T290480.
 			// The parameter for logged in users is optional and may
 			// or may not be used.
-			$titleMsg = $user->isAnon() ?
+			$titleMsg = !$user->isNamed() ?
 				$this->msg( 'mainpage-title' ) :
 				$this->msg( 'mainpage-title-loggedin', $user->getName() );
 
@@ -364,18 +364,13 @@ abstract class Skin extends ContextSource {
 	/**
 	 * Indicates if this skin is responsive.
 	 * Responsive skins have skin--responsive added to <body> by OutputPage,
-	 * and a viewport <meta> tag set by Skin::initPage.
 	 *
 	 * @since 1.36
 	 * @stable to override
 	 * @return bool
 	 */
 	public function isResponsive() {
-		$isSkinResponsiveCapable = $this->getOptions()['responsive'];
-		$userOptionsLookup = MediaWikiServices::getInstance()->getUserOptionsLookup();
-
-		return $isSkinResponsiveCapable &&
-			$userOptionsLookup->getBoolOption( $this->getUser(), 'skin-responsive' );
+		return $this->getOptions()['responsive'];
 	}
 
 	/**
@@ -387,7 +382,18 @@ abstract class Skin extends ContextSource {
 		$siteName = $this->getConfig()->get( MainConfigNames::Sitename );
 		$this->preloadExistence();
 
-		if ( $this->isResponsive() ) {
+		$userOptionsLookup = MediaWikiServices::getInstance()->getUserOptionsLookup();
+		$userPrefersDesktop = !(
+			$userOptionsLookup->getBoolOption(
+				$this->getUser(),
+				'skin-responsive'
+			)
+		);
+		if ( $userPrefersDesktop ) {
+			$out->addHtmlClasses( 'skin-user-prefers-desktop-view' );
+		}
+
+		if ( $this->isResponsive() && !$userPrefersDesktop ) {
 			$out->addMeta(
 				'viewport',
 				'width=device-width, initial-scale=1.0, ' .
@@ -1332,7 +1338,7 @@ abstract class Skin extends ContextSource {
 		} else {
 			// Support finding the IP range if its the target
 			$pageTarget = $this->getPageTarget();
-			if ( $pageTarget ) {
+			if ( $pageTarget && str_contains( $pageTarget, '/' ) ) {
 				$CIDRLimit = $this->getConfig()
 					->get( MainConfigNames::BlockCIDRLimit );
 				[ $ip, $range ] = explode( '/', $pageTarget, 2 );

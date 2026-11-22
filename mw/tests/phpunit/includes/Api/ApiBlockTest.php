@@ -2,10 +2,12 @@
 
 namespace MediaWiki\Tests\Api;
 
+use MediaWiki\Api\ApiUsageException;
 use MediaWiki\Block\AbstractBlock;
 use MediaWiki\Block\DatabaseBlock;
 use MediaWiki\Block\DatabaseBlockStore;
 use MediaWiki\Block\Restriction\ActionRestriction;
+use MediaWiki\Block\Restriction\CreatePageNamespaceRestriction;
 use MediaWiki\Block\Restriction\NamespaceRestriction;
 use MediaWiki\Block\Restriction\PageRestriction;
 use MediaWiki\Logging\LogEntryBase;
@@ -277,6 +279,22 @@ class ApiBlockTest extends ApiTestCase {
 		$this->assertEquals( $namespace, $block->getRestrictions()[0]->getValue() );
 	}
 
+	public function testBlockWithRestrictionsCreatePageNamespace() {
+		$namespace = NS_MAIN;
+
+		$res = $this->doBlock( [
+			'partial' => true,
+			'createpagenamespacerestrictions' => $namespace,
+			'allowusertalk' => true,
+		] );
+
+		$block = $this->blockStore->newFromTarget( $this->mUser->getName() );
+
+		$this->assertSame( [ $namespace ], $res[0]['block']['createpagenamespacerestrictions'] );
+		$this->assertInstanceOf( CreatePageNamespaceRestriction::class, $block->getRestrictions()[0] );
+		$this->assertEquals( $namespace, $block->getRestrictions()[0]->getValue() );
+	}
+
 	public function testBlockWithRestrictionsAction() {
 		$blockActionInfo = $this->getServiceContainer()->getBlockActionInfo();
 		$action = 'upload';
@@ -483,5 +501,71 @@ class ApiBlockTest extends ApiTestCase {
 		$this->assertSame( AbstractBlock::TYPE_AUTO, $blocks[0]->getType() );
 		$this->assertSame( $autoId, $blocks[0]->getId() );
 		$this->assertSame( AbstractBlock::TYPE_IP, $blocks[1]->getType() );
+	}
+
+	/**
+	 * Test that attempting to block a hidden user by user=#<id>
+	 * without 'hideuser' right does not leak the hidden username in 'alreadyblocked'.
+	 */
+	public function testBlock_hiddenUserId_withoutHideuser() {
+		$hiddenUser = $this->getMutableTestUser()->getUser();
+		$sysop = $this->getTestSysop()->getUser();
+
+		// Apply initial block hiding the user
+		$this->blockStore->insertBlockWithParams( [
+			'targetUser' => $hiddenUser,
+			'by' => $sysop,
+			'expiry' => 'infinity',
+			'hideName' => true,
+		] );
+
+		// Admin without 'hideuser'
+		$adminWithoutHideuser = $this->getMutableTestUser( [ 'sysop' ] )->getUser();
+		$this->setGroupPermissions( 'sysop', 'hideuser', false );
+
+		try {
+			$this->doApiRequestWithToken( [
+				'action' => 'block',
+				'user' => '#' . $hiddenUser->getId(),
+				'reason' => 'Testing user=#id without hideuser',
+			], null, $adminWithoutHideuser );
+			$this->fail( 'Expected ApiUsageException was not thrown' );
+		} catch ( ApiUsageException $e ) {
+			$this->assertApiErrorCode( 'nosuchuser', $e );
+			$this->assertStringNotContainsString( $hiddenUser->getName(), $e->getMessage() );
+		}
+	}
+
+	/**
+	 * Test that attempting to block a hidden user by userid=<id>
+	 * without 'hideuser' right does not leak the hidden username in 'alreadyblocked'.
+	 */
+	public function testBlock_hiddenUser_byUserid_withoutHideuser() {
+		$hiddenUser = $this->getMutableTestUser()->getUser();
+		$sysop = $this->getTestSysop()->getUser();
+
+		// Apply initial block hiding the user
+		$this->blockStore->insertBlockWithParams( [
+			'targetUser' => $hiddenUser,
+			'by' => $sysop,
+			'expiry' => 'infinity',
+			'hideName' => true,
+		] );
+
+		// Admin without 'hideuser'
+		$adminWithoutHideuser = $this->getMutableTestUser( [ 'sysop' ] )->getUser();
+		$this->setGroupPermissions( 'sysop', 'hideuser', false );
+
+		try {
+			$this->doApiRequestWithToken( [
+				'action' => 'block',
+				'userid' => $hiddenUser->getId(),
+				'reason' => 'Testing userid without hideuser',
+			], null, $adminWithoutHideuser );
+			$this->fail( 'Expected ApiUsageException was not thrown' );
+		} catch ( ApiUsageException $e ) {
+			$this->assertApiErrorCode( 'nosuchuserid', $e );
+			$this->assertStringNotContainsString( $hiddenUser->getName(), $e->getMessage() );
+		}
 	}
 }

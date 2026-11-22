@@ -9,7 +9,6 @@ namespace MediaWiki\Rest\Handler;
 
 use Composer\Semver\Semver;
 use InvalidArgumentException;
-use Liuggio\StatsdClient\Factory\StatsdDataFactoryInterface;
 use LogicException;
 use MediaWiki\Content\WikitextContent;
 use MediaWiki\Context\RequestContext;
@@ -71,9 +70,6 @@ abstract class ParsoidHandler extends Handler {
 
 	protected readonly ExtensionRegistry $extensionRegistry;
 
-	/** @var ?StatsdDataFactoryInterface A statistics aggregator */
-	protected ?StatsdDataFactoryInterface $metrics;
-
 	/** @var array */
 	private $requestAttributes;
 
@@ -97,7 +93,6 @@ abstract class ParsoidHandler extends Handler {
 		private readonly PageBundleParserOutputConverter $pageBundleParserOutputConverter,
 	) {
 		$this->extensionRegistry = ExtensionRegistry::getInstance();
-		$this->metrics = $siteConfig->metrics();
 	}
 
 	public function getSupportedRequestTypes(): array {
@@ -174,7 +169,7 @@ abstract class ParsoidHandler extends Handler {
 				return $json;
 			default:
 				throw new LocalizedHttpException(
-					new MessageValue( "rest-unsupported-content-type", [ $contentType ?? '(null)' ] ),
+					MessageValue::new( 'rest-unsupported-content-type' )->plaintextParams( $contentType ?? '(null)' ),
 					415
 				);
 		}
@@ -530,11 +525,15 @@ abstract class ParsoidHandler extends Handler {
 		$hasOldId = ( $revId !== null );
 		$ensureAccessibleContent = !$html2WtMode || $hasOldId;
 
-		// When transforming for lint, we aren't going to go through a ParserOutputAccess
+		$format = $attribs['opts']['format'] ?? '';
+		if ( $format === '' ) {
+			LoggerFactory::getInstance( 'ParsoidHandler' )->warning( "Empty format in {}", [ __METHOD__ ] );
+		}
+
+		// When transforming for HTML or PageBundle, we are going through a ParserOutputAccess
 		// to checkPreconditions
-		$checkAuthority = (
-			( $attribs['opts']['format'] ?? '' ) === ParsoidFormatHelper::FORMAT_LINT
-		);
+		$checkAuthority = $format !== ParsoidFormatHelper::FORMAT_HTML
+			&& $format !== ParsoidFormatHelper::FORMAT_PAGEBUNDLE;
 
 		// Note: Parsoid by design isn't supposed to use the user
 		// context right now, and all user state is expected to be
@@ -924,10 +923,6 @@ abstract class ParsoidHandler extends Handler {
 		}
 		$attribs['envOptions']['inputContentVersion'] = $vOriginal;
 		'@phan-var array<string,array|string> $attribs'; // @var array<string,array|string> $attribs
-
-		$this->metrics->increment(
-			'pb2pb.original.version.' . $attribs['envOptions']['inputContentVersion']
-		);
 
 		if ( !empty( $opts['updates'] ) ) {
 			// FIXME: Handling missing revisions uniformly for all update types

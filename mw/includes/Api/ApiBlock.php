@@ -18,6 +18,7 @@ use MediaWiki\Block\BlockUserFactory;
 use MediaWiki\Block\DatabaseBlock;
 use MediaWiki\Block\DatabaseBlockStore;
 use MediaWiki\Block\Restriction\ActionRestriction;
+use MediaWiki\Block\Restriction\CreatePageNamespaceRestriction;
 use MediaWiki\Block\Restriction\NamespaceRestriction;
 use MediaWiki\Block\Restriction\PageRestriction;
 use MediaWiki\Block\Restriction\Restriction;
@@ -100,7 +101,14 @@ class ApiBlock extends ApiBase {
 			if ( $params['user'] !== null ) {
 				$target = $this->blockTargetFactory->newFromUser( $params['user'] );
 			} else {
-				$targetUser = $this->userIdentityLookup->getUserIdentityByUserId( $params['userid'] );
+				$query = $this->userIdentityLookup->newSelectQueryBuilder()
+					->whereUserIds( $params['userid'] )
+					->caller( __METHOD__ );
+				if ( !$this->getAuthority()->isAllowed( 'hideuser' ) ) {
+					// T441029: a hidden user must look like a missing user
+					$query->hidden( false );
+				}
+				$targetUser = $query->fetchUserIdentity();
 				if ( !$targetUser ) {
 					$this->dieWithError( [ 'apierror-nosuchuserid', $params['userid'] ], 'nosuchuserid' );
 				}
@@ -190,6 +198,7 @@ class ApiBlock extends ApiBase {
 		$res['partial'] = $params['partial'];
 		$res['pagerestrictions'] = $params['pagerestrictions'];
 		$res['namespacerestrictions'] = $params['namespacerestrictions'];
+		$res['createpagenamespacerestrictions'] = $params['createpagenamespacerestrictions'];
 		$res['actionrestrictions'] = $params['actionrestrictions'];
 		$res['additionalBlocksStatuses'] = $additionalBlocksStatuses;
 
@@ -231,6 +240,11 @@ class ApiBlock extends ApiBase {
 				return new NamespaceRestriction( 0, $id );
 			}, (array)$params['namespacerestrictions'] );
 			$restrictions = array_merge( $pageRestrictions, $namespaceRestrictions );
+
+			$createPageNamespaceRestrictions = array_map( static function ( $id ) {
+				return new CreatePageNamespaceRestriction( 0, $id );
+			}, (array)$params['createpagenamespacerestrictions'] );
+			$restrictions = array_merge( $restrictions, $createPageNamespaceRestrictions );
 
 			$actionRestrictions = array_map( function ( $action ) {
 				return new ActionRestriction( 0, $this->blockActionInfo->getIdFromAction( $action ) );
@@ -367,6 +381,10 @@ class ApiBlock extends ApiBase {
 				ParamValidator::PARAM_ISMULTI_LIMIT2 => $pageLimit,
 			],
 			'namespacerestrictions' => [
+				ParamValidator::PARAM_ISMULTI => true,
+				ParamValidator::PARAM_TYPE => 'namespace',
+			],
+			'createpagenamespacerestrictions' => [
 				ParamValidator::PARAM_ISMULTI => true,
 				ParamValidator::PARAM_TYPE => 'namespace',
 			],
